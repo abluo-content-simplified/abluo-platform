@@ -26,7 +26,7 @@ async function html(links: unknown[], { locale = 'en', ids = IDS }: { locale?: s
   const fetchForTenant = (async (query: string) => {
     if (query === Q.catalogueModuleConfigQuery) return configRow
     if (query === Q.catalogueCollectionByIdQuery) return collectionRow(links)
-    if (query === Q.amazonTrackingIdsQuery) { calls.push('ids'); return ids }
+    if (query === Q.affiliateSettingsQuery) { calls.push('ids'); return ids ? { amazonTrackingIds: ids } : null }
     return null
   }) as never
   const s: Section = { _type: 'catalogueListingSection', _key: 'k', collectionId: 'c' }
@@ -69,5 +69,47 @@ describe('listing section with Amazon links', () => {
     expect(h).toContain('€12')
     expect(h).not.toContain('Amazon')
     expect(h).toContain('Some links on this page are affiliate links')
+  })
+})
+
+describe('listing section with several shops per edition', () => {
+  const IBS = 'https://www.ibs.it/libro/e/9788498381498'
+  const FEL = 'https://www.lafeltrinelli.it/libro/e/9788498381498'
+  const AMZ_IT = 'https://www.amazon.it/Libro/dp/B08N5WRWNW'
+  const AMZ_EN = 'https://www.amazon.co.uk/dp/B0ENENENEN'
+  const bookLinks = [
+    { _key: 'a', url: AMZ_IT, kind: 'buy', edition: { language: 'it', original: false } },
+    { _key: 'b', url: IBS, kind: 'buy', edition: { language: 'it', original: false } },
+    { _key: 'c', url: FEL, kind: 'buy', edition: { language: 'it', original: false } },
+    { _key: 'd', url: AMZ_EN, kind: 'buy', edition: { language: 'en', original: true } },
+  ]
+  async function shops(settings: unknown, locale = 'it') {
+    const fetchForTenant = (async (query: string) => {
+      if (query === Q.catalogueModuleConfigQuery) return configRow
+      if (query === Q.catalogueCollectionByIdQuery) return collectionRow(bookLinks)
+      if (query === Q.affiliateSettingsQuery) return settings
+      return null
+    }) as never
+    const s: Section = { _type: 'catalogueListingSection', _key: 'k', collectionId: 'c' }
+    const hydrated = await hydrateSections([s] as PageSection[], { fetchForTenant, locale: locale as never, defaultLocale: 'en', enabledModuleIds: ['catalogue'] })
+    void hydrated
+    return renderToStaticMarkup(<CatalogueListingSection section={s} surface={'transparent' as never} designSystem={null} locale={locale} tenantSlug="libri" />)
+  }
+  const SETTINGS = { amazonTrackingIds: IDS, awinPublisherId: '3131251', affiliateShops: [{ shop: 'ibs' }] }
+
+  it('card shows one link per book: the first shop of the visitor edition, by the tenant order', async () => {
+    country.value = 'IT'
+    const h = await shops({ ...SETTINGS, affiliateShops: [{ shop: 'ibs' }, { shop: 'amazon' }] })
+    expect(h).toContain('awin1.com/cread.php?awinmid=9777&amp;awinaffid=3131251')
+    expect(h).not.toContain('lafeltrinelli')
+    expect(h).not.toContain('amazon.co.uk')
+    expect(h).toContain('sponsored nofollow noopener noreferrer')
+    expect(h).toContain('data-affiliate-disclosure')
+  })
+  it('Amazon first when the tenant did not place it', async () => {
+    country.value = 'IT'
+    const h = await shops(SETTINGS)
+    expect(h).toContain('amazon.it/dp/B08N5WRWNW?tag=tmzit-21')
+    expect(h).not.toContain('awin1.com')
   })
 })

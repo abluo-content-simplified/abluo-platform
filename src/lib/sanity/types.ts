@@ -740,6 +740,9 @@ export interface WebsiteSiteConfig {
   socialLinks?: SocialLink[]
   /** Amazon Associates tracking IDs, one per marketplace (Settings). Absent = none. */
   amazonTrackingIds?: { marketplace: string; trackingId: string }[] | null
+  /** Awin publisher ID (digits) and the shops the tenant is approved for, in display order (Settings). */
+  awinPublisherId?: string | null
+  affiliateShops?: { shop: string }[] | null
   phone?: string
   email?: string
   /** WhatsApp channel (ADR-018): number, the subject+message form, and the floating-button toggle. */

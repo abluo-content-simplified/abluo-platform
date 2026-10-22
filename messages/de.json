@@ -2226,6 +2226,30 @@
         "intro": "Ein Satz, der einmal unten auf einer Seite mit Affiliate-Kauflink erscheint. Lass eine Sprache leer, um unseren Standardtext zu verwenden.",
         "usingStandard": "Leer: Auf deiner Website erscheint der Standardtext.",
         "useStandard": "Standardtext verwenden"
+      },
+      "affiliate": {
+        "title": "Affiliate-Programme",
+        "intro": "Verdiene eine kleine Provision, wenn Besucher über deine Links einkaufen. Trage deine Daten einmal ein; wir fügen sie jedem Link für dich hinzu."
+      },
+      "awin": {
+        "title": "Awin",
+        "intro": "Ein Awin-Konto gibt dir Zugang zu vielen Shops. Jeder Shop bestätigt dich einzeln.",
+        "publisherId": "Awin-Publisher-ID",
+        "publisherIdHint": "Die Nummer oben in deinem Awin-Konto.",
+        "publisherIdPlaceholder": "z. B. 123456",
+        "looksOff": "Eine Awin-Publisher-ID hat 3 bis 10 Ziffern.",
+        "notSaved": "Noch nicht gespeichert. Die bisherige ID bleibt in Gebrauch.",
+        "orderTitle": "Shops auf deiner Website",
+        "orderHint": "Ziehe, um die Reihenfolge deiner Links festzulegen.",
+        "notApprovedTitle": "Noch nicht bestätigt",
+        "shopsIntro": "Melde dich über dein Awin-Konto bei einem Shop an und hake ihn hier ab, sobald er dich bestätigt hat. Bis dahin bleiben seine Links schlicht.",
+        "approved": "Bestätigt",
+        "approvedNamed": "Von {shop} bestätigt",
+        "join": "So meldest du dich an",
+        "joinNamed": "So meldest du dich bei {shop} an (öffnet in einem neuen Tab)",
+        "comingSoon": "Demnächst — noch nicht verknüpft.",
+        "amazonNote": "Nutzt deine Amazon-IDs oben. Ziehe, um festzulegen, wo Amazon erscheint.",
+        "drag": "{shop} verschieben, Position {position} von {total}. Ziehen oder mit den Pfeiltasten nach oben und unten."
       }
     },
     "internalTags": {
@@ -4225,7 +4249,8 @@
             "addEdition": "Weitere Ausgabe hinzufügen",
             "editionLanguage": "Sprache der Ausgabe",
             "editionNone": "—",
-            "editionOriginal": "Originalausgabe"
+            "editionOriginal": "Originalausgabe",
+            "duplicateShop": "Diese Ausgabe hat bereits einen Link zu {shop}."
           },
           "title": "Titel",
           "book": {
@@ -4257,6 +4282,17 @@
             "shortFailed": "Wir konnten diesen App-Link nicht lesen. Öffne das Produkt auf amazon.de oder amazon.it und kopiere den Link aus der Adressleiste.",
             "unreadable": "In diesem Link haben wir kein Produkt gefunden. Öffne die Produktseite auf Amazon und kopiere den Link aus der Adressleiste.",
             "priceHint": "Amazon erlaubt keinen Preis neben seinem Button, daher wird der hier eingetragene Preis bei diesem Eintrag nicht auf der Website angezeigt."
+          },
+          "shop": {
+            "finalLink": "Fertiger Link",
+            "tracked": "✓ {shop} · deine Awin-ID wurde hinzugefügt",
+            "pasted": "✓ {shop} · es wird die Awin-ID aus deinem Link verwendet",
+            "noPublisherId": "{shop} · noch keine Awin-ID. Trage sie in den Einstellungen ein.",
+            "noPublisherIdAskAdmin": "{shop} · noch keine Awin-ID. Bitte die Website-Administration, sie einzutragen.",
+            "notApproved": "{shop} ist in den Einstellungen noch nicht als freigegeben markiert. Der Link funktioniert, bringt aber nichts ein.",
+            "notApprovedAskAdmin": "{shop} ist noch nicht als freigegeben markiert. Der Link funktioniert, bringt aber nichts ein. Frage die Website-Administration.",
+            "notReady": "{shop} · demnächst verfügbar. Der Link funktioniert, bringt aber noch nichts ein.",
+            "openSettings": "Einstellungen öffnen"
           }
         },
         "photos": {

@@ -308,7 +308,7 @@ export function ItemEditor({
               </FieldBlock>
             ) : null}
             <FieldBlock title={tfl('title')} helper={tfl('helper')}>
-              <LinksField links={s.links} locales={site.locales} defaultLocale={d} onChange={item.setLinks} amazon={{ projectSlug, trackingIds: site.amazonTrackingIds ?? [], canOpenSettings }} />
+              <LinksField links={s.links} locales={site.locales} defaultLocale={d} onChange={item.setLinks} amazon={{ projectSlug, trackingIds: site.amazonTrackingIds ?? [], canOpenSettings, affiliate: { amazonTrackingIds: site.amazonTrackingIds, awinPublisherId: site.awinPublisherId, affiliateShops: site.affiliateShops } }} />
             </FieldBlock>
             <FieldBlock>
               <VisibilityField value={s.visibility} onChange={item.setVisibility} />

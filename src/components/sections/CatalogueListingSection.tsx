@@ -63,6 +63,7 @@ export function CatalogueListingSection({ section, surface, designSystem, locale
     showPrices: listingShowsPrices(section.showPrices, data.showPricesByDefault),
     allergens: listingAllergenPresentation(section.allergenPresentation),
     siteHosts: siteHostsForProject(tenantSlug),
+    shopOrder: data.shopOrder,
   }
 
   const messages = getCatalogueWebsiteMessages(locale)

@@ -223,7 +223,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
           <>
             {heading('item-step-name', s.itemProfile && can(s.itemProfile, 'bookDetails') ? 'nameBook' : 'name')}
             <div className="mt-8">
-              <NameFields autoFocus locale={d} profile={s.itemProfile} afterName={s.itemProfile && can(s.itemProfile, 'bookDetails') ? <><BookDetailsFields value={s.bookDetails} onChange={item.setBookDetails} /><div className="mt-5"><BuyLinkField links={s.links} defaultLocale={d} onChange={item.setLinks} amazon={{ projectSlug, trackingIds: site.amazonTrackingIds ?? [], canOpenSettings }} /></div></> : null} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
+              <NameFields autoFocus locale={d} profile={s.itemProfile} afterName={s.itemProfile && can(s.itemProfile, 'bookDetails') ? <><BookDetailsFields value={s.bookDetails} onChange={item.setBookDetails} /><div className="mt-5"><BuyLinkField links={s.links} defaultLocale={d} onChange={item.setLinks} amazon={{ projectSlug, trackingIds: site.amazonTrackingIds ?? [], canOpenSettings, affiliate: { amazonTrackingIds: site.amazonTrackingIds, awinPublisherId: site.awinPublisherId, affiliateShops: site.affiliateShops } }} /></div></> : null} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
             </div>
           </>
         ) : step === 'category' ? (

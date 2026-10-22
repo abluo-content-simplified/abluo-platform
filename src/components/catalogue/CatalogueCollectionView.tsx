@@ -20,6 +20,7 @@ import { resolveEasing } from '@/lib/motion/easing'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { AllergensAndDietary, Byline, ItemLinks, OfferList, OptionsSummary } from './CatalogueItemParts'
 import type { CatalogueWebsiteMessages } from './messages'
+import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import { itemHasAmazonLink } from '@/lib/modules/catalogue/amazon-delivery'
 
 export type CatalogueDisplay = {
@@ -31,6 +32,8 @@ export type CatalogueDisplay = {
   allergens: 'compact' | 'expanded'
   /** Hosts that count as the site's own for the link new-tab rule (siteHostsForProject). */
   siteHosts?: readonly string[]
+  /** The tenant's shop order for buy links (Settings). Absent = stored order. */
+  shopOrder?: readonly AffiliateShopId[]
 }
 
 export interface CatalogueCollectionViewProps {
@@ -193,7 +196,7 @@ export function CatalogueItemRow({
             {item.description}
           </p>
         )}
-        <ItemLinks links={item.links} siteHosts={display.siteHosts} compact m={messages} />
+        <ItemLinks links={item.links} siteHosts={display.siteHosts} compact m={messages} shopOrder={display.shopOrder} />
         <OptionsSummary lists={item.optionLists} m={messages} showPrices={display.showPrices} allergens={display.allergens} />
         <AllergensAndDietary item={item} m={messages} compact={display.allergens === 'compact'} />
       </div>

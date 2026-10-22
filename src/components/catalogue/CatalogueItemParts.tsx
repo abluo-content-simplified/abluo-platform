@@ -17,6 +17,9 @@ import type {
 } from '@/lib/modules/catalogue/dto'
 import { buyLabel, catalogueLinkRel } from '@/lib/modules/catalogue/affiliate'
 import { editionLabel, editionLanguageName, editionLinks, orderBuyLinks } from '@/lib/modules/catalogue/editions'
+import type { AffiliateShopId } from '@/lib/affiliate/shops'
+import { shopById } from '@/lib/affiliate/shops'
+import { sortByShopOrder } from '@/lib/modules/catalogue/shop-delivery'
 import { fillMessage, optionRuleText, type CatalogueWebsiteMessages } from './messages'
 
 /** F-1 — the short line under an item's name. Plain text, never parsed. */
@@ -41,6 +44,7 @@ export function ItemLinks({
   compact,
   heading,
   m,
+  shopOrder,
 }: {
   links: readonly CatalogueItemLinkDTO[]
   siteHosts?: readonly string[]
@@ -49,9 +53,11 @@ export function ItemLinks({
   heading?: string
   /** Card form only: lets a book with several editions show ONE buy link (the visitor's language first). */
   m?: CatalogueWebsiteMessages
+  /** The tenant's shop order: the card's one buy link is the first shop of the visitor's edition. */
+  shopOrder?: readonly AffiliateShopId[]
 }) {
   if (compact && m && editionLinks(links).length >= 2) {
-    const primary = orderBuyLinks(links, m.locale)[0]
+    const primary = orderBuyLinksByShop(links, m.locale, shopOrder)[0]
     links = links.filter((l) => l.kind !== 'buy' || l === primary)
   }
   if (links.length === 0) return null
@@ -93,35 +99,96 @@ function relProps(l: CatalogueItemLinkDTO, blank: boolean): { rel?: string } {
  * "Buy". An affiliate link carries rel="sponsored nofollow noopener noreferrer"
  * and a small localized marker under the button.
  */
-export function BuyLinks({ links, siteHosts = [], m }: { links: readonly CatalogueItemLinkDTO[]; siteHosts?: readonly string[]; m: CatalogueWebsiteMessages }) {
+export function BuyLinks({ links, siteHosts = [], m, shopOrder }: { links: readonly CatalogueItemLinkDTO[]; siteHosts?: readonly string[]; m: CatalogueWebsiteMessages; shopOrder?: readonly AffiliateShopId[] }) {
   // Book editions: with two or more edition links, one button per edition, the visitor's language first.
   const buy = orderBuyLinks(links, m.locale)
   if (buy.length === 0) return null
+  const entries = buyEntries(buy, shopOrder)
+  // Several shops for one edition: that edition becomes one row (label, then one button per shop).
+  // Links without an edition always render as before (their own labels).
+  if (entries.some((e) => e.kind === 'group' && e.links.length >= 2)) {
+    return (
+      <ul className="flex flex-col items-start gap-y-5" data-buy-links="" data-buy-groups="">
+        {entries.map((e) =>
+          e.kind === 'group' ? (
+            <li key={e.key} className="flex flex-wrap items-start gap-x-4 gap-y-3" data-buy-group="">
+              <span className="py-3.5 text-base font-semibold" style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)' }} data-buy-group-label="">
+                {editionLabel(e.edition, m.editionOriginal)}
+              </span>
+              {e.links.map((l) => (
+                <div key={l.key} className="flex flex-col items-start gap-1.5">
+                  <BuyButton l={l} siteHosts={siteHosts} text={l.shop ? shopById(l.shop).name : buyLabel(l.label, m.buyDefault)} m={m} />
+                </div>
+              ))}
+            </li>
+          ) : (
+            <li key={e.l.key} className="flex flex-col items-start gap-1.5">
+              <BuyButton l={e.l} siteHosts={siteHosts} text={buyText(e.l, m, false)} m={m} />
+            </li>
+          ),
+        )}
+      </ul>
+    )
+  }
   const manyEditions = editionLinks(buy).length >= 2
   return (
     <ul className="flex flex-wrap items-start gap-x-6 gap-y-4" data-buy-links="">
-      {buy.map((l) => {
-        const blank = opensInNewTab({ href: l.url }, siteHosts)
-        return (
-          <li key={l.key} className="flex flex-col items-start gap-1.5">
-            <a
-              href={l.url}
-              className="inline-flex items-center gap-2 px-8 py-3.5 text-base font-semibold tracking-wide transition-all duration-200 hover:opacity-90"
-              style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', borderRadius: 'var(--radius-btn)' }}
-              data-buy-link=""
-              {...(blank ? { target: '_blank' } : {})}
-              {...relProps(l, blank)}
-            >
-              {buyText(l, m, manyEditions)}
-            </a>
-            {l.affiliate && m.affiliateMarker && (
-              <span className="text-xs" style={MUTED} data-affiliate-marker="">{m.affiliateMarker}</span>
-            )}
-          </li>
-        )
-      })}
+      {buy.map((l) => (
+        <li key={l.key} className="flex flex-col items-start gap-1.5">
+          <BuyButton l={l} siteHosts={siteHosts} text={buyText(l, m, manyEditions)} m={m} />
+        </li>
+      ))}
     </ul>
   )
+}
+
+function BuyButton({ l, siteHosts, text, m }: { l: CatalogueItemLinkDTO; siteHosts: readonly string[]; text: string; m: CatalogueWebsiteMessages }) {
+  const blank = opensInNewTab({ href: l.url }, siteHosts)
+  return (
+    <>
+      <a
+        href={l.url}
+        className="inline-flex items-center gap-2 px-8 py-3.5 text-base font-semibold tracking-wide transition-all duration-200 hover:opacity-90"
+        style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', borderRadius: 'var(--radius-btn)' }}
+        data-buy-link=""
+        {...(blank ? { target: '_blank' } : {})}
+        {...relProps(l, blank)}
+      >
+        {text}
+      </a>
+      {l.affiliate && m.affiliateMarker && (
+        <span className="text-xs" style={MUTED} data-affiliate-marker="">{m.affiliateMarker}</span>
+      )}
+    </>
+  )
+}
+
+type BuyEntry = { kind: 'group'; key: string; edition: { language: string; original: boolean }; links: CatalogueItemLinkDTO[] } | { kind: 'link'; l: CatalogueItemLinkDTO }
+
+/**
+ * Edition links grouped by LANGUAGE (first appearance first; the group is "Original" when any of its links is),
+ * shops inside a group in the tenant's order. Links without an edition stay individual, in place.
+ */
+function buyEntries(buy: readonly CatalogueItemLinkDTO[], order: readonly AffiliateShopId[] | undefined): BuyEntry[] {
+  const entries: BuyEntry[] = []
+  for (const l of buy) {
+    if (!l.edition) {
+      entries.push({ kind: 'link', l })
+      continue
+    }
+    const lang = l.edition.language
+    const g = entries.find((e): e is Extract<BuyEntry, { kind: 'group' }> => e.kind === 'group' && e.key === lang)
+    if (g) {
+      g.links.push(l)
+      if (l.edition.original) g.edition = { language: lang, original: true }
+    } else entries.push({ kind: 'group', key: lang, edition: { language: lang, original: l.edition.original }, links: [l] })
+  }
+  return entries.map((e) => (e.kind === 'group' ? { ...e, links: sortByShopOrder(e.links, order) } : e))
+}
+
+/** orderBuyLinks, then the shops of each edition in the tenant's order (the first entry is the card's one link). */
+function orderBuyLinksByShop(links: readonly CatalogueItemLinkDTO[], locale: string | undefined, order: readonly AffiliateShopId[] | undefined): CatalogueItemLinkDTO[] {
+  return buyEntries(orderBuyLinks(links, locale), order).flatMap((e) => (e.kind === 'group' ? e.links : [e.l]))
 }
 
 /**

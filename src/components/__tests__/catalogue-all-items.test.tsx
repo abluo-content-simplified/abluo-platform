@@ -22,7 +22,7 @@ async function render(section: Section, rows: { all: unknown[]; collection?: unk
     if (query === Q.catalogueModuleConfigQuery) return configRow
     if (query === Q.catalogueAllItemsQuery) return rows.all
     if (query === Q.catalogueCollectionByIdQuery) return rows.collection ?? null
-    if (query === Q.amazonTrackingIdsQuery) return IDS
+    if (query === Q.affiliateSettingsQuery) return { amazonTrackingIds: IDS }
     return null
   }) as never
   await hydrateSections([section] as PageSection[], { fetchForTenant, locale: 'en' as never, defaultLocale: 'en', enabledModuleIds: ['catalogue'] })

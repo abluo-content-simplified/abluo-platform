@@ -6,6 +6,8 @@
 // edition on an English/Italian site is fine); it must be one of the codes below.
 
 import type { CatalogueItemLinkDTO } from './dto'
+import { looksLikeAmazon } from '@/lib/affiliate/amazon-links'
+import { parseAwinUrl } from '@/lib/affiliate/awin-links'
 
 /** Common edition languages, each named in its own language. Order = the editor's list. */
 export const EDITION_LANGUAGES = [
@@ -77,8 +79,59 @@ export function cleanEdition(value: unknown, buy: boolean, fail: (message: strin
   return { language, ...(v.original === true ? { original: true as const } : {}) }
 }
 
-/** True when more than one link is marked as the original edition. */
-export const hasManyOriginals = (links: readonly { edition?: { original?: boolean } | null }[]): boolean => links.filter((l) => l.edition?.original === true).length > 1
+/**
+ * True when the original edition is claimed for more than one LANGUAGE. Several shops selling the same
+ * original edition (Amazon + IBS, both "Italiano · Original") are fine: they share one language.
+ */
+export const hasManyOriginals = (links: readonly { edition?: { language?: string; original?: boolean } | null }[]): boolean =>
+  new Set(links.filter((l) => l.edition?.original === true).map((l) => l.edition!.language)).size > 1
+
+/** The shop a buy-link address belongs to ('amazon', 'ibs', …), or null for any other address. Pure. */
+export function shopOfUrl(url: string): { id: string; name: string } | null {
+  const u = url.trim()
+  if (!u) return null
+  if (looksLikeAmazon(u)) return { id: 'amazon', name: 'Amazon' }
+  // parseAwinUrl sees through a pasted Awin wrapper (awin1.com/cread.php?…&ued=<shop url>).
+  const shop = parseAwinUrl(u)?.shop
+  return shop ? { id: shop.id, name: shop.name } : null
+}
+
+type OriginalLink = { key: string; edition?: { language: string; original: boolean } | null }
+
+/**
+ * "Original" belongs to a language: every link of that language carries it, or none does. Applies a change
+ * made on link `key` (its new edition; undefined = edition removed): ticking sets all links of the language
+ * and unticks every other language; unticking unticks all of them. A link that BECOMES a language that
+ * already is the original inherits it.
+ */
+export function applyEditionChange<T extends OriginalLink>(links: readonly T[], key: string, edition: { language: string; original: boolean } | undefined): T[] {
+  if (!edition) return links.map((l) => (l.key === key ? { ...l, edition: undefined } : l))
+  const old = links.find((l) => l.key === key)?.edition
+  const languageChanged = !old || old.language !== edition.language
+  const inherits = languageChanged && links.some((l) => l.key !== key && l.edition?.language === edition.language && l.edition.original)
+  const original = inherits || edition.original
+  return links.map((l) => {
+    if (l.key === key) return { ...l, edition: { language: edition.language, original } }
+    if (!l.edition) return l
+    if (l.edition.language === edition.language) return { ...l, edition: { ...l.edition, original } }
+    return original && l.edition.original ? { ...l, edition: { ...l.edition, original: false } } : l
+  })
+}
+
+/** The shop that appears twice for the same edition language among these buy links, if any ("This edition already has a link to X"). */
+export function duplicateEditionShop(links: readonly { key?: string; url: string; kind?: string; edition?: { language?: string } | null }[]): { index: number; shop: string } | null {
+  const seen = new Set<string>()
+  for (let i = 0; i < links.length; i++) {
+    const l = links[i]
+    if (l.kind !== 'buy' || !l.edition?.language) continue
+    const shop = shopOfUrl(l.url)
+    if (!shop) continue
+    const k = `${l.edition.language}|${shop.id}`
+    if (seen.has(k)) return { index: i, shop: shop.name }
+    seen.add(k)
+  }
+  return null
+}
 
 type Ed = Pick<CatalogueItemLinkDTO, 'kind' | 'edition'>
 

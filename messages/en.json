@@ -2229,25 +2229,27 @@
       },
       "affiliate": {
         "title": "Affiliate Programs",
-        "intro": "Earn a commission when visitors buy through your links. Add your details for each program; we add them to your links automatically."
+        "intro": "Earn a small commission when visitors buy through your links. Add your details once; we add them to every link for you."
       },
       "awin": {
         "title": "Awin",
-        "intro": "One Awin account gives you access to many shops, but each shop has to approve you first. Join the shops below from your Awin account, then tick them here once you are approved.",
+        "intro": "One Awin account gives you access to many shops. Each shop approves you separately.",
         "publisherId": "Awin publisher ID",
         "publisherIdHint": "The number shown at the top of your Awin account.",
         "publisherIdPlaceholder": "e.g. 123456",
-        "looksOff": "An Awin publisher ID is a number of 3 to 10 digits. It is not saved until it looks right.",
-        "shops": "Shops",
-        "shopsIntro": "Tick a shop once it has approved you. Links to shops that are not ticked stay plain, without your ID.",
+        "looksOff": "An Awin publisher ID is 3 to 10 digits.",
+        "notSaved": "Not saved yet. Your previous ID is still in use.",
+        "orderTitle": "Shops on your website",
+        "orderHint": "Drag to choose the order your links appear in.",
+        "notApprovedTitle": "Not approved yet",
+        "shopsIntro": "Join a shop from your Awin account, then tick it here once it has approved you. Until then its links stay plain.",
         "approved": "Approved",
         "approvedNamed": "Approved by {shop}",
         "join": "How to join",
-        "joinNamed": "How to join {shop}",
+        "joinNamed": "How to join {shop} (opens in a new tab)",
         "comingSoon": "Coming soon — not linked yet.",
-        "amazonNote": "Uses your Amazon IDs above. Move it to place Amazon among the shops.",
-        "drag": "Move {shop}, position {position} of {total}. Drag, or use the up and down arrow keys.",
-        "orderHint": "The order here is the order of the shops on your website."
+        "amazonNote": "Uses your Amazon IDs above. Drag to choose where Amazon appears.",
+        "drag": "Move {shop}, position {position} of {total}. Drag, or use the up and down arrow keys."
       }
     },
     "internalTags": {
@@ -4289,7 +4291,7 @@
             "noPublisherIdAskAdmin": "{shop} · no Awin ID yet. Ask your site admin to add it.",
             "notApproved": "{shop} isn’t ticked as approved in Settings yet. The link works but earns nothing.",
             "notApprovedAskAdmin": "{shop} isn’t ticked as approved yet. The link works but earns nothing. Ask your site admin.",
-            "notReady": "{shop} · coming soon. The link works but isn’t tracked yet.",
+            "notReady": "{shop} · coming soon. The link works but doesn’t earn anything yet.",
             "openSettings": "Open Settings"
           }
         },

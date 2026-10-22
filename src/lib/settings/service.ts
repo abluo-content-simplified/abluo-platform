@@ -8,7 +8,7 @@
  *      `site.details.write` (checked before any I/O; a viewer-style support
  *      visit has write stripped upstream);
  *   2. every value is checked against the fixed allow-list in `./paths`
- *      (`amazonTrackingIds`, `affiliateDisclosure.<locale>`) — nothing else
+ *      (`amazonTrackingIds`, `awinPublisherId`, `affiliateShops`, `affiliateDisclosure.<locale>`) — nothing else
  *      can be written, whatever the client sends;
  *   3. reads go through `tenantScopedSanityClient` (forces `$projectSlug`);
  *      `assertSingleSanityProject` runs before the mutation.
@@ -32,6 +32,9 @@ import { span } from '@/lib/perf/timing'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import type { AmazonTrackingId } from '@/lib/affiliate/amazon-marketplaces'
 import { rowsFromStored } from './amazon-rows'
+import { shopsFromStored } from './affiliate-shops-rows'
+import { looksLikeAwinPublisherId } from '@/lib/affiliate/awin-links'
+import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import { buildDisclosurePatch } from './disclosure-patch'
 import { decodeRev, encodeRev, parseSettingsSet } from './paths'
 
@@ -62,6 +65,8 @@ export type SettingsView = {
   defaultLocale: string
   locales: string[]
   amazon: AmazonTrackingId[]
+  /** Awin: the client's publisher ID and the shops they are approved for (Amazon only when placed), in display order. */
+  awin: { publisherId: string; shops: AffiliateShopId[] }
   catalogueInstalled: boolean
   /** Stored affiliate disclosure per site language (missing = empty = standard wording). */
   disclosure: Record<string, string>
@@ -71,14 +76,14 @@ export type SettingsView = {
 type Client = Pick<typeof sanityWriteClient, 'fetch' | 'transaction'>
 export type SettingsDeps = { client?: Client }
 
-type SiteDoc = { _id: string; _rev: string; defaultLocale?: string | null; supportedLocales?: string[] | null; amazonTrackingIds?: Array<Partial<AmazonTrackingId>> | null }
+type SiteDoc = { _id: string; _rev: string; defaultLocale?: string | null; supportedLocales?: string[] | null; amazonTrackingIds?: Array<Partial<AmazonTrackingId>> | null; awinPublisherId?: unknown; affiliateShops?: Array<{ shop?: unknown } | null> | null }
 type ProjectDoc = {
   _id: string
   _rev: string
   catalogue?: { _key?: string | null; enabled?: boolean | null; hasConfig?: boolean | null; disclosure?: Record<string, unknown> | null } | null
 } | null
 
-export const SITE_QUERY = /* groq */ `*[_type == "siteConfig" && projectSlug == $projectSlug]{ _id, _rev, defaultLocale, supportedLocales, amazonTrackingIds }`
+export const SITE_QUERY = /* groq */ `*[_type == "siteConfig" && projectSlug == $projectSlug]{ _id, _rev, defaultLocale, supportedLocales, amazonTrackingIds, awinPublisherId, affiliateShops }`
 export const PROJECT_QUERY = /* groq */ `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ _id, _rev, "catalogue": moduleInstallations[moduleId == "catalogue"][0]{ _key, enabled, "hasConfig": defined(config), "disclosure": config.affiliateDisclosure } }`
 
 const isDraft = (id: string) => id.startsWith('drafts.')
@@ -128,6 +133,7 @@ export async function loadSettings(ctx: TenantAuthorizationContext, projectId: s
     defaultLocale: published.defaultLocale || 'en',
     locales: localesOf(published),
     amazon: rowsFromStored(published.amazonTrackingIds).map((r) => ({ _key: r.key, marketplace: r.marketplace as AmazonTrackingId['marketplace'], trackingId: r.trackingId })),
+    awin: { publisherId: looksLikeAwinPublisherId(published.awinPublisherId) ? published.awinPublisherId.trim() : '', shops: shopsFromStored(published.affiliateShops) },
     catalogueInstalled: installed,
     disclosure,
     canWrite: grant.permissions.includes(SETTINGS_WRITE),
@@ -163,9 +169,14 @@ export async function saveSettings(
   const tx = client.transaction()
   let touched = 0
 
-  if (parsed.amazon !== undefined) {
+  const set: Record<string, unknown> = {}
+  const unset: string[] = []
+  if (parsed.amazon !== undefined) (parsed.amazon.length ? Object.assign(set, { amazonTrackingIds: parsed.amazon }) : unset.push('amazonTrackingIds'))
+  if (parsed.awinPublisherId !== undefined) (parsed.awinPublisherId ? Object.assign(set, { awinPublisherId: parsed.awinPublisherId }) : unset.push('awinPublisherId'))
+  if (parsed.affiliateShops !== undefined) (parsed.affiliateShops.length ? Object.assign(set, { affiliateShops: parsed.affiliateShops }) : unset.push('affiliateShops'))
+  if (Object.keys(set).length || unset.length) {
     if (!siteRev) throw new SettingsError('invalid_value', 'Missing revision.')
-    const change = parsed.amazon.length ? { set: { amazonTrackingIds: parsed.amazon } } : { unset: ['amazonTrackingIds'] }
+    const change = { ...(Object.keys(set).length ? { set } : {}), ...(unset.length ? { unset } : {}) }
     tx.patch(published._id, { ifRevisionID: siteRev, ...change })
     // Studio's unpublished draft would otherwise win at the next Publish.
     if (draft) tx.patch(draft._id, { ifRevisionID: draft._rev, ...change })

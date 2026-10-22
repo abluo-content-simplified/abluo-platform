@@ -32,6 +32,8 @@
  * Never written here: `offer.currency` (D7/A6) and `offer.locationKey` (A5).
  */
 import { span } from '@/lib/perf/timing'
+import { approvedShops, awinPublisherIdOf } from '@/lib/affiliate/affiliate-settings'
+import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import { isAmazonMarketplace, type AmazonTrackingId } from '@/lib/affiliate/amazon-marketplaces'
 import { resolveAmazonShortLink, type ResolveFetch } from '@/lib/affiliate/amazon-resolve'
 import { randomUUID } from 'crypto'
@@ -189,6 +191,10 @@ export type CatalogueSite = {
   presetId?: string | null
   /** The project's Amazon tracking IDs (Settings), for the buy-link preview. Empty when none. */
   amazonTrackingIds?: AmazonTrackingId[]
+  /** Awin publisher ID (digits) from Settings, or null — the buy-link preview for Awin shops. */
+  awinPublisherId?: string | null
+  /** Shops the tenant ticked as approved, in their order (Settings). */
+  affiliateShops?: { shop: AffiliateShopId }[]
   config: {
     navLabel: Record<string, string>
     segment: string | null
@@ -209,7 +215,7 @@ const termsOf = (rows: unknown): CatalogueTerm[] =>
     .map((r) => ({ value: r.value as string, label: localized(r.label), color: typeof r.color === 'string' && r.color ? r.color : null }))
 
 async function readSite(client: Client, projectSlug: string): Promise<CatalogueSite> {
-  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null; amazonTrackingIds?: { marketplace?: unknown; trackingId?: unknown }[] | null } | null; config?: RawConfig; presetId?: unknown; translate?: boolean; categoryTerms?: CategoryTermRow[] | null; tagTerms?: CategoryTermRow[] | null } | null>(
+  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null; amazonTrackingIds?: { marketplace?: unknown; trackingId?: unknown }[] | null; awinPublisherId?: unknown; affiliateShops?: { shop?: unknown }[] | null } | null; config?: RawConfig; presetId?: unknown; translate?: boolean; categoryTerms?: CategoryTermRow[] | null; tagTerms?: CategoryTermRow[] | null } | null>(
     CATALOGUE_SITE_QUERY,
     { projectSlug }
   ))
@@ -223,6 +229,8 @@ async function readSite(client: Client, projectSlug: string): Promise<CatalogueS
     locales: [defaultLocale, ...supported.filter((l) => l !== defaultLocale)],
     timeZone: typeof r?.site?.timeZone === 'string' && r.site.timeZone ? r.site.timeZone : null,
     amazonTrackingIds: (r?.site?.amazonTrackingIds ?? []).flatMap((x) => (x && isAmazonMarketplace(x.marketplace) && typeof x.trackingId === 'string' && x.trackingId.trim() ? [{ marketplace: x.marketplace, trackingId: x.trackingId.trim() }] : [])),
+    awinPublisherId: awinPublisherIdOf({ awinPublisherId: r?.site?.awinPublisherId }),
+    affiliateShops: approvedShops({ affiliateShops: r?.site?.affiliateShops }).map((shop) => ({ shop })),
     translate: r?.translate === true,
     presetId: typeof r?.presetId === 'string' && r.presetId ? r.presetId : null,
     config: {

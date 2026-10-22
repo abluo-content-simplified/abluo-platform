@@ -9,7 +9,7 @@ import { DragGrip, DropLine } from '@/components/app/ui/DragGrip'
 import { dropIndex, usePointerDrag } from '@/components/app/ui/use-pointer-drag'
 import { CheckboxCard } from '@/components/app/ui/CheckboxCard'
 import { Select } from '@/components/app/ui/Select'
-import { EDITION_LANGUAGES } from '@/lib/modules/catalogue/editions'
+import { applyEditionChange, EDITION_LANGUAGES } from '@/lib/modules/catalogue/editions'
 import { RadioList } from '@/components/app/ui/RadioList'
 import { ToggleChips } from '@/components/app/ui/ToggleChips'
 import { Switch } from '@/components/app/ui/Switch'
@@ -22,6 +22,7 @@ import { describeAmazonLink } from '@/lib/affiliate/amazon-tracking'
 import { looksLikeAmazon } from '@/lib/affiliate/amazon-links'
 import { MAX_MORE_AMAZON_URLS } from '@/lib/modules/catalogue/amazon-delivery'
 import type { AmazonTrackingId } from '@/lib/affiliate/amazon-marketplaces'
+import { describeAffiliateLink, type AffiliateSettings } from '@/lib/affiliate/affiliate-settings'
 import { ALLERGENS, type AllergenKey } from '@/lib/modules/catalogue/allergens'
 import { WEEKDAYS, type Weekday } from '@/lib/modules/catalogue/availability'
 import { formatPrice } from '@/lib/modules/catalogue/resolve'
@@ -226,7 +227,13 @@ export function LinkKindFields({ link, onChange, hideAffiliate = false }: { link
 // ── Amazon links — preview, status and extra stores under a pasted Amazon address ──
 
 /** What the editor needs to explain an Amazon link: the project's IDs and whether this person may open Settings. */
-export type AmazonEditorContext = { projectSlug: string; trackingIds: readonly AmazonTrackingId[]; canOpenSettings: boolean }
+export type AmazonEditorContext = {
+  projectSlug: string
+  trackingIds: readonly AmazonTrackingId[]
+  canOpenSettings: boolean
+  /** The project's full affiliate settings (Awin ID + approved shops); absent = Amazon only. */
+  affiliate?: AffiliateSettings
+}
 
 /** "✓ amazon.de · your ID added" / "amazon.de · no ID yet — add it in Settings". */
 function AmazonStatus({ url, amazon }: { url: string; amazon: AmazonEditorContext }) {
@@ -244,6 +251,34 @@ function AmazonStatus({ url, amazon }: { url: string; amazon: AmazonEditorContex
     >
       {amazon.canOpenSettings ? t('noIdYet', { store }) : t('noIdAskAdmin', { store })}
     </Notice>
+  )
+}
+
+/**
+ * Under a buy link's address, when it is a known Awin shop (IBS, laFeltrinelli, …): the final link and
+ * a one-line status of the tracking. Renders nothing for any other address (Amazon has its own block).
+ */
+export function ShopLinkBlock({ url, amazon }: { url: string; amazon: AmazonEditorContext }) {
+  const t = useTranslations('catalogue.dashboard.item.fields.shop')
+  const id = useId()
+  const info = describeAffiliateLink(url, amazon.affiliate ?? { amazonTrackingIds: amazon.trackingIds })
+  if (info.provider !== 'awin') return null
+  const shop = info.shop.name
+  const settings = amazon.canOpenSettings ? <ButtonLink variant="quiet" href={`/${amazon.projectSlug}/settings`}>{t('openSettings')}</ButtonLink> : undefined
+  let status: ReactNode
+  if (info.status === 'tracked') status = <Notice tone="info" layout="row">{t('tracked', { shop })}</Notice>
+  else if (info.status === 'pasted') status = <Notice tone="info" layout="row">{t('pasted', { shop })}</Notice>
+  else if (info.status === 'shop_not_ready') status = <Notice tone="dashed" layout="row">{t('notReady', { shop })}</Notice>
+  else if (info.status === 'not_approved') status = <Notice tone="dashed" layout="row" action={settings}>{amazon.canOpenSettings ? t('notApproved', { shop }) : t('notApprovedAskAdmin', { shop })}</Notice>
+  else status = <Notice tone="dashed" layout="row" action={settings}>{amazon.canOpenSettings ? t('noPublisherId', { shop }) : t('noPublisherIdAskAdmin', { shop })}</Notice>
+  return (
+    <div className="space-y-3" data-shop-block="">
+      <div>
+        <FieldLabel htmlFor={`${id}-final`}>{t('finalLink')}</FieldLabel>
+        <TextInput id={`${id}-final`} readOnly value={info.href} onFocus={(e) => e.currentTarget.select()} />
+      </div>
+      {status}
+    </div>
   )
 }
 
@@ -349,9 +384,8 @@ export function LinksField({ links, locales, defaultLocale, onChange, amazon }: 
   const issues = linkFormIssues(links, defaultLocale)
   const issueOf = (key: string) => issues.find((i) => i.key === key)?.kind
   const setLink = (key: string, next: Partial<LinkForm>) => onChange(links.map((l) => (l.key === key ? { ...l, ...next } : l)))
-  // Book editions: one language per buy link; only one link can be the original (ticking one unticks the others).
-  const setEdition = (key: string, edition: { language: string; original: boolean } | undefined) =>
-    onChange(links.map((l) => (l.key === key ? { ...l, edition } : edition?.original ? { ...l, edition: l.edition ? { ...l.edition, original: false } : l.edition } : l)))
+  // Book editions: one language per buy link; original belongs to a language (all links of that language, or none).
+  const setEdition = (key: string, edition: { language: string; original: boolean } | undefined) => onChange(applyEditionChange(links, key, edition))
   const drag = usePointerDrag((key, over) => {
     const to = dropIndex(links.map((x) => x.key), key, over)
     if (to !== null) onChange(moveIndex(links, links.findIndex((x) => x.key === key), to))
@@ -382,10 +416,11 @@ export function LinksField({ links, locales, defaultLocale, onChange, amazon }: 
                       </label>
                       <TextInput id={`${id}-${l.key}-url`} type="url" inputMode="url" autoComplete="off" placeholder="https://" maxLength={2048} value={l.url} onChange={(e) => setLink(l.key, { url: e.target.value })} aria-invalid={issue === 'badUrl' || undefined} />
                       {issue ? (
-                        <FieldError>{t(issue)}</FieldError>
+                        <FieldError>{issue === 'duplicateShop' ? t('duplicateShop', { shop: issues.find((i) => i.key === l.key)?.shop ?? '' }) : t(issue)}</FieldError>
                       ) : null}
                     </div>
                     {amazon && l.kind === 'buy' ? <AmazonLinkBlock url={l.url} moreUrls={l.moreUrls ?? []} amazon={amazon} onUrl={(next) => setLink(l.key, { url: next })} onMoreUrls={(next) => setLink(l.key, { moreUrls: next })} /> : null}
+                    {amazon && l.kind === 'buy' ? <ShopLinkBlock url={l.url} amazon={amazon} /> : null}
                     {l.kind === 'buy' ? (
                       <div className="space-y-3" data-edition-fields="">
                         <div>
@@ -457,6 +492,7 @@ export function BuyLinkField({ links, defaultLocale, onChange, amazon }: { links
           <p className="mt-1.5 text-sm text-muted-foreground">{t('help')}</p>
         )}
       </div>
+      {buy && amazon ? <ShopLinkBlock url={buy.url} amazon={amazon} /> : null}
       {buy && amazon ? <AmazonLinkBlock url={buy.url} moreUrls={buy.moreUrls ?? []} amazon={amazon} onUrl={(next) => onChange(withBuyLink(links, { url: next }, newKey))} onMoreUrls={(next) => onChange(withBuyLink(links, { moreUrls: next }, newKey))} /> : null}
       {buy ? (
         <>

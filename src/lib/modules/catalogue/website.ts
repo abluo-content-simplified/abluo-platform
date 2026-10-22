@@ -12,7 +12,7 @@
 //   queries.ts     the GROQ, each read carrying publicFilterFor (ADR-032 D3)
 
 import {
-  amazonTrackingIdsQuery,
+  affiliateSettingsQuery,
   catalogueAllItemsQuery,
   catalogueCollectionByIdQuery,
   catalogueCollectionByOldSlugQuery,
@@ -44,7 +44,10 @@ import {
   type RawCataloguePage,
 } from './resolve'
 import { dispatchCatalogue, type CatalogueDispatch } from './segment'
-import { collectionHasAmazon, localizeCollection } from './amazon-delivery'
+import { collectionHasAmazon } from './amazon-delivery'
+import { collectionHasShop, deliverCollection } from './shop-delivery'
+import { shopOrder, type AffiliateSettings } from '@/lib/affiliate/affiliate-settings'
+import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import { isIndexable } from './visibility'
 
 export type CatalogueFetch = <T>(query: string, params?: Record<string, unknown>) => Promise<T>
@@ -143,6 +146,8 @@ export type CatalogueListingData = {
   showPricesByDefault: boolean
   /** Amendment K — the catalogue's own affiliate disclosure for this locale, or null. */
   affiliateDisclosure: string | null
+  /** The tenant's shop order for buy links (only set when the listing has a shop link). */
+  shopOrder?: AffiliateShopId[]
 }
 
 /**
@@ -176,11 +181,16 @@ export async function hydrateCatalogueListing(
     ? await fetchAllItemsAsCollection(fetchForTenant, params, ctx.now)
     : await fetchForTenant<RawCatalogueCollection | null>(catalogueCollectionByIdQuery, { collectionId, ...params })
   const collection = resolveCollection(row, ctx)
-  if (!collection || !collectionHasAmazon(collection)) return { ...base, collection }
-  // Amazon buy links are rewritten PER REQUEST (visitor country + the tenant's tracking IDs). The page
-  // is rendered dynamically for every request, so one visitor's pick never reaches another.
-  const [country, trackingIds] = await Promise.all([deps.visitorCountry ? deps.visitorCountry() : Promise.resolve(null), fetchForTenant<unknown>(amazonTrackingIdsQuery, {}).catch(() => null)])
-  return { ...base, collection: localizeCollection(collection, { country, trackingIds: Array.isArray(trackingIds) ? trackingIds : null }) }
+  if (!collection || !collectionHasShop(collection)) return { ...base, collection }
+  // Shop buy links (Amazon, Awin shops) are rewritten PER REQUEST (visitor country for Amazon + the tenant's
+  // affiliate settings). The page is rendered dynamically for every request, so one visitor's pick never
+  // reaches another. The country is read only when an Amazon link is present.
+  const [country, settings] = await Promise.all([
+    collectionHasAmazon(collection) && deps.visitorCountry ? deps.visitorCountry() : Promise.resolve(null),
+    fetchForTenant<AffiliateSettings | null>(affiliateSettingsQuery, {}).catch(() => null),
+  ])
+  const s = settings && typeof settings === 'object' ? settings : null
+  return { ...base, collection: deliverCollection(collection, { country, settings: s }), shopOrder: shopOrder(s) }
 }
 
 /** 'all' wins when chosen; a legacy section (no source) is 'all' only when it has no collection. */

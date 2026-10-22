@@ -37,6 +37,7 @@
 //                effectiveCurrency, state → availability), page, publicId
 // Product.sku does not exist in V1 (B3).
 
+import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import type { PortableTextContent, SanityCrop, SanityHotspot, SanityImageAsset } from '@/lib/sanity/types'
 import type { AllergenKey } from './allergens'
 import type { AvailabilityState, Weekday } from './availability'
@@ -182,6 +183,8 @@ export type CatalogueItemLinkDTO = {
   moreUrls?: string[]
   /** True once the link has been localized as an Amazon link (country pick + tracking ID applied). */
   amazon?: boolean
+  /** The recognised shop of a buy link after delivery (Amazon or an Awin shop). Absent otherwise. */
+  shop?: AffiliateShopId
   /** Book editions — the language of this buy link's edition and whether it is the original. Absent on every older link. */
   edition?: { language: string; original: boolean }
 }

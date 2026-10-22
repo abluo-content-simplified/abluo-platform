@@ -45,4 +45,14 @@ describe('saveSettingsAction', () => {
     expect(await saveSettingsAction({ projectSlug: 'x', rev: 'a|b', set: {} })).toMatchObject({ ok: false, error: 'failed' })
     expect(revalidate).not.toHaveBeenCalled()
   })
+  it('passes Awin fields through to the service unchanged', async () => {
+    service.saveSettings.mockResolvedValue({ rev: 'n2|p1' })
+    const set = { awinPublisherId: '123456', affiliateShops: ['ibs', 'amazon'] }
+    expect(await saveSettingsAction({ projectSlug: 'trattoria', rev: 's1|p1', set })).toMatchObject({ ok: true, rev: 'n2|p1' })
+    expect(service.saveSettings).toHaveBeenCalledWith(ctx, 'project-a', { rev: 's1|p1', set })
+  })
+  it('an invalid Awin value comes back as invalid_value', async () => {
+    service.saveSettings.mockRejectedValueOnce(new SettingsError('invalid_value'))
+    expect(await saveSettingsAction({ projectSlug: 'x', rev: 'a|b', set: { awinPublisherId: 'abc' } })).toMatchObject({ ok: false, error: 'invalid_value' })
+  })
 })

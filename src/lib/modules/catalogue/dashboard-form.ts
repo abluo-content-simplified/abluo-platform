@@ -15,7 +15,7 @@ import { offerIssues, type Offer, type OfferIssue } from './offers'
 import { ruleIssues, WEEKDAYS, type Weekday } from './availability'
 import { isDescendant, moveSection, readingOrder, removeSection, subtreeOf, type SectionNode } from './sections'
 import { catalogueLinkUrl } from './links'
-import { isEditionLanguage, readEdition, type LinkEdition } from './editions'
+import { duplicateEditionShop, isEditionLanguage, readEdition, type LinkEdition } from './editions'
 import { isAmazonShortLink, looksLikeAmazon, parseAmazonUrl } from '@/lib/affiliate/amazon-links'
 import { can, isItemProfile, offeringOf, type ItemProfile } from './profiles'
 import { bookYearProblem, normalizeIsbn, parseBookYear } from './isbn'
@@ -567,7 +567,7 @@ export function linkFormsFromDoc(value: unknown): LinkForm[] {
  * BOTH a label (in the main language) and a valid http(s) address; a half-filled
  * row is "incomplete" (kept on screen, not sent), a bad address is "badUrl".
  */
-export type LinkIssue = { kind: 'incomplete' | 'badUrl' | 'badMore'; key: string }
+export type LinkIssue = { kind: 'incomplete' | 'badUrl' | 'badMore' | 'duplicateShop'; key: string; /** duplicateShop: the shop's name. */ shop?: string }
 
 export function linkFormIssues(links: readonly LinkForm[], defaultLocale: string): LinkIssue[] {
   const out: LinkIssue[] = []
@@ -580,21 +580,24 @@ export function linkFormIssues(links: readonly LinkForm[], defaultLocale: string
     else if (!url || !hasLabel) out.push({ kind: 'incomplete', key: l.key })
     else if (l.kind === 'buy' && (l.moreUrls ?? []).some((u) => u.trim() && !isMoreAmazonUrl(u.trim()))) out.push({ kind: 'badMore', key: l.key })
   }
+  // Same edition + same shop twice (a second link for the edition must be another shop).
+  const buy = links.filter((l) => l.kind === 'buy' && l.url.trim() && catalogueLinkUrl(l.url.trim()))
+  const dup = duplicateEditionShop(buy)
+  if (dup) out.push({ kind: 'duplicateShop', key: buy[dup.index].key, shop: dup.shop })
   return out
 }
 
 /** The patch: complete rows only, in order. Blank rows are simply not stored. */
 export function linksPatch(links: readonly LinkForm[], defaultLocale: string) {
-  // Only one edition can be the original (the editor keeps it so); if two arrive, the first wins.
-  let originalTaken = false
+  // "Original" belongs to a language: the first original link's language wins, and every link of it is stored original.
+  const originalLanguage = links.find((l) => l.kind === 'buy' && l.edition?.original && isEditionLanguage(l.edition.language))?.edition?.language ?? null
   return links
     .filter((l) => (l.kind === 'buy' || l.label[defaultLocale]?.trim()) && catalogueLinkUrl(l.url))
     .map((l) => {
       // Extra Amazon stores: only readable ones, and only when the main address is Amazon too (the server checks again).
       const more = l.kind === 'buy' && looksLikeAmazon(l.url) ? (l.moreUrls ?? []).map((u) => u.trim()).filter((u) => u && isMoreAmazonUrl(u)) : []
       const ed = l.kind === 'buy' && l.edition && isEditionLanguage(l.edition.language) ? l.edition : null
-      const original = !!ed?.original && !originalTaken
-      if (original) originalTaken = true
+      const original = !!ed && ed.language === originalLanguage
       return {
         _key: l.key,
         label: l.label,

@@ -18,7 +18,7 @@ import { ALLERGEN_DECLARATION_STATUSES, isAllergenKey, orderedAllergens, type Al
 import { offerIssues, type Offer } from './offers'
 import { ruleIssues, WEEKDAYS } from './availability'
 import { catalogueLinkUrl, CATALOGUE_LINK_LIMITS } from './links'
-import { cleanEdition } from './editions'
+import { cleanEdition, duplicateEditionShop } from './editions'
 import { cleanMoreAmazonUrls } from './amazon-delivery'
 import { treeIssues, type SectionNode } from './sections'
 import { COLLECTION_TYPES, VISIBILITIES, newOrphans, slugFromName } from './dashboard-form'
@@ -274,8 +274,9 @@ export function cleanOffers(value: unknown, ctx: Pick<PatchContext, 'channels' |
 export function cleanLinks(value: unknown, ctx: Pick<PatchContext, 'locales' | 'newKey'>): Record<string, unknown>[] {
   if (!Array.isArray(value) || value.length > CATALOGUE_LINK_LIMITS.links) bad('Too many links.', 'links')
   const seen = new Set<string>()
-  let originals = 0
-  return (value as Record<string, unknown>[]).map((raw) => {
+  // One original LANGUAGE per item; several shops may sell that same original edition.
+  let originalLanguage = null as string | null
+  const result = (value as Record<string, unknown>[]).map((raw) => {
     if (!raw || typeof raw !== 'object') bad('Bad link.', 'links')
     const label = cleanLocalizedObject(raw.label, ctx.locales, CATALOGUE_LINK_LIMITS.label, 'links')
     // A buy link may go without a label: the website then shows the localized "Buy" (Amendment K).
@@ -291,7 +292,10 @@ export function cleanLinks(value: unknown, ctx: Pick<PatchContext, 'locales' | '
     const moreUrls = buy ? cleanMoreAmazonUrls(raw.moreUrls, url!, (m) => bad(m, 'links')) : []
     // Book editions — the language must be on the platform list; only a buy link has one; one original per item.
     const edition = cleanEdition(raw.edition, buy, (m) => bad(m, 'links'))
-    if (edition?.original && ++originals > 1) bad('Only one edition can be the original.', 'links')
+    if (edition?.original) {
+      if (originalLanguage && originalLanguage !== edition.language) bad('Only one edition can be the original.', 'links')
+      originalLanguage = edition.language
+    }
     return {
       _key: keyOr(raw._key, seen, ctx.newKey),
       _type: 'catalogueItemLink',
@@ -303,6 +307,12 @@ export function cleanLinks(value: unknown, ctx: Pick<PatchContext, 'locales' | '
       ...(edition ? { edition } : {}),
     }
   })
+  // Every link of the original language is stored original (the flag belongs to the language).
+  if (originalLanguage) for (const l of result) { const e = l.edition as { language: string; original?: true } | undefined; if (e && e.language === originalLanguage) e.original = true }
+  // The same shop twice for the same edition is a mistake (a second SHOP for it is the point).
+  const dup = duplicateEditionShop(result.map((l) => ({ url: l.url as string, kind: l.kind as string | undefined, edition: l.edition as { language: string } | undefined })))
+  if (dup) bad(`This edition already has a link to ${dup.shop}.`, 'links')
+  return result
 }
 
 /** Rebuilds `optionLists` (attachments): known list ids, min ≥ 0, min ≤ max (max may exceed the list — a warning, D2). */

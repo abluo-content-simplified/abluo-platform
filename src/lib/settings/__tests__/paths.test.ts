@@ -56,3 +56,23 @@ describe('disclosure patch', () => {
     expect(buildDisclosurePatch({ ...ref, disclosure: null }, { it: '' }, 't')).toEqual({ set: {}, unset: [] })
   })
 })
+
+describe('Awin paths', () => {
+  it('accepts a publisher ID (trimmed), clears on empty, refuses junk', () => {
+    expect(parseSettingsSet({ awinPublisherId: ' 123456 ' })).toMatchObject({ ok: true, awinPublisherId: '123456' })
+    expect(parseSettingsSet({ awinPublisherId: '' })).toMatchObject({ ok: true, awinPublisherId: '' })
+    for (const bad of ['12', '12345678901', 'abc123', '12 34', 5, null]) expect(parseSettingsSet({ awinPublisherId: bad })).toMatchObject({ ok: false, error: 'invalid_value', path: 'awinPublisherId' })
+  })
+  it('accepts shop ids as stored rows, in order; empty clears', () => {
+    const r = parseSettingsSet({ affiliateShops: ['ibs', 'amazon', 'lafeltrinelli'] })
+    expect(r).toMatchObject({ ok: true, affiliateShops: [
+      { _key: 'shop-ibs', _type: 'affiliateShopSetting', shop: 'ibs' },
+      { _key: 'shop-amazon', _type: 'affiliateShopSetting', shop: 'amazon' },
+      { _key: 'shop-lafeltrinelli', _type: 'affiliateShopSetting', shop: 'lafeltrinelli' },
+    ] })
+    expect(parseSettingsSet({ affiliateShops: [] })).toMatchObject({ ok: true, affiliateShops: [] })
+  })
+  it('refuses unknown, repeated, too many shops and non-arrays', () => {
+    for (const bad of [['nope'], ['ibs', 'ibs'], ['amazon', 'ibs', 'lafeltrinelli', 'mondadori', 'ibs'], 'ibs', [5], [null]]) expect(parseSettingsSet({ affiliateShops: bad })).toMatchObject({ ok: false, error: 'invalid_value', path: 'affiliateShops' })
+  })
+})

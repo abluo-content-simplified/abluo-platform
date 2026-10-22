@@ -50,7 +50,10 @@ import { articlePortableTextComponents } from '@/components/portable-text/articl
 import { CatalogueCollectionView } from './CatalogueCollectionView'
 import { bookPublisherLine } from '@/lib/modules/catalogue/list-model'
 import { affiliateDisclosureText, collectionHasAffiliateLink, hasAffiliateLink } from '@/lib/modules/catalogue/affiliate'
-import { collectionHasAmazon, collectionHasAmazonAffiliateLink, hasAmazonAffiliateLink, itemHasAmazonLink, linksHaveAmazon, localizeCollection, localizeItem } from '@/lib/modules/catalogue/amazon-delivery'
+import { collectionHasAmazon, collectionHasAmazonAffiliateLink, hasAmazonAffiliateLink, itemHasAmazonLink, linksHaveAmazon } from '@/lib/modules/catalogue/amazon-delivery'
+import { collectionHasShop, deliverCollection, deliverItem, linksHaveShop } from '@/lib/modules/catalogue/shop-delivery'
+import { shopOrder } from '@/lib/affiliate/affiliate-settings'
+import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import { visitorCountry } from '@/lib/affiliate/visitor-country'
 import { AffiliateDisclosure, AllergensAndDietary, BuyLinks, Byline, ItemLinks, ItemTags, OfferList, optionAllergenText } from './CatalogueItemParts'
 import { getCatalogueWebsiteMessages, optionRuleText, fillMessage } from './messages'
@@ -199,25 +202,28 @@ export async function CatalogueRoute(
   const messages = getCatalogueWebsiteMessages(locale)
   const siteHosts = siteHostsForProject(ctx.tenantId)
 
-  // Amazon buy links are rewritten for THIS request: the visitor's country picks the store, the tenant's
-  // tracking ID for it is added. This route is force-dynamic ([...slug]/page.tsx), so nothing is shared
-  // between visitors. No Amazon link on the page = no header read, nothing changes.
+  // Shop buy links (Amazon, Awin shops) are rewritten for THIS request: the visitor's country picks the Amazon
+  // store, the tenant's own IDs are added. This route is force-dynamic ([...slug]/page.tsx), so nothing is
+  // shared between visitors. No shop link on the page = nothing changes; the country header is read only
+  // when an Amazon link is present.
+  const hasShop = entry.kind === 'item' ? linksHaveShop(entry.item.links) : collectionHasShop(entry.collection)
   const hasAmazon = entry.kind === 'item' ? linksHaveAmazon(entry.item.links) : collectionHasAmazon(entry.collection)
-  const amazon = hasAmazon ? { country: await visitorCountry(), trackingIds: siteConfig?.amazonTrackingIds } : null
+  const shopCtx = hasShop ? { country: hasAmazon ? await visitorCountry() : null, settings: siteConfig } : null
+  const order = shopOrder(siteConfig)
 
   if (entry.kind === 'item') {
-    const item = amazon ? localizeItem(entry.item, amazon) : entry.item
+    const item = shopCtx ? deliverItem(entry.item, shopCtx) : entry.item
     const url = catalogueItemCanonical(item, origin, locale, segment)
     const jsonLd = url ? catalogueItemJsonLd(item, { url, locale, itemUrl }) : null
     return (
       <SlugMapProvider slugMap={catalogueSlugMap(item.page, segment)}>
         {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />}
-        <CatalogueItemPageView item={item} designSystem={designSystem} messages={messages} showPrices={config.showPricesByDefault} siteHosts={siteHosts} affiliateDisclosure={config.affiliateDisclosure} />
+        <CatalogueItemPageView item={item} shopOrder={order} designSystem={designSystem} messages={messages} showPrices={config.showPricesByDefault} siteHosts={siteHosts} affiliateDisclosure={config.affiliateDisclosure} />
       </SlugMapProvider>
     )
   }
 
-  const collection = amazon ? localizeCollection(entry.collection, amazon) : entry.collection
+  const collection = shopCtx ? deliverCollection(entry.collection, shopCtx) : entry.collection
   const url = catalogueItemCanonical(collection, origin, locale, segment)
   const jsonLd = url ? catalogueCollectionJsonLd(collection, { url, locale, itemUrl }) : null
   return (
@@ -231,6 +237,7 @@ export async function CatalogueRoute(
         siteHosts={siteHosts}
         itemHref={itemHref}
         affiliateDisclosure={config.affiliateDisclosure}
+        shopOrder={order}
       />
     </SlugMapProvider>
   )
@@ -269,6 +276,7 @@ function CatalogueCollectionPageView({
   siteHosts,
   itemHref,
   affiliateDisclosure,
+  shopOrder,
 }: {
   collection: CatalogueCollectionDTO
   designSystem: DesignSystem | null
@@ -277,6 +285,7 @@ function CatalogueCollectionPageView({
   siteHosts: readonly string[]
   itemHref: (item: Parameters<typeof catalogueItemHref>[0]) => string | null
   affiliateDisclosure: string | null
+  shopOrder: readonly AffiliateShopId[]
 }) {
   const { duration, ease } = motionOf(designSystem)
   const disclosure = affiliateDisclosureText(collectionHasAffiliateLink(collection), affiliateDisclosure, messages.affiliateDisclosureDefault)
@@ -295,7 +304,7 @@ function CatalogueCollectionPageView({
         </SlideUp>
         <CatalogueCollectionView
           collection={collection}
-          display={{ showPrices, allergens: 'compact', siteHosts }}
+          display={{ showPrices, allergens: 'compact', siteHosts, shopOrder }}
           messages={messages}
           designSystem={designSystem}
           itemHref={itemHref}
@@ -314,6 +323,7 @@ function CatalogueItemPageView({
   showPrices,
   siteHosts,
   affiliateDisclosure,
+  shopOrder,
 }: {
   item: CatalogueItemPageDTO
   designSystem: DesignSystem | null
@@ -321,6 +331,7 @@ function CatalogueItemPageView({
   showPrices: boolean
   siteHosts: readonly string[]
   affiliateDisclosure: string | null
+  shopOrder: readonly AffiliateShopId[]
 }) {
   const { duration, ease } = motionOf(designSystem)
   const disclosure = affiliateDisclosureText(hasAffiliateLink(item.links), affiliateDisclosure, m.affiliateDisclosureDefault)
@@ -377,7 +388,7 @@ function CatalogueItemPageView({
 
         {item.links.some((l) => l.kind === 'buy') && (
           <SlideUp duration={duration} ease={ease} delay={0.07} className="mt-8">
-            <BuyLinks links={item.links} siteHosts={siteHosts} m={m} />
+            <BuyLinks links={item.links} siteHosts={siteHosts} m={m} shopOrder={shopOrder} />
           </SlideUp>
         )}
 

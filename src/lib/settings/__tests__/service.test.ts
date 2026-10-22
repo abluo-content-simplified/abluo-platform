@@ -162,3 +162,40 @@ describe('saveSettings', () => {
     expect(SettingsError).toBeDefined()
   })
 })
+
+describe('Awin settings', () => {
+  it('loadSettings reads the publisher ID and shops (junk dropped)', async () => {
+    const f = fake()
+    Object.assign(f.docs.get('site1')!, { awinPublisherId: '123456', affiliateShops: [{ shop: 'ibs' }, { shop: 'nope' }, { shop: 'ibs' }, { shop: 'amazon' }] })
+    expect((await loadSettings(owner(), 'project-a', f.deps)).awin).toEqual({ publisherId: '123456', shops: ['ibs', 'amazon'] })
+    expect((await loadSettings(owner(), 'project-a', fake().deps)).awin).toEqual({ publisherId: '', shops: [] })
+  })
+  it('saves ID and shops on the published doc and the draft in one transaction', async () => {
+    const f = fake({ draft: true })
+    await saveSettings(owner(), 'project-a', { rev, set: { awinPublisherId: '123456', affiliateShops: ['lafeltrinelli', 'ibs'] } }, f.deps)
+    expect(f.transaction).toHaveBeenCalledTimes(1)
+    expect(f.committed.map((c) => c.id).sort()).toEqual(['drafts.site1', 'site1'])
+    const expected = [
+      { _key: 'shop-lafeltrinelli', _type: 'affiliateShopSetting', shop: 'lafeltrinelli' },
+      { _key: 'shop-ibs', _type: 'affiliateShopSetting', shop: 'ibs' },
+    ]
+    for (const id of ['site1', 'drafts.site1']) expect(f.docs.get(id)).toMatchObject({ awinPublisherId: '123456', affiliateShops: expected })
+    expect(f.docs.get('site1')!.amazonTrackingIds).toBeDefined()
+  })
+  it('empty values unset the fields (published and draft)', async () => {
+    const f = fake({ draft: true })
+    Object.assign(f.docs.get('site1')!, { awinPublisherId: '123456', affiliateShops: [{ shop: 'ibs' }] })
+    Object.assign(f.docs.get('drafts.site1')!, { awinPublisherId: '123456', affiliateShops: [{ shop: 'ibs' }] })
+    await saveSettings(owner(), 'project-a', { rev, set: { awinPublisherId: '', affiliateShops: [] } }, f.deps)
+    for (const id of ['site1', 'drafts.site1']) expect(f.docs.get(id)).not.toHaveProperty('awinPublisherId')
+    for (const id of ['site1', 'drafts.site1']) expect(f.docs.get(id)).not.toHaveProperty('affiliateShops')
+  })
+  it('refuses an invalid ID or shop before touching Sanity; a stale revision conflicts; editors cannot write', async () => {
+    const f = fake()
+    await expect(saveSettings(owner(), 'project-a', { rev, set: { awinPublisherId: 'abc' } }, f.deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(saveSettings(owner(), 'project-a', { rev, set: { affiliateShops: ['zzz'] } }, f.deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    expect(f.transaction).not.toHaveBeenCalled()
+    await expect(saveSettings(owner(), 'project-a', { rev: 'old|p1', set: { awinPublisherId: '123456' } }, f.deps)).rejects.toMatchObject({ code: 'conflict' })
+    await expect(saveSettings(editor(), 'project-a', { rev, set: { awinPublisherId: '123456' } }, f.deps)).rejects.toBeInstanceOf(TenantAuthorizationError)
+  })
+})

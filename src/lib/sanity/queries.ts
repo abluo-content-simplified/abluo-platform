@@ -757,6 +757,15 @@ export const amazonTrackingIdsQuery = /* groq */ `
   *[_type == "siteConfig" && projectSlug == $projectSlug][0].amazonTrackingIds[] { marketplace, trackingId }
 `
 
+/** The tenant's affiliate settings (Amazon IDs, Awin publisher ID, approved shops in order) for listing hydration. */
+export const affiliateSettingsQuery = /* groq */ `
+  *[_type == "siteConfig" && projectSlug == $projectSlug][0]{
+    amazonTrackingIds[] { marketplace, trackingId },
+    awinPublisherId,
+    affiliateShops[] { shop }
+  }
+`
+
 export const websiteSiteConfigQuery = /* groq */ `
   *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
     projectSlug,
@@ -880,6 +889,9 @@ export const websiteSiteConfigQuery = /* groq */ `
     socialLinks[] { platform, url },
     // Amazon Associates — one tracking ID per marketplace (read by the catalogue buy links).
     amazonTrackingIds[] { marketplace, trackingId },
+    // Awin shops — the tenant's publisher ID and the approved shops in display order.
+    awinPublisherId,
+    affiliateShops[] { shop },
     phone,
     email,
     whatsappNumber,

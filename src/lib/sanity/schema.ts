@@ -7,6 +7,7 @@ import { slugifyNestedPath, validateNestedSlug } from '@/lib/sanity/fields/neste
 import { isUniqueInProject } from '@/lib/sanity/fields/project-unique-slug'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 import { AMAZON_MARKETPLACE_IDS } from '@/lib/affiliate/amazon-marketplaces'
+import { AFFILIATE_SHOP_IDS } from '@/lib/affiliate/shops'
 import { LOCATION_KEY_PATTERN } from '@/lib/maps/locations'
 import { LocationPinInput } from '@/lib/sanity/fields/LocationPinInput'
 import { bodyLinkAnnotation } from '@/lib/sanity/fields/body-link'
@@ -5383,6 +5384,32 @@ const siteConfigType = defineType({
           preview: { select: { title: 'marketplace', subtitle: 'trackingId' } },
         }),
       ],
+    }),
+    // Awin (affiliate network): one publisher ID per site + the shops the client
+    // is approved for, in display order (contract: src/lib/affiliate/affiliate-settings.ts). Additive.
+    defineField({
+      name: 'awinPublisherId',
+      title: 'Awin publisher ID',
+      type: 'string',
+      group: 'affiliate',
+      description: 'The client’s Awin publisher ID (digits only). The client edits it in the dashboard under Settings → Affiliate Programs.',
+      validation: (Rule) => Rule.custom((v) => (v === undefined || v === '' || /^\d{3,10}$/.test(String(v).trim()) ? true : 'Digits only, 3 to 10 numbers.')),
+    }),
+    defineField({
+      name: 'affiliateShops',
+      title: 'Affiliate shops',
+      type: 'array',
+      group: 'affiliate',
+      description: 'Shops the client is approved for, in the order they show on the website. Amazon is listed only to place it in the order. The client edits this in the dashboard under Settings → Affiliate Programs.',
+      of: [
+        defineArrayMember({
+          type: 'object',
+          name: 'affiliateShopSetting',
+          fields: [defineField({ name: 'shop', title: 'Shop', type: 'string', options: { list: AFFILIATE_SHOP_IDS.map((id) => ({ title: id, value: id })) } })],
+          preview: { select: { title: 'shop' } },
+        }),
+      ],
+      validation: (Rule) => Rule.unique(),
     }),
   ],
   preview: {
