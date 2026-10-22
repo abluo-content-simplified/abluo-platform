@@ -30,6 +30,8 @@ export const ADMIN_SURFACE_SEGMENTS = new Set([
   'backlog',
   'whats-new',
   'partners',
+  // Interface translations — the dashboards' own text per language (2026-10-22).
+  'translations',
   // Component Lab — super-admin catalogue of the shared Abluo App components.
   'lab',
 ])

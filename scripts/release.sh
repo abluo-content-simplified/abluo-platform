@@ -12,7 +12,8 @@
 #
 # What it does:
 #   1. Validate the version (lowercase vX.Y.Z) and that the tag is unused
-#   2. Health checks (doctor) + deterministic build gate (rm -rf .next + build)
+#   2. Health checks (doctor), fill missing interface translations,
+#      deterministic build gate (rm -rf .next + build)
 #   3. Regenerate release.json + sync package.json (build-time fallbacks)
 #   4. Create a release-marker commit:  release: v1.0.2 - Location Platform
 #   5. Create the annotated tag (message = title)
@@ -113,6 +114,24 @@ log_step "Step 2 — Checking that tag '$VERSION' is unused"
 tag_exists_local "$VERSION"  && die "Tag '$VERSION' already exists locally. Choose a new version."
 tag_exists_remote "$VERSION" && die "Tag '$VERSION' already exists on origin. Choose a new version."
 log_ok "Tag '$VERSION' is available"
+
+# --- Step 2b: fill missing interface translations --------------------------
+# Dashboard text (messages/*.json): anything new in English is machine-
+# translated into the other interface languages and recorded in
+# src/lib/i18n/interface-translation-status.json (shown on the admin
+# Translations page). It NEVER blocks a release — no provider, a network error
+# or a rejected reply only leaves English showing for that text (Tom, 2026-10-22).
+log_step "Step 2b — Interface translations (scripts/i18n-translate.mjs)"
+if [ "$DRY_RUN" -eq 1 ]; then
+  node "$SCRIPT_DIR/i18n-translate.mjs" --dry-run || log_warn "Translation report failed — continuing."
+else
+  if node "$SCRIPT_DIR/i18n-translate.mjs"; then
+    git add messages/*.json src/lib/i18n/interface-translation-status.json
+    log_ok "Interface translations up to date (any new ones are staged into the release commit)"
+  else
+    log_warn "Translation step failed — continuing; missing text shows in English."
+  fi
+fi
 
 # --- Step 3: regenerate version metadata (release.json + package.json) -------
 # Generated from the version/title BEFORE the build so the bundle bakes the

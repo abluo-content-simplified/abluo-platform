@@ -473,6 +473,14 @@ There are two completely separate localization concerns. They must never be conf
 The set of locales in `routing.ts` must cover every content locale any tenant might use — next-intl parses the URL prefix before the tenant config is fetched. A locale in `siteConfig.supportedLocales` that is absent from `routing.ts` will 404.
 
 
+### Interface languages and translations (2026-10-22)
+
+The dashboards' own text is translated into `INTERFACE_LOCALES` (`src/lib/i18n/locales.ts`: en, it, de) — exactly the `messages/*.json` bundles (`interface-locales.test.ts`). People switch it in **Preferences → Language** (`AppLanguageSwitch`, NEXT_LOCALE cookie).
+
+- **English is the source; new text is filled by machine.** `node scripts/i18n-translate.mjs` (run by `release.sh`, step 2b) translates missing keys and re-translates its own machine text when the English changed; it never overwrites a person's text. Claude when `ANTHROPIC_API_KEY` + `TRANSLATE_CLAUDE_MODEL` are set, else Google. Replies that change an ICU argument or tag are rejected.
+- **Missing translations warn, never fail** (Tom): `interface-translations.test.ts` prints them; the dashboard shows English meanwhile.
+- **State per translation** in `src/lib/i18n/interface-translation-status.json` (`machine:<hash>` / `original:<hash>` of the English it was made from) — shown on **Admin → Translations** (read-only: missing / outdated / machine / OK). When a person writes or checks a translation, delete its line and run `node scripts/i18n-translate.mjs --baseline` (records it as `original` against the current English); never hand-edit hashes.
+
 ### Machine translation — the Translate module (ADR-023)
 
 A Translate button on `localizedString` / `localizedText` fills the site's other languages from the source text. Rules that are easy to break:

@@ -2552,6 +2552,9 @@
       "preferences": "Preferenze",
       "close": "Chiudi"
     },
+    "language": {
+      "label": "Lingua"
+    },
     "theme": {
       "label": "Aspetto",
       "system": "Auto",
@@ -2828,6 +2831,7 @@
       "backlog": "Backlog",
       "whatsNew": "Novità",
       "partners": "App partner",
+      "translations": "Traduzioni",
       "lab": "Laboratorio componenti"
     },
     "home": {
@@ -3727,6 +3731,63 @@
           "pill": "{count, plural, one {# etichetta} other {# etichette}}",
           "pulse": "{count, plural, one {# blocco di caricamento} other {# blocchi di caricamento}}"
         }
+      }
+    },
+    "translations": {
+      "title": "Traduzioni",
+      "description": "Tutti i testi delle due dashboard, in ogni lingua dell’interfaccia. I nuovi testi in inglese vengono tradotti automaticamente a ogni release; le traduzioni automatiche restano segnalate finché una persona non le ha controllate. I testi mancanti appaiono in inglese.",
+      "statsLabel": "Copertura delle traduzioni",
+      "statSub": "su {total} · {missing} mancanti · {outdated} da aggiornare · {machine} automatiche",
+      "filters": {
+        "label": "Filtri delle traduzioni",
+        "search": "Cerca nelle traduzioni",
+        "searchPlaceholder": "Cerca testo o chiave…",
+        "language": "Lingua",
+        "languageAll": "Tutte le lingue",
+        "state": "Stato",
+        "stateAttention": "Da controllare",
+        "stateAll": "Qualsiasi stato",
+        "area": "Area",
+        "areaAll": "Qualsiasi area",
+        "showing": "{shown} di {total, plural, one {# testo} other {# testi}}",
+        "clear": "Azzera filtri",
+        "noMatch": "Nessun testo corrisponde a questi filtri"
+      },
+      "allGood": "Tutto è tradotto e controllato",
+      "allGoodBody": "Al momento non c’è niente da controllare. Scegli “Qualsiasi stato” per vedere tutti i testi.",
+      "showMore": "Mostra altri {count}",
+      "columns": {
+        "text": "Inglese"
+      },
+      "state": {
+        "missing": "Mancante",
+        "outdated": "Da aggiornare",
+        "machine": "Automatica",
+        "ok": "OK"
+      },
+      "stateHint": {
+        "missing": "Non ancora tradotto: al suo posto appare l’inglese.",
+        "outdated": "L’inglese è cambiato dopo la traduzione.",
+        "machine": "Tradotto automaticamente, non ancora controllato da una persona.",
+        "ok": "Scritto o controllato da una persona."
+      },
+      "areas": {
+        "live": "Live",
+        "nav": "Navigazione",
+        "account": "Account",
+        "clientDashboard": "Dashboard cliente",
+        "app": "App condivisa",
+        "admin": "Admin",
+        "editor": "Editor",
+        "invitation": "Inviti",
+        "catalogue": "Catalogo"
+      },
+      "detail": {
+        "open": "Apri {key}",
+        "close": "Chiudi",
+        "key": "Chiave",
+        "english": "Inglese",
+        "empty": "Non tradotto"
       }
     }
   },

@@ -2552,6 +2552,9 @@
       "preferences": "Einstellungen",
       "close": "Schließen"
     },
+    "language": {
+      "label": "Sprache"
+    },
     "theme": {
       "label": "Darstellung",
       "system": "Auto",
@@ -2828,6 +2831,7 @@
       "backlog": "Backlog",
       "whatsNew": "Neuigkeiten",
       "partners": "Partner-Apps",
+      "translations": "Übersetzungen",
       "lab": "Komponenten-Labor"
     },
     "home": {
@@ -3727,6 +3731,63 @@
           "pill": "{count, plural, one {# Label} other {# Labels}}",
           "pulse": "{count, plural, one {# Ladeblock} other {# Ladeblöcke}}"
         }
+      }
+    },
+    "translations": {
+      "title": "Übersetzungen",
+      "description": "Alle Texte der beiden Dashboards in jeder Oberflächensprache. Neue englische Texte werden bei jedem Release maschinell übersetzt; maschinelle Übersetzungen bleiben markiert, bis eine Person sie geprüft hat. Fehlende Texte erscheinen auf Englisch.",
+      "statsLabel": "Übersetzungsstand",
+      "statSub": "von {total} · {missing} fehlen · {outdated} veraltet · {machine} maschinell",
+      "filters": {
+        "label": "Übersetzungsfilter",
+        "search": "Übersetzungen durchsuchen",
+        "searchPlaceholder": "Text oder Schlüssel suchen…",
+        "language": "Sprache",
+        "languageAll": "Alle Sprachen",
+        "state": "Status",
+        "stateAttention": "Zu prüfen",
+        "stateAll": "Jeder Status",
+        "area": "Bereich",
+        "areaAll": "Jeder Bereich",
+        "showing": "{shown} von {total, plural, one {# Text} other {# Texten}}",
+        "clear": "Filter zurücksetzen",
+        "noMatch": "Keine Texte passen zu diesen Filtern"
+      },
+      "allGood": "Alles ist übersetzt und geprüft",
+      "allGoodBody": "Gerade gibt es nichts zu prüfen. Wähle „Jeder Status“, um alle Texte zu sehen.",
+      "showMore": "{count} weitere anzeigen",
+      "columns": {
+        "text": "Englisch"
+      },
+      "state": {
+        "missing": "Fehlt",
+        "outdated": "Veraltet",
+        "machine": "Maschinell",
+        "ok": "OK"
+      },
+      "stateHint": {
+        "missing": "Noch nicht übersetzt – stattdessen erscheint Englisch.",
+        "outdated": "Der englische Text hat sich nach der Übersetzung geändert.",
+        "machine": "Maschinell übersetzt, noch nicht von einer Person geprüft.",
+        "ok": "Von einer Person geschrieben oder geprüft."
+      },
+      "areas": {
+        "live": "Live",
+        "nav": "Navigation",
+        "account": "Konto",
+        "clientDashboard": "Kunden-Dashboard",
+        "app": "Gemeinsame App",
+        "admin": "Admin",
+        "editor": "Editor",
+        "invitation": "Einladungen",
+        "catalogue": "Katalog"
+      },
+      "detail": {
+        "open": "{key} öffnen",
+        "close": "Schließen",
+        "key": "Schlüssel",
+        "english": "Englisch",
+        "empty": "Nicht übersetzt"
       }
     }
   },

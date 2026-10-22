@@ -65,6 +65,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'partners',
   'projects',
   'settings',
+  'translations',
   'whats-new',
 
   // ── Client dashboard — top level ──────────────────────────────────────────

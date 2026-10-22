@@ -1084,7 +1084,8 @@ export const LAB_REGISTRY: LabEntry[] = [
 export const NOT_IN_LAB: Record<string, string> = {
   'src/components/app/AppRoot.tsx': 'The .abluo-app root of every dashboard (server component, reads cookies); the Lab canvas reproduces it.',
   'src/components/app/shell/AppSidebar.tsx': 'The navigation frame on every page — demoing it would nest a second shell in the Lab.',
-  'src/components/app/shell/AccountMenu.tsx': 'Contains the real sign-out and the theme / text-size switches, so a demo could sign you out or change your settings.',
+  'src/components/app/shell/AccountMenu.tsx': 'Contains the real sign-out and the language / theme / text-size switches, so a demo could sign you out or change your settings.',
+  'src/components/app/shell/AppLanguageSwitch.tsx': 'Switches your real interface language (navigates and writes the NEXT_LOCALE cookie) on click.',
   'src/components/app/shell/AppThemeSwitch.tsx': 'Writes your real theme preference cookie on click.',
   'src/components/app/shell/AppTextSizeSwitch.tsx': 'Writes your real text-size preference cookie on click.',
   'src/components/app/shell/SignOutButton.tsx': 'Signs you out (Supabase).',

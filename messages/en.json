@@ -2552,6 +2552,9 @@
       "preferences": "Preferences",
       "close": "Close"
     },
+    "language": {
+      "label": "Language"
+    },
     "theme": {
       "label": "Appearance",
       "system": "Auto",
@@ -2828,6 +2831,7 @@
       "backlog": "Backlog",
       "whatsNew": "What’s New",
       "partners": "Partner Apps",
+      "translations": "Translations",
       "lab": "Component Lab"
     },
     "home": {
@@ -3727,6 +3731,63 @@
           "pill": "{count, plural, one {# pill} other {# pills}}",
           "pulse": "{count, plural, one {# loading block} other {# loading blocks}}"
         }
+      }
+    },
+    "translations": {
+      "title": "Translations",
+      "description": "Every piece of text in the two dashboards, in each interface language. New English text is translated by machine at each release; machine translations stay marked until a person has checked them. Missing text shows in English.",
+      "statsLabel": "Translation coverage",
+      "statSub": "of {total} · {missing} missing · {outdated} outdated · {machine} by machine",
+      "filters": {
+        "label": "Translation filters",
+        "search": "Search translations",
+        "searchPlaceholder": "Search text or key…",
+        "language": "Language",
+        "languageAll": "All languages",
+        "state": "Status",
+        "stateAttention": "Needs a look",
+        "stateAll": "Any status",
+        "area": "Area",
+        "areaAll": "Any area",
+        "showing": "{shown} of {total, plural, one {# text} other {# texts}}",
+        "clear": "Clear filters",
+        "noMatch": "No text matches these filters"
+      },
+      "allGood": "Everything is translated and checked",
+      "allGoodBody": "Nothing needs a look right now. Choose “Any status” to browse all text.",
+      "showMore": "Show {count} more",
+      "columns": {
+        "text": "English"
+      },
+      "state": {
+        "missing": "Missing",
+        "outdated": "Outdated",
+        "machine": "Machine",
+        "ok": "OK"
+      },
+      "stateHint": {
+        "missing": "Not translated yet — English shows instead.",
+        "outdated": "The English changed after this was translated.",
+        "machine": "Translated by machine, not checked by a person yet.",
+        "ok": "Written or checked by a person."
+      },
+      "areas": {
+        "live": "Live",
+        "nav": "Navigation",
+        "account": "Account",
+        "clientDashboard": "Client dashboard",
+        "app": "Shared app",
+        "admin": "Admin",
+        "editor": "Editor",
+        "invitation": "Invitations",
+        "catalogue": "Catalogue"
+      },
+      "detail": {
+        "open": "Open {key}",
+        "close": "Close",
+        "key": "Key",
+        "english": "English",
+        "empty": "Not translated"
       }
     }
   },

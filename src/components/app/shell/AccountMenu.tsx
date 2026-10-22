@@ -7,6 +7,7 @@ import { Link } from '@/i18n/navigation'
 import { AppVersion } from './AppVersion'
 import { SignOutButton } from './SignOutButton'
 import { Avatar } from '../ui/Avatar'
+import { AppLanguageSwitch } from './AppLanguageSwitch'
 import { AppTextSizeSwitch } from './AppTextSizeSwitch'
 import { AppThemeSwitch } from './AppThemeSwitch'
 import { BottomSheet } from '../ui/BottomSheet'
@@ -188,7 +189,7 @@ export function AccountMenu(props: AccountMenuProps) {
   const t = useTranslations('app.accountMenu')
   const roleLine = useRoleLine(role, siteName)
   const [open, setOpen] = useState(false)
-  // Preferences (appearance, text size) open in a side panel — a bottom sheet on phones (Tom, 2026-10-08).
+  // Preferences (language, appearance, text size) open in a side panel — a bottom sheet on phones (Tom, 2026-10-08).
   const [prefsOpen, setPrefsOpen] = useState(false)
   const [target, setTarget] = useState<HTMLElement | null>(null)
   const id = useId()
@@ -270,6 +271,7 @@ export function AccountMenu(props: AccountMenuProps) {
 
       <SidePanel open={prefsOpen} title={t('preferences')} closeLabel={t('close')} onClose={() => setPrefsOpen(false)}>
         <div className="space-y-5 py-1">
+          <AppLanguageSwitch />
           <AppThemeSwitch initial={props.theme} />
           <AppTextSizeSwitch initial={props.textSize} />
         </div>
