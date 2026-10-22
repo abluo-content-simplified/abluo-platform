@@ -46,11 +46,6 @@ export function OverviewPage({ model, m, locale, basePath }: HubPageProps & { ba
         <p className="text-sm" style={MUTED}>
           <GuideMeta model={model} m={m} locale={locale} />
         </p>
-        <p className="mt-5 max-w-[var(--layout-max-text-width,720px)] text-[0.9375rem] print:hidden" style={{ fontFamily: 'var(--font-body)' }}>
-          <Link href={`${basePath}/using`} className={`font-semibold underline underline-offset-4 ${FOCUS_RING}`} style={{ color: 'var(--color-text-primary)' }}>
-            {m.usingLink}
-          </Link>
-        </p>
       </Section>
 
       <Section title={m.shortcutsTitle} id="shortcuts">

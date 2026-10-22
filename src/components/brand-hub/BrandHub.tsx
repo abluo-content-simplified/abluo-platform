@@ -12,6 +12,8 @@ import { UsingPage } from './UsingPage'
 import { OverviewPage } from './OverviewPage'
 import { ShapePage } from './ShapePage'
 import { TypographyPage } from './TypographyPage'
+import { PagePager } from './PagePager'
+import { IntroDialog } from './IntroDialog'
 import { FOCUS_RING, GuideMeta, HEADING_FONT, Legend, StatementStatusPill } from './shared'
 
 const isWritten = (p: BrandHubPageId): p is WrittenPageId => (WRITTEN_PAGES as readonly string[]).includes(p)
@@ -90,11 +92,13 @@ export function BrandHub({ model, page, locale, basePath }: {
           )}
           {VALUE_PAGES.includes(page) && <Legend m={m} />}
           {content}
-          <footer className="mt-16 pt-4 text-sm" style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+          <PagePager page={page} m={m} hrefFor={hrefFor} />
+          <footer className="mt-10 pt-4 text-sm" style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
             <GuideMeta model={model} m={m} locale={locale} />
           </footer>
         </main>
       </div>
+      {page !== 'using' && <IntroDialog m={m} basePath={basePath} guideHref={hrefFor('using')} />}
     </SectionContainer>
   )
 }

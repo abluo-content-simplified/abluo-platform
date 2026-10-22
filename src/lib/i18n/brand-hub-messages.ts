@@ -181,6 +181,20 @@ export interface BrandHubMessages {
   fontLicenceNote: string
   opensNewTab: string
   usingLink: string
+  /** First-visit dialog (shown until "Don't show this again" is ticked). */
+  introDialog: {
+    title: string
+    body: string
+    readGuide: string
+    close: string
+    dontShowAgain: string
+  }
+  /** Previous / next links at the bottom of every page. */
+  pager: {
+    label: string
+    previous: string
+    next: string
+  }
   shortcutsTitle: string
   shortcuts: { logo: string; colour: string; copy: string; interface: string; accessibility: string }
   using: {
@@ -362,6 +376,8 @@ const en: BrandHubMessages = {
   fontLicenceNote: "Free to download. Check the licence on the font's page before use.",
   opensNewTab: "opens in a new tab",
   usingLink: "New to the Brand Hub? Learn how to interpret statuses, use assets and check whether guidance is approved.",
+  introDialog: { title: "New to the Brand Hub?", body: "Here you find the brand as it is used today: colours, type, logos and how to apply them. Each value shows where it comes from, and each guideline shows whether it is approved. The short guide explains how to read the statuses, use the files and propose changes.", readGuide: "Read the guide", close: "Close", dontShowAgain: "Don’t show this again" },
+  pager: { label: "Brand Hub pages", previous: "Previous", next: "Next" },
   shortcutsTitle: "I need to…",
   shortcuts: { logo: "I need a logo", colour: "I need to choose a colour", copy: "I'm writing copy for the brand", interface: "I'm building an interface", accessibility: "I need to check accessibility" },
   using: {
@@ -552,6 +568,8 @@ const it: BrandHubMessages = {
   fontLicenceNote: "Download gratuito. Verifica la licenza nella pagina del carattere prima dell'uso.",
   opensNewTab: "si apre in una nuova scheda",
   usingLink: "Nuovo nel Brand Hub? Scopri come leggere gli stati, usare i file e verificare se un'indicazione è approvata.",
+  introDialog: { title: "Prima volta nel Brand Hub?", body: "Qui trovi il brand così come viene usato oggi: colori, caratteri, loghi e come applicarli. Ogni valore indica da dove proviene e ogni indicazione mostra se è approvata. La breve guida spiega come leggere gli stati, usare i file e proporre modifiche.", readGuide: "Leggi la guida", close: "Chiudi", dontShowAgain: "Non mostrare più" },
+  pager: { label: "Pagine del Brand Hub", previous: "Precedente", next: "Successiva" },
   shortcutsTitle: "Devo…",
   shortcuts: { logo: "Mi serve un logo", colour: "Devo scegliere un colore", copy: "Sto scrivendo testi per il brand", interface: "Sto costruendo un'interfaccia", accessibility: "Devo verificare l'accessibilità" },
   using: {
@@ -742,6 +760,8 @@ const de: BrandHubMessages = {
   fontLicenceNote: "Kostenlos herunterladbar. Prüfen Sie vor der Nutzung die Lizenz auf der Seite der Schrift.",
   opensNewTab: "öffnet in einem neuen Tab",
   usingLink: "Neu im Brand Hub? Erfahren Sie, wie Sie Status lesen, Dateien nutzen und prüfen, ob eine Vorgabe freigegeben ist.",
+  introDialog: { title: "Neu im Brand Hub?", body: "Hier finden Sie die Marke so, wie sie heute verwendet wird: Farben, Schriften, Logos und ihre Anwendung. Jeder Wert zeigt seine Herkunft, jede Vorgabe zeigt, ob sie freigegeben ist. Die kurze Anleitung erklärt, wie Sie Status lesen, Dateien nutzen und Änderungen vorschlagen.", readGuide: "Anleitung lesen", close: "Schließen", dontShowAgain: "Nicht mehr anzeigen" },
+  pager: { label: "Seiten des Brand Hub", previous: "Zurück", next: "Weiter" },
   shortcutsTitle: "Ich möchte …",
   shortcuts: { logo: "Ich brauche ein Logo", colour: "Ich muss eine Farbe wählen", copy: "Ich schreibe Texte für die Marke", interface: "Ich baue eine Oberfläche", accessibility: "Ich muss die Barrierefreiheit prüfen" },
   using: {
@@ -932,6 +952,8 @@ const fr: BrandHubMessages = {
   fontLicenceNote: "Téléchargement gratuit. Vérifiez la licence sur la page de la police avant utilisation.",
   opensNewTab: "s'ouvre dans un nouvel onglet",
   usingLink: "Nouveau sur le Brand Hub ? Découvrez comment lire les statuts, utiliser les fichiers et vérifier si une consigne est validée.",
+  introDialog: { title: "Nouveau sur le Brand Hub ?", body: "Vous trouverez ici la marque telle qu’elle est utilisée aujourd’hui : couleurs, typographie, logos et leur application. Chaque valeur indique sa provenance et chaque consigne indique si elle est validée. Le court guide explique comment lire les statuts, utiliser les fichiers et proposer des modifications.", readGuide: "Lire le guide", close: "Fermer", dontShowAgain: "Ne plus afficher" },
+  pager: { label: "Pages du Brand Hub", previous: "Précédent", next: "Suivant" },
   shortcutsTitle: "Je dois…",
   shortcuts: { logo: "J'ai besoin d'un logo", colour: "Je dois choisir une couleur", copy: "J'écris des textes pour la marque", interface: "Je construis une interface", accessibility: "Je dois vérifier l'accessibilité" },
   using: {
@@ -1122,6 +1144,8 @@ const es: BrandHubMessages = {
   fontLicenceNote: "Descarga gratuita. Revisa la licencia en la página de la fuente antes de usarla.",
   opensNewTab: "se abre en una pestaña nueva",
   usingLink: "¿Nuevo en el Brand Hub? Aprende a interpretar los estados, usar los archivos y comprobar si una indicación está aprobada.",
+  introDialog: { title: "¿Nuevo en el Brand Hub?", body: "Aquí encontrarás la marca tal como se usa hoy: colores, tipografía, logotipos y cómo aplicarlos. Cada valor indica de dónde procede y cada indicación muestra si está aprobada. La breve guía explica cómo leer los estados, usar los archivos y proponer cambios.", readGuide: "Leer la guía", close: "Cerrar", dontShowAgain: "No volver a mostrar" },
+  pager: { label: "Páginas del Brand Hub", previous: "Anterior", next: "Siguiente" },
   shortcutsTitle: "Necesito…",
   shortcuts: { logo: "Necesito un logotipo", colour: "Tengo que elegir un color", copy: "Estoy escribiendo textos para la marca", interface: "Estoy creando una interfaz", accessibility: "Tengo que comprobar la accesibilidad" },
   using: {
@@ -1312,6 +1336,8 @@ const pt: BrandHubMessages = {
   fontLicenceNote: "Transferência gratuita. Confirme a licença na página da fonte antes de a usar.",
   opensNewTab: "abre num novo separador",
   usingLink: "Novo no Brand Hub? Saiba como interpretar os estados, usar os ficheiros e verificar se uma orientação está aprovada.",
+  introDialog: { title: "Novo no Brand Hub?", body: "Aqui encontra a marca tal como é usada hoje: cores, tipografia, logótipos e como aplicá-los. Cada valor indica a sua origem e cada orientação mostra se está aprovada. O breve guia explica como interpretar os estados, usar os ficheiros e propor alterações.", readGuide: "Ler o guia", close: "Fechar", dontShowAgain: "Não mostrar novamente" },
+  pager: { label: "Páginas do Brand Hub", previous: "Anterior", next: "Seguinte" },
   shortcutsTitle: "Preciso de…",
   shortcuts: { logo: "Preciso de um logótipo", colour: "Tenho de escolher uma cor", copy: "Estou a escrever textos para a marca", interface: "Estou a construir uma interface", accessibility: "Tenho de verificar a acessibilidade" },
   using: {
@@ -1502,6 +1528,8 @@ const nl: BrandHubMessages = {
   fontLicenceNote: "Gratis te downloaden. Controleer de licentie op de pagina van het lettertype voor gebruik.",
   opensNewTab: "opent in een nieuw tabblad",
   usingLink: "Nieuw in de Brand Hub? Lees hoe je statussen leest, bestanden gebruikt en controleert of een richtlijn is goedgekeurd.",
+  introDialog: { title: "Nieuw in de Brand Hub?", body: "Hier vind je het merk zoals het vandaag wordt gebruikt: kleuren, typografie, logo’s en hoe je ze toepast. Elke waarde laat zien waar ze vandaan komt en elke richtlijn of ze is goedgekeurd. De korte gids legt uit hoe je statussen leest, bestanden gebruikt en wijzigingen voorstelt.", readGuide: "Lees de gids", close: "Sluiten", dontShowAgain: "Niet meer tonen" },
+  pager: { label: "Pagina’s van de Brand Hub", previous: "Vorige", next: "Volgende" },
   shortcutsTitle: "Ik moet…",
   shortcuts: { logo: "Ik heb een logo nodig", colour: "Ik moet een kleur kiezen", copy: "Ik schrijf teksten voor het merk", interface: "Ik bouw een interface", accessibility: "Ik moet de toegankelijkheid controleren" },
   using: {
