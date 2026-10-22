@@ -96,11 +96,11 @@ export async function updateMediaPhotoAction(
   )
 }
 
-/** Rename (base name + number) and/or add tags to up to 100 photos; each is checked on its own. */
+/** Rename (base name + number), add tags and/or describe up to 100 photos; each is checked on its own. */
 export async function batchMediaPhotosAction(
   input: { projectSlug: string } & BatchPhotosInput
 ): Promise<Result<Awaited<ReturnType<typeof batchUpdatePhotos>>>> {
   return run(input?.projectSlug, (ctx, pid) =>
-    batchUpdatePhotos(ctx, pid, { assetIds: input.assetIds, baseName: input.baseName, addTags: input.addTags }, {}, MEDIA_MANAGE_PERMISSION)
+    batchUpdatePhotos(ctx, pid, { assetIds: input.assetIds, baseName: input.baseName, addTags: input.addTags, alt: input.alt }, {}, MEDIA_MANAGE_PERMISSION)
   )
 }

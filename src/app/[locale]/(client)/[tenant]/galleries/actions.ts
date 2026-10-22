@@ -110,7 +110,7 @@ export async function batchGalleryPhotosAction(
   input: { projectSlug: string } & BatchPhotosInput
 ): Promise<Result<Awaited<ReturnType<typeof batchUpdatePhotos>>>> {
   return run(input?.projectSlug, (ctx, pid) =>
-    batchUpdatePhotos(ctx, pid, { assetIds: input.assetIds, baseName: input.baseName, addTags: input.addTags })
+    batchUpdatePhotos(ctx, pid, { assetIds: input.assetIds, baseName: input.baseName, addTags: input.addTags, alt: input.alt })
   )
 }
 

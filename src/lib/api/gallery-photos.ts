@@ -176,7 +176,7 @@ export async function updateGalleryPhoto(
   }
 }
 
-// ── Batch: rename / add tags to many photos at once ─────────────────────────
+// ── Batch: rename / add tags / describe many photos at once ─────────────────
 
 export type BatchPhotosInput = {
   /** 1..100 photos; each is re-read and checked against the grant's project. */
@@ -185,13 +185,21 @@ export type BatchPhotosInput = {
   baseName?: string
   /** Added to each photo's own tags (merged, still ≤ 10). */
   addTags?: string[]
+  /**
+   * One description for every photo (Tom, 2026-10-22): per site language, the
+   * site's main language required. It REPLACES each photo's description as a
+   * whole set — the screen says beforehand how many already had one.
+   */
+  alt?: Record<string, string>
 }
 
-export type BatchPhotoResult = { assetId: string; ok: true; rev: string; name: string; tags: string[] } | { assetId: string; ok: false; code: 'not_found' | 'invalid_value' }
+export type BatchPhotoResult =
+  | { assetId: string; ok: true; rev: string; name: string; tags: string[]; alt?: Record<string, string> }
+  | { assetId: string; ok: false; code: 'not_found' | 'invalid_value' }
 
 /**
- * Names and tags many photos in one go (the "Name and tag all" sheet and the
- * Media page selection bar). Same gate as updateGalleryPhoto; every asset is
+ * Names, tags or describes many photos in one go (the "Name and tag all" sheet
+ * and the Media page selection bar). Same gate as updateGalleryPhoto; every asset is
  * re-read and must be a `mediaAsset` of the grant's project — others come
  * back `not_found` and are not touched. One transaction, each patch guarded
  * by the revision just read → "conflict" when anything changed meanwhile.
@@ -213,7 +221,20 @@ export async function batchUpdatePhotos(
   const base = input.baseName === undefined ? undefined : cleanName(input.baseName)
   if (base !== undefined && (!base || base.length > PHOTO_LIMITS.name - 4)) throw new GalleryError('invalid_value', 'Name is empty or too long.')
   const add = input.addTags === undefined ? [] : cleanTags(input.addTags)
-  if (base === undefined && !add.length) throw new GalleryError('invalid_value', 'Nothing to save.')
+  if (base === undefined && !add.length && input.alt === undefined) throw new GalleryError('invalid_value', 'Nothing to save.')
+
+  // The description: site languages only, the main language required.
+  let alt: Record<string, string> | undefined
+  if (input.alt !== undefined) {
+    const site = await client.fetch<{ defaultLocale?: string | null; supportedLocales?: string[] | null } | null>(
+      `*[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales }`,
+      { projectSlug: grant.projectSlug }
+    )
+    const locales = new Set([site?.defaultLocale, ...(site?.supportedLocales ?? [])].filter((l): l is string => !!l))
+    if (!locales.size || !site?.defaultLocale) throw new GalleryError('failed', 'Site languages are not configured.')
+    alt = texts(input.alt, locales, PHOTO_LIMITS.alt, 'Description')
+    if (!alt[site.defaultLocale]) throw new GalleryError('invalid_value', 'The description in the main language is missing.')
+  }
 
   const rows =
     (await client.fetch<{ _id: string; _rev: string; _type: string; projectSlug?: string; tags?: unknown }[]>(
@@ -240,8 +261,9 @@ export async function batchUpdatePhotos(
     const name = base === undefined ? undefined : `${base} ${i + 1}`
     if (name !== undefined) set.name = name
     if (add.length) set.tags = merged
+    if (alt) set.altText = { _type: 'localizedString', ...alt }
     patches.push({ id, rev: row._rev, set })
-    results.push({ assetId: id, ok: true, rev: '', name: name ?? '', tags: merged })
+    results.push({ assetId: id, ok: true, rev: '', name: name ?? '', tags: merged, ...(alt && { alt }) })
   })
   if (!patches.length) return { results }
 

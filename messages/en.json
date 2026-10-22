@@ -1549,6 +1549,7 @@
         "toolbar": "Selected photos",
         "addTags": "Add tags",
         "rename": "Rename",
+        "describe": "Add description",
         "clear": "Clear",
         "limit": "You can select up to {max} photos at a time.",
         "saved": "{count, plural, =0 {Nothing changed} one {Saved on # photo} other {Saved on # photos}}",
@@ -1863,6 +1864,7 @@
       "allTitle": "Name and tag all {count} photos",
       "renameTitle": "Rename {count, plural, one {# photo} other {# photos}}",
       "tagsTitle": "Add tags to {count, plural, one {# photo} other {# photos}}",
+      "describeTitle": "Describe {count, plural, one {# photo} other {# photos}}",
       "allHelper": "Give them one name and the same tags in one go. You can skip this and describe each photo next.",
       "helper": "Names and tags are the same in every language.",
       "baseName": {
@@ -1872,6 +1874,14 @@
         "preview": "They become “{first}”, “{second}”, …"
       },
       "tagsHelper": "Added to every photo, next to the tags it already has.",
+      "describe": {
+        "helper": "One short sentence for people who can’t see the photos — for example “The waiting room with a large window”. Every selected photo gets it.",
+        "label": "Description",
+        "placeholder": "What do the photos show?",
+        "otherHelper": "Other languages are optional. If you leave them empty, visitors see the description above.",
+        "inLanguage": "Description in {language}",
+        "replaces": "{count, plural, one {# of the {total} photos already has a description. It will be replaced.} other {# of the {total} photos already have a description. They will be replaced.}}"
+      },
       "capped": "Up to {max} photos at a time.",
       "skip": "Skip",
       "cancel": "Cancel",

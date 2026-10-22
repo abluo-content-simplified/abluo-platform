@@ -157,6 +157,7 @@ describe('batchUpdatePhotos', () => {
     })
     const fetch = vi.fn(async (q: string, p?: { ids?: string[] }) => {
       if (q.includes('count(*[_type == "project"')) return 1
+      if (q.includes('siteConfig')) return { defaultLocale: 'it', supportedLocales: ['it', 'de'] }
       if (q.startsWith('*[_id in $ids]')) return rows.filter((r) => p?.ids?.includes(r._id))
       if (q.includes('{ _id, _rev, name }')) return (p?.ids ?? []).map((id) => ({ _id: id, _rev: `${id}-new`, name: `stored ${id}` }))
       throw new Error(q)
@@ -212,6 +213,33 @@ describe('batchUpdatePhotos', () => {
     const f = fakeBatch([row('a')])
     await expect(run(f, { assetIds: ['a'], addTags: ['x'] }, grant({ role: 'viewer', permissions: ['gallery.gallery.read'] }))).rejects.toThrow(TenantAuthorizationError)
     expect(f.client.fetch).not.toHaveBeenCalled()
+  })
+
+  it('describes every photo: one description per site language, replacing the whole set', async () => {
+    const f = fakeBatch([row('a'), row('b')])
+    const r = await run(f, { assetIds: ['a', 'b'], alt: { it: '  Lo studio,   la sala ', de: 'Die Praxis' } })
+    const altText = { _type: 'localizedString', it: 'Lo studio, la sala', de: 'Die Praxis' }
+    expect(f.tx).toEqual([
+      ['a', { ifRevisionID: 'a-r', set: { altText } }],
+      ['b', { ifRevisionID: 'b-r', set: { altText } }],
+    ])
+    expect(r.results.every((x) => x.ok && x.alt?.it === 'Lo studio, la sala')).toBe(true)
+  })
+
+  it('a description alone is something to save; names and tags stay as they are', async () => {
+    const f = fakeBatch([row('a', { tags: ['studio'] })])
+    await run(f, { assetIds: ['a'], alt: { it: 'Ingresso' } })
+    expect(f.tx).toEqual([['a', { ifRevisionID: 'a-r', set: { altText: { _type: 'localizedString', it: 'Ingresso' } } }]])
+  })
+
+  it.each([
+    ['without the main language', { de: 'Nur Deutsch' }],
+    ['in a language the site does not have', { it: 'Ciao', fr: 'Salut' }],
+    ['too long', { it: 'x'.repeat(PHOTO_LIMITS.alt + 1) }],
+  ])('refuses a description %s', async (_l, alt) => {
+    const f = fakeBatch([row('a')])
+    await expect(run(f, { assetIds: ['a'], alt })).rejects.toMatchObject({ code: 'invalid_value' })
+    expect(f.client.transaction).not.toHaveBeenCalled()
   })
 
   it('a revision clash is a conflict', async () => {

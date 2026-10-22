@@ -1549,6 +1549,7 @@
         "toolbar": "Ausgewählte Fotos",
         "addTags": "Schlagwörter",
         "rename": "Umbenennen",
+        "describe": "Beschreibung hinzufügen",
         "clear": "Leeren",
         "limit": "Du kannst höchstens {max} Fotos auf einmal auswählen.",
         "saved": "{count, plural, =0 {Nichts geändert} one {Bei # Foto gespeichert} other {Bei # Fotos gespeichert}}",
@@ -1863,6 +1864,7 @@
       "allTitle": "Alle {count} Fotos benennen und verschlagworten",
       "renameTitle": "{count, plural, one {# Foto} other {# Fotos}} umbenennen",
       "tagsTitle": "Schlagwörter zu {count, plural, one {# Foto} other {# Fotos}} hinzufügen",
+      "describeTitle": "{count, plural, one {# Foto} other {# Fotos}} beschreiben",
       "allHelper": "Gib ihnen in einem Schritt einen Namen und dieselben Schlagwörter. Du kannst das überspringen und danach jedes Foto beschreiben.",
       "helper": "Namen und Schlagwörter sind in allen Sprachen gleich.",
       "baseName": {
@@ -1872,6 +1874,14 @@
         "preview": "Daraus wird „{first}“, „{second}“, …"
       },
       "tagsHelper": "Wird jedem Foto hinzugefügt, zusätzlich zu seinen Schlagwörtern.",
+      "describe": {
+        "helper": "Ein kurzer Satz für Menschen, die die Fotos nicht sehen können – zum Beispiel „Das Wartezimmer mit einem großen Fenster“. Jedes ausgewählte Foto bekommt ihn.",
+        "label": "Beschreibung",
+        "placeholder": "Was zeigen die Fotos?",
+        "otherHelper": "Weitere Sprachen sind optional. Bleiben sie leer, sehen Besucher die Beschreibung oben.",
+        "inLanguage": "Beschreibung auf {language}",
+        "replaces": "{count, plural, one {# der {total} Fotos hat schon eine Beschreibung. Sie wird ersetzt.} other {# der {total} Fotos haben schon eine Beschreibung. Sie werden ersetzt.}}"
+      },
       "capped": "Höchstens {max} Fotos auf einmal.",
       "skip": "Überspringen",
       "cancel": "Abbrechen",

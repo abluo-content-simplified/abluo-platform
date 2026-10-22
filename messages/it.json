@@ -1549,6 +1549,7 @@
         "toolbar": "Foto selezionate",
         "addTags": "Aggiungi tag",
         "rename": "Rinomina",
+        "describe": "Aggiungi descrizione",
         "clear": "Deseleziona",
         "limit": "Puoi selezionare al massimo {max} foto alla volta.",
         "saved": "{count, plural, =0 {Nessuna modifica} one {Salvato su # foto} other {Salvato su # foto}}",
@@ -1863,6 +1864,7 @@
       "allTitle": "Dai nome e tag a tutte le {count} foto",
       "renameTitle": "Rinomina {count, plural, one {# foto} other {# foto}}",
       "tagsTitle": "Aggiungi tag a {count, plural, one {# foto} other {# foto}}",
+      "describeTitle": "Descrivi {count, plural, one {# foto} other {# foto}}",
       "allHelper": "Dai loro un nome e gli stessi tag in un colpo solo. Puoi saltare questo passaggio e descrivere ogni foto dopo.",
       "helper": "Nomi e tag sono uguali in tutte le lingue.",
       "baseName": {
@@ -1872,6 +1874,14 @@
         "preview": "Diventano “{first}”, “{second}”, …"
       },
       "tagsHelper": "Aggiunti a ogni foto, accanto ai tag che ha già.",
+      "describe": {
+        "helper": "Una breve frase per chi non può vedere le foto, ad esempio «La sala d'attesa con una grande finestra». Ogni foto selezionata la riceve.",
+        "label": "Descrizione",
+        "placeholder": "Cosa mostrano le foto?",
+        "otherHelper": "Le altre lingue sono facoltative. Se le lasci vuote, i visitatori vedono la descrizione qui sopra.",
+        "inLanguage": "Descrizione in {language}",
+        "replaces": "{count, plural, one {# delle {total} foto ha già una descrizione. Verrà sostituita.} other {# delle {total} foto hanno già una descrizione. Verranno sostituite.}}"
+      },
       "capped": "Al massimo {max} foto alla volta.",
       "skip": "Salta",
       "cancel": "Annulla",

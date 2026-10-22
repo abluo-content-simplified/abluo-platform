@@ -170,12 +170,12 @@ export async function updateAdminMediaPhotoAction(
   })
 }
 
-/** Rename (base name + number) and/or add tags to up to 100 photos of ONE project; each is checked on its own. */
+/** Rename (base name + number), add tags and/or describe up to 100 photos of ONE project; each is checked on its own. */
 export async function batchAdminMediaPhotosAction(
   input: { projectSlug: string } & BatchPhotosInput
 ): Promise<Result<Awaited<ReturnType<typeof batchUpdatePhotos>>>> {
   return withProject(input?.projectSlug, async (ctx, project, actor) => {
-    const result = await batchUpdatePhotos(ctx, project.id, { assetIds: input.assetIds, baseName: input.baseName, addTags: input.addTags }, {}, MEDIA_MANAGE_PERMISSION)
+    const result = await batchUpdatePhotos(ctx, project.id, { assetIds: input.assetIds, baseName: input.baseName, addTags: input.addTags, alt: input.alt }, {}, MEDIA_MANAGE_PERMISSION)
     await recordAdminAudit({
       actorId: actor.userId,
       action: 'media.asset.update',

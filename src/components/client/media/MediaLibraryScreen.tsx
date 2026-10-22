@@ -192,7 +192,7 @@ export function MediaLibraryScreen({
 
   // ── Selection (both views) ─────────────────────────────────────────────────
   const { toast, show, schedule } = useUndo()
-  /** Selecting (tags / rename) works within one project. */
+  /** Selecting (tags / rename / describe) works within one project. */
   const canSelect = !several
   const [selecting, setSelecting] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -475,6 +475,9 @@ export function MediaLibraryScreen({
           <BarButton disabled={!selectedIds.length} onPress={() => setBatch({ mode: 'rename', ids: selectedIds })} icon={MEDIA_ICONS.rename}>
             {t('select.rename')}
           </BarButton>
+          <BarButton disabled={!selectedIds.length} onPress={() => setBatch({ mode: 'describe', ids: selectedIds })} icon={MEDIA_ICONS.describe}>
+            {t('select.describe')}
+          </BarButton>
           <BarButton onPress={stopSelecting} icon={MEDIA_ICONS.x}>
             {t('select.clear')}
           </BarButton>
@@ -490,6 +493,8 @@ export function MediaLibraryScreen({
           thumbs={batchItems.map((i) => i.thumbUrl)}
           tagSuggestions={tags}
           tagCounts={tagCounts}
+          site={siteOf(batchItems[0])}
+          described={batchItems.filter((i) => Object.values(i.alt ?? {}).some((v) => typeof v === 'string' && v.trim())).length}
           onClose={() => setBatch(null)}
           onDone={(changes, skipped) => {
             const by = new Map(changes.map((c) => [c.assetId, c]))

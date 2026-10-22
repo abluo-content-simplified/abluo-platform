@@ -138,5 +138,6 @@ export const MEDIA_ICONS = {
   list: svg('M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01', 18),
   tag: svg('M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01'),
   rename: svg('M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z'),
+  describe: svg('M4 6h16M4 10h16M4 14h10M4 18h7'),
   focal: svg('M12 3v4M12 17v4M3 12h4M17 12h4M12 12h.01', 16),
 }
