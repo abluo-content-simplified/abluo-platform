@@ -50,12 +50,14 @@ const KIND: Record<string, [Kind, string]> = {
   'src/components/client/media/MediaLibraryScreen.tsx': ['library', 'the picture library: grid first'],
   'src/components/client/forms/SubmissionsBrowser.tsx': ['records', 'contact requests: no pictures'],
   'src/components/client/people/PeopleBrowser.tsx': ['records', 'people with access: no pictures'],
+  'src/components/client/tickets/SupportTicketsBrowser.tsx': ['records', 'support requests: reference, title, status; no pictures'],
   'src/components/client/taxonomy/TaxonomyManager.tsx': ['records', 'categories and tags: short names, no pictures'],
   'src/components/admin/projects/ProjectsBrowser.tsx': ['records', 'admin list of projects'],
   'src/components/admin/backlog/BacklogBrowser.tsx': ['records', 'admin backlog'],
   'src/components/admin/translations/TranslationsBrowser.tsx': ['records', 'admin interface translations'],
   'src/components/admin/analytics/PortfolioBrowser.tsx': ['records', 'admin analytics per site'],
   'src/components/admin/partners/PartnersBrowser.tsx': ['records', 'admin partner apps'],
+  'src/components/admin/tickets/AdminTicketsBrowser.tsx': ['records', 'admin support tickets: no pictures'],
   'src/components/admin/whats-new/WhatsNewAdmin.tsx': ['records', 'admin update notes'],
 }
 

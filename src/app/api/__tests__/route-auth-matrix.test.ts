@@ -906,6 +906,7 @@ describe('cron / webhook routes require their shared secret', () => {
     { name: 'GET /api/cron/analytics', run: async (h = {}) => (await import('@/app/api/cron/analytics/route')).GET(req('/api/cron/analytics', { headers: h })) },
     { name: 'GET /api/cron/content-activity', run: async (h = {}) => (await import('@/app/api/cron/content-activity/route')).GET(req('/api/cron/content-activity', { headers: h })) },
     { name: 'GET /api/cron/media-sweep', run: async (h = {}) => (await import('@/app/api/cron/media-sweep/route')).GET(req('/api/cron/media-sweep', { headers: h })) },
+    { name: 'GET /api/cron/support-tickets-sweep', run: async (h = {}) => (await import('@/app/api/cron/support-tickets-sweep/route')).GET(req('/api/cron/support-tickets-sweep', { headers: h })) },
   ]
   for (const c of cases) {
     it(`${c.name}: no / wrong secret → 401, nothing runs; even for an admin session`, async () => {
@@ -956,6 +957,7 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   'cron/content-activity': 'machine', // CRON_SECRET bearer (ADR-032 D9 3b)
   'cron/analytics': 'machine',
   'cron/media-sweep': 'machine', // CRON_SECRET bearer (ADR-035 slice 2)
+  'cron/support-tickets-sweep': 'machine', // CRON_SECRET bearer (ADR-039 D13)
   'webhooks/form-events': 'machine',
   // ADR-031: partner apps authenticate with client id + secret (src/lib/connections; own suites).
   'oauth/token': 'machine',

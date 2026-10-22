@@ -24,6 +24,8 @@ import { NewVersionNotice } from '@/components/system/NewVersionNotice'
 import { can } from '@/lib/authz/check'
 import { SUPPORT_EDIT_MINUTES } from '@/lib/support/constants'
 import { listSupportNotices } from '@/lib/support/server'
+import { ticketAccess } from '@/lib/support-tickets/access'
+import { countClientUnread } from '@/lib/support-tickets/service'
 import { SupportBanner } from '@/components/client/support/SupportBanner'
 import { SupportAccessNotice } from '@/components/client/support/SupportAccessNotice'
 import { loadCatalogueNavLabel } from '@/lib/api/catalogue-drafts'
@@ -120,6 +122,11 @@ async function ClientProjectLayoutInner({
     })),
   }
   const support = ctx.support ?? null
+  // Support Tickets (ADR-039): requests with news for this person — cheap and fail-safe (0 on any error).
+  const ticketAccessForNav = ticketAccess(ctx, activeGrant.projectSlug)
+  const supportUnread =
+    ticketAccessForNav && !support && navItems.some((i) => i.moduleId === 'support') ? await countClientUnread(ticketAccessForNav).catch(() => 0) : 0
+  lap('supportUnread')
   const supportNotices =
     !support && can(ctx, 'users.manage', { kind: 'project', projectId: activeGrant.projectId })
       ? await listSupportNotices(activeGrant.projectId, ctx.userId)
@@ -157,6 +164,8 @@ async function ClientProjectLayoutInner({
           homeHref={dashboardHomeHref(activeGrant.projectSlug)}
           whatsNew={whatsNew?.updates ?? null}
           whatsNewPopup={!support}
+          supportUnread={supportUnread}
+          reportProblem={Boolean(ticketAccessForNav?.canWrite) && navItems.some((i) => i.moduleId === 'support')}
           profile={profile}
         />
         {/* #client-main: the main scroll container (the floating "+" listens to it and to the window). */}

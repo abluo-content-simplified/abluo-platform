@@ -1922,7 +1922,8 @@
       "extras": {
         "formsSubmissionRead": "Sees contact requests",
         "formsSubmissionUpdate": "Manages contact requests",
-        "analyticsRead": "Sees website analytics"
+        "analyticsRead": "Sees website analytics",
+        "supportTicketsRead": "Sees all support requests"
       },
       "includedByRole": "Contact requests are included in this role.",
       "send": "Send invitation",
@@ -2582,6 +2583,110 @@
       "greeting": "Hi {name}, we’re building the support system",
       "greetingNoName": "We’re building the support system",
       "body": "It will be online here soon. You’ll be able to send us a request, attach screenshots and follow its status until it’s resolved."
+    },
+    "supportTickets": {
+      "title": "Support",
+      "reportProblem": "Report a Problem",
+      "status": {
+        "open": "Open",
+        "in_progress": "In Progress",
+        "waiting_for_user": "Waiting for You",
+        "resolved": "Resolved"
+      },
+      "list": {
+        "searchLabel": "Search requests",
+        "search": "Search by number or title…",
+        "filtersLabel": "Filters",
+        "statusFilter": "Status",
+        "allStatuses": "All statuses",
+        "showing": "{shown} of {total} requests",
+        "clear": "Clear filters",
+        "noMatch": "No request matches the filters.",
+        "columns": {
+          "reference": "Request",
+          "title": "Title",
+          "status": "Status",
+          "updated": "Last update"
+        },
+        "unread": "New reply",
+        "unreadCount": "{count} requests with news",
+        "open": "Open {reference}: {title}",
+        "emptyTitle": "No requests yet",
+        "emptyBody": "Something not working, or a question about your site? Send us a request and we’ll follow it up here.",
+        "newRequest": "New Request",
+        "cannotWrite": "Only people who can edit this site can send requests.",
+        "supportMode": "Requests can’t be sent while viewing as the client."
+      },
+      "new": {
+        "title": "New Request",
+        "back": "Back to Support",
+        "titleLabel": "What’s the problem?",
+        "titlePlaceholder": "A few words, e.g. “The booking button does nothing”",
+        "bodyLabel": "Tell us more",
+        "bodyHint": "What did you do, what did you expect, what happened instead?",
+        "screenshotsLabel": "Screenshots (optional)",
+        "sensitiveNotice": "Please don’t include patient information or other sensitive personal data in your request or screenshots.",
+        "send": "Send Request",
+        "sending": "Sending…",
+        "related": "Follows up on {reference}.",
+        "remaining": "{count} characters left",
+        "titleRemaining": "{count} characters left"
+      },
+      "picker": {
+        "add": "Add screenshots",
+        "hint": "Up to {max} images (PNG, JPG or WebP), {size} MB each",
+        "remove": "Remove {name}",
+        "problem": {
+          "type": "{name}: only PNG, JPG or WebP images can be attached.",
+          "size": "{name}: this image is larger than {size} MB.",
+          "count": "{name}: you can attach up to {max} images.",
+          "total": "{name}: the images together are too large to send."
+        }
+      },
+      "ticket": {
+        "threadLabel": "Conversation",
+        "support": "Abluo Support",
+        "redacted": "Removed by Abluo Support",
+        "internalNote": "Internal note",
+        "screenshotDeleted": "Screenshot deleted",
+        "openScreenshot": "Open screenshot {n} (new tab)",
+        "replyLabel": "Your reply",
+        "replyPlaceholder": "Write a reply…",
+        "send": "Send Reply",
+        "sending": "Sending…",
+        "remaining": "{count} characters left",
+        "closedTitle": "This request is closed",
+        "closedBody": "It was resolved a while ago and can no longer be answered. If the problem is back, open a new request and we’ll link it to this one.",
+        "openNew": "Open a New Request",
+        "readOnlyForbidden": "You can read this request but not reply to it.",
+        "readOnlySupport": "Replies can’t be sent while viewing as the client.",
+        "back": "Back to Support"
+      },
+      "events": {
+        "created": "Request sent",
+        "status_changed": "Status changed to {status}",
+        "reopened_by_reply": "Request reopened by your reply",
+        "message_removed": "A message was removed",
+        "attachment_deleted": "A screenshot was deleted"
+      },
+      "errors": {
+        "unavailable": "Support requests aren’t available yet. Please try again later.",
+        "forbidden": "You don’t have permission to do this.",
+        "notFound": "We couldn’t find this request.",
+        "supportMode": "This can’t be done while viewing as the client.",
+        "rateLimited": "You’ve sent a lot in a short time. Please wait a little and try again.",
+        "closed": "This request is closed. Please open a new one.",
+        "invalid": "Something is missing or too long. Please check and try again.",
+        "attachmentType": "Only PNG, JPG or WebP images can be attached.",
+        "attachmentTooLarge": "One of the images is too large.",
+        "tooManyAttachments": "You can attach up to 3 images.",
+        "titleRequired": "Please add a short title.",
+        "titleTooLong": "The title is too long.",
+        "bodyRequired": "Please write a few words.",
+        "bodyTooLong": "The text is too long.",
+        "uploadTooLarge": "The images together are too large to send. Remove one or use smaller images.",
+        "error": "Something went wrong. Please try again."
+      }
     }
   },
   "app": {
@@ -3919,7 +4024,137 @@
       "title": "Support Tickets",
       "greeting": "Hi {name}, we’re building the support system",
       "greetingNoName": "We’re building the support system",
-      "body": "It will be online here soon. Requests from every site will arrive here with their screenshots, so you can follow and answer each one from one place."
+      "body": "It will be online here soon. Requests from every site will arrive here with their screenshots, so you can follow and answer each one from one place.",
+      "loadFailedTitle": "Couldn’t load the tickets",
+      "loadFailedBody": "Something went wrong. Reload the page to try again.",
+      "filters": {
+        "label": "Filters",
+        "project": "Project",
+        "allProjects": "All projects",
+        "status": "Status",
+        "severity": "Severity",
+        "allSeverities": "Any severity"
+      },
+      "statusFilters": {
+        "active": "Active",
+        "all": "All"
+      },
+      "status": {
+        "open": "Open",
+        "in_progress": "In Progress",
+        "waiting_for_user": "Waiting for User",
+        "resolved": "Resolved"
+      },
+      "severity": {
+        "low": "Low",
+        "normal": "Normal",
+        "high": "High"
+      },
+      "columns": {
+        "reference": "Ticket",
+        "project": "Project",
+        "title": "Title",
+        "requester": "Requester",
+        "status": "Status",
+        "severity": "Severity",
+        "activity": "Last activity"
+      },
+      "search": "Search tickets",
+      "searchPlaceholder": "Search by number, title or person",
+      "showing": "{shown} of {total, plural, one {# ticket} other {# tickets}}",
+      "clear": "Clear filters",
+      "noMatch": "No tickets match these filters.",
+      "emptyTitle": "No requests yet",
+      "emptyBody": "When a client sends a request from their dashboard, it appears here.",
+      "unread": "New activity",
+      "unreadNav": "{count, plural, one {# ticket with new activity} other {# tickets with new activity}}",
+      "back": "Support Tickets",
+      "viewAsClient": "View as Client",
+      "support": {
+        "unavailable": "Support mode isn’t available yet (migration 038 is not applied).",
+        "failed": "Couldn’t open support mode. Try again."
+      },
+      "thread": {
+        "label": "Conversation",
+        "support": "Abluo Support",
+        "redacted": "Removed by Abluo Support",
+        "internalNote": "Internal — not visible to the client",
+        "screenshotDeleted": "Screenshot deleted",
+        "openScreenshot": "Open screenshot {n} (new tab)"
+      },
+      "events": {
+        "statusChanged": "Status changed to {status}",
+        "severityChanged": "Severity changed to {severity} (internal)",
+        "reopenedByReply": "Reopened by the client’s reply",
+        "messageRedacted": "Message text removed",
+        "attachmentDeleted": "Screenshot deleted",
+        "supportVisitStarted": "Opened View as Client"
+      },
+      "composer": {
+        "modeLabel": "Write a",
+        "reply": "Reply to Client",
+        "note": "Internal Note",
+        "sendReply": "Send to Client",
+        "saveNote": "Save Note",
+        "replyHint": "The client sees this as Abluo Support.",
+        "noteHint": "Internal note: only Abluo admins can see it. The client is never told.",
+        "replyPlaceholder": "Write your reply",
+        "notePlaceholder": "Write a note for the team",
+        "sending": "Sending…",
+        "remaining": "{count} characters left"
+      },
+      "errors": {
+        "forbidden": "You don’t have access to do that.",
+        "notFound": "This ticket no longer exists.",
+        "rateLimited": "Too many messages in a short time. Try again in a while.",
+        "invalid": "That can’t be saved. Check the text and try again.",
+        "unavailable": "Support tickets aren’t available yet.",
+        "error": "Something went wrong. Try again."
+      },
+      "toast": {
+        "replySent": "Reply sent",
+        "noteSaved": "Note saved",
+        "statusSaved": "Status updated",
+        "severitySaved": "Severity updated",
+        "textRemoved": "Text removed",
+        "screenshotDeleted": "Screenshot deleted"
+      },
+      "redact": {
+        "action": "Remove text",
+        "title": "Remove this message’s text?",
+        "body": "The text is deleted for good, for the client too, and can’t be recovered. The message stays in the conversation as “Removed by Abluo Support”.",
+        "confirm": "Remove text"
+      },
+      "panel": {
+        "label": "Ticket details",
+        "status": "Status",
+        "severity": "Severity",
+        "severityHint": "Internal. The client never sees it.",
+        "people": "Who",
+        "project": "Project",
+        "requester": "Requester",
+        "email": "Email",
+        "role": "Role",
+        "opened": "Opened",
+        "context": "Context",
+        "page": "Page",
+        "version": "Platform version",
+        "browser": "Browser",
+        "screen": "Screen",
+        "language": "Interface language",
+        "related": "Related ticket",
+        "screenshots": "Screenshots",
+        "noScreenshots": "No screenshots.",
+        "screenshot": "Screenshot {n}",
+        "deleted": {
+          "retention": "Deleted after 90 days",
+          "redacted": "Deleted by Abluo Support",
+          "project_deleted": "Deleted with the project"
+        },
+        "deleteScreenshot": "Delete",
+        "deleteTitle": "Delete this screenshot?",
+        "deleteBody": "The file is deleted for good and can’t be recovered."
+      }
     }
   },
   "editor": {
@@ -3995,7 +4230,8 @@
       "formsSubmissionRead": "contact requests",
       "formsSubmissionUpdate": "managing contact requests",
       "billingInvoiceRead": "invoices",
-      "analyticsRead": "website analytics"
+      "analyticsRead": "website analytics",
+      "supportTicketsRead": "all support requests"
     },
     "accept": {
       "title": "Invitation",
@@ -4738,5 +4974,30 @@
       "affiliateDisclosureDefault": "Some links on this page are affiliate links. If you buy through them, we receive a small commission at no extra cost to you.",
       "amazonStatement": "As an Amazon Associate I earn from qualifying purchases."
     }
+  },
+  "supportTicketEmail": {
+    "created": {
+      "subject": "[{ref}] New support request",
+      "heading": "New support request {ref}",
+      "body": "A new support request {ref} was opened on {project}."
+    },
+    "clientReplied": {
+      "subject": "[{ref}] New reply from the client",
+      "heading": "New client reply on {ref}",
+      "body": "The client replied to support request {ref} on {project}."
+    },
+    "supportReplied": {
+      "subject": "[{ref}] New reply from Abluo Support",
+      "heading": "New reply from Abluo Support",
+      "body": "Abluo Support replied to your request {ref} on {project}."
+    },
+    "resolved": {
+      "subject": "[{ref}] Your request is resolved",
+      "heading": "Your request {ref} is resolved",
+      "body": "Abluo Support marked your request {ref} on {project} as resolved. If it is not, just reply and we will pick it up again."
+    },
+    "button": "Open the request",
+    "linkHint": "Or copy this link into your browser:",
+    "privacy": "For your privacy this email does not include the content of the request. Please do not reply to this email: open the request instead."
   }
 }

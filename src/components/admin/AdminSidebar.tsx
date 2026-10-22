@@ -24,7 +24,7 @@ const NAV = [
   { key: 'analytics', href: '/analytics', icon: 'M3 3v18h18M7 16v-4M12 16V8M17 16v-7' },
   { key: 'partners', href: '/partners', icon: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8' },
   { key: 'media', href: '/media', icon: APP_ICONS.media },
-  // Support Tickets: a placeholder page until the ticketing system is built.
+  // Support Tickets: client requests (ADR-039); the count is the unread ones.
   { key: 'support', href: '/support', icon: APP_ICONS.support, group: 'operations' },
   { key: 'backlog', href: '/backlog', icon: 'M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01' },
   { key: 'translations', href: '/translations', icon: 'm5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6' },
@@ -32,7 +32,7 @@ const NAV = [
   { key: 'whatsNew', href: '/whats-new', icon: 'M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z' },
 ] as const satisfies readonly { key: string; href: string; icon: string; group?: 'platform' | 'operations' | 'product' }[]
 
-export function AdminSidebar({ account }: { account: Omit<AccountMenuProps, 'variant'> }) {
+export function AdminSidebar({ account, supportUnread = 0 }: { account: Omit<AccountMenuProps, 'variant'>; supportUnread?: number }) {
   const t = useTranslations('admin')
   return (
     <AppSidebar
@@ -45,6 +45,7 @@ export function AdminSidebar({ account }: { account: Omit<AccountMenuProps, 'var
         label: t(`nav.${item.key}`),
         icon: item.icon,
         ...('group' in item ? { groupHeading: t(`navGroups.${item.group}`) } : {}),
+        ...(item.key === 'support' && supportUnread > 0 ? { badge: { count: supportUnread, label: t('supportTickets.unreadNav', { count: supportUnread }) } } : {}),
       }))}
       account={account}
     />

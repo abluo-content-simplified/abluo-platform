@@ -146,6 +146,28 @@ export const PLATFORM_PERMISSIONS: readonly PlatformPermissionDef[] = [
     defaults: { project: ['owner', 'admin', 'editor'] },
   },
 
+  // ── Support tickets (ADR-039, Tom 2026-10-22) ───────────────────────────
+  {
+    // Not a module: every site can send support requests. Viewers cannot.
+    id: 'support.tickets.write',
+    description: 'Send support requests and reply on the ones you can see.',
+    grantable: false,
+    defaults: { project: ['owner', 'admin', 'editor'] },
+  },
+  {
+    // Without it a person sees only the requests they sent themselves.
+    id: 'support.tickets.read',
+    description: 'See all of the site’s support requests, not only your own.',
+    grantable: true,
+    defaults: { project: ['owner', 'admin'] },
+  },
+  {
+    id: 'support.tickets.manage',
+    description: 'Answer, triage and resolve every client’s support requests.',
+    grantable: false,
+    defaults: { platform: true },
+  },
+
   // ── Website analytics (ADR-029 §3.4, Tom 2026-10-07) ────────────────────
   {
     // Not a module: the numbers come from the site's Google Analytics /

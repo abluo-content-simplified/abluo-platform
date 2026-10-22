@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, usePathname } from '@/i18n/navigation'
+import { CountBadge } from '@/components/app/ui/CountBadge'
 import { AccountMenu, type AccountMenuProps } from './AccountMenu'
 import { AppIcon, APP_ICONS } from './AppIcon'
 
@@ -41,6 +42,8 @@ export type AppNavItem = {
    * admin uses headings; the client dashboard separates groups by space only.
    */
   groupHeading?: string
+  /** A small count after the label (unread items). `label` is what a screen reader hears. Hidden at 0. */
+  badge?: { count: number; label: string }
 }
 
 /**
@@ -233,6 +236,11 @@ export function AppSidebar({
                 >
                   <AppIcon d={item.icon} size={18} />
                   {item.label}
+                  {item.badge && item.badge.count > 0 ? (
+                    <span className="ml-auto inline-flex">
+                      <CountBadge count={item.badge.count} srLabel={item.badge.label} />
+                    </span>
+                  ) : null}
                 </Link>
               </Fragment>
             )

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname, useRouter } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { ProjectSwitcher, type SwitcherProject } from './ProjectSwitcher'
@@ -59,6 +60,10 @@ export type ClientSidebarProps = {
   whatsNew?: ClientProductUpdate[] | null
   /** Open the newest flagged unread update in a dialog once (off in a support visit). Default on. */
   whatsNewPopup?: boolean
+  /** Support requests with news for this person (Support Tickets, ADR-039); 0 = no badge. */
+  supportUnread?: number
+  /** Show "Report a Problem" in the account menu (the person may send support requests). */
+  reportProblem?: boolean
 }
 
 const ICONS = {
@@ -81,6 +86,8 @@ const ICONS = {
   generic: APP_ICONS.generic,
 } as const
 
+const REPORT_ICON = 'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'
+
 const iconFor = (moduleId: string) => (ICONS as Record<string, string>)[moduleId] ?? ICONS.generic
 
 export function ClientSidebar({
@@ -92,7 +99,11 @@ export function ClientSidebar({
   whatsNew = null,
   whatsNewPopup = true,
   profile = null,
+  supportUnread = 0,
+  reportProblem = false,
 }: ClientSidebarProps) {
+  const router = useRouter()
+  const pathname = usePathname()
   const [profileOpen, setProfileOpen] = useState(false)
   const t = useTranslations('clientDashboard')
   const openAddContent = useOpenAddContent()
@@ -104,7 +115,14 @@ export function ClientSidebar({
   // "What's new" (a panel, not a page) opens the support & configuration group (Tom, 2026-10-22).
   const links: (AppNavEntry & { group: string })[] = [
     { key: 'home', href: homeHref, label: t('nav.home'), icon: ICONS.home, group: 'content' },
-    ...navItems.map((i) => ({ key: i.moduleId, href: i.href, label: i.label ?? t(`nav.${i.moduleId}`), icon: iconFor(i.moduleId), group: i.group as string })),
+    ...navItems.map((i) => ({
+      key: i.moduleId,
+      href: i.href,
+      label: i.label ?? t(`nav.${i.moduleId}`),
+      icon: iconFor(i.moduleId),
+      group: i.group as string,
+      badge: i.moduleId === 'support' && supportUnread > 0 ? { count: supportUnread, label: t('supportTickets.list.unreadCount', { count: supportUnread }) } : undefined,
+    })),
   ]
   const supportAt = links.findIndex((i) => i.group === 'support')
   const grouped: (AppNavEntry & { group: string })[] = news.sidebarRow
@@ -129,7 +147,19 @@ export function ClientSidebar({
       }
       account={{
         ...account,
-        ...(news.menuRow ? { extraRows: [news.menuRow] } : {}),
+        extraRows: [
+          ...(news.menuRow ? [news.menuRow] : []),
+          ...(reportProblem
+            ? [
+                {
+                  key: 'reportProblem',
+                  label: t('supportTickets.reportProblem'),
+                  icon: REPORT_ICON,
+                  onSelect: () => router.push(`/${activeSlug}/support/new?from=${encodeURIComponent(pathname)}`),
+                },
+              ]
+            : []),
+        ],
         ...(profile ? { onProfile: () => setProfileOpen(true) } : {}),
       }}
       isActive={isNavItemActive}

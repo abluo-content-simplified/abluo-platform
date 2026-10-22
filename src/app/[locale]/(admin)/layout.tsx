@@ -6,6 +6,7 @@ import { AppRoot } from '@/components/app/AppRoot'
 import { UploadsProvider } from '@/components/client/media/UploadsProvider'
 import { resolveAdminAccess } from '@/lib/api/auth'
 import { getViewerAccount } from '@/lib/api/viewer-account'
+import { countAdminUnread } from '@/lib/support-tickets/service'
 import { APP_TEXT_SIZE_COOKIE, APP_THEME_COOKIE, parseAppTextSize, parseAppTheme } from '@/lib/app-theme'
 
 /**
@@ -29,13 +30,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // `allow` always carries the actor; the check keeps that a fact, not an assumption.
   if (!actor) redirect('/login')
 
-  const [viewer, jar] = await Promise.all([getViewerAccount(actor.userId), cookies()])
+  // Unread support tickets for the nav badge. Never blocks the page: any failure (e.g. migration 046 not applied) is 0.
+  const [viewer, jar, supportUnread] = await Promise.all([
+    getViewerAccount(actor.userId),
+    cookies(),
+    countAdminUnread(actor.userId).catch(() => 0),
+  ])
 
   return (
     <AppRoot surface="admin">
       <UploadsProvider>
       <div className="min-h-screen md:flex">
         <AdminSidebar
+          supportUnread={supportUnread}
           account={{
             name: viewer.name,
             email: viewer.email,

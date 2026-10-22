@@ -1922,7 +1922,8 @@
       "extras": {
         "formsSubmissionRead": "Sieht Kontaktanfragen",
         "formsSubmissionUpdate": "Verwaltet Kontaktanfragen",
-        "analyticsRead": "Sieht Website-Statistiken"
+        "analyticsRead": "Sieht Website-Statistiken",
+        "supportTicketsRead": "Sieht alle Supportanfragen"
       },
       "includedByRole": "Kontaktanfragen sind in dieser Rolle enthalten.",
       "send": "Einladung senden",
@@ -2582,6 +2583,110 @@
       "greeting": "Hallo {name}, wir bauen gerade das Support-System",
       "greetingNoName": "Wir bauen gerade das Support-System",
       "body": "Es ist hier bald verfügbar. Du kannst uns dann eine Anfrage senden, Screenshots anhängen und den Status verfolgen, bis sie gelöst ist."
+    },
+    "supportTickets": {
+      "title": "Support",
+      "reportProblem": "Problem melden",
+      "status": {
+        "open": "Offen",
+        "in_progress": "In Bearbeitung",
+        "waiting_for_user": "Wartet auf dich",
+        "resolved": "Gelöst"
+      },
+      "list": {
+        "searchLabel": "Anfragen durchsuchen",
+        "search": "Nach Nummer oder Titel suchen…",
+        "filtersLabel": "Filter",
+        "statusFilter": "Status",
+        "allStatuses": "Alle Status",
+        "showing": "{shown} von {total} Anfragen",
+        "clear": "Filter zurücksetzen",
+        "noMatch": "Keine Anfrage entspricht den Filtern.",
+        "columns": {
+          "reference": "Anfrage",
+          "title": "Titel",
+          "status": "Status",
+          "updated": "Letzte Änderung"
+        },
+        "unread": "Neue Antwort",
+        "unreadCount": "{count} Anfragen mit Neuigkeiten",
+        "open": "{reference} öffnen: {title}",
+        "emptyTitle": "Noch keine Anfragen",
+        "emptyBody": "Etwas funktioniert nicht oder du hast eine Frage zu deiner Website? Schick uns eine Anfrage, wir verfolgen sie hier weiter.",
+        "newRequest": "Neue Anfrage",
+        "cannotWrite": "Nur Personen, die diese Website bearbeiten dürfen, können Anfragen senden.",
+        "supportMode": "Anfragen können nicht gesendet werden, solange du als Kunde ansiehst."
+      },
+      "new": {
+        "title": "Neue Anfrage",
+        "back": "Zurück zum Support",
+        "titleLabel": "Was ist das Problem?",
+        "titlePlaceholder": "Ein paar Worte, z. B. „Der Buchungsbutton tut nichts“",
+        "bodyLabel": "Erzähl uns mehr",
+        "bodyHint": "Was hast du getan, was hast du erwartet, was ist stattdessen passiert?",
+        "screenshotsLabel": "Screenshots (optional)",
+        "sensitiveNotice": "Bitte gib in deiner Anfrage und in den Screenshots keine Patienteninformationen oder andere sensible personenbezogene Daten an.",
+        "send": "Anfrage senden",
+        "sending": "Wird gesendet…",
+        "related": "Folgt auf {reference}.",
+        "remaining": "Noch {count} Zeichen",
+        "titleRemaining": "Noch {count} Zeichen"
+      },
+      "picker": {
+        "add": "Screenshots hinzufügen",
+        "hint": "Bis zu {max} Bilder (PNG, JPG oder WebP), je {size} MB",
+        "remove": "{name} entfernen",
+        "problem": {
+          "type": "{name}: Es können nur PNG-, JPG- oder WebP-Bilder angehängt werden.",
+          "size": "{name}: Das Bild ist größer als {size} MB.",
+          "count": "{name}: Du kannst bis zu {max} Bilder anhängen.",
+          "total": "{name}: Die Bilder sind zusammen zu groß zum Senden."
+        }
+      },
+      "ticket": {
+        "threadLabel": "Unterhaltung",
+        "support": "Abluo Support",
+        "redacted": "Von Abluo Support entfernt",
+        "internalNote": "Interne Notiz",
+        "screenshotDeleted": "Screenshot gelöscht",
+        "openScreenshot": "Screenshot {n} öffnen (neuer Tab)",
+        "replyLabel": "Deine Antwort",
+        "replyPlaceholder": "Antwort schreiben…",
+        "send": "Antwort senden",
+        "sending": "Wird gesendet…",
+        "remaining": "Noch {count} Zeichen",
+        "closedTitle": "Diese Anfrage ist geschlossen",
+        "closedBody": "Sie wurde vor einiger Zeit gelöst und kann nicht mehr beantwortet werden. Ist das Problem zurück, eröffne eine neue Anfrage – wir verknüpfen sie mit dieser.",
+        "openNew": "Neue Anfrage eröffnen",
+        "readOnlyForbidden": "Du kannst diese Anfrage lesen, aber nicht darauf antworten.",
+        "readOnlySupport": "Antworten können nicht gesendet werden, solange du als Kunde ansiehst.",
+        "back": "Zurück zum Support"
+      },
+      "events": {
+        "created": "Anfrage gesendet",
+        "status_changed": "Status geändert auf {status}",
+        "reopened_by_reply": "Anfrage durch deine Antwort wieder geöffnet",
+        "message_removed": "Eine Nachricht wurde entfernt",
+        "attachment_deleted": "Ein Screenshot wurde gelöscht"
+      },
+      "errors": {
+        "unavailable": "Support-Anfragen sind noch nicht verfügbar. Bitte versuche es später erneut.",
+        "forbidden": "Dafür fehlt dir die Berechtigung.",
+        "notFound": "Wir haben diese Anfrage nicht gefunden.",
+        "supportMode": "Das ist nicht möglich, solange du als Kunde ansiehst.",
+        "rateLimited": "Du hast in kurzer Zeit viel gesendet. Bitte warte kurz und versuche es erneut.",
+        "closed": "Diese Anfrage ist geschlossen. Bitte eröffne eine neue.",
+        "invalid": "Etwas fehlt oder ist zu lang. Bitte prüfe es und versuche es erneut.",
+        "attachmentType": "Es können nur PNG-, JPG- oder WebP-Bilder angehängt werden.",
+        "attachmentTooLarge": "Eines der Bilder ist zu groß.",
+        "tooManyAttachments": "Du kannst bis zu 3 Bilder anhängen.",
+        "titleRequired": "Bitte gib einen kurzen Titel ein.",
+        "titleTooLong": "Der Titel ist zu lang.",
+        "bodyRequired": "Bitte schreib ein paar Worte.",
+        "bodyTooLong": "Der Text ist zu lang.",
+        "uploadTooLarge": "Die Bilder sind zusammen zu groß zum Senden. Entferne eines oder nimm kleinere Bilder.",
+        "error": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+      }
     }
   },
   "app": {
@@ -3919,7 +4024,137 @@
       "title": "Support-Tickets",
       "greeting": "Hallo {name}, wir bauen gerade das Support-System",
       "greetingNoName": "Wir bauen gerade das Support-System",
-      "body": "Es ist hier bald verfügbar. Anfragen aller Websites kommen dann hier an, mit ihren Screenshots, damit du sie an einem Ort verfolgen und beantworten kannst."
+      "body": "Es ist hier bald verfügbar. Anfragen aller Websites kommen dann hier an, mit ihren Screenshots, damit du sie an einem Ort verfolgen und beantworten kannst.",
+      "loadFailedTitle": "Tickets konnten nicht geladen werden",
+      "loadFailedBody": "Etwas ist schiefgelaufen. Lade die Seite neu, um es erneut zu versuchen.",
+      "filters": {
+        "label": "Filter",
+        "project": "Projekt",
+        "allProjects": "Alle Projekte",
+        "status": "Status",
+        "severity": "Schweregrad",
+        "allSeverities": "Jeder Schweregrad"
+      },
+      "statusFilters": {
+        "active": "Aktiv",
+        "all": "Alle"
+      },
+      "status": {
+        "open": "Offen",
+        "in_progress": "In Bearbeitung",
+        "waiting_for_user": "Wartet auf Kunden",
+        "resolved": "Gelöst"
+      },
+      "severity": {
+        "low": "Niedrig",
+        "normal": "Normal",
+        "high": "Hoch"
+      },
+      "columns": {
+        "reference": "Ticket",
+        "project": "Projekt",
+        "title": "Titel",
+        "requester": "Anfragende Person",
+        "status": "Status",
+        "severity": "Schweregrad",
+        "activity": "Letzte Aktivität"
+      },
+      "search": "Tickets durchsuchen",
+      "searchPlaceholder": "Nach Nummer, Titel oder Person suchen",
+      "showing": "{shown} von {total, plural, one {# Ticket} other {# Tickets}}",
+      "clear": "Filter zurücksetzen",
+      "noMatch": "Keine Tickets passen zu diesen Filtern.",
+      "emptyTitle": "Noch keine Anfragen",
+      "emptyBody": "Sobald ein Kunde in seinem Dashboard eine Anfrage sendet, erscheint sie hier.",
+      "unread": "Neue Aktivität",
+      "unreadNav": "{count, plural, one {# Ticket mit neuer Aktivität} other {# Tickets mit neuer Aktivität}}",
+      "back": "Support-Tickets",
+      "viewAsClient": "Als Kunde ansehen",
+      "support": {
+        "unavailable": "Der Support-Modus ist noch nicht verfügbar (Migration 038 ist nicht angewendet).",
+        "failed": "Der Support-Modus konnte nicht geöffnet werden. Versuche es erneut."
+      },
+      "thread": {
+        "label": "Unterhaltung",
+        "support": "Abluo Support",
+        "redacted": "Von Abluo Support entfernt",
+        "internalNote": "Intern — für den Kunden nicht sichtbar",
+        "screenshotDeleted": "Screenshot gelöscht",
+        "openScreenshot": "Screenshot {n} öffnen (neuer Tab)"
+      },
+      "events": {
+        "statusChanged": "Status geändert auf {status}",
+        "severityChanged": "Schweregrad geändert auf {severity} (intern)",
+        "reopenedByReply": "Durch die Antwort des Kunden wieder geöffnet",
+        "messageRedacted": "Nachrichtentext entfernt",
+        "attachmentDeleted": "Screenshot gelöscht",
+        "supportVisitStarted": "„Als Kunde ansehen“ geöffnet"
+      },
+      "composer": {
+        "modeLabel": "Schreiben als",
+        "reply": "Dem Kunden antworten",
+        "note": "Interne Notiz",
+        "sendReply": "An Kunden senden",
+        "saveNote": "Notiz speichern",
+        "replyHint": "Der Kunde sieht dies als Abluo Support.",
+        "noteHint": "Interne Notiz: nur Abluo-Admins sehen sie. Der Kunde erfährt nichts davon.",
+        "replyPlaceholder": "Schreibe deine Antwort",
+        "notePlaceholder": "Schreibe eine Notiz für das Team",
+        "sending": "Wird gesendet…",
+        "remaining": "Noch {count} Zeichen"
+      },
+      "errors": {
+        "forbidden": "Dafür hast du keinen Zugriff.",
+        "notFound": "Dieses Ticket gibt es nicht mehr.",
+        "rateLimited": "Zu viele Nachrichten in kurzer Zeit. Versuche es später erneut.",
+        "invalid": "Das lässt sich nicht speichern. Prüfe den Text und versuche es erneut.",
+        "unavailable": "Support-Tickets sind noch nicht verfügbar.",
+        "error": "Etwas ist schiefgelaufen. Versuche es erneut."
+      },
+      "toast": {
+        "replySent": "Antwort gesendet",
+        "noteSaved": "Notiz gespeichert",
+        "statusSaved": "Status aktualisiert",
+        "severitySaved": "Schweregrad aktualisiert",
+        "textRemoved": "Text entfernt",
+        "screenshotDeleted": "Screenshot gelöscht"
+      },
+      "redact": {
+        "action": "Text entfernen",
+        "title": "Text dieser Nachricht entfernen?",
+        "body": "Der Text wird endgültig gelöscht, auch für den Kunden, und lässt sich nicht wiederherstellen. Die Nachricht bleibt als „Von Abluo Support entfernt“ in der Unterhaltung.",
+        "confirm": "Text entfernen"
+      },
+      "panel": {
+        "label": "Ticket-Details",
+        "status": "Status",
+        "severity": "Schweregrad",
+        "severityHint": "Intern. Der Kunde sieht ihn nie.",
+        "people": "Wer",
+        "project": "Projekt",
+        "requester": "Anfragende Person",
+        "email": "E-Mail",
+        "role": "Rolle",
+        "opened": "Geöffnet",
+        "context": "Kontext",
+        "page": "Seite",
+        "version": "Plattformversion",
+        "browser": "Browser",
+        "screen": "Bildschirm",
+        "language": "Oberflächensprache",
+        "related": "Verknüpftes Ticket",
+        "screenshots": "Screenshots",
+        "noScreenshots": "Keine Screenshots.",
+        "screenshot": "Screenshot {n}",
+        "deleted": {
+          "retention": "Nach 90 Tagen gelöscht",
+          "redacted": "Von Abluo Support gelöscht",
+          "project_deleted": "Mit dem Projekt gelöscht"
+        },
+        "deleteScreenshot": "Löschen",
+        "deleteTitle": "Diesen Screenshot löschen?",
+        "deleteBody": "Die Datei wird endgültig gelöscht und lässt sich nicht wiederherstellen."
+      }
     }
   },
   "editor": {
@@ -3995,7 +4230,8 @@
       "formsSubmissionRead": "Kontaktanfragen",
       "formsSubmissionUpdate": "Verwalten von Kontaktanfragen",
       "billingInvoiceRead": "Rechnungen",
-      "analyticsRead": "Website-Statistiken"
+      "analyticsRead": "Website-Statistiken",
+      "supportTicketsRead": "alle Supportanfragen"
     },
     "accept": {
       "title": "Einladung",
@@ -4738,5 +4974,30 @@
       "affiliateDisclosureDefault": "Einige Links auf dieser Seite sind Affiliate-Links. Wenn du über sie kaufst, erhalten wir eine kleine Provision – für dich entstehen keine zusätzlichen Kosten.",
       "amazonStatement": "Als Amazon-Partner verdiene ich an qualifizierten Verkäufen."
     }
+  },
+  "supportTicketEmail": {
+    "created": {
+      "subject": "[{ref}] Neue Support-Anfrage",
+      "heading": "Neue Support-Anfrage {ref}",
+      "body": "Für {project} wurde eine neue Support-Anfrage {ref} eröffnet."
+    },
+    "clientReplied": {
+      "subject": "[{ref}] Neue Antwort des Kunden",
+      "heading": "Neue Kundenantwort zu {ref}",
+      "body": "Der Kunde hat auf die Support-Anfrage {ref} für {project} geantwortet."
+    },
+    "supportReplied": {
+      "subject": "[{ref}] Neue Antwort vom Abluo Support",
+      "heading": "Neue Antwort vom Abluo Support",
+      "body": "Der Abluo Support hat auf deine Anfrage {ref} für {project} geantwortet."
+    },
+    "resolved": {
+      "subject": "[{ref}] Deine Anfrage ist gelöst",
+      "heading": "Deine Anfrage {ref} ist gelöst",
+      "body": "Der Abluo Support hat deine Anfrage {ref} für {project} als gelöst markiert. Falls nicht, antworte einfach, dann nehmen wir sie wieder auf."
+    },
+    "button": "Anfrage öffnen",
+    "linkHint": "Oder kopiere diesen Link in deinen Browser:",
+    "privacy": "Zum Schutz deiner Daten enthält diese E-Mail nicht den Inhalt der Anfrage. Bitte antworte nicht auf diese E-Mail, sondern öffne die Anfrage."
   }
 }
