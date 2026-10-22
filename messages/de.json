@@ -2015,7 +2015,14 @@
       "close": "Schließen",
       "new": "Neu",
       "unreadCount": "{count, plural, one {# neue Meldung} other {# neue Meldungen}}",
-      "opensInNewTab": "(öffnet in einem neuen Tab)"
+      "opensInNewTab": "(öffnet in einem neuen Tab)",
+      "gotIt": "Verstanden",
+      "seeAll": "Alle Neuigkeiten ansehen",
+      "popupLabel": "Neu in Abluo"
+    },
+    "announcements": {
+      "warning": "Bitte beachten",
+      "dismiss": "Schließen"
     },
     "sites": {
       "title": "Deine Websites",
@@ -2568,6 +2575,11 @@
       "md": "Standard",
       "lg": "Groß",
       "xl": "Sehr groß"
+    },
+    "newVersion": {
+      "message": "Abluo wurde aktualisiert. Laden Sie die Seite neu, wenn es Ihnen passt.",
+      "reload": "Neu laden",
+      "dismiss": "Schließen"
     },
     "version": {
       "updated": "Aktualisiert {date}"
@@ -3184,6 +3196,69 @@
         "tooMany": "Zu viele Links (höchstens 20)."
       }
     },
+    "announcements": {
+      "title": "Hinweise",
+      "description": "Ein Banner oben im Kunden-Dashboard zwischen einer Start- und einer Endzeit — geplante Wartung, ein bekanntes Problem.",
+      "newNotice": "Neuer Hinweis",
+      "newTitle": "Neuer Hinweis",
+      "editTitle": "Hinweis bearbeiten",
+      "emptyTitle": "Keine Hinweise",
+      "emptyBody": "Schreiben Sie einen, wenn etwas ansteht, das Kunden wissen sollten.",
+      "missingTitle": "Hinweise sind noch nicht eingerichtet",
+      "missingBody": "Wenden Sie die Datenbank-Migration 045 an, um Hinweise zu schreiben.",
+      "noMessage": "(keine Nachricht)",
+      "status": {
+        "draft": "Entwurf",
+        "published": "Veröffentlicht",
+        "archived": "Archiviert",
+        "showing": "Wird angezeigt",
+        "scheduled": "Geplant",
+        "ended": "Beendet"
+      },
+      "tones": {
+        "info": "Info",
+        "warning": "Warnung"
+      },
+      "fields": {
+        "language": "Sprache",
+        "message": "Nachricht",
+        "messageHelp": "Kurz und einfach, ein oder zwei Sätze.",
+        "tone": "Ton",
+        "toneHelp": "Ein Info-Hinweis kann vom Kunden geschlossen werden. Eine Warnung bleibt bis zu ihrem Ende.",
+        "startsAt": "Beginn",
+        "endsAt": "Ende",
+        "endsAtHelp": "Das Banner verschwindet zu dieser Zeit von selbst.",
+        "audience": "Wer sieht es",
+        "audienceHelp": "Lassen Sie alles abgewählt, um es allen Kunden zu zeigen. Wählen Sie Module, um es nur Websites zu zeigen, die mindestens eines davon nutzen."
+      },
+      "actions": {
+        "saveDraft": "Entwurf speichern",
+        "publish": "Veröffentlichen",
+        "saveChanges": "Änderungen speichern",
+        "archive": "Archivieren",
+        "moveToDraft": "In Entwurf verschieben",
+        "close": "Schließen"
+      },
+      "toast": {
+        "saved": "Gespeichert",
+        "published": "Veröffentlicht",
+        "archived": "Archiviert"
+      },
+      "errors": {
+        "messageRequired": "Fügen Sie eine Nachricht in mindestens einer Sprache hinzu.",
+        "messageTooLong": "Eine Nachricht ist zu lang (höchstens 400 Zeichen).",
+        "toneInvalid": "Wählen Sie Info oder Warnung.",
+        "startRequired": "Wählen Sie den Beginn.",
+        "endRequired": "Wählen Sie das Ende.",
+        "endBeforeStart": "Das Ende muss nach dem Beginn liegen.",
+        "endInPast": "Das Ende liegt bereits in der Vergangenheit.",
+        "unknownModule": "Ein unbekanntes Modul wurde ausgewählt.",
+        "forbidden": "Sie sind nicht mehr als Admin mit 2-Faktor-Bestätigung angemeldet.",
+        "notFound": "Dieser Hinweis existiert nicht mehr.",
+        "failed": "Speichern nicht möglich. Bitte versuchen Sie es erneut.",
+        "missing": "Hinweise sind noch nicht eingerichtet (Migration 045)."
+      }
+    },
     "whatsNew": {
       "title": "Neuigkeiten",
       "emptyTitle": "Noch keine Neuigkeiten",
@@ -3227,7 +3302,9 @@
         "removeImage": "Bild entfernen",
         "uploading": "Wird hochgeladen…",
         "audience": "Wer sie sieht",
-        "audienceHelp": "Lass alles leer, um sie allen Kunden zu zeigen. Wähle Module, um sie nur Websites zu zeigen, die mindestens eines davon nutzen."
+        "audienceHelp": "Lass alles leer, um sie allen Kunden zu zeigen. Wähle Module, um sie nur Websites zu zeigen, die mindestens eines davon nutzen.",
+        "showAsPopup": "Als Pop-up anzeigen",
+        "showAsPopupHelp": "Öffnet sich einmal in einem Fenster, wenn ein Kunde das Dashboard das nächste Mal öffnet. Sparsam verwenden."
       },
       "actions": {
         "saveDraft": "Entwurf speichern",
@@ -3245,7 +3322,8 @@
       "toast": {
         "saved": "Gespeichert",
         "published": "Veröffentlicht",
-        "archived": "Archiviert"
+        "archived": "Archiviert",
+        "popupUnavailable": "Gespeichert, aber die Pop-up-Option benötigt Migration 045."
       },
       "errors": {
         "titleRequired": "Füge einen Titel in mindestens einer Sprache hinzu.",

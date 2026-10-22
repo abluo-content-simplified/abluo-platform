@@ -40,3 +40,31 @@ export async function markUpdatesReadAction(ids: string[]): Promise<{ ok: boolea
     return { ok: false }
   }
 }
+
+/**
+ * Close an INFO announcement for this person (migration 045). Warnings cannot
+ * be closed: the notice is read under the person's own RLS and refused unless
+ * it is a published info notice. Idempotent; never throws.
+ */
+export async function dismissNoticeAction(id: string): Promise<{ ok: boolean }> {
+  if (typeof id !== 'string' || !UUID.test(id)) return { ok: false }
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { ok: false }
+    const { data: notice } = await supabase.from('product_notices').select('id, tone').eq('id', id).maybeSingle()
+    if (!notice || (notice as { tone: string }).tone !== 'info') return { ok: false }
+    const { error } = await supabase
+      .from('product_notice_dismissals')
+      .upsert({ user_id: user.id, notice_id: id }, { onConflict: 'user_id,notice_id', ignoreDuplicates: true })
+    if (error) {
+      console.warn(`announcements: dismissal not saved (${error.message})`)
+      return { ok: false }
+    }
+    return { ok: true }
+  } catch {
+    return { ok: false }
+  }
+}

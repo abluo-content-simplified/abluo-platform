@@ -1,15 +1,17 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { AppIcon } from '@/components/app/shell/AppIcon'
 import type { AccountMenuRow } from '@/components/app/shell/AccountMenu'
+import { Button } from '@/components/app/ui/Button'
 import { CountBadge } from '@/components/app/ui/CountBadge'
+import { DialogFrame } from '@/components/app/ui/DialogFrame'
 import { SidebarRowButton } from '@/components/app/ui/SidebarRowButton'
 import { SidePanel } from '@/components/app/ui/SidePanel'
 import { UpdateCard } from '@/components/app/ui/UpdateCard'
 import { markUpdatesReadAction } from '@/app/[locale]/(client)/[tenant]/whats-new-actions'
-import { countUnread, type ClientProductUpdate } from '@/lib/whats-new/model'
+import { countUnread, selectPopupUpdate, type ClientProductUpdate } from '@/lib/whats-new/model'
 
 /**
  * "What's new" in the client dashboard (ADR-030): product updates Abluo
@@ -23,23 +25,38 @@ import { countUnread, type ClientProductUpdate } from '@/lib/whats-new/model'
  * Opening the panel marks the shown updates read (own session, RLS); the "New"
  * marks stay visible while the panel is open and are gone the next time.
  *
+ * Pop-up: the newest unread update the admin flagged "Show as pop-up" opens
+ * once in a dialog when the dashboard loads. It is marked read the moment it is
+ * shown, so it can never come back — "Got it" just closes it, "See all updates"
+ * closes it and opens the panel. Off in an admin's support visit (`popup: false`).
+ *
  * `updates` null = the feature is not available (tables missing, read failed)
  * or there is nothing for this project: no entry at all.
  */
 export const WHATS_NEW_ICON =
   'M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z'
 
-export function useWhatsNew(updates: ClientProductUpdate[] | null): {
+export function useWhatsNew(
+  updates: ClientProductUpdate[] | null,
+  options: { popup?: boolean } = {},
+): {
   sidebarRow: ReactNode
   menuRow: AccountMenuRow | null
   panel: ReactNode
 } {
   const t = useTranslations('clientDashboard.whatsNew')
   const [open, setOpen] = useState(false)
+  // The pop-up is chosen once, when the dashboard first renders.
+  const [popup] = useState<ClientProductUpdate | null>(() => (options.popup === false ? null : selectPopupUpdate(updates ?? [])))
+  const [popupOpen, setPopupOpen] = useState(popup !== null)
   // Marked read in this session (the server copy catches up on the next request).
-  const [seen, setSeen] = useState<ReadonlySet<string>>(() => new Set())
+  const [seen, setSeen] = useState<ReadonlySet<string>>(() => new Set(popup ? [popup.id] : []))
   // What was unread when the panel opened — those keep their "New" mark while it is open.
   const [newAtOpen, setNewAtOpen] = useState<ReadonlySet<string>>(() => new Set())
+
+  useEffect(() => {
+    if (popup) void markUpdatesReadAction([popup.id])
+  }, [popup])
 
   if (!updates || updates.length === 0) return { sidebarRow: null, menuRow: null, panel: null }
 
@@ -77,7 +94,42 @@ export function useWhatsNew(updates: ClientProductUpdate[] | null): {
     variants: ['bar'],
   }
 
+  const popupDialog = popup ? (
+    <DialogFrame
+      open={popupOpen}
+      onClose={() => setPopupOpen(false)}
+      labelledBy="whats-new-popup-title"
+      className="m-auto w-full max-w-md rounded-2xl bg-popover p-6 text-popover-foreground backdrop:bg-overlay"
+    >
+      <h2 id="whats-new-popup-title" className="sr-only">
+        {t('popupLabel')}
+      </h2>
+      <div className="max-h-[65dvh] overflow-y-auto">
+        <UpdateCard
+          title={popup.title}
+          body={popup.body}
+          imageUrl={popup.imageUrl}
+          cta={popup.cta}
+          publishedAt={popup.publishedAt}
+          lang={popup.lang}
+          newLabel={t('new')}
+          opensInNewTabLabel={t('opensInNewTab')}
+        />
+      </div>
+      <div className="mt-5 flex flex-col gap-2">
+        <Button variant="primary" size="lg" fullWidth onClick={() => setPopupOpen(false)}>
+          {t('gotIt')}
+        </Button>
+        <Button size="lg" fullWidth onClick={() => { setPopupOpen(false); openPanel() }}>
+          {t('seeAll')}
+        </Button>
+      </div>
+    </DialogFrame>
+  ) : null
+
   const panel = (
+    <>
+    {popupDialog}
     <SidePanel open={open} title={t('title')} closeLabel={t('close')} onClose={() => setOpen(false)}>
       <ol className="divide-y divide-border-subtle">
         {updates.map((u) => (
@@ -96,6 +148,7 @@ export function useWhatsNew(updates: ClientProductUpdate[] | null): {
         ))}
       </ol>
     </SidePanel>
+    </>
   )
 
   return { sidebarRow, menuRow, panel }

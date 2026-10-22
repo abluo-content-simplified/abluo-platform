@@ -26,7 +26,7 @@ export async function loadWhatsNewFeed(opts: {
 }): Promise<WhatsNewFeed | null> {
   try {
     const supabase = await createClient()
-    const [updates, reads] = await Promise.all([
+    const [updates, reads, flags] = await Promise.all([
       supabase
         .from('product_updates')
         .select(PRODUCT_UPDATE_COLUMNS)
@@ -34,18 +34,28 @@ export async function loadWhatsNewFeed(opts: {
         .order('published_at', { ascending: false })
         .limit(WHATS_NEW_LIMITS.feed),
       supabase.from('product_update_reads').select('update_id').eq('user_id', opts.userId).limit(1000),
+      // The pop-up flag lives in its own read so that migration 045 not being
+      // applied (column missing) only means "no pop-ups" — never "no What's new".
+      supabase
+        .from('product_updates')
+        .select('id')
+        .eq('status', 'published')
+        .eq('show_as_popup', true)
+        .limit(WHATS_NEW_LIMITS.feed),
     ])
     if (updates.error || reads.error) {
       const error = updates.error ?? reads.error
       if (!isMissingTableError(error)) console.warn(`what's new: not loaded (${error?.message ?? 'unknown error'})`)
       return null
     }
+    const popupIds = new Set(flags.error ? [] : ((flags.data ?? []) as { id: string }[]).map((r) => r.id))
     const readIds = new Set(((reads.data ?? []) as { update_id: string }[]).map((r) => r.update_id))
     return {
       updates: buildClientFeed((updates.data ?? []) as ProductUpdateRow[], {
         locale: opts.locale,
         enabledModuleIds: opts.enabledModuleIds,
         readIds,
+        popupIds,
         supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
       }),
     }

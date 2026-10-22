@@ -10,6 +10,8 @@ import { EmptyState } from '@/components/app/ui/EmptyState'
 import { PageShell } from '@/components/app/ui/PageShell'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { WhatsNewAdmin } from '@/components/admin/whats-new/WhatsNewAdmin'
+import { AnnouncementsAdmin } from '@/components/admin/whats-new/AnnouncementsAdmin'
+import { listNoticesForAdmin } from '@/lib/whats-new/notices-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,7 +28,7 @@ export default async function AdminWhatsNewPage() {
   if (!actor) notFound()
 
   const t = await getTranslations('admin.whatsNew')
-  const result = await listProductUpdatesForAdmin()
+  const [result, notices] = await Promise.all([listProductUpdatesForAdmin(), listNoticesForAdmin()])
 
   if (result.state !== 'ok') {
     return (
@@ -48,6 +50,19 @@ export default async function AdminWhatsNewPage() {
         modules={MODULE_REGISTRY.map((m) => ({ id: m.id, label: m.label }))}
         languages={WHATS_NEW_LOCALES.map((code) => ({ code, name: PLATFORM_LOCALES[code].nativeName }))}
       />
+      {/* Announcements (migration 045): 'missing' = not applied yet, the section says so. */}
+      {notices.state === 'error' ? (
+        <Notice tone="error" className="mt-10">
+          {t('loadError', { message: notices.message })}
+        </Notice>
+      ) : (
+        <AnnouncementsAdmin
+          notices={notices.state === 'ok' ? notices.notices : []}
+          missing={notices.state === 'missing'}
+          modules={MODULE_REGISTRY.map((m) => ({ id: m.id, label: m.label }))}
+          languages={WHATS_NEW_LOCALES.map((code) => ({ code, name: PLATFORM_LOCALES[code].nativeName }))}
+        />
+      )}
     </PageShell>
   )
 }

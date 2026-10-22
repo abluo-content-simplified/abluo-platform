@@ -64,10 +64,10 @@ const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').t
 
 type Draft = ProductUpdateInput
 
-const EMPTY: Draft = { title: {}, body: {}, ctaLabel: {}, ctaUrl: '', imageUrl: null, modules: [] }
+const EMPTY: Draft = { title: {}, body: {}, ctaLabel: {}, ctaUrl: '', imageUrl: null, modules: [], showAsPopup: false }
 
 function toDraft(u: AdminProductUpdate): Draft {
-  return { title: u.title, body: u.body, ctaLabel: u.ctaLabel, ctaUrl: u.ctaUrl, imageUrl: u.imageUrl, modules: u.modules }
+  return { title: u.title, body: u.body, ctaLabel: u.ctaLabel, ctaUrl: u.ctaUrl, imageUrl: u.imageUrl, modules: u.modules, showAsPopup: u.showAsPopup }
 }
 
 export function WhatsNewAdmin({
@@ -138,14 +138,15 @@ export function WhatsNewAdmin({
 
   const current = editing && editing !== 'new' ? (updates.find((u) => u.id === editing) ?? null) : null
 
-  const onSaved = (saved: AdminProductUpdate, intent: SaveIntent) => {
+  const onSaved = (saved: AdminProductUpdate, intent: SaveIntent, warning?: 'popupUnavailable') => {
     setUpdates((list) => {
       const prev = list.find((u) => u.id === saved.id)
       const merged = { ...saved, readCount: prev?.readCount ?? saved.readCount }
       return prev ? list.map((u) => (u.id === saved.id ? merged : u)) : [merged, ...list]
     })
     setEditing(null)
-    show(t(`toast.${intent === 'publish' ? 'published' : intent === 'archive' ? 'archived' : 'saved'}`))
+    if (warning) show(t('toast.popupUnavailable'), 'error')
+    else show(t(`toast.${intent === 'publish' ? 'published' : intent === 'archive' ? 'archived' : 'saved'}`))
     router.refresh()
   }
 
@@ -293,7 +294,7 @@ function UpdateEditor({
   modules: ModuleOption[]
   languages: LanguageOption[]
   onClose: () => void
-  onSaved: (u: AdminProductUpdate, intent: SaveIntent) => void
+  onSaved: (u: AdminProductUpdate, intent: SaveIntent, warning?: 'popupUnavailable') => void
   onError: (message: string) => void
 }) {
   const t = useTranslations('admin.whatsNew')
@@ -317,7 +318,7 @@ function UpdateEditor({
     startTransition(async () => {
       setErrors([])
       const res = await saveProductUpdateAction(update?.id ?? null, intent, draft)
-      if (res.ok) return onSaved(res.update, intent)
+      if (res.ok) return onSaved(res.update, intent, res.warning)
       if (res.error === 'invalid') setErrors(res.errors.map((e: ProductUpdateError) => t(`errors.${e}`)))
       else onError(t(`errors.${res.error}`))
     })
@@ -470,6 +471,14 @@ function UpdateEditor({
             ))}
           </ul>
         </fieldset>
+
+        <label className="flex cursor-pointer items-start gap-1 text-[0.9375rem] text-foreground">
+          <Checkbox checked={draft.showAsPopup === true} onChange={(on) => setDraft((d) => ({ ...d, showAsPopup: on }))} aria-label={t('fields.showAsPopup')} />
+          <span>
+            {t('fields.showAsPopup')}
+            <span className={`block ${HELP}`}>{t('fields.showAsPopupHelp')}</span>
+          </span>
+        </label>
 
         {/* ── Preview ───────────────────────────────────────────────────── */}
         <section aria-labelledby="whats-new-preview" className="space-y-2">

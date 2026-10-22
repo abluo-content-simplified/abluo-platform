@@ -121,6 +121,8 @@ export type ClientProductUpdate = {
   cta: { label: string; url: string } | null
   publishedAt: string | null
   unread: boolean
+  /** Flagged "Show as pop-up" by the admin (migration 045); false when not set or not available. */
+  popup: boolean
 }
 
 /** https only, no credentials, bounded length. */
@@ -157,7 +159,14 @@ export function updateImagePathFromUrl(url: string | null | undefined, supabaseU
  */
 export function buildClientFeed(
   rows: readonly ProductUpdateRow[],
-  opts: { locale: string; enabledModuleIds: readonly string[]; readIds: ReadonlySet<string>; supabaseUrl: string | undefined },
+  opts: {
+    locale: string
+    enabledModuleIds: readonly string[]
+    readIds: ReadonlySet<string>
+    supabaseUrl: string | undefined
+    /** Ids flagged "Show as pop-up"; absent = none (migration 045 not applied). */
+    popupIds?: ReadonlySet<string>
+  },
 ): ClientProductUpdate[] {
   const out: ClientProductUpdate[] = []
   for (const row of rows) {
@@ -176,6 +185,7 @@ export function buildClientFeed(
       cta: ctaLabel && isSafeHttpsUrl(row.cta_url) ? { label: ctaLabel.text, url: row.cta_url } : null,
       publishedAt: row.published_at,
       unread: !opts.readIds.has(row.id),
+      popup: opts.popupIds?.has(row.id) ?? false,
     })
   }
   return out.sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))
@@ -183,6 +193,20 @@ export function buildClientFeed(
 
 export function countUnread(updates: readonly { id: string; unread: boolean }[], alsoRead: ReadonlySet<string> = new Set()): number {
   return updates.filter((u) => u.unread && !alsoRead.has(u.id)).length
+}
+
+/**
+ * The one update to show in the pop-up: the NEWEST that is flagged, unread
+ * (on the server and in this session) and not already shown. The feed is
+ * already audience-matched; at most one is returned, never a list.
+ */
+export function selectPopupUpdate(
+  updates: readonly ClientProductUpdate[],
+  alreadySeen: ReadonlySet<string> = new Set(),
+): ClientProductUpdate | null {
+  const candidates = updates.filter((u) => u.popup && u.unread && !alreadySeen.has(u.id))
+  if (candidates.length === 0) return null
+  return [...candidates].sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))[0]
 }
 
 /** Body text → paragraphs (blank line) → lines (single line break). */
@@ -203,6 +227,8 @@ export type ProductUpdateInput = {
   ctaUrl: string
   imageUrl: string | null
   modules: string[]
+  /** "Show as pop-up" (migration 045). Absent = off. */
+  showAsPopup?: boolean
 }
 
 export type ProductUpdateError =
@@ -323,6 +349,11 @@ export function updateImageObjectPath(
   const rand = random.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 12) || 'x'
   const d = new Date(now)
   return `${d.getUTCFullYear()}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${now.toString(36)}-${rand}.${IMAGE_EXT[type]}`
+}
+
+/** A Postgres/PostgREST "column does not exist" error (migration 045 not applied yet). */
+export function isMissingColumnError(error: { code?: string | null } | null | undefined): boolean {
+  return !!error && (error.code === '42703' || error.code === 'PGRST204')
 }
 
 /** A Postgres/PostgREST "table does not exist" error (migration not applied yet). */

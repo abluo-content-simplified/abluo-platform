@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
+import { NewVersionNotice } from '@/components/system/NewVersionNotice'
 import { AppRoot } from '@/components/app/AppRoot'
 import { UploadsProvider } from '@/components/client/media/UploadsProvider'
 import { resolveAdminAccess } from '@/lib/api/auth'
@@ -47,7 +48,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           }}
         />
         <div className="min-h-screen min-w-0 flex-1 md:ml-56">
-          <main className="p-4 md:p-6">{children}</main>
+          <main className="p-4 md:p-6">
+            <NewVersionNotice className="mb-4" />
+            {children}
+          </main>
         </div>
       </div>
       </UploadsProvider>

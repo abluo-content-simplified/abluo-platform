@@ -2015,7 +2015,14 @@
       "close": "Close",
       "new": "New",
       "unreadCount": "{count, plural, one {# new update} other {# new updates}}",
-      "opensInNewTab": "(opens in a new tab)"
+      "opensInNewTab": "(opens in a new tab)",
+      "gotIt": "Got it",
+      "seeAll": "See all updates",
+      "popupLabel": "New in Abluo"
+    },
+    "announcements": {
+      "warning": "Please note",
+      "dismiss": "Dismiss"
     },
     "sites": {
       "title": "Your websites",
@@ -2219,6 +2226,28 @@
         "intro": "One sentence, shown once at the bottom of a page that has an affiliate buy link. Leave a language empty to use our standard wording.",
         "usingStandard": "Empty: the standard wording is shown on your website.",
         "useStandard": "Use standard wording"
+      },
+      "affiliate": {
+        "title": "Affiliate Programs",
+        "intro": "Earn a commission when visitors buy through your links. Add your details for each program; we add them to your links automatically."
+      },
+      "awin": {
+        "title": "Awin",
+        "intro": "One Awin account gives you access to many shops, but each shop has to approve you first. Join the shops below from your Awin account, then tick them here once you are approved.",
+        "publisherId": "Awin publisher ID",
+        "publisherIdHint": "The number shown at the top of your Awin account.",
+        "publisherIdPlaceholder": "e.g. 123456",
+        "looksOff": "An Awin publisher ID is a number of 3 to 10 digits. It is not saved until it looks right.",
+        "shops": "Shops",
+        "shopsIntro": "Tick a shop once it has approved you. Links to shops that are not ticked stay plain, without your ID.",
+        "approved": "Approved",
+        "approvedNamed": "Approved by {shop}",
+        "join": "How to join",
+        "joinNamed": "How to join {shop}",
+        "comingSoon": "Coming soon — not linked yet.",
+        "amazonNote": "Uses your Amazon IDs above. Move it to place Amazon among the shops.",
+        "drag": "Move {shop}, position {position} of {total}. Drag, or use the up and down arrow keys.",
+        "orderHint": "The order here is the order of the shops on your website."
       }
     },
     "internalTags": {
@@ -2568,6 +2597,11 @@
       "md": "Default",
       "lg": "Large",
       "xl": "Extra large"
+    },
+    "newVersion": {
+      "message": "Abluo has been updated. Reload when you’re ready.",
+      "reload": "Reload",
+      "dismiss": "Dismiss"
     },
     "version": {
       "updated": "Updated {date}"
@@ -3184,6 +3218,69 @@
         "tooMany": "Too many links (max 20)."
       }
     },
+    "announcements": {
+      "title": "Announcements",
+      "description": "A banner on top of the client dashboard between a start and an end time — planned maintenance, a known issue.",
+      "newNotice": "New announcement",
+      "newTitle": "New announcement",
+      "editTitle": "Edit announcement",
+      "emptyTitle": "No announcements",
+      "emptyBody": "Write one when something clients should know about is coming up.",
+      "missingTitle": "Announcements are not set up yet",
+      "missingBody": "Apply database migration 045 to start writing announcements.",
+      "noMessage": "(no message)",
+      "status": {
+        "draft": "Draft",
+        "published": "Published",
+        "archived": "Archived",
+        "showing": "Showing now",
+        "scheduled": "Scheduled",
+        "ended": "Ended"
+      },
+      "tones": {
+        "info": "Info",
+        "warning": "Warning"
+      },
+      "fields": {
+        "language": "Language",
+        "message": "Message",
+        "messageHelp": "Short and plain, one or two sentences.",
+        "tone": "Tone",
+        "toneHelp": "Info can be closed by the client. A warning stays until it ends.",
+        "startsAt": "Starts",
+        "endsAt": "Ends",
+        "endsAtHelp": "The banner disappears by itself at this time.",
+        "audience": "Who sees it",
+        "audienceHelp": "Leave everything unticked to show it to every client. Tick modules to show it only to sites that use at least one of them."
+      },
+      "actions": {
+        "saveDraft": "Save draft",
+        "publish": "Publish",
+        "saveChanges": "Save changes",
+        "archive": "Archive",
+        "moveToDraft": "Move to draft",
+        "close": "Close"
+      },
+      "toast": {
+        "saved": "Saved",
+        "published": "Published",
+        "archived": "Archived"
+      },
+      "errors": {
+        "messageRequired": "Add a message in at least one language.",
+        "messageTooLong": "A message is too long (400 characters at most).",
+        "toneInvalid": "Choose info or warning.",
+        "startRequired": "Pick when it starts.",
+        "endRequired": "Pick when it ends.",
+        "endBeforeStart": "The end must be after the start.",
+        "endInPast": "The end is already in the past.",
+        "unknownModule": "An unknown module was selected.",
+        "forbidden": "You’re no longer signed in as an admin with 2-step verification.",
+        "notFound": "That announcement no longer exists.",
+        "failed": "Couldn’t save. Please try again.",
+        "missing": "Announcements are not set up yet (migration 045)."
+      }
+    },
     "whatsNew": {
       "title": "What’s New",
       "emptyTitle": "No updates yet",
@@ -3227,7 +3324,9 @@
         "removeImage": "Remove image",
         "uploading": "Uploading…",
         "audience": "Who sees it",
-        "audienceHelp": "Leave everything unticked to show it to every client. Tick modules to show it only to sites that use at least one of them."
+        "audienceHelp": "Leave everything unticked to show it to every client. Tick modules to show it only to sites that use at least one of them.",
+        "showAsPopup": "Show as pop-up",
+        "showAsPopupHelp": "Opens once in a window the next time a client opens the dashboard. Use sparingly."
       },
       "actions": {
         "saveDraft": "Save draft",
@@ -3245,7 +3344,8 @@
       "toast": {
         "saved": "Saved",
         "published": "Published",
-        "archived": "Archived"
+        "archived": "Archived",
+        "popupUnavailable": "Saved, but the pop-up option needs migration 045."
       },
       "errors": {
         "titleRequired": "Add a title in at least one language.",
@@ -4147,7 +4247,8 @@
             "addEdition": "Add another edition",
             "editionLanguage": "Edition language",
             "editionNone": "—",
-            "editionOriginal": "Original edition"
+            "editionOriginal": "Original edition",
+            "duplicateShop": "This edition already has a link to {shop}."
           },
           "title": "Title",
           "book": {
@@ -4179,6 +4280,17 @@
             "shortFailed": "We could not read this app link. Open the product on amazon.de or amazon.it and copy the link from the address bar.",
             "unreadable": "We could not find the product in this link. Open the product page on Amazon and copy the link from the address bar.",
             "priceHint": "Amazon does not allow a price next to its button, so the price you enter here is not shown on the website for this item."
+          },
+          "shop": {
+            "finalLink": "Final link",
+            "tracked": "✓ {shop} · your Awin ID added",
+            "pasted": "✓ {shop} · using the Awin ID from your link",
+            "noPublisherId": "{shop} · no Awin ID yet. Add it in Settings.",
+            "noPublisherIdAskAdmin": "{shop} · no Awin ID yet. Ask your site admin to add it.",
+            "notApproved": "{shop} isn’t ticked as approved in Settings yet. The link works but earns nothing.",
+            "notApprovedAskAdmin": "{shop} isn’t ticked as approved yet. The link works but earns nothing. Ask your site admin.",
+            "notReady": "{shop} · coming soon. The link works but isn’t tracked yet.",
+            "openSettings": "Open Settings"
           }
         },
         "photos": {

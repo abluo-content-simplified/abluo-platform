@@ -57,6 +57,8 @@ export type ClientSidebarProps = {
   homeHref: string
   /** "What's new" for this project, in the reader's language; null/empty = no entry (ADR-030). */
   whatsNew?: ClientProductUpdate[] | null
+  /** Open the newest flagged unread update in a dialog once (off in a support visit). Default on. */
+  whatsNewPopup?: boolean
 }
 
 const ICONS = {
@@ -87,6 +89,7 @@ export function ClientSidebar({
   account,
   homeHref,
   whatsNew = null,
+  whatsNewPopup = true,
   profile = null,
 }: ClientSidebarProps) {
   const [profileOpen, setProfileOpen] = useState(false)
@@ -94,7 +97,7 @@ export function ClientSidebar({
   const openAddContent = useOpenAddContent()
   const activeProjectName = projects.find((p) => p.projectSlug === activeSlug)?.name?.trim() || activeSlug
   const { content: contentItem, forms: leadsItem, overflow } = phoneNavLayout(navItems)
-  const news = useWhatsNew(whatsNew)
+  const news = useWhatsNew(whatsNew, { popup: whatsNewPopup })
 
   // Home opens the content group; a new group gets extra space above it (no headings).
   const grouped = [

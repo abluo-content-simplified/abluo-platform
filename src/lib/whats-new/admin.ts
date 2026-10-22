@@ -28,11 +28,13 @@ export type AdminProductUpdate = {
   ctaUrl: string
   imageUrl: string | null
   modules: string[]
+  /** "Show as pop-up" (migration 045); false when not set or not available. */
+  showAsPopup: boolean
   /** People who have opened it; null when not counted. */
   readCount: number | null
 }
 
-export function toAdminUpdate(row: ProductUpdateRow, readCount: number | null = null): AdminProductUpdate {
+export function toAdminUpdate(row: ProductUpdateRow, readCount: number | null = null, showAsPopup = false): AdminProductUpdate {
   return {
     id: row.id,
     slug: row.slug,
@@ -45,6 +47,7 @@ export function toAdminUpdate(row: ProductUpdateRow, readCount: number | null = 
     ctaUrl: row.cta_url ?? '',
     imageUrl: row.image_url,
     modules: audienceModules(row.audience),
+    showAsPopup,
     readCount,
   }
 }
@@ -78,7 +81,10 @@ export async function listProductUpdatesForAdmin(limit = 200): Promise<AdminUpda
       return countError ? null : (count ?? 0)
     }),
   )
-  return { state: 'ok', updates: rows.map((row, i) => toAdminUpdate(row, counts[i])) }
+  // The pop-up flag is read on its own: column missing (045 not applied) = no flags.
+  const flagged = await admin.from('product_updates').select('id').eq('show_as_popup', true).limit(limit)
+  const popupIds = new Set(flagged.error ? [] : ((flagged.data ?? []) as { id: string }[]).map((r) => r.id))
+  return { state: 'ok', updates: rows.map((row, i) => toAdminUpdate(row, counts[i], popupIds.has(row.id))) }
 }
 
 export async function getProductUpdateForAdmin(id: string): Promise<ProductUpdateRow | null> {

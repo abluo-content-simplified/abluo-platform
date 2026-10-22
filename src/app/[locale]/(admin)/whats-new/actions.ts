@@ -15,8 +15,18 @@ import { requireAbluoAdmin } from '@/lib/api/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { MODULE_REGISTRY } from '@/lib/modules/registry'
 import { sniffImageType } from '@/lib/account/avatar'
+import { getNoticeForAdmin, toAdminNotice, type AdminNotice } from '@/lib/whats-new/notices-admin'
+import {
+  NOTICE_COLUMNS,
+  nextNoticeStatus,
+  validateNotice,
+  type NoticeError,
+  type NoticeInput,
+  type NoticeRow,
+} from '@/lib/whats-new/notices'
 import { getProductUpdateForAdmin, toAdminUpdate, type AdminProductUpdate } from '@/lib/whats-new/admin'
 import {
+  isMissingTableError,
   nextStatus,
   PRODUCT_UPDATE_BUCKET,
   PRODUCT_UPDATE_COLUMNS,
@@ -33,7 +43,8 @@ import {
 export type SaveIntent = 'save' | 'publish' | 'archive' | 'draft'
 
 export type SaveProductUpdateResult =
-  | { ok: true; update: AdminProductUpdate }
+  /** `warning`: saved, but the pop-up flag could not be stored (migration 045 not applied). */
+  | { ok: true; update: AdminProductUpdate; warning?: 'popupUnavailable' }
   | { ok: false; error: 'forbidden' | 'notFound' | 'failed'; errors?: undefined }
   | { ok: false; error: 'invalid'; errors: ProductUpdateError[] }
 
@@ -86,7 +97,17 @@ export async function saveProductUpdateAction(
   revalidatePath('/whats-new')
   // Client dashboards read the feed in their layout on every request (dynamic);
   // nothing to revalidate there.
-  return { ok: true, update: toAdminUpdate(data as ProductUpdateRow, null) }
+  // "Show as pop-up" is written on its own (migration 045): when the column is
+  // not there yet the update still saves, and only a ticked box is reported.
+  const wantPopup = input.showAsPopup === true
+  const flag = await admin.from('product_updates').update({ show_as_popup: wantPopup }).eq('id', (data as ProductUpdateRow).id)
+  if (flag.error && wantPopup) console.warn(`what's new: pop-up flag not saved (${flag.error.message})`)
+  const popupSaved = wantPopup && !flag.error
+  return {
+    ok: true,
+    update: toAdminUpdate(data as ProductUpdateRow, null, popupSaved),
+    ...(flag.error && wantPopup ? { warning: 'popupUnavailable' as const } : {}),
+  }
 }
 
 export type UploadUpdateImageResult =
@@ -119,4 +140,41 @@ export async function uploadProductUpdateImageAction(formData: FormData): Promis
     return { ok: false, error: 'failed' }
   }
   return { ok: true, url: admin.storage.from(PRODUCT_UPDATE_BUCKET).getPublicUrl(path).data.publicUrl }
+}
+
+
+// ── Announcements (migration 045) ────────────────────────────────────────────
+
+export type SaveNoticeResult =
+  | { ok: true; notice: AdminNotice }
+  | { ok: false; error: 'forbidden' | 'notFound' | 'failed' | 'missing'; errors?: undefined }
+  | { ok: false; error: 'invalid'; errors: NoticeError[] }
+
+export async function saveNoticeAction(id: string | null, intent: SaveIntent, input: NoticeInput): Promise<SaveNoticeResult> {
+  const actor = await requireAbluoAdmin()
+  if (!actor) return { ok: false, error: 'forbidden' }
+  if (!INTENTS.includes(intent)) return { ok: false, error: 'failed' }
+  if (id !== null && !UUID.test(id)) return { ok: false, error: 'notFound' }
+
+  const checked = validateNotice(input, {
+    knownModules: MODULE_REGISTRY.map((m) => m.id),
+    publishing: intent === 'publish',
+    now: Date.now(),
+  })
+  if (!checked.ok) return { ok: false, error: 'invalid', errors: checked.errors }
+
+  const admin = createAdminClient()
+  const current = id ? await getNoticeForAdmin(id) : null
+  if (id && !current) return { ok: false, error: 'notFound' }
+
+  const values = { ...checked.values, status: nextNoticeStatus(intent, current?.status ?? null), updated_by: actor.userId }
+  const { data, error } = current
+    ? await admin.from('product_notices').update(values).eq('id', current.id).select(NOTICE_COLUMNS).single()
+    : await admin.from('product_notices').insert({ ...values, created_by: actor.userId }).select(NOTICE_COLUMNS).single()
+  if (error || !data) {
+    console.warn(`announcements: save failed (${error?.message ?? 'no row'})`)
+    return { ok: false, error: isMissingTableError(error) ? 'missing' : 'failed' }
+  }
+  revalidatePath('/whats-new')
+  return { ok: true, notice: toAdminNotice(data as NoticeRow) }
 }

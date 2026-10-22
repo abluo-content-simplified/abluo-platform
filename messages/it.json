@@ -2015,7 +2015,14 @@
       "close": "Chiudi",
       "new": "Nuovo",
       "unreadCount": "{count, plural, one {# novità da leggere} other {# novità da leggere}}",
-      "opensInNewTab": "(si apre in una nuova scheda)"
+      "opensInNewTab": "(si apre in una nuova scheda)",
+      "gotIt": "Ho capito",
+      "seeAll": "Vedi tutte le novità",
+      "popupLabel": "Novità in Abluo"
+    },
+    "announcements": {
+      "warning": "Attenzione",
+      "dismiss": "Chiudi"
     },
     "sites": {
       "title": "I tuoi siti",
@@ -2568,6 +2575,11 @@
       "md": "Normale",
       "lg": "Grande",
       "xl": "Molto grande"
+    },
+    "newVersion": {
+      "message": "Abluo è stato aggiornato. Ricarica quando vuoi.",
+      "reload": "Ricarica",
+      "dismiss": "Chiudi"
     },
     "version": {
       "updated": "Aggiornato {date}"
@@ -3184,6 +3196,69 @@
         "tooMany": "Troppi link (massimo 20)."
       }
     },
+    "announcements": {
+      "title": "Avvisi",
+      "description": "Un banner in cima alla dashboard dei clienti tra un orario di inizio e uno di fine — manutenzione programmata, un problema noto.",
+      "newNotice": "Nuovo avviso",
+      "newTitle": "Nuovo avviso",
+      "editTitle": "Modifica avviso",
+      "emptyTitle": "Nessun avviso",
+      "emptyBody": "Scrivine uno quando sta per succedere qualcosa che i clienti devono sapere.",
+      "missingTitle": "Gli avvisi non sono ancora configurati",
+      "missingBody": "Applica la migrazione 045 del database per iniziare a scrivere avvisi.",
+      "noMessage": "(nessun messaggio)",
+      "status": {
+        "draft": "Bozza",
+        "published": "Pubblicato",
+        "archived": "Archiviato",
+        "showing": "In corso",
+        "scheduled": "Programmato",
+        "ended": "Terminato"
+      },
+      "tones": {
+        "info": "Info",
+        "warning": "Attenzione"
+      },
+      "fields": {
+        "language": "Lingua",
+        "message": "Messaggio",
+        "messageHelp": "Breve e semplice, una o due frasi.",
+        "tone": "Tono",
+        "toneHelp": "Un avviso info può essere chiuso dal cliente. Un’attenzione resta fino alla fine.",
+        "startsAt": "Inizio",
+        "endsAt": "Fine",
+        "endsAtHelp": "Il banner scompare da solo a questo orario.",
+        "audience": "Chi lo vede",
+        "audienceHelp": "Lascia tutto deselezionato per mostrarlo a ogni cliente. Seleziona dei moduli per mostrarlo solo ai siti che ne usano almeno uno."
+      },
+      "actions": {
+        "saveDraft": "Salva bozza",
+        "publish": "Pubblica",
+        "saveChanges": "Salva modifiche",
+        "archive": "Archivia",
+        "moveToDraft": "Sposta in bozza",
+        "close": "Chiudi"
+      },
+      "toast": {
+        "saved": "Salvato",
+        "published": "Pubblicato",
+        "archived": "Archiviato"
+      },
+      "errors": {
+        "messageRequired": "Aggiungi un messaggio in almeno una lingua.",
+        "messageTooLong": "Un messaggio è troppo lungo (massimo 400 caratteri).",
+        "toneInvalid": "Scegli info o attenzione.",
+        "startRequired": "Scegli quando inizia.",
+        "endRequired": "Scegli quando finisce.",
+        "endBeforeStart": "La fine deve essere dopo l’inizio.",
+        "endInPast": "La fine è già passata.",
+        "unknownModule": "È stato selezionato un modulo sconosciuto.",
+        "forbidden": "Non hai più l’accesso come admin con verifica in due passaggi.",
+        "notFound": "Questo avviso non esiste più.",
+        "failed": "Impossibile salvare. Riprova.",
+        "missing": "Gli avvisi non sono ancora configurati (migrazione 045)."
+      }
+    },
     "whatsNew": {
       "title": "Novità",
       "emptyTitle": "Ancora nessun aggiornamento",
@@ -3227,7 +3302,9 @@
         "removeImage": "Rimuovi immagine",
         "uploading": "Caricamento…",
         "audience": "Chi la vede",
-        "audienceHelp": "Lascia tutto deselezionato per mostrarla a tutti i clienti. Seleziona dei moduli per mostrarla solo ai siti che ne usano almeno uno."
+        "audienceHelp": "Lascia tutto deselezionato per mostrarla a tutti i clienti. Seleziona dei moduli per mostrarla solo ai siti che ne usano almeno uno.",
+        "showAsPopup": "Mostra come pop-up",
+        "showAsPopupHelp": "Si apre una sola volta in una finestra alla prossima apertura della dashboard da parte del cliente. Da usare con parsimonia."
       },
       "actions": {
         "saveDraft": "Salva bozza",
@@ -3245,7 +3322,8 @@
       "toast": {
         "saved": "Salvata",
         "published": "Pubblicata",
-        "archived": "Archiviata"
+        "archived": "Archiviata",
+        "popupUnavailable": "Salvato, ma l’opzione pop-up richiede la migrazione 045."
       },
       "errors": {
         "titleRequired": "Aggiungi un titolo in almeno una lingua.",

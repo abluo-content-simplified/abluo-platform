@@ -18,6 +18,9 @@ import { UploadsProvider } from '@/components/client/media/UploadsProvider'
 import { buildCreateMenu } from '@/lib/modules/add-content-sheet'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { loadWhatsNewFeed } from '@/lib/whats-new/client-feed'
+import { loadClientNotices } from '@/lib/whats-new/notices-feed'
+import { AnnouncementBanners } from '@/components/client/whats-new/AnnouncementBanners'
+import { NewVersionNotice } from '@/components/system/NewVersionNotice'
 import { can } from '@/lib/authz/check'
 import { SUPPORT_EDIT_MINUTES } from '@/lib/support/constants'
 import { listSupportNotices } from '@/lib/support/server'
@@ -96,6 +99,13 @@ async function ClientProjectLayoutInner({
     enabledModuleIds: activeGrant.enabledModuleIds,
   })
   lap('whatsNew')
+  // Announcements (migration 045): same defensive read — null when unavailable.
+  const notices = await loadClientNotices({
+    userId: ctx.userId,
+    locale: uiLocale,
+    enabledModuleIds: activeGrant.enabledModuleIds,
+  })
+  lap('notices')
   // Profile panel (Tom, 2026-10-08): every site this person works on, with their role there.
   const tRoles = await getTranslations('app.roles')
   const profile = {
@@ -146,10 +156,15 @@ async function ClientProjectLayoutInner({
           }}
           homeHref={dashboardHomeHref(activeGrant.projectSlug)}
           whatsNew={whatsNew?.updates ?? null}
+          whatsNewPopup={!support}
           profile={profile}
         />
         {/* #client-main: the main scroll container (the floating "+" listens to it and to the window). */}
         <div id="client-main" className="min-h-screen min-w-0 flex-1 md:ml-56">
+          {/* A newer Abluo build is live: calm, never reloads by itself. */}
+          <NewVersionNotice className="mx-4 mt-4 md:mx-6 md:mt-6" />
+          {/* Announcements (planned maintenance …) between their start and end. */}
+          <AnnouncementBanners notices={notices} />
           {support ? (
             <SupportBanner
               site={support.projectName}
