@@ -538,13 +538,12 @@ describe('setPostCover', () => {
     ])
   })
 
-  it('fills the missing alt text on the Media Library asset, never overwriting', async () => {
+  it('never writes the description back to the Media Library asset (it is the post\'s own)', async () => {
     const f = fakes({
       assets: { 'media-a': { projectSlug: 'hoffmann', ref: 'image-abc-1x1-jpg', url: 'u', altText: { _type: 'localizedString', it: 'Esistente' } } },
     })
     await set(f, { alt: { it: 'Nuovo', de: 'Neu' } })
-    const lib = f.patches.find((p) => p.id === 'media-a')!
-    expect(lib.ops).toContainEqual(['set', { 'altText.de': 'Neu' }])
+    expect(f.patches.some((p) => p.id === 'media-a')).toBe(false)
   })
 
   it.each([
@@ -664,13 +663,12 @@ describe('setPostCover · focal point', () => {
       },
     })
 
-  it('writes the hotspot on the Media Library asset AND the cover, keeping the crop', async () => {
+  it('writes the hotspot on the cover only (never the Media Library asset), keeping the crop', async () => {
     const f = withCrop()
     const r = await set(f, { focal: { x: 0.25, y: 0.123456 } })
     expect(r.cover?.focal).toEqual({ x: 0.25, y: 0.1235 })
     const hotspot = { _type: 'sanity.imageHotspot', x: 0.25, y: 0.1235, width: 0.4, height: 0.2 }
-    const lib = f.patches.find((p) => p.id === 'media-a')!
-    expect(lib.ops).toEqual([['set', { 'image.hotspot': hotspot }], ['commit', null]])
+    expect(f.patches.some((p) => p.id === 'media-a')).toBe(false)
     const draft = f.patches.find((p) => p.id === `drafts.${ID}`)!
     expect(draft.ops[1]).toEqual([
       'set',
@@ -684,17 +682,16 @@ describe('setPostCover · focal point', () => {
         'wizard.updatedAt': '2026-10-05T10:00:00.000Z',
       },
     ])
-    // The asset (source of truth) is written before the draft.
-    expect(f.patches.map((p) => p.id)).toEqual(['media-a', `drafts.${ID}`])
+    expect(f.patches.map((p) => p.id)).toEqual([`drafts.${ID}`])
   })
 
   it('uses a default hotspot size when the asset had none', async () => {
     const f = fakes()
     await set(f, { focal: { x: 0, y: 1 } })
-    expect(f.patches.find((p) => p.id === 'media-a')!.ops[0]).toEqual([
-      'set',
-      { 'image.hotspot': { _type: 'sanity.imageHotspot', x: 0, y: 1, width: HOTSPOT_SIZE, height: HOTSPOT_SIZE } },
-    ])
+    const draft = f.patches.find((p) => p.id === `drafts.${ID}`)!
+    expect((draft.ops[1][1] as { coverImage: { hotspot: unknown } }).coverImage.hotspot).toEqual(
+      { _type: 'sanity.imageHotspot', x: 0, y: 1, width: HOTSPOT_SIZE, height: HOTSPOT_SIZE }
+    )
   })
 
   it("copies the asset's existing focal point onto the cover when none is sent", async () => {
@@ -729,7 +726,7 @@ describe('setPostCover · focal point', () => {
     const f = withCrop()
     const r = await set(f, { assetId: 'image-abc-800x600-jpg', focal: { x: 0.3, y: 0.3 } })
     expect(r.cover?.assetId).toBe('media-a')
-    expect(f.patches.map((p) => p.id)).toEqual(['media-a', `drafts.${ID}`])
+    expect(f.patches.map((p) => p.id)).toEqual([`drafts.${ID}`])
     await expect(set(f, { assetId: 'image-def-800x600-jpg' })).rejects.toMatchObject({ code: 'not_found' })
   })
 
@@ -755,6 +752,30 @@ describe('getPostCover', () => {
       alt: { it: 'Mare' },
       focal: null,
     })
+  })
+
+  it("shows the post's own focal point, not the Media Library's", async () => {
+    const f = fakes({
+      assets: {
+        'media-a': {
+          projectSlug: 'hoffmann',
+          ref: 'image-abc-800x600-jpg',
+          url: 'https://cdn/a.jpg',
+          hotspot: { _type: 'sanity.imageHotspot', x: 0.5, y: 0.5, width: 0.4, height: 0.2 },
+        },
+      },
+      draft: {
+        _type: 'post',
+        _rev: 'r1',
+        projectSlug: 'hoffmann',
+        coverImage: {
+          asset: { _ref: 'image-abc-800x600-jpg' },
+          hotspot: { _type: 'sanity.imageHotspot', x: 0.1, y: 0.9, width: 0.4, height: 0.2 },
+        },
+      },
+    })
+    const cover = await getPostCover(ctx(grant()), 'project-a', { id: ID }, f.deps)
+    expect(cover?.focal).toEqual({ x: 0.1, y: 0.9 })
   })
 
   it('returns null without a cover', async () => {

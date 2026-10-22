@@ -716,14 +716,13 @@ export async function setPostCover(
     { assetId: mediaAssetId }
   )
   if (!asset?.ref || !asset.ref.startsWith('image-')) throw new PostMediaError('not_found', 'Unknown image.')
-  // Before the first write (asset hotspot, then the draft).
+  // Before the write (the draft only).
   await assertSingleSanityProject((q, p) => scoped.fetch(q, p), grant.projectSlug)
 
-  // The focal point lives on the Media Library asset ("set once, applies
-  // everywhere", ADR-022 §4a); the cover carries a copy so the website's
-  // locImage('coverImage') projection sees it. Asset first: if the draft
-  // write then conflicts, re-sending the same point is harmless.
-  const assetFocal = focalOf(asset.hotspot)
+  // The focal point belongs to THIS post (Tom, 2026-10-22): the cover starts
+  // from the Media Library asset's point, and a point chosen here is stored on
+  // the cover only — never written back to the library, so one post can't move
+  // the crop of every gallery and catalogue item using the same photo.
   const hotspot = focal
     ? {
         _type: 'sanity.imageHotspot',
@@ -733,14 +732,6 @@ export async function setPostCover(
         height: typeof asset.hotspot?.height === 'number' ? asset.hotspot.height : HOTSPOT_SIZE,
       }
     : asset.hotspot ?? null
-  if (focal && (assetFocal?.x !== focal.x || assetFocal?.y !== focal.y)) {
-    try {
-      await client.patch(mediaAssetId).set({ 'image.hotspot': hotspot }).commit()
-    } catch {
-      throw new PostMediaError('failed', 'Could not save the focal point.')
-    }
-  }
-
   // Keep the crop: the asset's (source of truth), else the cover's own for the same image.
   const existing = current
   const crop =
@@ -757,22 +748,8 @@ export async function setPostCover(
   }
   const rev = await commit((p) => p.set({ coverImage, 'wizard.updatedAt': now }))
 
-  // Best effort: give the Media Library asset the alt text it is missing, so
-  // the next use of this image starts from it. Never overwrites existing text
-  // and never touches a legacy plain-string altText.
-  if (asset.altText === undefined || asset.altText === null || (typeof asset.altText === 'object' && !Array.isArray(asset.altText))) {
-    const existingAlt = toLocalized(asset.altText)
-    const missing = Object.entries(alt).filter(([l]) => !existingAlt[l])
-    if (missing.length) {
-      try {
-        let p = client.patch(mediaAssetId).setIfMissing({ altText: { _type: 'localizedString' } })
-        p = p.set(Object.fromEntries(missing.map(([l, v]) => [`altText.${l}`, v])))
-        await p.commit()
-      } catch {
-        // The cover is saved; the library alt text can be added later.
-      }
-    }
-  }
+  // The description is the post's own; it is never written back to the Media
+  // Library (Tom, 2026-10-22 — the same photo may be described differently here).
 
   return { rev, cover: { assetId: mediaAssetId, url: asset.url ?? '', alt, focal: focalOf(hotspot) } }
 }
@@ -800,6 +777,7 @@ export async function getPostCover(
     assetId: asset._id,
     url: asset.url ?? '',
     alt: toLocalized(current.coverImage?.alt),
-    focal: focalOf(asset.hotspot) ?? focalOf((current.coverImage as { hotspot?: unknown } | undefined)?.hotspot),
+    // The post's own point first (it is what the website shows), else the library's.
+    focal: focalOf((current.coverImage as { hotspot?: unknown } | undefined)?.hotspot) ?? focalOf(asset.hotspot),
   }
 }
