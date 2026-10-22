@@ -2625,7 +2625,7 @@
         "bodyLabel": "Tell us more",
         "bodyHint": "What did you do, what did you expect, what happened instead?",
         "screenshotsLabel": "Screenshots (optional)",
-        "sensitiveNotice": "Please don’t include patient information or other sensitive personal data in your request or screenshots.",
+        "sensitiveNotice": "Please don’t include personal data about your clients or other people, such as health details, passwords or payment information, in your request or screenshots.",
         "send": "Send Request",
         "sending": "Sending…",
         "related": "Follows up on {reference}.",

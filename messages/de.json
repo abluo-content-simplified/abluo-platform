@@ -2625,7 +2625,7 @@
         "bodyLabel": "Erzähl uns mehr",
         "bodyHint": "Was hast du getan, was hast du erwartet, was ist stattdessen passiert?",
         "screenshotsLabel": "Screenshots (optional)",
-        "sensitiveNotice": "Bitte gib in deiner Anfrage und in den Screenshots keine Patienteninformationen oder andere sensible personenbezogene Daten an.",
+        "sensitiveNotice": "Bitte gib in deiner Anfrage und in den Screenshots keine personenbezogenen Daten deiner Kundinnen und Kunden oder anderer Personen an, etwa Gesundheitsangaben, Passwörter oder Zahlungsdaten.",
         "send": "Anfrage senden",
         "sending": "Wird gesendet…",
         "related": "Folgt auf {reference}.",

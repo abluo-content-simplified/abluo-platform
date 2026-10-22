@@ -2625,7 +2625,7 @@
         "bodyLabel": "Raccontaci di più",
         "bodyHint": "Cosa hai fatto, cosa ti aspettavi, cosa è successo invece?",
         "screenshotsLabel": "Screenshot (facoltativo)",
-        "sensitiveNotice": "Per favore non inserire informazioni sui pazienti o altri dati personali sensibili nella richiesta o negli screenshot.",
+        "sensitiveNotice": "Per favore non inserire nella richiesta o negli screenshot dati personali dei tuoi clienti o di altre persone, come informazioni sulla salute, password o dati di pagamento.",
         "send": "Invia richiesta",
         "sending": "Invio in corso…",
         "related": "Segue {reference}.",
