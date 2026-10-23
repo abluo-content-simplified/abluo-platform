@@ -238,7 +238,7 @@ export function AppSidebar({
                   {item.label}
                   {item.badge && item.badge.count > 0 ? (
                     <span className="ml-auto inline-flex">
-                      <CountBadge count={item.badge.count} srLabel={item.badge.label} />
+                      <CountBadge tone="attention" count={item.badge.count} srLabel={item.badge.label} />
                     </span>
                   ) : null}
                 </Link>

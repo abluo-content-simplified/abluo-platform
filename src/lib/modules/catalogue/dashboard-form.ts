@@ -213,14 +213,16 @@ export function slugPreview(segment: string | null, slug: string): string {
 
 // ── Gaps (spec §11: warn, never block) ────────────────────────────────────────
 
-export type ItemGap = 'noPhoto' | 'noPrice' | 'allergensNotReviewed'
+export type ItemGap = 'noPhoto' | 'noPrice' | 'allergensNotReviewed' | 'noCategory'
 
-export function itemGaps(item: { imageCount: number; offerCount: number; allergensNotReviewed?: boolean }): ItemGap[] {
+/** categoryCount is optional: only callers that know the item's categories report "No category". */
+export function itemGaps(item: { imageCount: number; offerCount: number; allergensNotReviewed?: boolean; categoryCount?: number }): ItemGap[] {
   const out: ItemGap[] = []
   if (item.imageCount === 0) out.push('noPhoto')
   if (item.offerCount === 0) out.push('noPrice')
   // D-3: the one gap that also BLOCKS publishing.
   if (item.allergensNotReviewed) out.push('allergensNotReviewed')
+  if (item.categoryCount === 0) out.push('noCategory')
   return out
 }
 

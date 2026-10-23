@@ -14,9 +14,11 @@ export type AdminTicketView = {
   severity: TicketSeverity | ''
   /** Only tickets with activity this admin has not seen yet. */
   unread: boolean
+  /** '0' = never opened by this admin (new requests), '1' = opened before, '' = either. */
+  seen: '' | '0' | '1'
 }
 
-export const DEFAULT_ADMIN_VIEW: AdminTicketView = { project: '', status: 'active', severity: '', unread: false }
+export const DEFAULT_ADMIN_VIEW: AdminTicketView = { project: '', status: 'active', severity: '', unread: false, seen: '' }
 
 export const STATUS_FILTERS: readonly StatusFilter[] = ['active', ...TICKET_STATUSES, 'all']
 
@@ -37,6 +39,7 @@ export function parseAdminView(params: Params): AdminTicketView {
     status: status === 'all' || status === 'active' || isTicketStatus(status) ? (status as StatusFilter) : 'active',
     severity: isTicketSeverity(severity) ? severity : '',
     unread: first(params, 'unread') === '1',
+    seen: first(params, 'seen') === '0' ? '0' : first(params, 'seen') === '1' ? '1' : '',
   }
 }
 
@@ -47,18 +50,19 @@ export function adminViewQuery(view: AdminTicketView): string {
   if (view.status !== 'active') q.set('status', view.status)
   if (view.severity) q.set('severity', view.severity)
   if (view.unread) q.set('unread', '1')
+  if (view.seen) q.set('seen', view.seen)
   const s = q.toString()
   return s ? `?${s}` : ''
 }
 
 export function isDefaultAdminView(view: AdminTicketView): boolean {
-  return !view.project && view.status === 'active' && !view.severity && !view.unread
+  return !view.project && view.status === 'active' && !view.severity && !view.unread && !view.seen
 }
 
 /** Applies the filters to the full list and sorts by last activity, newest first. */
 export function applyAdminView(tickets: TicketSummary[], view: AdminTicketView): TicketSummary[] {
   return tickets
-    .filter((t) => (!view.project || t.project?.slug === view.project) && (!view.severity || t.severity === view.severity) && (!view.unread || t.unread))
+    .filter((t) => (!view.project || t.project?.slug === view.project) && (!view.severity || t.severity === view.severity) && (!view.unread || t.unread) && (!view.seen || (view.seen === '1' ? !!t.seen : !t.seen)))
     .filter((t) => (view.status === 'all' ? true : view.status === 'active' ? t.status !== 'resolved' : t.status === view.status))
     .sort((a, b) => (a.lastActivityAt < b.lastActivityAt ? 1 : a.lastActivityAt > b.lastActivityAt ? -1 : 0))
 }
@@ -70,9 +74,12 @@ export function projectOptions(tickets: TicketSummary[]): Array<{ slug: string; 
   return [...map].map(([slug, name]) => ({ slug, name })).sort((a, b) => a.name.localeCompare(b.name))
 }
 
-/** The three Support card numbers on the admin home, each as the list filter behind it. */
+/** The four Support card numbers on the admin home, each as the list filter behind it. */
 export const SUPPORT_CARD_LINKS = {
-  new: '/support?status=open&unread=1',
+  /** Never opened by this admin (matches `newCount`). */
+  new: '/support?seen=0',
+  /** Opened before, with a client reply since (matches `repliedCount`). */
+  replied: '/support?seen=1&unread=1',
   waiting: '/support?status=waiting_for_user',
   high: '/support?severity=high',
 } as const

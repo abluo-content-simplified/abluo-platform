@@ -35,6 +35,7 @@ beforeEach(() => {
     accountant: { id: 'u-acc', email: 'acc@a.it' },
   }
   tables = {
+    access_audit_log: [],
     tenants: [{ id: 'tA', display_name: 'A' }, { id: 'tB', display_name: 'B' }],
     projects: [{ id: P, slug: 'a', name: 'A', tenant_id: 'tA' }, { id: 'project-b', slug: 'b', name: 'B', tenant_id: 'tB' }],
     tenant_members: [
@@ -86,6 +87,10 @@ describe('changing access', () => {
   it('a Site admin gives an Editor contact requests', async () => {
     expect(await updateProjectMember(await ctx('admin'), P, 'pm-editor', { role: 'editor', extras: ['forms.submission.read'] })).toEqual({ ok: true })
     expect(tables.project_members.find((m) => m.id === 'pm-editor')!.extra_permissions).toEqual(['forms.submission.read'])
+    // ADR-030 A1: the change is in the access history, roles and extras only.
+    expect(tables.access_audit_log).toEqual([
+      expect.objectContaining({ actor_id: 'u-admin', subject_user_id: 'u-editor', project_id: P, action: 'member.change', detail: expect.objectContaining({ role: 'editor', extras: ['forms.submission.read'] }) }),
+    ])
   })
   it('a Site admin cannot promote an Editor, touch another Site admin, or change itself', async () => {
     const c = await ctx('admin')
@@ -114,6 +119,7 @@ describe('archiving people (never deleting)', () => {
     expect(await archiveProjectMember(c, P, 'pm-editor')).toEqual({ ok: true })
     expect(tables.project_members.some((m) => m.id === 'pm-editor')).toBe(false)
     expect(tables.project_member_archive).toMatchObject([{ project_id: P, user_id: 'u-editor', role: 'editor', archived_by: 'u-admin' }])
+    expect(tables.access_audit_log).toMatchObject([{ actor_id: 'u-admin', subject_user_id: 'u-editor', project_id: P, action: 'member.archive' }])
   })
   it('the archived person loses the site at once and shows as Archived', async () => {
     tables.project_members.find((m) => m.id === 'pm-editor')!.extra_permissions = ['forms.submission.read']

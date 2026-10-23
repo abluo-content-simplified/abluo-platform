@@ -199,7 +199,8 @@ export function activityIssuesRule(
   const out: AdminAttentionItem[] = []
   for (const [projectId, c] of per) {
     const p = byId.get(projectId)
-    if (!p) continue
+    // Only real failures warrant attention; late-recorded / unattributed records are informational.
+    if (!p || c.failed === 0) continue
     out.push({
       id: `activityIssues:${projectId}`,
       rule: 'activityIssues',

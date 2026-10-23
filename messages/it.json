@@ -4285,69 +4285,71 @@
     },
     "users": {
       "title": "Utenti",
-      "description": "Tutti coloro che hanno accesso a un sito Abluo, alla data indicata di seguito. Premi Aggiorna per rileggerlo.",
+      "description": "Tutte le persone con accesso a un sito Abluo, all’ora indicata qui sotto. Premi Aggiorna per rileggere.",
       "loadError": "Impossibile leggere gli utenti: {message}",
-      "update": "Aggiornamento",
+      "update": "Aggiorna",
       "updating": "Aggiornamento…",
-      "summaryLabel": "Numero di utenti",
+      "summaryLabel": "Gli utenti in numeri",
       "tiles": {
-        "activeNow": "Tre attivi",
+        "activeNow": "Attivi ora",
         "people": "Persone con accesso",
-        "invitations": "Inviti in sospeso",
+        "invitations": "Inviti in attesa",
         "withoutTwoFactor": "Senza verifica in due passaggi"
       },
+      "activeNowHeading": "{count, plural, =0 {Attivi ora} other {Attivi ora ({count})}}",
       "activeNowEmpty": "Nessuno ha una dashboard aperta in questo momento.",
-      "activeNow": "Tre attivi",
+      "activeNow": "Attivo ora",
       "never": "Mai",
-      "superAdmin": "Super amministratore",
+      "superAdmin": "Super Admin",
       "mixedRoles": "Ruoli diversi",
+      "placesCount": "{count, plural, one {# posto} other {# posti}}",
       "accessArchivedOnly": "Archiviato ovunque",
-      "search": "Utenti di ricerca",
-      "searchPlaceholder": "Nome, email o sito web",
+      "search": "Cerca utenti",
+      "searchPlaceholder": "Nome, email o sito",
       "showing": "{shown} di {total}",
-      "clear": "Filtri trasparenti",
+      "clear": "Cancella filtri",
       "noMatch": "Nessun utente corrisponde a questi filtri.",
       "columns": {
         "avatar": "Immagine",
         "person": "Persona",
         "access": "Accesso",
         "status": "Stato",
-        "twoFactor": "2 fasi",
-        "lastActive": "Ultimo attivo"
+        "twoFactor": "2 passaggi",
+        "lastActive": "Ultima attività"
       },
       "filters": {
         "label": "Filtri",
-        "site": "Posizione",
+        "site": "Sito",
         "allSites": "Tutti i siti",
         "role": "Ruolo",
         "status": "Stato",
         "roles": {
           "all": "Tutti i ruoli",
-          "superAdmin": "Super amministratore",
-          "owner": "Proprietario",
+          "superAdmin": "Super Admin",
+          "owner": "Titolare",
           "admin": "Amministratore del sito",
-          "editor": "Redattore"
+          "editor": "Editor"
         },
         "statuses": {
           "all": "Tutti gli stati",
           "active": "Attivo",
           "invited": "Invitato",
           "archived": "Archiviato",
-          "none": "Accesso negato"
+          "none": "Nessun accesso"
         }
       },
       "status": {
         "active": "Attivo",
         "invited": "Invitato",
         "archived": "Archiviato",
-        "none": "Accesso negato"
+        "none": "Nessun accesso"
       },
       "roles": {
-        "owner": "Proprietario",
+        "owner": "Titolare",
         "member": "Membro",
         "admin": "Amministratore del sito",
-        "editor": "Redattore",
-        "viewer": "Spettatore"
+        "editor": "Editor",
+        "viewer": "Lettore"
       },
       "detail": {
         "tabsLabel": "Informazioni su questa persona",
@@ -4358,49 +4360,49 @@
           "activity": "Attività"
         },
         "name": "Nome",
-        "email": "E-mail",
-        "platformRole": "ruolo di Ablio",
+        "email": "Email",
+        "platformRole": "Ruolo Abluo",
         "noPlatformRole": "Nessuno",
         "accountCreated": "Account creato",
         "noAccountYet": "Invitato — nessun account ancora",
         "wholeClient": "{role} · tutti i siti di questo cliente",
-        "noAccess": "Accesso negato a qualsiasi sito.",
-        "accessSuperAdminOnly": "Super amministratore: nessun abbonamento al sito richiesto.",
+        "noAccess": "Nessun accesso a nessun sito.",
+        "accessSuperAdminOnly": "Super Admin — nessuna appartenenza a siti.",
         "twoFactor": "Verifica in due passaggi",
         "lastSignIn": "Ultimo accesso",
-        "lastActive": "Ultimo attivo",
-        "noActivity": "Ancora niente registrato",
-        "noActivityBody": "Le modifiche relative a pubblicazione, inviti e accesso sono riportate qui."
+        "lastActive": "Ultima attività",
+        "noActivity": "Ancora niente di registrato",
+        "noActivityBody": "Qui compaiono pubblicazioni, inviti e modifiche agli accessi."
       },
       "activity": {
         "content": "{type} · {action}",
         "types": {
-          "post": "Inviare",
+          "post": "Articolo",
           "event": "Evento",
-          "faqSet": "Set di domande frequenti",
+          "faqSet": "Gruppo di FAQ",
           "gallery": "Galleria",
-          "other": "Articolo"
+          "other": "Elemento"
         },
         "actions": {
           "created": "creato",
           "published": "pubblicato",
           "scheduled": "programmato",
-          "schedule_changed": "programma modificato",
-          "unpublished": "inedito",
+          "schedule_changed": "programmazione modificata",
+          "unpublished": "ritirato",
           "archived": "archiviato",
-          "restored": "restaurato",
-          "deleted": "cancellato",
+          "restored": "ripristinato",
+          "deleted": "eliminato",
           "delete_refused": "eliminazione rifiutata"
         },
         "about": {
-          "change": "Accesso modificato a {role} da {name}",
+          "change": "Accesso cambiato in {role} da {name}",
           "archive": "Archiviato da {name}",
-          "restore": "Accesso ripristinato ( {role} ) da {name}"
+          "restore": "Accesso ripristinato ({role}) da {name}"
         },
         "by": {
-          "change": "Accesso modificato di {name} a {role}",
-          "archive": "Archiviato {name}",
-          "restore": "Ripristinato {name} ( {role} )"
+          "change": "Ha cambiato l’accesso di {name} in {role}",
+          "archive": "Ha archiviato {name}",
+          "restore": "Ha ripristinato {name} ({role})"
         },
         "invited": "Invitato come {role}",
         "invitedBy": "Invitato come {role} da {name}",
@@ -4410,7 +4412,7 @@
         "support": "Supporto Abluo",
         "outcome": {
           "refused": "Rifiutato",
-          "failed": "Fallito"
+          "failed": "Non riuscito"
         }
       }
     }
@@ -4588,7 +4590,8 @@
       "gaps": {
         "noPhoto": "Nessuna foto",
         "noPrice": "Nessun prezzo",
-        "allergensNotReviewed": "Allergeni da verificare"
+        "allergensNotReviewed": "Allergeni da verificare",
+        "noCategory": "Nessuna categoria"
       },
       "days": {
         "mon": "Lun",
@@ -4671,7 +4674,8 @@
           "changes": "Modifiche",
           "publishOn": "Pubblica il",
           "unpublishOn": "Rimuovi il",
-          "price": "Prezzo"
+          "price": "Prezzo",
+          "toComplete": "Da completare"
         },
         "menuFor": "Azioni per {name}",
         "display": {

@@ -18,7 +18,7 @@ export default function CountBadgeDemo() {
     )
   return (
     <DemoStack>
-      <DemoBlock title="On editor tabs" note="count + srLabel. Readable on the selected segment too.">
+      <DemoBlock title="On editor tabs" note="count + srLabel (tone defaults to outline). Readable on the selected segment too.">
         <SegmentedControl
           label="Editor tabs"
           value={tab}
@@ -29,6 +29,22 @@ export default function CountBadgeDemo() {
             { value: 'page', label: label('Page') },
           ]}
         />
+      </DemoBlock>
+      <DemoBlock title="Attention (sidebar navigation)" note='tone="attention": filled orange (the --attention token), bold white number, a little larger. AppSidebar uses it for every nav badge, so the admin and the client sidebar look the same. Not red.'>
+        <ul className="flex w-56 flex-col gap-1 rounded-xl border border-border p-2 text-sm">
+          <li className="flex min-h-10 items-center gap-3 rounded-md px-3 text-muted-foreground">
+            Support
+            <span className="ml-auto inline-flex">
+              <CountBadge tone="attention" count={3} srLabel="3 tickets with new activity" />
+            </span>
+          </li>
+          <li className="flex min-h-10 items-center gap-3 rounded-md px-3 text-muted-foreground">
+            Inbox
+            <span className="ml-auto inline-flex">
+              <CountBadge tone="attention" count={128} srLabel="128 new messages" />
+            </span>
+          </li>
+        </ul>
       </DemoBlock>
     </DemoStack>
   )

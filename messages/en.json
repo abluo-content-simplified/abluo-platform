@@ -4590,7 +4590,8 @@
       "gaps": {
         "noPhoto": "No photo",
         "noPrice": "No price set",
-        "allergensNotReviewed": "Allergens not reviewed"
+        "allergensNotReviewed": "Allergens not reviewed",
+        "noCategory": "No category"
       },
       "days": {
         "mon": "Mon",
@@ -4673,7 +4674,8 @@
           "changes": "Changes",
           "publishOn": "Publish on",
           "unpublishOn": "Unpublish on",
-          "price": "Price"
+          "price": "Price",
+          "toComplete": "To complete"
         },
         "menuFor": "Actions for {name}",
         "display": {

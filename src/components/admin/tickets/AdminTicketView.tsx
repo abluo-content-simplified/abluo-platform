@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import {
   addNoteAction,
+  adminTicketActivityAction,
   deleteAttachmentAction,
   redactMessageAction,
   redactMessagePartsAction,
@@ -17,7 +18,7 @@ import {
 import { AttachmentPicker } from '@/components/app/ui/AttachmentPicker'
 import { BackLink } from '@/components/app/ui/BackLink'
 import { Button } from '@/components/app/ui/Button'
-import { ImageViewer } from '@/components/app/ui/ImageViewer'
+import { ScreenshotGrid } from '@/components/app/ui/ScreenshotGrid'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { FactRow } from '@/components/app/ui/FactRow'
 import { MessageComposer, type ComposerMode } from '@/components/app/ui/MessageComposer'
@@ -29,7 +30,6 @@ import { PillSelect } from '@/components/app/ui/PillSelect'
 import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
-import { LocalDate } from '@/components/app/ui/list/cells'
 import { fitScreenshots } from '@/lib/client/ticket-upload'
 import type { RedactionRange } from '@/lib/support-tickets/redaction'
 import { eventLine } from '@/lib/support-tickets/admin-view'
@@ -46,7 +46,8 @@ import {
   type TicketStatus,
 } from '@/lib/support-tickets/model'
 import { RedactPartsDialog } from './RedactPartsDialog'
-import { SEVERITY_TONE, STATUS_TONE } from './ticket-bits'
+import { AdminLastUpdate, SEVERITY_TONE, STATUS_TONE } from './ticket-bits'
+import { useVisibleInterval } from './use-visible-interval'
 
 type MessageEntry = Extract<ThreadEntry, { kind: 'message' }>
 
@@ -90,8 +91,21 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
   const [redactParts, setRedactParts] = useState<MessageEntry | null>(null)
   const [redactError, setRedactError] = useState<string | null>(null)
   const [redact, setRedact] = useState<MessageEntry | null>(null)
-  const [panelViewer, setPanelViewer] = useState<number | null>(null)
   const [removeShot, setRemoveShot] = useState<{ id: string; n: number } | null>(null)
+
+  // Live updates: while the tab is visible, ask every 20 s whether the ticket changed and refresh
+  // the server data when it did. router.refresh() keeps this component mounted, so the composer
+  // (text, mode, chosen files) is never lost. `known` is the last activity time already shown.
+  const known = useRef(ticket.lastActivityAt)
+  useEffect(() => {
+    known.current = ticket.lastActivityAt
+  }, [ticket.lastActivityAt])
+  useVisibleInterval(async () => {
+    const latest = await adminTicketActivityAction(ticket.id)
+    if (!latest || new Date(latest).getTime() === new Date(known.current).getTime()) return
+    known.current = latest
+    router.refresh()
+  }, 20_000)
 
   const failure = (r: Extract<TicketActionResult, { ok: false }>) => (t.has(`errors.${r.reason}`) ? t(`errors.${r.reason}` as 'errors.error') : t('errors.error'))
 
@@ -183,7 +197,6 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
   const screenshots: Array<TicketAttachmentView & { n: number }> = []
   for (const e of ticket.thread) if (e.kind === 'message') for (const a of e.attachments) screenshots.push({ ...a, n: screenshots.length + 1 })
 
-  const liveShots = screenshots.filter((a) => a.url)
   const ctx = ticket.context ?? {}
   const roleLabel = ctx.role ? (tRoles.has(ctx.role as 'owner') ? tRoles(ctx.role as 'owner') : ctx.role) : null
   const status = ticket.status
@@ -321,7 +334,10 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
               <FactRow label={t('panel.email')}>{ticket.createdBy.email ? <span className="break-all">{ticket.createdBy.email}</span> : '—'}</FactRow>
               {roleLabel ? <FactRow label={t('panel.role')}>{roleLabel}</FactRow> : null}
               <FactRow label={t('panel.opened')}>
-                <LocalDate iso={ticket.createdAt} />
+                <AdminLastUpdate iso={ticket.createdAt} />
+              </FactRow>
+              <FactRow label={t('panel.lastUpdate')}>
+                <AdminLastUpdate iso={ticket.lastActivityAt} />
               </FactRow>
             </dl>
           </Panel>
@@ -343,27 +359,19 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
             {screenshots.length === 0 ? (
               <p className="text-sm leading-5 text-muted-foreground">{t('panel.noScreenshots')}</p>
             ) : (
-              <ul className="grid grid-cols-3 items-start gap-2">
-                {screenshots.map((a) => (
-                  <li key={a.id} className="min-w-0">
-                    {a.url ? (
-                      <Button
-                        variant="quiet"
-                        onClick={() => setPanelViewer(liveShots.findIndex((x) => x.id === a.id))}
-                        aria-label={t('panel.openScreenshot', { n: a.n })}
-                        className="aspect-square !h-auto w-full !min-h-0 overflow-hidden !rounded-xl border border-border bg-muted !p-0"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed link */}
-                        <img src={a.url} alt="" loading="lazy" className="size-full object-cover object-top" />
-                      </Button>
-                    ) : (
-                      <span className="flex aspect-square w-full items-start rounded-xl border border-dashed border-border p-2 text-xs leading-4 text-muted-foreground">
-                        {a.deleted ? t(`panel.deleted.${a.deleted}` as 'panel.deleted.redacted') : t('thread.screenshotDeleted')}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <ScreenshotGrid
+                images={screenshots}
+                labels={{
+                  open: (n) => t('panel.openScreenshot', { n }),
+                  deleted: (reason) => (reason ? t(`panel.deleted.${reason as 'redacted'}`) : t('thread.screenshotDeleted')),
+                  viewer: viewerLabels,
+                }}
+                actions={(a) => (
+                  <Button variant="destructive" onClick={() => setRemoveShot({ id: a.id, n: 0 })}>
+                    {t('panel.deleteScreenshot')}
+                  </Button>
+                )}
+              />
             )}
           </Panel>
         </aside>
@@ -395,23 +403,6 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
             setBusy(false)
           }
         }}
-      />
-      <ImageViewer
-        open={panelViewer !== null && liveShots.length > 0}
-        images={liveShots.map((a) => ({
-          key: a.id,
-          src: a.url as string,
-          alt: t('panel.openScreenshot', { n: a.n }),
-          actions: (
-            <Button variant="destructive" onClick={() => setRemoveShot({ id: a.id, n: a.n })}>
-              {t('panel.deleteScreenshot')}
-            </Button>
-          ),
-        }))}
-        index={panelViewer ?? 0}
-        onIndexChange={setPanelViewer}
-        onClose={() => setPanelViewer(null)}
-        labels={viewerLabels}
       />
       <ConfirmDialog
         open={redact !== null}

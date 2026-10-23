@@ -64,6 +64,7 @@ export function SupportTicketsBrowser({
       render: (x) => (
         <CellPill>
           <TicketStatusPill status={x.status} />
+          {x.needsReply ? <Pill tone="highlight">{t('list.needsReply')}</Pill> : null}
           {x.unread ? <Pill tone="highlight">{t('list.unread')}</Pill> : null}
         </CellPill>
       ),
@@ -141,6 +142,7 @@ export function SupportTicketsBrowser({
                     <span className="text-[0.9375rem] leading-6 font-semibold break-words text-foreground">{x.title}</span>
                     <span className="flex flex-wrap items-start gap-1.5">
                       <TicketStatusPill status={x.status} />
+                      {x.needsReply ? <Pill tone="highlight">{t('list.needsReply')}</Pill> : null}
                       {x.unread ? <Pill tone="highlight">{t('list.unread')}</Pill> : null}
                     </span>
                     <TicketTime iso={x.lastActivityAt} className="text-xs leading-5 text-muted-foreground" />

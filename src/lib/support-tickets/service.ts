@@ -180,15 +180,49 @@ export async function listClientTickets(access: TicketAccess): Promise<TicketRes
     const { data, error } = await query.order('last_public_activity_at', { ascending: false }).limit(500)
     if (error) return fail(error)
     const rows = (data ?? []) as TicketRow[]
-    const [marks, people] = await Promise.all([readMarks(db, access.userId, rows.map((r) => r.id), 'client'), loadPeople(db, rows.map((r) => r.created_by), false)])
-    return { ok: true, value: rows.map((r) => summary(r, r.last_public_activity_at, isUnread(r.last_public_activity_at, marks.get(r.id)), person(people, r.created_by))) }
+    const ids = rows.map((r) => r.id)
+    const [marks, people, lastReply] = await Promise.all([
+      readMarks(db, access.userId, ids, 'client'),
+      loadPeople(db, rows.map((r) => r.created_by), false),
+      lastSupportReplies(db, ids),
+    ])
+    return {
+      ok: true,
+      value: rows.map((r) => {
+        // Round 4 (Tom): only what asks something of the client counts — an unread
+        // reply from Abluo Support, or a ticket waiting for their reply. A status
+        // change alone (e.g. Resolved) is visible in the ticket and emailed.
+        const reply = lastReply.get(r.id)
+        const unread = reply ? isUnread(reply, marks.get(r.id)) : false
+        return { ...summary(r, r.last_public_activity_at, unread, person(people, r.created_by)), needsReply: r.status === 'waiting_for_user' }
+      }),
+    }
   })
 }
 
-/** How many of the person's visible tickets changed since they last opened them (nav badge). */
+/** Newest Abluo Support reply per ticket. */
+async function lastSupportReplies(db: Db, ticketIds: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>()
+  if (!ticketIds.length) return map
+  const { data } = await db.from('support_ticket_messages').select('ticket_id, created_at').in('ticket_id', ticketIds).eq('author_kind', 'support').order('created_at', { ascending: false }).limit(5000)
+  for (const m of (data ?? []) as Array<{ ticket_id: string; created_at: string }>) if (!map.has(m.ticket_id)) map.set(m.ticket_id, m.created_at)
+  return map
+}
+
+/** The client's sidebar number: tickets waiting for their reply + unread Abluo replies. */
 export async function countClientUnread(access: TicketAccess): Promise<number> {
   const list = await listClientTickets(access)
-  return list.ok ? list.value.filter((t) => t.unread).length : 0
+  return list.ok ? list.value.filter((t) => t.needsReply || t.unread).length : 0
+}
+
+/** When a ticket last changed for the client — screens poll this to refresh themselves (round 4). */
+export async function clientTicketActivity(access: TicketAccess, ticketId: string): Promise<string | null> {
+  if (!isUuid(ticketId)) return null
+  return withDb('client screen checks whether a ticket changed', async (db) => {
+    const { data } = await db.from('support_tickets').select('project_id, created_by, last_public_activity_at').eq('id', ticketId).maybeSingle()
+    const t = data as { project_id: string; created_by: string | null; last_public_activity_at: string } | null
+    return t && canSeeTicket(access, t) ? t.last_public_activity_at : null
+  })
 }
 
 /** One ticket as the client sees it: messages, public status lines, screenshots. Marks it read. */
@@ -338,6 +372,7 @@ export async function clientTicketAttention(access: TicketAccess): Promise<Ticke
   const list = await listClientTickets(access)
   if (!list.ok) return []
   const waiting = list.value.filter((t) => t.status === 'waiting_for_user').map((ticket) => ({ kind: 'waiting' as const, ticket }))
+  // 'update' = an unread reply from Abluo Support (round 4).
   const updates = list.value.filter((t) => t.status !== 'waiting_for_user' && t.unread).map((ticket) => ({ kind: 'update' as const, ticket }))
   return [...waiting, ...updates]
 }
@@ -372,6 +407,7 @@ export async function listAdminTickets(adminUserId: string, filters: AdminTicket
       ok: true,
       value: rows.map((r) => ({
         ...summary(r, r.last_activity_at, isUnread(r.last_activity_at, marks.get(r.id)), person(people, r.created_by)),
+        seen: marks.has(r.id),
         severity: r.severity,
         project: byProject.get(r.project_id) ?? { id: r.project_id, slug: '', name: '' },
       })),
@@ -442,10 +478,12 @@ export async function replyAsSupport(adminUserId: string, ticketId: string, body
   return result
 }
 
-/** The admin dashboard's Support card (round 2). */
+/** The admin dashboard's Support card (round 2, split in round 4). */
 export type AdminSupportOverview = {
-  /** Open and not yet read by this admin. */
+  /** Never opened by this admin. */
   newCount: number
+  /** Opened before, with activity this admin hasn't seen (e.g. the client replied). */
+  repliedCount: number
   waitingCount: number
   highOpenCount: number
   /** Most recently active, not resolved, newest first. */
@@ -459,12 +497,22 @@ export async function adminSupportOverview(adminUserId: string, recentLimit = 5)
   return {
     ok: true,
     value: {
-      newCount: rows.filter((t) => t.status === 'open' && t.unread).length,
+      newCount: rows.filter((t) => !t.seen).length,
+      repliedCount: rows.filter((t) => t.seen && t.unread).length,
       waitingCount: rows.filter((t) => t.status === 'waiting_for_user').length,
       highOpenCount: rows.filter((t) => t.severity === 'high').length,
       recent: rows.slice(0, recentLimit),
     },
   }
+}
+
+/** When a ticket last changed for the admin (incl. notes) — the admin page polls this (round 4). */
+export async function adminTicketActivity(ticketId: string): Promise<string | null> {
+  if (!isUuid(ticketId)) return null
+  return withDb('admin screen checks whether a ticket changed', async (db) => {
+    const { data } = await db.from('support_tickets').select('last_activity_at').eq('id', ticketId).maybeSingle()
+    return (data as { last_activity_at: string } | null)?.last_activity_at ?? null
+  })
 }
 
 /** Internal note — never visible to the client, never emailed (D7). */

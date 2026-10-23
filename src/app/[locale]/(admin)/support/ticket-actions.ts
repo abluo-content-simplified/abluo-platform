@@ -13,6 +13,8 @@ import { DEFAULT_SUPPORT_ROLE } from '@/lib/support/constants'
 import { startSupportVisit } from '@/lib/support/server'
 import {
   addNote,
+  adminTicketActivity,
+  countAdminUnread,
   deleteAttachment,
   recordSupportVisitFromTicket,
   redactMessage,
@@ -128,4 +130,18 @@ export async function viewAsClientAction(formData: FormData): Promise<void> {
       redirect(`/${locale}/${encodeURIComponent(result.project.slug)}/home`)
     }
   }
+}
+
+/** Live updates: the ticket's last-activity time (the open page polls it). null = unknown / not allowed. */
+export async function adminTicketActivityAction(ticketId: unknown): Promise<string | null> {
+  const id = await actorId()
+  if (!id) return null
+  return adminTicketActivity(str(ticketId))
+}
+
+/** Live updates: the number on the admin sidebar's Support entry. */
+export async function adminUnreadCountAction(): Promise<number> {
+  const id = await actorId()
+  if (!id) return 0
+  return countAdminUnread(id).catch(() => 0)
 }

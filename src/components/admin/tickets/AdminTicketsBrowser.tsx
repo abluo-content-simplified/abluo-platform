@@ -10,7 +10,7 @@ import { PageHeader } from '@/components/app/ui/PageHeader'
 import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
 import { ListRow } from '@/components/app/ui/list/ListRow'
-import { CellDate, CellPill, CellText, LocalDate } from '@/components/app/ui/list/cells'
+import { CellPill, CellText } from '@/components/app/ui/list/cells'
 import { TICKET_SEVERITIES, type TicketSummary } from '@/lib/support-tickets/model'
 import {
   adminViewQuery,
@@ -19,7 +19,7 @@ import {
   STATUS_FILTERS,
   type AdminTicketView,
 } from '@/lib/support-tickets/admin-view'
-import { SeverityPill, StatusPill } from './ticket-bits'
+import { AdminLastUpdate, SeverityPill, StatusPill } from './ticket-bits'
 
 /** Lower-case, accent-free, so "citta" finds "Città". */
 const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -91,7 +91,8 @@ export function AdminTicketsBrowser({
   if (view.status !== DEFAULT_ADMIN_VIEW.status) chips.push({ id: 'status', label: view.status === 'all' ? t('statusFilters.all') : t(`status.${view.status}`) })
   if (view.severity) chips.push({ id: 'severity', label: t(`severity.${view.severity}`) })
   if (view.unread) chips.push({ id: 'unread', label: t('filters.unreadOnly') })
-  const removeChip = (id: string) => go(id === 'project' ? { project: '' } : id === 'status' ? { status: 'active' } : id === 'unread' ? { unread: false } : { severity: '' })
+  if (view.seen) chips.push({ id: 'seen', label: t(view.seen === '0' ? 'filters.neverOpened' : 'filters.openedBefore') })
+  const removeChip = (id: string) => go(id === 'project' ? { project: '' } : id === 'status' ? { status: 'active' } : id === 'unread' ? { unread: false } : id === 'seen' ? { seen: '' } : { severity: '' })
 
   const columns: DataTableColumn<TicketSummary>[] = [
     {
@@ -120,7 +121,7 @@ export function AdminTicketsBrowser({
     },
     { key: 'status', header: t('columns.status'), width: 'w-40', render: (x) => <CellPill><StatusPill status={x.status} /></CellPill> },
     { key: 'severity', header: t('columns.severity'), width: 'w-28', render: (x) => <CellPill>{x.severity ? <SeverityPill severity={x.severity} /> : null}</CellPill> },
-    { key: 'activity', header: t('columns.activity'), width: 'w-36', render: (x) => <CellDate iso={x.lastActivityAt} /> },
+    { key: 'activity', header: t('columns.activity'), width: 'w-44', render: (x) => <AdminLastUpdate iso={x.lastActivityAt} className="text-sm leading-6 whitespace-nowrap text-muted-foreground" /> },
   ]
 
   return (
@@ -168,7 +169,7 @@ export function AdminTicketsBrowser({
                 <span className="flex flex-wrap items-center gap-2">
                   <StatusPill status={x.status} />
                   {x.severity ? <SeverityPill severity={x.severity} /> : null}
-                  <LocalDate iso={x.lastActivityAt} className="text-sm leading-5 text-muted-foreground" />
+                  <AdminLastUpdate iso={x.lastActivityAt} className="text-sm leading-5 text-muted-foreground" />
                 </span>
               </ListRow>
             ))}

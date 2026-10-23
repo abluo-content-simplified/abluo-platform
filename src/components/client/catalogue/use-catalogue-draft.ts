@@ -127,10 +127,14 @@ export function useCatalogueDraft({
     rekeyRef.current = autosave.rekey
   }, [autosave.rekey])
 
+  /** True once the person changed something in this session (opening alone is not a change). */
+  const [changed, setChanged] = useState(false)
+
   /** Every change goes through here: held until the name exists, then autosaved. */
   const update = useCallback(
     (set: PendingSet) => {
       if (finished.current) return
+      setChanged(true)
       if (idRef.current || sentRef.current) {
         const held = heldRef.current
         heldRef.current = {}
@@ -204,6 +208,8 @@ export function useCatalogueDraft({
   return {
     id,
     created: Boolean(id),
+    /** Something was changed since the screen opened: only then is leaving "Save & exit". */
+    changed,
     hasDraft,
     update,
     publish,

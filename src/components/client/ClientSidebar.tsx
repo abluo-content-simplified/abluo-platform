@@ -1,5 +1,6 @@
 'use client'
 
+import { useLiveSupportCount } from '@/components/client/tickets/useLiveSupportCount'
 import { useState } from 'react'
 import { usePathname, useRouter } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
@@ -110,6 +111,7 @@ export function ClientSidebar({
   const activeProjectName = projects.find((p) => p.projectSlug === activeSlug)?.name?.trim() || activeSlug
   const { content: contentItem, forms: leadsItem, overflow } = phoneNavLayout(navItems)
   const news = useWhatsNew(whatsNew, { popup: whatsNewPopup })
+  const liveSupportUnread = useLiveSupportCount(activeSlug, supportUnread, pathname, navItems.some((i) => i.moduleId === 'support'))
 
   // Home opens the content group; a new group gets extra space above it (no headings).
   // "What's new" (a panel, not a page) opens the support & configuration group (Tom, 2026-10-22).
@@ -121,7 +123,7 @@ export function ClientSidebar({
       label: i.label ?? t(`nav.${i.moduleId}`),
       icon: iconFor(i.moduleId),
       group: i.group as string,
-      badge: i.moduleId === 'support' && supportUnread > 0 ? { count: supportUnread, label: t('supportTickets.list.unreadCount', { count: supportUnread }) } : undefined,
+      badge: i.moduleId === 'support' && liveSupportUnread > 0 ? { count: liveSupportUnread, label: t('supportTickets.list.unreadCount', { count: liveSupportUnread }) } : undefined,
     })),
   ]
   const supportAt = links.findIndex((i) => i.group === 'support')

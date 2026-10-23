@@ -21,6 +21,7 @@ import { loadWhatsNewFeed } from '@/lib/whats-new/client-feed'
 import { loadClientNotices } from '@/lib/whats-new/notices-feed'
 import { AnnouncementBanners } from '@/components/client/whats-new/AnnouncementBanners'
 import { NewVersionNotice } from '@/components/system/NewVersionNotice'
+import { PresenceHeartbeat } from '@/components/system/PresenceHeartbeat'
 import { can } from '@/lib/authz/check'
 import { SUPPORT_EDIT_MINUTES } from '@/lib/support/constants'
 import { listSupportNotices } from '@/lib/support/server'
@@ -172,6 +173,7 @@ async function ClientProjectLayoutInner({
         <div id="client-main" className="min-h-screen min-w-0 flex-1 md:ml-56">
           {/* A newer Abluo build is live: calm, never reloads by itself. */}
           <NewVersionNotice className="mx-4 mt-4 md:mx-6 md:mt-6" />
+          <PresenceHeartbeat />
           {/* Announcements (planned maintenance …) between their start and end. */}
           <AnnouncementBanners notices={notices} />
           {support ? (

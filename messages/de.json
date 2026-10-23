@@ -4285,34 +4285,36 @@
     },
     "users": {
       "title": "Benutzer",
-      "description": "Alle Personen mit Zugriff auf eine Abluo-Website (Stand: unten). Klicken Sie auf „Aktualisieren“, um den Text erneut zu lesen.",
-      "loadError": "Benutzer konnten nicht gelesen werden: {message}",
+      "description": "Alle Personen mit Zugang zu einer Abluo-Website, Stand siehe unten. Mit Aktualisieren neu laden.",
+      "loadError": "Die Benutzer konnten nicht gelesen werden: {message}",
       "update": "Aktualisieren",
-      "updating": "Aktualisierung…",
-      "summaryLabel": "Nutzerzahlen",
+      "updating": "Wird aktualisiert…",
+      "summaryLabel": "Benutzer in Zahlen",
       "tiles": {
         "activeNow": "Jetzt aktiv",
         "people": "Personen mit Zugang",
-        "invitations": "Ausstehende Einladungen",
-        "withoutTwoFactor": "Ohne Zwei-Faktor-Authentifizierung"
+        "invitations": "Offene Einladungen",
+        "withoutTwoFactor": "Ohne Zwei-Schritt-Verifizierung"
       },
-      "activeNowEmpty": "Niemand hat momentan ein Dashboard geöffnet.",
+      "activeNowHeading": "{count, plural, =0 {Jetzt aktiv} other {Jetzt aktiv ({count})}}",
+      "activeNowEmpty": "Gerade hat niemand ein Dashboard geöffnet.",
       "activeNow": "Jetzt aktiv",
-      "never": "Niemals",
-      "superAdmin": "Super-Admin",
-      "mixedRoles": "Unterschiedliche Rollen",
+      "never": "Nie",
+      "superAdmin": "Super Admin",
+      "mixedRoles": "Verschiedene Rollen",
+      "placesCount": "{count, plural, one {# Ort} other {# Orte}}",
       "accessArchivedOnly": "Überall archiviert",
-      "search": "Nutzer suchen",
-      "searchPlaceholder": "Name, E-Mail-Adresse oder Website",
+      "search": "Benutzer suchen",
+      "searchPlaceholder": "Name, E-Mail oder Website",
       "showing": "{shown} von {total}",
-      "clear": "Filter löschen",
-      "noMatch": "Es gibt keine Benutzer, die diesen Filtern entsprechen.",
+      "clear": "Filter zurücksetzen",
+      "noMatch": "Keine Benutzer entsprechen diesen Filtern.",
       "columns": {
         "avatar": "Bild",
         "person": "Person",
         "access": "Zugang",
         "status": "Status",
-        "twoFactor": "2-stufig",
+        "twoFactor": "2 Schritte",
         "lastActive": "Zuletzt aktiv"
       },
       "filters": {
@@ -4323,31 +4325,31 @@
         "status": "Status",
         "roles": {
           "all": "Alle Rollen",
-          "superAdmin": "Super-Admin",
-          "owner": "Eigentümer",
-          "admin": "Website-Administrator",
-          "editor": "Editor"
+          "superAdmin": "Super Admin",
+          "owner": "Inhaber",
+          "admin": "Website-Admin",
+          "editor": "Redakteur"
         },
         "statuses": {
           "all": "Alle Status",
           "active": "Aktiv",
           "invited": "Eingeladen",
           "archived": "Archiviert",
-          "none": "Kein Zugriff"
+          "none": "Kein Zugang"
         }
       },
       "status": {
         "active": "Aktiv",
         "invited": "Eingeladen",
         "archived": "Archiviert",
-        "none": "Kein Zugriff"
+        "none": "Kein Zugang"
       },
       "roles": {
-        "owner": "Eigentümer",
+        "owner": "Inhaber",
         "member": "Mitglied",
-        "admin": "Website-Administrator",
-        "editor": "Editor",
-        "viewer": "Zuschauer"
+        "admin": "Website-Admin",
+        "editor": "Redakteur",
+        "viewer": "Leser"
       },
       "detail": {
         "tabsLabel": "Über diese Person",
@@ -4360,54 +4362,54 @@
         "name": "Name",
         "email": "E-Mail",
         "platformRole": "Abluo-Rolle",
-        "noPlatformRole": "Keiner",
+        "noPlatformRole": "Keine",
         "accountCreated": "Konto erstellt",
-        "noAccountYet": "Eingeladen – noch kein Konto vorhanden",
-        "wholeClient": "{role} · alle Standorte dieses Kunden",
-        "noAccess": "Kein Zugriff auf irgendeine Website.",
+        "noAccountYet": "Eingeladen — noch kein Konto",
+        "wholeClient": "{role} · alle Websites dieses Kunden",
+        "noAccess": "Kein Zugang zu einer Website.",
         "accessSuperAdminOnly": "Super Admin — keine Website-Mitgliedschaften.",
-        "twoFactor": "2-stufige Verifizierung",
-        "lastSignIn": "Letzter Login",
+        "twoFactor": "Zwei-Schritt-Verifizierung",
+        "lastSignIn": "Letzte Anmeldung",
         "lastActive": "Zuletzt aktiv",
         "noActivity": "Noch nichts aufgezeichnet",
-        "noActivityBody": "Änderungen bei Veröffentlichungen, Einladungen und Zugängen werden hier angezeigt."
+        "noActivityBody": "Hier erscheinen Veröffentlichungen, Einladungen und Zugangsänderungen."
       },
       "activity": {
         "content": "{type} · {action}",
         "types": {
-          "post": "Post",
-          "event": "Ereignis",
-          "faqSet": "FAQ-Set",
+          "post": "Beitrag",
+          "event": "Veranstaltung",
+          "faqSet": "FAQ-Gruppe",
           "gallery": "Galerie",
-          "other": "Artikel"
+          "other": "Element"
         },
         "actions": {
           "created": "erstellt",
           "published": "veröffentlicht",
           "scheduled": "geplant",
-          "schedule_changed": "Der Zeitplan wurde geändert.",
-          "unpublished": "unveröffentlicht",
+          "schedule_changed": "Planung geändert",
+          "unpublished": "zurückgezogen",
           "archived": "archiviert",
-          "restored": "restauriert",
+          "restored": "wiederhergestellt",
           "deleted": "gelöscht",
           "delete_refused": "Löschen abgelehnt"
         },
         "about": {
-          "change": "Zugriffsrechte wurden von {name} auf {role} } geändert.",
+          "change": "Zugang auf {role} geändert von {name}",
           "archive": "Archiviert von {name}",
-          "restore": "Zugriff wiederhergestellt ( {role} ) durch {name}"
+          "restore": "Zugang wiederhergestellt ({role}) von {name}"
         },
         "by": {
-          "change": "Die Zugriffsrechte von {name} wurden auf {role} geändert.",
-          "archive": "Archiviert {name}",
-          "restore": "Wiederhergestellt {name} ( {role} )"
+          "change": "Hat den Zugang von {name} auf {role} geändert",
+          "archive": "Hat {name} archiviert",
+          "restore": "Hat {name} wiederhergestellt ({role})"
         },
         "invited": "Eingeladen als {role}",
         "invitedBy": "Eingeladen als {role} von {name}",
         "joined": "Beigetreten als {role}",
         "inviteCancelled": "Einladung storniert",
         "someone": "jemand",
-        "support": "Abluo-Unterstützung",
+        "support": "Abluo-Support",
         "outcome": {
           "refused": "Abgelehnt",
           "failed": "Fehlgeschlagen"
@@ -4588,7 +4590,8 @@
       "gaps": {
         "noPhoto": "Kein Foto",
         "noPrice": "Kein Preis",
-        "allergensNotReviewed": "Allergene nicht geprüft"
+        "allergensNotReviewed": "Allergene nicht geprüft",
+        "noCategory": "Keine Kategorie"
       },
       "days": {
         "mon": "Mo",
@@ -4671,7 +4674,8 @@
           "changes": "Änderungen",
           "publishOn": "Veröffentlichen am",
           "unpublishOn": "Offline am",
-          "price": "Preis"
+          "price": "Preis",
+          "toComplete": "Zu ergänzen"
         },
         "menuFor": "Aktionen für {name}",
         "display": {

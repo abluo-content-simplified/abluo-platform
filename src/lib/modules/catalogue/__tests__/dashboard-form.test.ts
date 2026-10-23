@@ -147,6 +147,9 @@ describe('gaps, slugs, status', () => {
   it('gaps are warnings, never errors', () => {
     expect(itemGaps({ imageCount: 0, offerCount: 0 })).toEqual(['noPhoto', 'noPrice'])
     expect(itemGaps({ imageCount: 1, offerCount: 1 })).toEqual([])
+    // "No category" only when the caller knows the categories.
+    expect(itemGaps({ imageCount: 1, offerCount: 1, categoryCount: 0 })).toEqual(['noCategory'])
+    expect(itemGaps({ imageCount: 1, offerCount: 1, categoryCount: 2 })).toEqual([])
   })
   it('slug derived from the name, previewed under the project segment', () => {
     expect(slugFromName('Pizza Margherita / DOP')).toBe('pizza-margherita-dop')

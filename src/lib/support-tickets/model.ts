@@ -119,7 +119,15 @@ export type TicketSummary = {
   status: TicketStatus
   createdAt: string
   lastActivityAt: string
+  /**
+   * Client side (round 4): a reply from Abluo Support the person hasn't read.
+   * Admin side: any activity this admin hasn't seen.
+   */
   unread: boolean
+  /** Client side: the ticket is waiting for the client's reply. */
+  needsReply?: boolean
+  /** Admin side: this admin has opened the ticket at least once (false = a new request). */
+  seen?: boolean
   createdBy: TicketPerson
   severity?: TicketSeverity
   project?: { id: string; slug: string; name: string }

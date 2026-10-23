@@ -1,13 +1,12 @@
 import { getTranslations } from 'next-intl/server'
 import { ListRow } from '@/components/app/ui/list/ListRow'
-import { LocalDate } from '@/components/app/ui/list/cells'
 import { Panel } from '@/components/app/ui/Panel'
 import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { StatGrid } from '@/components/app/ui/StatGrid'
 import { StatTile } from '@/components/app/ui/StatTile'
 import { SUPPORT_CARD_LINKS } from '@/lib/support-tickets/admin-view'
 import type { AdminSupportOverview } from '@/lib/support-tickets/service'
-import { StatusPill } from './ticket-bits'
+import { AdminLastUpdate, StatusPill } from './ticket-bits'
 
 /**
  * The Support card on the admin home (ADR-039): what is new, what waits for a
@@ -23,6 +22,7 @@ export async function AdminSupportCard({ overview }: { overview: AdminSupportOve
       <SectionHeading id="admin-support" title={t('heading')} />
       <StatGrid>
         <StatTile label={t('new.label')} value={overview.newCount} sub={t('new.sub')} href={SUPPORT_CARD_LINKS.new} />
+        <StatTile label={t('replied.label')} value={overview.repliedCount} sub={t('replied.sub')} href={SUPPORT_CARD_LINKS.replied} />
         <StatTile label={t('waiting.label')} value={overview.waitingCount} sub={t('waiting.sub')} href={SUPPORT_CARD_LINKS.waiting} />
         <StatTile label={t('high.label')} value={overview.highOpenCount} sub={t('high.sub')} href={SUPPORT_CARD_LINKS.high} />
       </StatGrid>
@@ -47,7 +47,7 @@ export async function AdminSupportCard({ overview }: { overview: AdminSupportOve
               <span className="line-clamp-2 text-[0.9375rem] leading-[1.375rem] font-semibold text-foreground">{x.title}</span>
               <span className="flex flex-wrap items-center gap-2">
                 <StatusPill status={x.status} />
-                <LocalDate iso={x.lastActivityAt} className="text-sm leading-5 text-muted-foreground" />
+                <AdminLastUpdate iso={x.lastActivityAt} className="text-sm leading-5 text-muted-foreground" />
               </span>
             </ListRow>
           ))}

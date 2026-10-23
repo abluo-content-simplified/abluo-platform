@@ -59,6 +59,7 @@ const KIND: Record<string, [Kind, string]> = {
   'src/components/admin/partners/PartnersBrowser.tsx': ['records', 'admin partner apps'],
   'src/components/admin/tickets/AdminTicketsBrowser.tsx': ['records', 'admin support tickets: no pictures'],
   'src/components/admin/whats-new/WhatsNewAdmin.tsx': ['records', 'admin update notes'],
+  'src/components/admin/users/UsersBrowser.tsx': ['records', 'admin users across Abluo: people, no pictures'],
 }
 
 /** Declared, but not yet built exactly to their kind — may only shrink. */

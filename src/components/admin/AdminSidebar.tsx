@@ -1,6 +1,8 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { usePathname } from '@/i18n/navigation'
+import { useLiveAdminSupportCount } from '@/components/admin/tickets/use-live-admin-support-count'
 import type { AccountMenuProps } from '@/components/app/shell/AccountMenu'
 import { APP_ICONS } from '@/components/app/shell/AppIcon'
 import { AppSidebar } from '@/components/app/shell/AppSidebar'
@@ -21,6 +23,8 @@ import { AppSidebar } from '@/components/app/shell/AppSidebar'
 const NAV = [
   { key: 'home', href: '/dashboard', icon: APP_ICONS.home },
   { key: 'projects', href: '/projects', icon: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', group: 'platform' },
+  // Users: everyone with access across Abluo (ADR-030 A1).
+  { key: 'users', href: '/users', icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8' },
   { key: 'analytics', href: '/analytics', icon: 'M3 3v18h18M7 16v-4M12 16V8M17 16v-7' },
   { key: 'partners', href: '/partners', icon: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8' },
   { key: 'media', href: '/media', icon: APP_ICONS.media },
@@ -34,6 +38,8 @@ const NAV = [
 
 export function AdminSidebar({ account, supportUnread = 0 }: { account: Omit<AccountMenuProps, 'variant'>; supportUnread?: number }) {
   const t = useTranslations('admin')
+  const pathname = usePathname()
+  const supportCount = useLiveAdminSupportCount(supportUnread, pathname)
   return (
     <AppSidebar
       id="admin-sidebar"
@@ -45,7 +51,7 @@ export function AdminSidebar({ account, supportUnread = 0 }: { account: Omit<Acc
         label: t(`nav.${item.key}`),
         icon: item.icon,
         ...('group' in item ? { groupHeading: t(`navGroups.${item.group}`) } : {}),
-        ...(item.key === 'support' && supportUnread > 0 ? { badge: { count: supportUnread, label: t('supportTickets.unreadNav', { count: supportUnread }) } } : {}),
+        ...(item.key === 'support' && supportCount > 0 ? { badge: { count: supportCount, label: t('supportTickets.unreadNav', { count: supportCount }) } } : {}),
       }))}
       account={account}
     />

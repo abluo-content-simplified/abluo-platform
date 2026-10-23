@@ -136,6 +136,8 @@
   --color-action-foreground: var(--action-foreground);
   --color-success: var(--success);
   --color-admin: var(--admin);
+  --color-attention: var(--attention);
+  --color-attention-foreground: var(--attention-foreground);
   --color-admin-foreground: var(--admin-foreground);
   --color-border-subtle: var(--border-subtle);
   --color-hover: var(--hover);
@@ -291,6 +293,9 @@
   color-scheme: light;
   --admin: oklch(0.782 0.158 72.3);
   --admin-foreground: oklch(0.198 0.041 80.2);
+  /* Needs-attention orange (nav count badges): white text on it stays readable in both themes. Not red, not the admin amber. */
+  --attention: oklch(0.58 0.17 48);
+  --attention-foreground: oklch(1 0 0);
   --radius: 0.75rem;
   --control-height: 44px;
   background: var(--background);

@@ -13,13 +13,13 @@ describe('parseAdminView', () => {
     expect(isDefaultAdminView(parseAdminView(new URLSearchParams('')))).toBe(true)
   })
   it('reads known values and ignores unknown ones', () => {
-    expect(parseAdminView({ status: 'resolved', severity: 'high', project: 'goro' })).toEqual({ project: 'goro', status: 'resolved', severity: 'high', unread: false })
+    expect(parseAdminView({ status: 'resolved', severity: 'high', project: 'goro' })).toEqual({ project: 'goro', status: 'resolved', severity: 'high', unread: false, seen: '' })
     expect(parseAdminView({ status: 'bogus', severity: 'critical' })).toEqual(DEFAULT_ADMIN_VIEW)
     expect(parseAdminView({ status: ['all', 'open'] }).status).toBe('all')
   })
   it('round-trips through the query string, omitting defaults', () => {
     expect(adminViewQuery(DEFAULT_ADMIN_VIEW)).toBe('')
-    const v = { project: 'a', status: 'all' as const, severity: 'low' as const, unread: true }
+    const v = { project: 'a', status: 'all' as const, severity: 'low' as const, unread: true, seen: '1' as const }
     expect(parseAdminView(new URLSearchParams(adminViewQuery(v)))).toEqual(v)
   })
 })
@@ -38,8 +38,8 @@ describe('applyAdminView', () => {
     expect(applyAdminView(list, { ...DEFAULT_ADMIN_VIEW, status: 'resolved' }).map((x) => x.id)).toEqual(['done'])
   })
   it('filters by project and severity', () => {
-    expect(applyAdminView(list, { project: 'b', status: 'all', severity: '', unread: false }).map((x) => x.id)).toEqual(['new'])
-    expect(applyAdminView(list, { project: '', status: 'all', severity: 'high', unread: false }).map((x) => x.id)).toEqual(['new'])
+    expect(applyAdminView(list, { ...DEFAULT_ADMIN_VIEW, project: 'b', status: 'all' }).map((x) => x.id)).toEqual(['new'])
+    expect(applyAdminView(list, { ...DEFAULT_ADMIN_VIEW, status: 'all', severity: 'high' }).map((x) => x.id)).toEqual(['new'])
   })
   it('lists each project once', () => {
     expect(projectOptions(list)).toEqual([{ slug: 'a', name: 'Alpha' }, { slug: 'b', name: 'Beta' }])
@@ -64,7 +64,7 @@ describe('eventLine', () => {
 })
 
 describe('unread filter and Support card links', () => {
-  const list = [t('seen', { status: 'open' }), t('fresh', { status: 'open', unread: true }), t('fresh-wait', { status: 'waiting_for_user', unread: true })]
+  const list = [t('seen', { status: 'open', seen: true }), t('fresh', { status: 'open', unread: true, seen: false }), t('fresh-wait', { status: 'waiting_for_user', unread: true, seen: true })]
   it('unread=1 keeps only tickets with unseen activity', () => {
     expect(parseAdminView({ unread: '1' }).unread).toBe(true)
     expect(parseAdminView({ unread: 'yes' }).unread).toBe(false)
@@ -76,6 +76,30 @@ describe('unread filter and Support card links', () => {
     expect(applyAdminView(list, q(SUPPORT_CARD_LINKS.new)).map((x) => x.id)).toEqual(['fresh'])
     expect(applyAdminView(list, q(SUPPORT_CARD_LINKS.waiting)).map((x) => x.id)).toEqual(['fresh-wait'])
     expect(q(SUPPORT_CARD_LINKS.high)).toEqual({ ...DEFAULT_ADMIN_VIEW, severity: 'high' })
+  })
+})
+
+describe('seen filter (round 4)', () => {
+  const list = [
+    t('new', { status: 'open', seen: false, unread: true }),
+    t('replied', { status: 'open', seen: true, unread: true }),
+    t('read', { status: 'open', seen: true, unread: false }),
+    t('legacy', { status: 'open' }),
+  ]
+  const q = (href: string) => parseAdminView(new URLSearchParams(href.split('?')[1]))
+  it('parses seen=0 / seen=1 and ignores anything else', () => {
+    expect(parseAdminView({ seen: '0' }).seen).toBe('0')
+    expect(parseAdminView({ seen: '1' }).seen).toBe('1')
+    expect(parseAdminView({ seen: 'x' }).seen).toBe('')
+    expect(isDefaultAdminView(parseAdminView({ seen: '0' }))).toBe(false)
+    expect(adminViewQuery({ ...DEFAULT_ADMIN_VIEW, seen: '0' })).toBe('?seen=0')
+  })
+  it('seen=0 keeps only never-opened tickets', () => {
+    expect(applyAdminView(list, { ...DEFAULT_ADMIN_VIEW, seen: '0' }).map((x) => x.id).sort()).toEqual(['legacy', 'new'])
+  })
+  it('New link lists what newCount counts, Replied link what repliedCount counts', () => {
+    expect(applyAdminView(list, q(SUPPORT_CARD_LINKS.new)).map((x) => x.id).sort()).toEqual(['legacy', 'new'])
+    expect(applyAdminView(list, q(SUPPORT_CARD_LINKS.replied)).map((x) => x.id)).toEqual(['replied'])
   })
 })
 

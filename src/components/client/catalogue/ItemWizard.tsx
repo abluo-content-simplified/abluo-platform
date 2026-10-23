@@ -185,7 +185,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
     <WizardFrame
       onKeyDown={onKeyDown}
       mainRef={mainRef}
-      exit={step === 'done' ? null : draft.created ? { kind: 'save', onPress: () => void exit() } : { kind: 'close', onPress: () => router.push(listHref) }}
+      exit={step === 'done' ? null : draft.created && draft.changed ? { kind: 'save', onPress: () => void exit() } : { kind: 'close', onPress: () => router.push(listHref) }}
       saveState={draft.state}
       onReload={() => void draft.reload()}
       onRetry={draft.retry}

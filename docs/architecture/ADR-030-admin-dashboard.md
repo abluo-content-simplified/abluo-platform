@@ -44,6 +44,7 @@ Nav, in order:
 |---|---|---|
 | Home | `/dashboard` | cross-project summary: tiles, analytics summary, needs attention |
 | Projects | `/projects` (+ `/projects/[slug]`, `/projects/new`) | searchable list; project page = what the client sees + admin facts + analytics; **New project** wizard (client → project → design system → Owner → create; `docs/engineering/new-project-wizard.md`) |
+| Users | `/users` (+ `/users/[key]`) | everyone with access across Abluo, Active now, read-only person page — amendment A1 |
 | Analytics | `/analytics` (+ `/analytics/[slug]`) | portfolio table, one row per site; per-site client view + Refresh now |
 | Media | `/media` | cross-project media library — the client Media screens with an admin scope (done 2026-10-08) |
 | Backlog | `/backlog` | internal backlog (migration 034) |
@@ -71,3 +72,20 @@ Note: admin segments are matched as the first path segment on every host, so eac
 | 035 | what's new |
 | 036 | analytics snapshots |
 | 037 | project provisioning runs — the "New project" wizard (`docs/engineering/new-project-wizard.md`), NOT APPLIED |
+| 049 | Users: `profiles.last_seen_at` + `touch_last_seen()`, `access_audit_log` — amendment A1 |
+
+## Amendment A1 — Users (Tom, 2026-10-23)
+
+**Why.** The admin had no single view of who can get into which site. Tom wants one page listing everyone, who is using a dashboard right now, and what they did — kept small ("a couple of tenants", no big control panel).
+
+**Decisions.**
+
+1. **Users page** (`/users`, nav: Platform, after Projects). A *Records* screen (ListToolbar + DataTable / ListRow, no cards): Person · Access · Status · 2-step · Last active; search; filters Site, Role, Status. Above it: who is **Active now**, and four tiles (Active now, People with access, Pending invitations, Without 2-step verification). One row per person across Abluo — a person can hold different roles on different sites (ADR-028); Super Admin is the platform role, shown as a badge, never as a membership. Status: Active / Invited / Archived / No access (there is no "Suspended": access ends per site by Archive, ADR-028).
+2. **A snapshot, not live.** The page is read when it opens and shows "Updated 14:32" with an **Update** button that reads it again. No realtime connection, no polling on the admin side.
+3. **Last seen = a heartbeat.** Supabase only knows the last *sign-in* (sessions last weeks), which cannot say who is using Abluo now. While a dashboard tab is visible (client or admin), it calls `touch_last_seen()` every 2 minutes; the database writes `profiles.last_seen_at` for the caller's own row at most once per 2 minutes. **Active now** = seen within the last 5 minutes (`src/lib/presence/model.ts`). "Last active" = the later of last seen and last sign-in, so the page works before migration 049.
+4. **Access history.** Changing someone's role/extras, archiving and restoring were not recorded anywhere. They are now written to `access_audit_log` (who, whose access, which site, roles/extras before/after, `support: true` in support mode) by `src/lib/people/service.ts`. Invitations are not copied: `invitations` already records created / accepted / cancelled with their actors and is read from there.
+5. **User page** (`/users/[key]`, key = user id, or `invite:<email>` for someone without an account): Profile · Access · Security · Activity, **read-only**. Activity merges, newest first (max 50): publishing actions (`content_audit_log`), access changes about them and made by them (`access_audit_log`), invitations. Every view of the list and of a person is written to `admin_audit_log` (`users.view`, `user.view` with the user id, never the email).
+6. **Privacy.** Logs hold ids, roles and actions — never emails in `detail`, tokens, passwords or content. `access_audit_log` and `last_seen_at` are service-role / own-row only.
+
+**Out of scope for A1 (in the admin Backlog):** actions from the Users page (resend/cancel invitation, change role, archive/restore, sign out everywhere), Block sign-in (account-wide), failed sign-in attempts, a platform-wide Audit Log page, how long history is kept (retention), System Health, health columns on Projects. Each gets its own amendment when picked up.
+

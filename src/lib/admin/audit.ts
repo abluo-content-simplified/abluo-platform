@@ -49,6 +49,9 @@ export type AdminAuditAction =
   // Automatic setup). `detail.state` connected / waiting_for_site / error.
   | 'google.analytics.setup'
   | 'google.search_console.connect'
+  // Users (ADR-030 A1): the list, and one person's page (`detail.user`, never their email).
+  | 'users.view'
+  | 'user.view'
 
 export const ADMIN_AUDIT_ACTION_PATTERN = /^[a-z][a-z0-9_.]{2,63}$/
 

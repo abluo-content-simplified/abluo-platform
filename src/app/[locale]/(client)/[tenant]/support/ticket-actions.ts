@@ -9,7 +9,7 @@
  */
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { ticketAccess } from '@/lib/support-tickets/access'
-import { createTicket, deleteOwnAttachment, replyAsClient, type NewTicketFile } from '@/lib/support-tickets/service'
+import { clientTicketActivity, countClientUnread, createTicket, deleteOwnAttachment, replyAsClient, type NewTicketFile } from '@/lib/support-tickets/service'
 import type { TicketFailure, TicketInputError } from '@/lib/support-tickets/model'
 
 export type TicketActionResult<T = undefined> = { ok: true; value: T } | { ok: false; reason: TicketFailure; field?: TicketInputError }
@@ -83,5 +83,26 @@ export async function deleteOwnScreenshotAction(projectSlug: string, attachmentI
   } catch (e) {
     console.error('[support-tickets] delete own screenshot failed', e instanceof Error ? e.message : e)
     return FAIL
+  }
+}
+
+/** Live sidebar number: requests waiting for the person's reply plus unread replies from Abluo Support. Fail-safe 0. */
+export async function clientSupportCountAction(projectSlug: string): Promise<number> {
+  try {
+    const access = await accessFor(projectSlug)
+    return access ? await countClientUnread(access) : 0
+  } catch {
+    return 0
+  }
+}
+
+/** Last public activity of one request (screens poll it to refresh themselves). Access is re-resolved from the session. */
+export async function clientTicketActivityAction(projectSlug: string, ticketId: string): Promise<string | null> {
+  try {
+    const access = await accessFor(projectSlug)
+    if (!access || typeof ticketId !== 'string') return null
+    return await clientTicketActivity(access, ticketId)
+  } catch {
+    return null
   }
 }

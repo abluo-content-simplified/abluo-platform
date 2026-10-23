@@ -2,6 +2,7 @@
 
 import { useLocale, useTranslations } from 'next-intl'
 import { Pill, type PillTone } from '@/components/app/ui/list/cells'
+import { formatLastUpdate } from '@/lib/support-tickets/time'
 import { TICKET_LIMITS, type TicketDetail, type TicketStatus, type ThreadEntry } from '@/lib/support-tickets/model'
 
 /** Status pill in the client's wording (Open / In Progress / Waiting for You / Resolved). */
@@ -17,12 +18,12 @@ export function TicketStatusPill({ status }: { status: TicketStatus }) {
   return <Pill tone={TONE[status]}>{t(status)}</Pill>
 }
 
-/** Date and time in the viewer's own time zone (the server's guess is corrected on hydration). */
+/** Date and time in the viewer's own time zone ("Today, 10:42"; the server's guess is corrected on hydration). */
 export function TicketTime({ iso, className = '' }: { iso: string; className?: string }) {
   const locale = useLocale()
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return null
-  const text = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(d)
+  const t = useTranslations('clientDashboard.supportTickets.time')
+  const text = formatLastUpdate(iso, { locale, labels: { today: t('today'), yesterday: t('yesterday') } })
+  if (!text) return null
   return (
     <time dateTime={iso} suppressHydrationWarning className={className}>
       {text}

@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { Pill, type PillTone } from '@/components/app/ui/list/cells'
+import { LastUpdate } from '@/components/support-tickets/LastUpdate'
 import type { TicketSeverity, TicketStatus } from '@/lib/support-tickets/model'
 
 /** Status → pill tone (admin wording lives in admin.supportTickets.status.*). */
@@ -16,4 +17,10 @@ export function StatusPill({ status }: { status: TicketStatus }) {
 export function SeverityPill({ severity }: { severity: TicketSeverity }) {
   const t = useTranslations('admin.supportTickets.severity')
   return <Pill tone={SEVERITY_TONE[severity]}>{t(severity)}</Pill>
+}
+
+/** Last update with date and time in the viewer's local time ("Today, 10:42"). */
+export function AdminLastUpdate({ iso, className }: { iso: string | null | undefined; className?: string }) {
+  const t = useTranslations('admin.supportTickets.time')
+  return <LastUpdate iso={iso} className={className} labels={{ today: t('today'), yesterday: t('yesterday') }} />
 }

@@ -1,9 +1,10 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useVisibleInterval } from './use-visible-interval'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
-import { deleteOwnScreenshotAction, replyToTicketAction } from '@/app/[locale]/(client)/[tenant]/support/ticket-actions'
+import { clientTicketActivityAction, deleteOwnScreenshotAction, replyToTicketAction } from '@/app/[locale]/(client)/[tenant]/support/ticket-actions'
 import { AttachmentPicker } from '@/components/app/ui/AttachmentPicker'
 import { BackLink } from '@/components/app/ui/BackLink'
 import { Button, ButtonLink } from '@/components/app/ui/Button'
@@ -14,6 +15,7 @@ import { Notice } from '@/components/app/ui/Notice'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { FactRow } from '@/components/app/ui/FactRow'
 import { Panel } from '@/components/app/ui/Panel'
+import { ScreenshotGrid } from '@/components/app/ui/ScreenshotGrid'
 import { fitScreenshots } from '@/lib/client/ticket-upload'
 import { CLIENT_UPLOAD_BUDGET_BYTES, ticketErrorKey } from '@/lib/support-tickets/client-form'
 import { ATTACHMENT_MIME_TYPES, TICKET_LIMITS, type TicketDetail } from '@/lib/support-tickets/model'
@@ -40,7 +42,16 @@ export function TicketConversation({ ticket, projectSlug, supportMode }: { ticke
   const mb = Math.round(TICKET_LIMITS.attachmentBytesMax / (1024 * 1024))
   const waiting = ticket.status === 'waiting_for_user'
   const canReply = ticket.reply === 'allowed'
-  const screenshots = ticket.thread.reduce((n, e) => n + (e.kind === 'message' ? e.attachments.filter((a) => a.deleted === null).length : 0), 0)
+  const allScreenshots = ticket.thread.flatMap((e) => (e.kind === 'message' ? e.attachments : []))
+
+  // Live updates (round 4): while the page is open and visible, ask every 20 s whether the request changed.
+  // router.refresh() re-renders server data only; the typed text and picked screenshots live in state and stay.
+  const seenActivity = useRef(ticket.lastActivityAt)
+  seenActivity.current = ticket.lastActivityAt
+  useVisibleInterval(async () => {
+    const latest = await clientTicketActivityAction(projectSlug, ticket.id)
+    if (latest && latest !== seenActivity.current) router.refresh()
+  }, 20_000, !supportMode)
 
   function goToReply() {
     const box = replyRef.current
@@ -110,7 +121,8 @@ export function TicketConversation({ ticket, projectSlug, supportMode }: { ticke
       <Panel as="section" aria-label={t('recap.statusLabel')} highlighted={waiting} className="lg:hidden">
         <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
           <div className="min-w-0 space-y-0.5">
-            <p className="text-[0.9375rem] leading-6 font-semibold">{sentence(ticket)}</p>
+            <TicketStatusPill status={ticket.status} />
+            <p className="pt-1 text-[0.9375rem] leading-6 font-semibold">{sentence(ticket)}</p>
             <p className="text-sm leading-5 text-muted-foreground">
               {ticket.reference} · <TicketTime iso={ticket.lastActivityAt} />
             </p>
@@ -253,8 +265,42 @@ export function TicketConversation({ ticket, projectSlug, supportMode }: { ticke
                 )}
               </FactRow>
             ) : null}
-            <FactRow label={t('recap.screenshots')}>{screenshots}</FactRow>
           </dl>
+          <div className="mt-1 border-t border-border pt-3">
+            <p className="mb-2 text-sm leading-5 text-muted-foreground">{t('recap.screenshots')}</p>
+            {allScreenshots.length === 0 ? (
+              <p className="text-[0.9375rem] leading-6">{t('recap.screenshotsEmpty')}</p>
+            ) : (
+              <ScreenshotGrid
+                images={allScreenshots.map((a) => ({ id: a.id, url: a.url, deleted: a.deleted }))}
+                labels={{
+                  open: (n) => t('ticket.openScreenshot', { n }),
+                  deleted: () => t('ticket.screenshotDeleted'),
+                  viewer: {
+                    dialog: t('ticket.viewer.dialog'),
+                    close: t('ticket.viewer.close'),
+                    previous: t('ticket.viewer.previous'),
+                    next: t('ticket.viewer.next'),
+                    counter: (n, total) => t('ticket.viewer.counter', { n, total }),
+                  },
+                }}
+                actions={(image) => {
+                  const a = allScreenshots.find((x) => x.id === image.id)
+                  return a?.canDelete && !supportMode ? (
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        setDeleteError(null)
+                        setDeleting(a.id)
+                      }}
+                    >
+                      {t('ticket.deleteScreenshot')}
+                    </Button>
+                  ) : null
+                }}
+              />
+            )}
+          </div>
           <ButtonLink variant="secondary" className="mt-3" href={`/${projectSlug}/support/new`}>
             {t('ticket.openNew')}
           </ButtonLink>

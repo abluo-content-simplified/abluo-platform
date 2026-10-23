@@ -24,6 +24,7 @@ import { sendEmail } from '@/lib/notifications/resend'
 import { renderAccessRestoredEmail } from '@/lib/invitations/email'
 import { invitationLocale } from '@/lib/invitations/messages'
 import { createInvitation, invitationOrigin, loadPerson, loadPlace, oneLine } from '@/lib/invitations/service'
+import { recordAccessChange } from '@/lib/people/access-log'
 
 export type PersonKind = 'owner' | 'member' | 'clientMember' | 'invitation' | 'archived'
 export type PersonStatus = 'active' | 'invited' | 'expired' | 'archived'
@@ -364,7 +365,19 @@ export async function updateProjectMember(
       })
       if (!decision.ok) return { ok: false as const, error: 'forbidden' as const }
       const { error } = await admin.from('project_members').update({ role: input.role, extra_permissions: extras }).eq('id', row.id)
-      return error ? { ok: false as const, error: 'failed' as const } : { ok: true as const }
+      if (error) return { ok: false as const, error: 'failed' as const }
+      await recordAccessChange(
+        admin,
+        {
+          actorId: ctx.userId,
+          subjectUserId: row.user_id,
+          projectId,
+          action: 'member.change',
+          detail: { roleBefore: row.role, role: input.role, extrasBefore: row.extra_permissions ?? [], extras },
+        },
+        { support: Boolean(ctx.support) }
+      )
+      return { ok: true as const }
     }
   )
 }
@@ -427,6 +440,11 @@ export async function archiveProjectMember(
           .is('accepted_at', null)
           .is('revoked_at', null)
       }
+      await recordAccessChange(
+        admin,
+        { actorId: ctx.userId, subjectUserId: row.user_id, projectId, action: 'member.archive', detail: { role: row.role, extras: row.extra_permissions ?? [] } },
+        { support: Boolean(ctx.support) }
+      )
       return { ok: true as const }
     }
   )
@@ -472,6 +490,11 @@ export async function restoreProjectMember(
         if (error) return { ok: false as const, error: 'failed' as const }
       }
       await admin.from('project_member_archive').update({ restored_at: now, restored_by: ctx.userId }).eq('id', rec.id as string)
+      await recordAccessChange(
+        admin,
+        { actorId: ctx.userId, subjectUserId: rec.user_id as string, projectId, action: 'member.restore', detail: { role: rec.role, extras } },
+        { support: Boolean(ctx.support) }
+      )
       if (existing) return { ok: true as const, emailSent: false }
 
       // "Your access is back" — best effort; the restore stands either way.

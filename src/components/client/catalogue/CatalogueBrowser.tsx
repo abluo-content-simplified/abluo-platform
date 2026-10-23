@@ -176,7 +176,7 @@ export function CatalogueBrowser({
           shape: i.itemProfile ? catalogueImageShape({ itemProfile: i.itemProfile }) : site.imageShape,
           details: itemSecondaryLine({ itemProfile: i.itemProfile, byline: textIn(i.byline, ui, d), author: i.bookAuthor, year: i.bookYear }),
           chips,
-          gaps: itemGaps(i).filter((g) => g !== 'noPrice'),
+          gaps: itemGaps({ ...i, categoryCount: i.categories.length }).filter((g) => g !== 'noPrice'),
           search: searchable(`${Object.values(i.names).join(' ')} ${Object.values(i.byline).join(' ')} ${i.bookAuthor ?? ''} ${chips.join(' ')}`),
           categories: i.categories,
           hasPage: i.hasPage,
@@ -397,12 +397,13 @@ export function CatalogueBrowser({
           <div className="flex min-w-0 flex-col items-start gap-1.5">
             <CellText primary={r.name} secondary={r.details} secondaryLines={1} href={r.href} />
             {r.chips.length ? <Chips items={r.chips} max={3} /> : null}
-            <GapBadges gaps={r.gaps} />
           </div>
         </div>
       ),
     },
     { key: 'status', header: t('columns.status'), sortable: true, width: 'w-32', render: (r) => <LifecycleBadge status={r.status.status} /> },
+    // What is still missing, at a glance (like the PLU "To complete" column): quiet badges, never blocking.
+    ...(view === 'items' ? [{ key: 'toComplete', header: t('columns.toComplete'), width: 'w-44', render: (r: Row) => (r.gaps.length ? <GapBadges gaps={r.gaps} /> : <CellDate iso={null} />) }] : []),
     {
       key: 'changes',
       header: t('columns.changes'),
