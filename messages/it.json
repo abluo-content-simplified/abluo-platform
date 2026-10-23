@@ -4173,13 +4173,13 @@
         "noteSaved": "Nota salvata",
         "statusSaved": "Stato aggiornato",
         "severitySaved": "Gravità aggiornata",
-        "textRemoved": "Testo rimosso per sempre. Il cliente vede «Rimosso dal supporto Abluo».",
-        "screenshotDeleted": "Screenshot eliminato per sempre.",
+        "textRemoved": "Messaggio rimosso. Il cliente vede «Rimosso da Abluo Support».",
+        "screenshotDeleted": "Screenshot eliminato.",
         "theClient": "Il cliente",
         "resolved": "Segnato come risolto. {name} riceverà un’email.",
         "waiting": "{name} vedrà che serve la sua risposta. Gli scriviamo anche un’email.",
         "waitingNoEmail": "{name} vedrà che serve la sua risposta.",
-        "partsHidden": "Nascosto per sempre. Il cliente vede barre grigie al posto del testo."
+        "partsHidden": "Testo nascosto. Il cliente vede barre grigie al suo posto."
       },
       "redact": {
         "action": "Rimuovi testo",
@@ -4256,12 +4256,12 @@
         "clear": "Azzera",
         "preview": "Cosa vedrà il cliente",
         "previewEmpty": "Ancora nulla di segnato.",
-        "confirm": "Nascondi {count, plural, one {# parte} other {# parti}} per sempre",
+        "confirm": "Nascondi il testo selezionato",
         "nothingMarked": "Segna almeno una parte del testo per continuare.",
         "whole": "Rimuovi tutto il messaggio",
-        "confirmTitle": "Nascondere {count, plural, one {# carattere} other {# caratteri}} per sempre?",
-        "confirmBody": "Il testo nascosto viene eliminato per sempre, anche per il cliente, e non si può recuperare. Non si può annullare.",
-        "confirmAction": "Nascondi per sempre",
+        "confirmTitle": "Nascondere il testo selezionato?",
+        "confirmBody": "Il cliente vedrà delle barre grigie al suo posto. Le parole nascoste vengono eliminate e non si possono recuperare.",
+        "confirmAction": "Nascondi testo",
         "back": "Indietro"
       }
     }

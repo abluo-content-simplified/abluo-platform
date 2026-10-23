@@ -4173,13 +4173,13 @@
         "noteSaved": "Notiz gespeichert",
         "statusSaved": "Status aktualisiert",
         "severitySaved": "Schweregrad aktualisiert",
-        "textRemoved": "Text endgültig entfernt. Der Kunde sieht „Von Abluo Support entfernt“.",
-        "screenshotDeleted": "Screenshot endgültig gelöscht.",
+        "textRemoved": "Nachricht entfernt. Der Kunde sieht „Von Abluo Support entfernt“.",
+        "screenshotDeleted": "Screenshot gelöscht.",
         "theClient": "Der Kunde",
         "resolved": "Als gelöst markiert. {name} bekommt eine E-Mail.",
         "waiting": "{name} sieht, dass deine Antwort gebraucht wird. Wir schicken auch eine E-Mail.",
         "waitingNoEmail": "{name} sieht, dass deine Antwort gebraucht wird.",
-        "partsHidden": "Endgültig ausgeblendet. Der Kunde sieht graue Balken an der Stelle des Textes."
+        "partsHidden": "Text ausgeblendet. Der Kunde sieht graue Balken an seiner Stelle."
       },
       "redact": {
         "action": "Text entfernen",
@@ -4256,12 +4256,12 @@
         "clear": "Zurücksetzen",
         "preview": "Das sieht der Kunde",
         "previewEmpty": "Noch nichts markiert.",
-        "confirm": "{count, plural, one {# Teil} other {# Teile}} endgültig ausblenden",
+        "confirm": "Ausgewählten Text ausblenden",
         "nothingMarked": "Markiere mindestens einen Teil des Textes, um fortzufahren.",
         "whole": "Ganze Nachricht entfernen",
-        "confirmTitle": "{count, plural, one {# Zeichen} other {# Zeichen}} endgültig ausblenden?",
-        "confirmBody": "Der ausgeblendete Text wird endgültig gelöscht, auch für den Kunden, und lässt sich nicht wiederherstellen. Das kann nicht rückgängig gemacht werden.",
-        "confirmAction": "Endgültig ausblenden",
+        "confirmTitle": "Ausgewählten Text ausblenden?",
+        "confirmBody": "Der Kunde sieht stattdessen graue Balken. Die ausgeblendeten Wörter werden gelöscht und lassen sich nicht wiederherstellen.",
+        "confirmAction": "Text ausblenden",
         "back": "Zurück"
       }
     }

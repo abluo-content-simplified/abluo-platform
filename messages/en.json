@@ -4173,13 +4173,13 @@
         "noteSaved": "Note saved",
         "statusSaved": "Status updated",
         "severitySaved": "Severity updated",
-        "textRemoved": "Text removed for good. The client sees ‘Removed by Abluo Support’.",
-        "screenshotDeleted": "Screenshot deleted for good.",
+        "textRemoved": "Message removed. The client sees ‘Removed by Abluo Support’.",
+        "screenshotDeleted": "Screenshot deleted.",
         "theClient": "The client",
         "resolved": "Marked as resolved. {name} will get an email.",
         "waiting": "{name} will see that you need their reply. We’ll email them.",
         "waitingNoEmail": "{name} will see that you need their reply.",
-        "partsHidden": "Hidden for good. The client sees grey bars where the text was."
+        "partsHidden": "Text hidden. The client sees grey bars where it was."
       },
       "redact": {
         "action": "Remove text",
@@ -4256,12 +4256,12 @@
         "clear": "Clear",
         "preview": "What the client will see",
         "previewEmpty": "Nothing marked yet.",
-        "confirm": "Hide {count, plural, one {# part} other {# parts}} for good",
+        "confirm": "Hide selected text",
         "nothingMarked": "Mark at least one part of the text to continue.",
         "whole": "Remove the whole message",
-        "confirmTitle": "Hide {count, plural, one {# character} other {# characters}} for good?",
-        "confirmBody": "The hidden text is deleted for good, for the client too, and can’t be recovered. This can’t be undone.",
-        "confirmAction": "Hide for good",
+        "confirmTitle": "Hide the selected text?",
+        "confirmBody": "The client will see grey bars instead. The hidden words are deleted and can’t be brought back.",
+        "confirmAction": "Hide text",
         "back": "Back"
       }
     }
