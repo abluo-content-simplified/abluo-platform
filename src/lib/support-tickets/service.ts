@@ -415,8 +415,9 @@ export async function listAdminTickets(adminUserId: string, filters: AdminTicket
   })
 }
 
+/** The admin sidebar number: tickets still active with something this admin hasn't seen (= New Requests + Client Replied on the card). */
 export async function countAdminUnread(adminUserId: string): Promise<number> {
-  const list = await listAdminTickets(adminUserId, { status: 'all' })
+  const list = await listAdminTickets(adminUserId, { status: 'active' })
   return list.ok ? list.value.filter((t) => t.unread).length : 0
 }
 
