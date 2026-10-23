@@ -44,7 +44,7 @@ export function useEventFormatter(): (event: Extract<ThreadEntry, { kind: 'event
       case 'message_redacted':
         return t('events.message_removed')
       case 'attachment_deleted':
-        return t('events.attachment_deleted')
+        return e.to === 'removed_by_client' ? t('events.attachment_removed_by_client') : t('events.attachment_deleted')
       default:
         return null
     }

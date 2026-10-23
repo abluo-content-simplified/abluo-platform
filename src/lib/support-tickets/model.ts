@@ -133,7 +133,9 @@ export type TicketAttachmentView = {
   height: number | null
   /** Signed link (5 minutes). null once deleted. */
   url: string | null
-  deleted: null | 'retention' | 'redacted' | 'project_deleted'
+  deleted: null | 'retention' | 'redacted' | 'project_deleted' | 'removed_by_client'
+  /** Client side: the person uploaded it themselves and may delete it (round 3). */
+  canDelete?: boolean
 }
 
 /** One entry of the thread, in time order. Notes only ever appear for the admin. */

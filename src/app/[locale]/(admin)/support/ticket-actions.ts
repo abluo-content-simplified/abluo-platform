@@ -16,12 +16,14 @@ import {
   deleteAttachment,
   recordSupportVisitFromTicket,
   redactMessage,
+  redactMessageParts,
   replyAsSupport,
   setTicketSeverity,
   setTicketStatus,
   ticketProject,
   type NewTicketFile,
 } from '@/lib/support-tickets/service'
+import type { RedactionRange } from '@/lib/support-tickets/redaction'
 import type { TicketFailure, TicketResult, TicketSeverity, TicketStatus } from '@/lib/support-tickets/model'
 
 export type TicketActionResult = { ok: true } | { ok: false; reason: TicketFailure }
@@ -80,6 +82,22 @@ export async function redactMessageAction(ticketId: unknown, messageId: unknown)
   const id = await actorId()
   if (!id) return { ok: false, reason: 'forbidden' }
   return refresh(await redactMessage(id, str(messageId)), str(ticketId))
+}
+
+/** Hides chosen parts of a message for good. `ranges` are [start, end) offsets in the current text. */
+export async function redactMessagePartsAction(ticketId: unknown, messageId: unknown, ranges: unknown): Promise<TicketActionResult> {
+  const id = await actorId()
+  if (!id) return { ok: false, reason: 'forbidden' }
+  if (!Array.isArray(ranges) || ranges.length > 500) return { ok: false, reason: 'invalid' }
+  const clean: RedactionRange[] = []
+  for (const r of ranges) {
+    const start = (r as RedactionRange | null)?.start
+    const end = (r as RedactionRange | null)?.end
+    if (typeof start !== 'number' || typeof end !== 'number' || !Number.isFinite(start) || !Number.isFinite(end)) return { ok: false, reason: 'invalid' }
+    clean.push({ start, end })
+  }
+  const result = await redactMessageParts(id, str(messageId), clean)
+  return refresh(result.ok ? { ok: true, value: undefined } : result, str(ticketId))
 }
 
 export async function deleteAttachmentAction(ticketId: unknown, attachmentId: unknown): Promise<TicketActionResult> {

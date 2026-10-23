@@ -41,6 +41,7 @@ import {
 } from './model'
 import { scheduleTicketNotifications } from './notify'
 import { clientReplyOutcome, isUnread } from './state'
+import { maskRanges, type RedactionRange } from './redaction'
 
 type Db = SupabaseClient
 
@@ -76,7 +77,7 @@ const ADMIN_TICKET_COLUMNS = 'id, number, project_id, created_by, title, status,
 type MessageRow = { id: string; ticket_id: string; author_id: string | null; author_kind: 'client' | 'support'; body: string; created_at: string; redacted_at: string | null }
 type NoteRow = { id: string; ticket_id: string; author_id: string | null; body: string; created_at: string }
 type EventRow = { id: string; ticket_id: string; actor_id: string | null; kind: TicketEventKind; from_value: string | null; to_value: string | null; visibility: 'public' | 'internal'; created_at: string }
-type AttachmentRow = { id: string; ticket_id: string; message_id: string | null; storage_path: string; mime: string; bytes: number; width: number | null; height: number | null; deleted_reason: TicketAttachmentView['deleted'] }
+type AttachmentRow = { id: string; ticket_id: string; message_id: string | null; storage_path: string; mime: string; bytes: number; width: number | null; height: number | null; deleted_reason: TicketAttachmentView['deleted']; uploaded_by?: string | null }
 
 // ── People ───────────────────────────────────────────────────────────────────
 
@@ -138,7 +139,7 @@ async function storeAttachments(db: Db, projectId: string, ticketId: string, mes
   }
 }
 
-async function attachmentViews(db: Db, rows: AttachmentRow[]): Promise<Map<string, TicketAttachmentView[]>> {
+async function attachmentViews(db: Db, rows: AttachmentRow[], deletableBy?: string | null): Promise<Map<string, TicketAttachmentView[]>> {
   const live = rows.filter((r) => !r.deleted_reason)
   const urls = new Map<string, string>()
   if (live.length) {
@@ -149,7 +150,7 @@ async function attachmentViews(db: Db, rows: AttachmentRow[]): Promise<Map<strin
   for (const r of rows) {
     const key = r.message_id ?? ''
     const list = byMessage.get(key) ?? []
-    list.push({ id: r.id, mime: r.mime, bytes: r.bytes, width: r.width, height: r.height, url: r.deleted_reason ? null : urls.get(r.storage_path) ?? null, deleted: r.deleted_reason })
+    list.push({ id: r.id, mime: r.mime, bytes: r.bytes, width: r.width, height: r.height, url: r.deleted_reason ? null : urls.get(r.storage_path) ?? null, deleted: r.deleted_reason, ...(deletableBy !== undefined ? { canDelete: !r.deleted_reason && !!deletableBy && r.uploaded_by === deletableBy } : {}) })
     byMessage.set(key, list)
   }
   return byMessage
@@ -201,12 +202,12 @@ export async function getClientTicket(access: TicketAccess, ticketId: string, op
     const [msgs, events, atts] = await Promise.all([
       db.from('support_ticket_messages').select('id, ticket_id, author_id, author_kind, body, created_at, redacted_at').eq('ticket_id', t.id).order('created_at'),
       db.from('support_ticket_events').select('id, ticket_id, actor_id, kind, from_value, to_value, visibility, created_at').eq('ticket_id', t.id).eq('visibility', 'public').order('created_at'),
-      db.from('support_ticket_attachments').select('id, ticket_id, message_id, storage_path, mime, bytes, width, height, deleted_reason').eq('ticket_id', t.id).order('created_at'),
+      db.from('support_ticket_attachments').select('id, ticket_id, message_id, storage_path, mime, bytes, width, height, deleted_reason, uploaded_by').eq('ticket_id', t.id).order('created_at'),
     ])
     const messages = (msgs.data ?? []) as MessageRow[]
     // Only client authors are named; Abluo replies show as "Abluo Support" (the UI's label).
     const people = await loadPeople(db, messages.filter((m) => m.author_kind === 'client').map((m) => m.author_id), false)
-    const byMessage = await attachmentViews(db, (atts.data ?? []) as AttachmentRow[])
+    const byMessage = await attachmentViews(db, (atts.data ?? []) as AttachmentRow[], access.canWrite && !access.supportMode ? access.userId : null)
     const thread = buildThread({
       messages, notes: [], events: (events.data ?? []) as EventRow[], people, byMessage,
       firstMessageId: messages[0]?.id ?? null, hideSupportNames: true,
@@ -512,6 +513,45 @@ export async function redactMessage(adminUserId: string, messageId: string): Pro
   return withDb('Abluo admin redacts a ticket message', async (db) => {
     const rpc = await db.rpc('support_ticket_redact_message', { p_message_id: messageId, p_actor_id: adminUserId })
     if (rpc.error) return fail(rpc.error)
+    return { ok: true, value: undefined }
+  })
+}
+
+/** Hides chosen parts of a message for good (round 3). Ranges are [start, end) in the current text. */
+export async function redactMessageParts(adminUserId: string, messageId: string, ranges: RedactionRange[]): Promise<TicketResult<{ removed: number }>> {
+  if (!isUuid(messageId)) return { ok: false, reason: 'notFound' }
+  return withDb('Abluo admin hides parts of a ticket message', async (db) => {
+    const { data, error } = await db.from('support_ticket_messages').select('body, redacted_at').eq('id', messageId).maybeSingle()
+    if (error) return fail(error)
+    const row = data as { body: string; redacted_at: string | null } | null
+    if (!row || row.redacted_at) return { ok: false, reason: 'notFound' }
+    const masked = maskRanges(row.body, ranges)
+    if (!masked.removed) return { ok: false, reason: 'invalid' }
+    const rpc = await db.rpc('support_ticket_redact_parts', { p_message_id: messageId, p_actor_id: adminUserId, p_masked_body: masked.body })
+    if (rpc.error) return fail(rpc.error)
+    return { ok: true, value: { removed: Number(rpc.data ?? masked.removed) } }
+  })
+}
+
+/** A client deletes a screenshot THEY uploaded (round 3). Public event so both sides see it. */
+export async function deleteOwnAttachment(access: TicketAccess, attachmentId: string): Promise<TicketResult> {
+  if (access.supportMode) return { ok: false, reason: 'supportMode' }
+  if (!access.canWrite) return { ok: false, reason: 'forbidden' }
+  if (!isUuid(attachmentId)) return { ok: false, reason: 'notFound' }
+  return withDb('a client deletes a screenshot they uploaded', async (db) => {
+    const { data, error } = await db.from('support_ticket_attachments').select('id, ticket_id, storage_path, uploaded_by, deleted_at').eq('id', attachmentId).maybeSingle()
+    if (error) return fail(error)
+    const row = data as { id: string; ticket_id: string; storage_path: string; uploaded_by: string | null; deleted_at: string | null } | null
+    if (!row || row.uploaded_by !== access.userId) return { ok: false, reason: 'notFound' }
+    const { data: t } = await db.from('support_tickets').select('project_id, created_by').eq('id', row.ticket_id).maybeSingle()
+    if (!t || !canSeeTicket(access, t as { project_id: string; created_by: string | null })) return { ok: false, reason: 'notFound' }
+    if (row.deleted_at) return { ok: true, value: undefined }
+    const rm = await db.storage.from(ATTACHMENT_BUCKET).remove([row.storage_path])
+    if (rm.error) return { ok: false, reason: 'error' }
+    const upd = await db.from('support_ticket_attachments').update({ deleted_at: new Date().toISOString(), deleted_reason: 'removed_by_client' }).eq('id', row.id)
+    if (upd.error) return fail(upd.error)
+    await db.from('support_ticket_events').insert({ ticket_id: row.ticket_id, actor_id: access.userId, kind: 'attachment_deleted', to_value: 'removed_by_client', visibility: 'public' })
+    await db.from('support_tickets').update({ last_activity_at: new Date().toISOString() }).eq('id', row.ticket_id)
     return { ok: true, value: undefined }
   })
 }

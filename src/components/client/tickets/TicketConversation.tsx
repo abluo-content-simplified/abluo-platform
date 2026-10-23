@@ -3,10 +3,11 @@
 import { useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
-import { replyToTicketAction } from '@/app/[locale]/(client)/[tenant]/support/ticket-actions'
+import { deleteOwnScreenshotAction, replyToTicketAction } from '@/app/[locale]/(client)/[tenant]/support/ticket-actions'
 import { AttachmentPicker } from '@/components/app/ui/AttachmentPicker'
 import { BackLink } from '@/components/app/ui/BackLink'
 import { Button, ButtonLink } from '@/components/app/ui/Button'
+import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { MessageComposer } from '@/components/app/ui/MessageComposer'
 import { MessageThread } from '@/components/app/ui/MessageThread'
 import { Notice } from '@/components/app/ui/Notice'
@@ -31,6 +32,9 @@ export function TicketConversation({ ticket, projectSlug, supportMode }: { ticke
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [files, setFiles] = useState<File[]>([])
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const replyRef = useRef<HTMLDivElement>(null)
   const sentence = useStatusSentence()
   const mb = Math.round(TICKET_LIMITS.attachmentBytesMax / (1024 * 1024))
@@ -43,6 +47,24 @@ export function TicketConversation({ ticket, projectSlug, supportMode }: { ticke
     if (!box) return
     box.scrollIntoView({ behavior: 'smooth', block: 'center' })
     box.querySelector('textarea')?.focus({ preventScroll: true })
+  }
+
+  async function confirmDelete() {
+    if (!deleting || deleteBusy) return
+    setDeleteBusy(true)
+    setDeleteError(null)
+    try {
+      const result = await deleteOwnScreenshotAction(projectSlug, deleting)
+      if (result.ok) {
+        setDeleting(null)
+        router.refresh()
+      } else {
+        setDeleteError(t(`errors.${ticketErrorKey(result.reason, result.field)}`))
+      }
+    } catch {
+      setDeleteError(t('errors.error'))
+    }
+    setDeleteBusy(false)
   }
 
   async function send() {
@@ -112,8 +134,39 @@ export function TicketConversation({ ticket, projectSlug, supportMode }: { ticke
             internalNote: t('ticket.internalNote'),
             screenshotDeleted: t('ticket.screenshotDeleted'),
             openScreenshot: (n) => t('ticket.openScreenshot', { n }),
+            removedPart: t('ticket.removedPart'),
+            viewer: {
+              dialog: t('ticket.viewer.dialog'),
+              close: t('ticket.viewer.close'),
+              previous: t('ticket.viewer.previous'),
+              next: t('ticket.viewer.next'),
+              counter: (n, total) => t('ticket.viewer.counter', { n, total }),
+            },
             thread: t('ticket.threadLabel'),
           }}
+          imageActions={(a) =>
+            a.canDelete && !supportMode ? (
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  setDeleteError(null)
+                  setDeleting(a.id)
+                }}
+              >
+                {t('ticket.deleteScreenshot')}
+              </Button>
+            ) : null
+          }
+        />
+        <ConfirmDialog
+          open={deleting !== null}
+          title={t('ticket.deleteTitle')}
+          body={t('ticket.deleteBody')}
+          confirmLabel={t('ticket.deleteConfirm')}
+          busy={deleteBusy}
+          error={deleteError}
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setDeleting(null)}
         />
 
         {ticket.reply === 'closed' ? (

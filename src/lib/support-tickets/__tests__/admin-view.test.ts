@@ -78,3 +78,12 @@ describe('unread filter and Support card links', () => {
     expect(q(SUPPORT_CARD_LINKS.high)).toEqual({ ...DEFAULT_ADMIN_VIEW, severity: 'high' })
   })
 })
+
+describe('event lines for round 3', () => {
+  it('words a screenshot removed by the client and a partial redaction', () => {
+    expect(eventLine('attachment_deleted', 'removed_by_client')).toEqual({ key: 'attachmentRemovedByClient' })
+    expect(eventLine('attachment_deleted', null)).toEqual({ key: 'attachmentDeleted' })
+    expect(eventLine('message_redacted', 'partial:11')).toEqual({ key: 'messageRedactedPartial', values: { count: '11' } })
+    expect(eventLine('message_redacted', null)).toEqual({ key: 'messageRedacted' })
+  })
+})

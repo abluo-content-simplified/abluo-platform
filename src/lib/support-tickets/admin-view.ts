@@ -91,10 +91,13 @@ export function eventLine(event: TicketEventKind, to: string | null): EventLine 
       return isTicketSeverity(to) ? { key: 'severityChanged', values: { severity: to } } : null
     case 'reopened_by_reply':
       return { key: 'reopenedByReply' }
-    case 'message_redacted':
-      return { key: 'messageRedacted' }
+    case 'message_redacted': {
+      // Partial hiding records 'partial:<characters>' (migration 048).
+      const count = to?.startsWith('partial:') ? Number(to.slice('partial:'.length)) : NaN
+      return Number.isFinite(count) ? { key: 'messageRedactedPartial', values: { count: String(count) } } : { key: 'messageRedacted' }
+    }
     case 'attachment_deleted':
-      return { key: 'attachmentDeleted' }
+      return to === 'removed_by_client' ? { key: 'attachmentRemovedByClient' } : { key: 'attachmentDeleted' }
     case 'support_visit_started':
       return { key: 'supportVisitStarted' }
     default:

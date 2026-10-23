@@ -11,10 +11,12 @@ const person = (name: string) => ({ id: null, name, email: `${name.toLowerCase()
 const att = (id: string, url: string | null, deleted: 'retention' | null = null) => ({ id, mime: 'image/png', bytes: 1000, width: 200, height: 200, url, deleted })
 
 const ENTRIES: ThreadEntry[] = [
-  { kind: 'message', id: 'm1', authorKind: 'client', author: person('Claudia Hoffmann'), body: 'The booking button on the home page does nothing.\nI tried twice on my phone.', redacted: false, createdAt: '2026-10-20T09:12:00Z', attachments: [att('a1', SHOT), att('a2', null, 'retention')] },
+  { kind: 'message', id: 'm1', authorKind: 'client', author: person('Claudia Hoffmann'), body: 'The booking button on the home page does nothing.\nI tried twice on my phone.', redacted: false, createdAt: '2026-10-20T09:12:00Z', attachments: [att('a1', SHOT), att('a3', SHOT), att('a2', null, 'retention')] },
   { kind: 'event', id: 'e1', event: 'status_changed', from: 'open', to: 'in_progress', createdAt: '2026-10-20T10:00:00Z', actor: null },
   { kind: 'message', id: 'm2', authorKind: 'support', author: person('Tom'), body: 'Thanks, we are looking at it.', redacted: false, createdAt: '2026-10-20T10:05:00Z', attachments: [] },
   { kind: 'note', id: 'n1', author: person('Tom'), body: 'Probably the cookie banner overlay on iOS.', createdAt: '2026-10-20T10:07:00Z' },
+  { kind: 'message', id: 'm4', authorKind: 'client', author: person('Claudia Hoffmann'), body: 'You can call me on ███████████ after 5pm,\nmy email is ██████████████████.', redacted: false, createdAt: '2026-10-20T10:30:00Z', attachments: [] },
+  { kind: 'event', id: 'e2', event: 'attachment_deleted', from: null, to: 'removed_by_client', createdAt: '2026-10-20T10:40:00Z', actor: null },
   { kind: 'message', id: 'm3', authorKind: 'client', author: person('Claudia Hoffmann'), body: 'my phone number is …', redacted: true, createdAt: '2026-10-20T11:00:00Z', attachments: [] },
 ]
 
@@ -23,16 +25,19 @@ const LABELS = {
   redacted: 'Removed by Abluo Support',
   internalNote: 'Internal — not visible to the client',
   screenshotDeleted: 'Screenshot deleted',
-  openScreenshot: (n: number) => `Open screenshot ${n} (new tab)`,
+  openScreenshot: (n: number) => `Open screenshot ${n}`,
+  removedPart: 'removed by Abluo Support',
+  viewer: { dialog: 'Screenshot', close: 'Close', previous: 'Previous screenshot', next: 'Next screenshot', counter: (n: number, total: number) => `${n} of ${total}` },
   thread: 'Conversation',
 }
 
-const formatEvent = (e: Extract<ThreadEntry, { kind: 'event' }>) => (e.event === 'status_changed' ? `Status changed to ${e.to}` : null)
+const formatEvent = (e: Extract<ThreadEntry, { kind: 'event' }>) =>
+  e.event === 'status_changed' ? `Status changed to ${e.to}` : e.event === 'attachment_deleted' && e.to === 'removed_by_client' ? 'You removed a screenshot' : null
 
 export default function MessageThreadDemo() {
   return (
     <DemoStack>
-      <DemoBlock title="Client + support + note + system line" note="Props: entries (ThreadEntry[]), labels, formatEvent. The note tint and label appear only because a note was passed — pass notes on the admin side only.">
+      <DemoBlock title="Client + support + note + system line + partly hidden text" note="Props: entries (ThreadEntry[]), labels, formatEvent. The note tint and label appear only because a note was passed — pass notes on the admin side only.">
         <div className="w-full max-w-xl">
           <MessageThread entries={ENTRIES} labels={LABELS} formatEvent={formatEvent} />
         </div>
@@ -45,6 +50,16 @@ export default function MessageThreadDemo() {
             formatEvent={formatEvent}
             actions={() => <Button variant="quiet">Remove text</Button>}
             attachmentActions={() => <Button variant="quiet">Delete</Button>}
+          />
+        </div>
+      </DemoBlock>
+      <DemoBlock title="Screenshot viewer with actions" note="Click a screenshot: it opens the shared ImageViewer over the page (arrows, ← →, swipe, Esc). imageActions(attachment, entry) puts a control in the viewer's top bar. Demos reach no backend.">
+        <div className="w-full max-w-xl">
+          <MessageThread
+            entries={ENTRIES.slice(0, 1)}
+            labels={LABELS}
+            formatEvent={formatEvent}
+            imageActions={() => <Button variant="destructive">Delete screenshot</Button>}
           />
         </div>
       </DemoBlock>

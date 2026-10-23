@@ -2659,7 +2659,7 @@
         "redacted": "Rimosso da Abluo Support",
         "internalNote": "Nota interna",
         "screenshotDeleted": "Screenshot eliminato",
-        "openScreenshot": "Apri screenshot {n} (nuova scheda)",
+        "openScreenshot": "Apri screenshot {n}",
         "replyLabel": "La tua risposta",
         "replyPlaceholder": "Scrivi una risposta…",
         "send": "Invia risposta",
@@ -2670,14 +2670,27 @@
         "openNew": "Apri una nuova richiesta",
         "readOnlyForbidden": "Puoi leggere questa richiesta ma non rispondere.",
         "readOnlySupport": "Non è possibile rispondere mentre si visualizza come cliente.",
-        "back": "Torna al supporto"
+        "back": "Torna al supporto",
+        "removedPart": "rimosso da Abluo Support",
+        "viewer": {
+          "dialog": "Screenshot",
+          "close": "Chiudi",
+          "previous": "Screenshot precedente",
+          "next": "Screenshot successivo",
+          "counter": "{n} di {total}"
+        },
+        "deleteScreenshot": "Elimina screenshot",
+        "deleteTitle": "Eliminare questo screenshot?",
+        "deleteBody": "Eliminare questo screenshot definitivamente? Abluo Support vedrà che l’hai rimosso tu.",
+        "deleteConfirm": "Elimina screenshot"
       },
       "events": {
         "created": "Richiesta inviata",
         "status_changed": "Stato cambiato in {status}",
         "reopened_by_reply": "Richiesta riaperta dalla tua risposta",
         "message_removed": "Un messaggio è stato rimosso",
-        "attachment_deleted": "Uno screenshot è stato eliminato"
+        "attachment_deleted": "Uno screenshot è stato eliminato",
+        "attachment_removed_by_client": "Hai rimosso uno screenshot"
       },
       "errors": {
         "unavailable": "Le richieste di supporto non sono ancora disponibili. Riprova più tardi.",
@@ -4111,7 +4124,15 @@
         "redacted": "Rimosso dal supporto Abluo",
         "internalNote": "Interno — non visibile al cliente",
         "screenshotDeleted": "Screenshot eliminato",
-        "openScreenshot": "Apri lo screenshot {n} (nuova scheda)"
+        "openScreenshot": "Apri screenshot {n}",
+        "removedPart": "Nascosto da Abluo Support",
+        "viewer": {
+          "dialog": "Screenshot",
+          "close": "Chiudi",
+          "previous": "Screenshot precedente",
+          "next": "Screenshot successivo",
+          "counter": "{n} di {total}"
+        }
       },
       "events": {
         "statusChanged": "Stato cambiato in {status}",
@@ -4119,7 +4140,9 @@
         "reopenedByReply": "Riaperto dalla risposta del cliente",
         "messageRedacted": "Testo del messaggio rimosso",
         "attachmentDeleted": "Screenshot eliminato",
-        "supportVisitStarted": "Aperto «Vedi come cliente»"
+        "supportVisitStarted": "Aperto «Vedi come cliente»",
+        "messageRedactedPartial": "Nascosti {count} caratteri (interno)",
+        "attachmentRemovedByClient": "Screenshot rimosso dal cliente"
       },
       "composer": {
         "modeLabel": "Scrivi",
@@ -4155,7 +4178,8 @@
         "theClient": "Il cliente",
         "resolved": "Segnato come risolto. {name} riceverà un’email.",
         "waiting": "{name} vedrà che serve la sua risposta. Gli scriviamo anche un’email.",
-        "waitingNoEmail": "{name} vedrà che serve la sua risposta."
+        "waitingNoEmail": "{name} vedrà che serve la sua risposta.",
+        "partsHidden": "Nascosto per sempre. Il cliente vede barre grigie al posto del testo."
       },
       "redact": {
         "action": "Rimuovi testo",
@@ -4187,11 +4211,13 @@
         "deleted": {
           "retention": "Eliminato dopo 90 giorni",
           "redacted": "Eliminato dal supporto Abluo",
-          "project_deleted": "Eliminato con il progetto"
+          "project_deleted": "Eliminato con il progetto",
+          "removed_by_client": "Rimosso dal cliente"
         },
-        "deleteScreenshot": "Elimina",
+        "deleteScreenshot": "Elimina screenshot",
         "deleteTitle": "Eliminare questo screenshot?",
-        "deleteBody": "Il file viene eliminato definitivamente e non si può recuperare."
+        "deleteBody": "Il file viene eliminato definitivamente e non si può recuperare.",
+        "openScreenshot": "Apri screenshot {n}"
       },
       "picker": {
         "add": "Aggiungi immagini",
@@ -4220,6 +4246,23 @@
           "label": "Gravità alta aperti",
           "sub": "Non ancora risolti"
         }
+      },
+      "redactParts": {
+        "action": "Nascondi testo",
+        "title": "Nascondi parti di questo messaggio",
+        "hint": "Seleziona il testo con il mouse e premi “Nascondi selezione”, oppure tocca le parole per segnarle. Il testo nascosto viene sostituito da barre grigie anche per il cliente.",
+        "textLabel": "Testo del messaggio",
+        "hideSelection": "Nascondi selezione",
+        "clear": "Azzera",
+        "preview": "Cosa vedrà il cliente",
+        "previewEmpty": "Ancora nulla di segnato.",
+        "confirm": "Nascondi {count, plural, one {# parte} other {# parti}} per sempre",
+        "nothingMarked": "Segna almeno una parte del testo per continuare.",
+        "whole": "Rimuovi tutto il messaggio",
+        "confirmTitle": "Nascondere {count, plural, one {# carattere} other {# caratteri}} per sempre?",
+        "confirmBody": "Il testo nascosto viene eliminato per sempre, anche per il cliente, e non si può recuperare. Non si può annullare.",
+        "confirmAction": "Nascondi per sempre",
+        "back": "Indietro"
       }
     }
   },

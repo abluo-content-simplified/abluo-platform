@@ -229,3 +229,32 @@ describe('047 — round 2', () => {
     expect((await errOf(() => q(`select public.support_ticket_set_status(gen_random_uuid(), $1, 'resolved', 'production')`, [ids.ownerA])))?.code).toBe('42501')
   })
 })
+
+describe('048 — round 3', () => {
+  const M = '█'
+  it('applies on top of 047', async () => {
+    await applyMigrationFile(client, MIG('048_support_tickets_round3.sql'))
+    expect(await errOf(() => applyMigrationFile(client, MIG('048_support_tickets_round3.sql')))).not.toBeNull()
+  })
+  const redact = async (id, body) => { await asService(); const r = await q(`select public.support_ticket_redact_parts($1, $2, $3) as n`, [id, ids.admin, body]); await reset(); return r[0].n }
+  it('masks only the chosen characters and logs how many', async () => {
+    const a = await create()
+    const m = await reply(a.id, ids.ownerA, 'client', 'Mario Rossi has a problem')
+    expect(await redact(m, `${M.repeat(11)} has a problem`)).toBe(11)
+    expect((await q(`select body from public.support_ticket_messages where id = $1`, [m]))[0].body).toBe(`${M.repeat(11)} has a problem`)
+    expect((await q(`select to_value, visibility from public.support_ticket_events where ticket_id = $1 and kind = 'message_redacted'`, [a.id]))[0]).toEqual({ to_value: 'partial:11', visibility: 'internal' })
+  })
+  it('refuses any other change: different length, rewritten characters', async () => {
+    const a = await create()
+    const m = await reply(a.id, ids.ownerA, 'client', 'abc def')
+    expect((await errOf(() => redact(m, 'abc de')))?.message).toContain('support_ticket:invalid')
+    expect((await errOf(() => redact(m, 'xyz def')))?.message).toContain('support_ticket:invalid')
+    expect((await q(`select body from public.support_ticket_messages where id = $1`, [m]))[0].body).toBe('abc def')
+  })
+  it('members cannot call it; removed_by_client is a valid reason', async () => {
+    await asUser(ids.ownerA)
+    expect((await errOf(() => q(`select public.support_ticket_redact_parts(gen_random_uuid(), $1, 'x')`, [ids.ownerA])))?.code).toBe('42501')
+    const a = await create()
+    await q(`insert into public.support_ticket_attachments (ticket_id, storage_path, mime, bytes, deleted_at, deleted_reason) values ($1, $2, 'image/png', 1, now(), 'removed_by_client')`, [a.id, `${a.id}/c.png`])
+  })
+})

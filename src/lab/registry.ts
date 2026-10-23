@@ -225,6 +225,18 @@ export const LAB_REGISTRY: LabEntry[] = [
     demo: () => import('./demos/back-link.demo'),
   },
   {
+    id: 'image-viewer',
+    name: 'ImageViewer',
+    exports: ['ImageViewer'],
+    source: 'src/components/app/ui/ImageViewer.tsx',
+    group: 'overlays',
+    status: 'canonical',
+    traits: ['dialog'],
+    summary: 'Full-screen picture viewer for the dashboards: opens over the page, fits the image, previous/next (buttons, arrow keys, swipe), counter, Esc / close / backdrop to close, per-image actions slot.',
+    rules: ['All text through labels and alt; the website galleries keep their own Lightbox (site design system).', 'Put destructive controls (Delete) in the per-image `actions` slot and confirm them with ConfirmDialog.', 'The parent owns `index` and keeps it in range when images are removed.'],
+    demo: () => import('./demos/image-viewer.demo'),
+  },
+  {
     id: 'dialog-frame',
     name: 'DialogFrame',
     exports: ['DialogFrame'],
@@ -470,7 +482,8 @@ export const LAB_REGISTRY: LabEntry[] = [
     rules: [
       'No text of its own: labels and formatEvent come from the screen.',
       'Pass internal notes ONLY on the admin side — the component cannot tell who is looking.',
-      'Per-message controls go through actions / attachmentActions.',
+      'Per-message controls go through actions / attachmentActions; screenshots open the shared ImageViewer, whose per-image controls come from imageActions.',
+      'Hidden parts of a text (masked runs) show as grey bars labelled labels.removedPart.',
     ],
     demo: () => import('./demos/message-thread.demo'),
   },
@@ -649,6 +662,18 @@ export const LAB_REGISTRY: LabEntry[] = [
     summary: 'Multi-select pill chips for any "pick some of these" choice (categories, dietary tags, weekdays).',
     rules: ['size="compact" for seven weekdays on a phone.', 'The returned value keeps the order of options.'],
     demo: () => import('./demos/toggle-chips.demo'),
+  },
+  {
+    id: 'text-marker',
+    name: 'TextMarker',
+    exports: ['TextMarker'],
+    source: 'src/components/app/ui/TextMarker.tsx',
+    group: 'selection',
+    status: 'canonical',
+    traits: ['selection', 'keyboard'],
+    summary: 'Mark parts of a plain text: tap words (phones) or select with the mouse. Returns [start, end) ranges of the text.',
+    rules: ['Tap toggles a word; a mouse selection is reported through onSelect and added by the parent (see redaction-select.ts).', 'Already hidden characters (█) cannot be marked.'],
+    demo: () => import('./demos/text-marker.demo'),
   },
   // ── Overlays ───────────────────────────────────────────────────────────────
   {

@@ -9,7 +9,7 @@
  */
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { ticketAccess } from '@/lib/support-tickets/access'
-import { createTicket, replyAsClient, type NewTicketFile } from '@/lib/support-tickets/service'
+import { createTicket, deleteOwnAttachment, replyAsClient, type NewTicketFile } from '@/lib/support-tickets/service'
 import type { TicketFailure, TicketInputError } from '@/lib/support-tickets/model'
 
 export type TicketActionResult<T = undefined> = { ok: true; value: T } | { ok: false; reason: TicketFailure; field?: TicketInputError }
@@ -68,6 +68,20 @@ export async function replyToTicketAction(projectSlug: string, ticketId: string,
     return result.ok ? { ok: true, value: undefined } : { ok: false, reason: result.reason, field: result.field }
   } catch (e) {
     console.error('[support-tickets] reply failed', e instanceof Error ? e.message : e)
+    return FAIL
+  }
+}
+
+/** Delete a screenshot the person uploaded themselves (round 3). Access is re-resolved from the session. */
+export async function deleteOwnScreenshotAction(projectSlug: string, attachmentId: string): Promise<TicketActionResult> {
+  try {
+    const access = await accessFor(projectSlug)
+    if (!access) return { ok: false, reason: 'forbidden' }
+    if (typeof attachmentId !== 'string' || !attachmentId) return { ok: false, reason: 'notFound' }
+    const result = await deleteOwnAttachment(access, attachmentId)
+    return result.ok ? { ok: true, value: undefined } : { ok: false, reason: result.reason, field: result.field }
+  } catch (e) {
+    console.error('[support-tickets] delete own screenshot failed', e instanceof Error ? e.message : e)
     return FAIL
   }
 }

@@ -2659,7 +2659,7 @@
         "redacted": "Von Abluo Support entfernt",
         "internalNote": "Interne Notiz",
         "screenshotDeleted": "Screenshot gelöscht",
-        "openScreenshot": "Screenshot {n} öffnen (neuer Tab)",
+        "openScreenshot": "Screenshot {n} öffnen",
         "replyLabel": "Deine Antwort",
         "replyPlaceholder": "Antwort schreiben…",
         "send": "Antwort senden",
@@ -2670,14 +2670,27 @@
         "openNew": "Neue Anfrage eröffnen",
         "readOnlyForbidden": "Du kannst diese Anfrage lesen, aber nicht darauf antworten.",
         "readOnlySupport": "Antworten können nicht gesendet werden, solange du als Kunde ansiehst.",
-        "back": "Zurück zum Support"
+        "back": "Zurück zum Support",
+        "removedPart": "von Abluo Support entfernt",
+        "viewer": {
+          "dialog": "Screenshot",
+          "close": "Schließen",
+          "previous": "Vorheriger Screenshot",
+          "next": "Nächster Screenshot",
+          "counter": "{n} von {total}"
+        },
+        "deleteScreenshot": "Screenshot löschen",
+        "deleteTitle": "Diesen Screenshot löschen?",
+        "deleteBody": "Diesen Screenshot endgültig löschen? Abluo Support sieht, dass du ihn entfernt hast.",
+        "deleteConfirm": "Screenshot löschen"
       },
       "events": {
         "created": "Anfrage gesendet",
         "status_changed": "Status geändert auf {status}",
         "reopened_by_reply": "Anfrage durch deine Antwort wieder geöffnet",
         "message_removed": "Eine Nachricht wurde entfernt",
-        "attachment_deleted": "Ein Screenshot wurde gelöscht"
+        "attachment_deleted": "Ein Screenshot wurde gelöscht",
+        "attachment_removed_by_client": "Du hast einen Screenshot entfernt"
       },
       "errors": {
         "unavailable": "Support-Anfragen sind noch nicht verfügbar. Bitte versuche es später erneut.",
@@ -4111,7 +4124,15 @@
         "redacted": "Von Abluo Support entfernt",
         "internalNote": "Intern — für den Kunden nicht sichtbar",
         "screenshotDeleted": "Screenshot gelöscht",
-        "openScreenshot": "Screenshot {n} öffnen (neuer Tab)"
+        "openScreenshot": "Screenshot {n} öffnen",
+        "removedPart": "Von Abluo Support ausgeblendet",
+        "viewer": {
+          "dialog": "Screenshot",
+          "close": "Schließen",
+          "previous": "Vorheriger Screenshot",
+          "next": "Nächster Screenshot",
+          "counter": "{n} von {total}"
+        }
       },
       "events": {
         "statusChanged": "Status geändert auf {status}",
@@ -4119,7 +4140,9 @@
         "reopenedByReply": "Durch die Antwort des Kunden wieder geöffnet",
         "messageRedacted": "Nachrichtentext entfernt",
         "attachmentDeleted": "Screenshot gelöscht",
-        "supportVisitStarted": "„Als Kunde ansehen“ geöffnet"
+        "supportVisitStarted": "„Als Kunde ansehen“ geöffnet",
+        "messageRedactedPartial": "{count} Zeichen ausgeblendet (intern)",
+        "attachmentRemovedByClient": "Screenshot vom Kunden entfernt"
       },
       "composer": {
         "modeLabel": "Schreiben als",
@@ -4155,7 +4178,8 @@
         "theClient": "Der Kunde",
         "resolved": "Als gelöst markiert. {name} bekommt eine E-Mail.",
         "waiting": "{name} sieht, dass deine Antwort gebraucht wird. Wir schicken auch eine E-Mail.",
-        "waitingNoEmail": "{name} sieht, dass deine Antwort gebraucht wird."
+        "waitingNoEmail": "{name} sieht, dass deine Antwort gebraucht wird.",
+        "partsHidden": "Endgültig ausgeblendet. Der Kunde sieht graue Balken an der Stelle des Textes."
       },
       "redact": {
         "action": "Text entfernen",
@@ -4187,11 +4211,13 @@
         "deleted": {
           "retention": "Nach 90 Tagen gelöscht",
           "redacted": "Von Abluo Support gelöscht",
-          "project_deleted": "Mit dem Projekt gelöscht"
+          "project_deleted": "Mit dem Projekt gelöscht",
+          "removed_by_client": "Vom Kunden entfernt"
         },
-        "deleteScreenshot": "Löschen",
+        "deleteScreenshot": "Screenshot löschen",
         "deleteTitle": "Diesen Screenshot löschen?",
-        "deleteBody": "Die Datei wird endgültig gelöscht und lässt sich nicht wiederherstellen."
+        "deleteBody": "Die Datei wird endgültig gelöscht und lässt sich nicht wiederherstellen.",
+        "openScreenshot": "Screenshot {n} öffnen"
       },
       "picker": {
         "add": "Bilder hinzufügen",
@@ -4220,6 +4246,23 @@
           "label": "Hoher Schweregrad offen",
           "sub": "Noch nicht gelöst"
         }
+      },
+      "redactParts": {
+        "action": "Text ausblenden",
+        "title": "Teile dieser Nachricht ausblenden",
+        "hint": "Markiere Text mit der Maus und tippe auf „Auswahl ausblenden“, oder tippe auf Wörter, um sie zu markieren. Ausgeblendeter Text wird auch für den Kunden durch graue Balken ersetzt.",
+        "textLabel": "Text der Nachricht",
+        "hideSelection": "Auswahl ausblenden",
+        "clear": "Zurücksetzen",
+        "preview": "Das sieht der Kunde",
+        "previewEmpty": "Noch nichts markiert.",
+        "confirm": "{count, plural, one {# Teil} other {# Teile}} endgültig ausblenden",
+        "nothingMarked": "Markiere mindestens einen Teil des Textes, um fortzufahren.",
+        "whole": "Ganze Nachricht entfernen",
+        "confirmTitle": "{count, plural, one {# Zeichen} other {# Zeichen}} endgültig ausblenden?",
+        "confirmBody": "Der ausgeblendete Text wird endgültig gelöscht, auch für den Kunden, und lässt sich nicht wiederherstellen. Das kann nicht rückgängig gemacht werden.",
+        "confirmAction": "Endgültig ausblenden",
+        "back": "Zurück"
       }
     }
   },

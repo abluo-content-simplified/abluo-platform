@@ -2659,7 +2659,7 @@
         "redacted": "Removed by Abluo Support",
         "internalNote": "Internal note",
         "screenshotDeleted": "Screenshot deleted",
-        "openScreenshot": "Open screenshot {n} (new tab)",
+        "openScreenshot": "Open screenshot {n}",
         "replyLabel": "Your reply",
         "replyPlaceholder": "Write a reply…",
         "send": "Send Reply",
@@ -2670,14 +2670,27 @@
         "openNew": "Open a New Request",
         "readOnlyForbidden": "You can read this request but not reply to it.",
         "readOnlySupport": "Replies can’t be sent while viewing as the client.",
-        "back": "Back to Support"
+        "back": "Back to Support",
+        "removedPart": "removed by Abluo Support",
+        "viewer": {
+          "dialog": "Screenshot",
+          "close": "Close",
+          "previous": "Previous screenshot",
+          "next": "Next screenshot",
+          "counter": "{n} of {total}"
+        },
+        "deleteScreenshot": "Delete screenshot",
+        "deleteTitle": "Delete this screenshot?",
+        "deleteBody": "Delete this screenshot for good? Abluo Support will see that you removed it.",
+        "deleteConfirm": "Delete Screenshot"
       },
       "events": {
         "created": "Request sent",
         "status_changed": "Status changed to {status}",
         "reopened_by_reply": "Request reopened by your reply",
         "message_removed": "A message was removed",
-        "attachment_deleted": "A screenshot was deleted"
+        "attachment_deleted": "A screenshot was deleted",
+        "attachment_removed_by_client": "You removed a screenshot"
       },
       "errors": {
         "unavailable": "Support requests aren’t available yet. Please try again later.",
@@ -4111,7 +4124,15 @@
         "redacted": "Removed by Abluo Support",
         "internalNote": "Internal — not visible to the client",
         "screenshotDeleted": "Screenshot deleted",
-        "openScreenshot": "Open screenshot {n} (new tab)"
+        "openScreenshot": "Open screenshot {n}",
+        "removedPart": "Hidden by Abluo Support",
+        "viewer": {
+          "dialog": "Screenshot",
+          "close": "Close",
+          "previous": "Previous screenshot",
+          "next": "Next screenshot",
+          "counter": "{n} of {total}"
+        }
       },
       "events": {
         "statusChanged": "Status changed to {status}",
@@ -4119,7 +4140,9 @@
         "reopenedByReply": "Reopened by the client’s reply",
         "messageRedacted": "Message text removed",
         "attachmentDeleted": "Screenshot deleted",
-        "supportVisitStarted": "Opened View as Client"
+        "supportVisitStarted": "Opened View as Client",
+        "messageRedactedPartial": "Hid {count} characters (internal)",
+        "attachmentRemovedByClient": "Screenshot removed by the client"
       },
       "composer": {
         "modeLabel": "Write a",
@@ -4155,7 +4178,8 @@
         "theClient": "The client",
         "resolved": "Marked as resolved. {name} will get an email.",
         "waiting": "{name} will see that you need their reply. We’ll email them.",
-        "waitingNoEmail": "{name} will see that you need their reply."
+        "waitingNoEmail": "{name} will see that you need their reply.",
+        "partsHidden": "Hidden for good. The client sees grey bars where the text was."
       },
       "redact": {
         "action": "Remove text",
@@ -4187,11 +4211,13 @@
         "deleted": {
           "retention": "Deleted after 90 days",
           "redacted": "Deleted by Abluo Support",
-          "project_deleted": "Deleted with the project"
+          "project_deleted": "Deleted with the project",
+          "removed_by_client": "Removed by the client"
         },
-        "deleteScreenshot": "Delete",
+        "deleteScreenshot": "Delete screenshot",
         "deleteTitle": "Delete this screenshot?",
-        "deleteBody": "The file is deleted for good and can’t be recovered."
+        "deleteBody": "The file is deleted for good and can’t be recovered.",
+        "openScreenshot": "Open screenshot {n}"
       },
       "picker": {
         "add": "Add images",
@@ -4220,6 +4246,23 @@
           "label": "High Severity Open",
           "sub": "Not resolved yet"
         }
+      },
+      "redactParts": {
+        "action": "Hide text",
+        "title": "Hide parts of this message",
+        "hint": "Select text with the mouse and press “Hide selection”, or tap words to mark them. Hidden text is replaced by grey bars for the client too.",
+        "textLabel": "Message text",
+        "hideSelection": "Hide selection",
+        "clear": "Clear",
+        "preview": "What the client will see",
+        "previewEmpty": "Nothing marked yet.",
+        "confirm": "Hide {count, plural, one {# part} other {# parts}} for good",
+        "nothingMarked": "Mark at least one part of the text to continue.",
+        "whole": "Remove the whole message",
+        "confirmTitle": "Hide {count, plural, one {# character} other {# characters}} for good?",
+        "confirmBody": "The hidden text is deleted for good, for the client too, and can’t be recovered. This can’t be undone.",
+        "confirmAction": "Hide for good",
+        "back": "Back"
       }
     }
   },

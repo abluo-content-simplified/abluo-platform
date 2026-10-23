@@ -7,6 +7,7 @@ import {
   addNoteAction,
   deleteAttachmentAction,
   redactMessageAction,
+  redactMessagePartsAction,
   replyAsSupportAction,
   setTicketSeverityAction,
   setTicketStatusAction,
@@ -16,6 +17,7 @@ import {
 import { AttachmentPicker } from '@/components/app/ui/AttachmentPicker'
 import { BackLink } from '@/components/app/ui/BackLink'
 import { Button } from '@/components/app/ui/Button'
+import { ImageViewer } from '@/components/app/ui/ImageViewer'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { FactRow } from '@/components/app/ui/FactRow'
 import { MessageComposer, type ComposerMode } from '@/components/app/ui/MessageComposer'
@@ -29,6 +31,7 @@ import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
 import { LocalDate } from '@/components/app/ui/list/cells'
 import { fitScreenshots } from '@/lib/client/ticket-upload'
+import type { RedactionRange } from '@/lib/support-tickets/redaction'
 import { eventLine } from '@/lib/support-tickets/admin-view'
 import { CLIENT_UPLOAD_BUDGET_BYTES } from '@/lib/support-tickets/client-form'
 import {
@@ -42,6 +45,7 @@ import {
   type TicketSeverity,
   type TicketStatus,
 } from '@/lib/support-tickets/model'
+import { RedactPartsDialog } from './RedactPartsDialog'
 import { SEVERITY_TONE, STATUS_TONE } from './ticket-bits'
 
 type MessageEntry = Extract<ThreadEntry, { kind: 'message' }>
@@ -83,7 +87,10 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
   const [pending, setPending] = useState(false)
   const [composeError, setComposeError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [redactParts, setRedactParts] = useState<MessageEntry | null>(null)
+  const [redactError, setRedactError] = useState<string | null>(null)
   const [redact, setRedact] = useState<MessageEntry | null>(null)
+  const [panelViewer, setPanelViewer] = useState<number | null>(null)
   const [removeShot, setRemoveShot] = useState<{ id: string; n: number } | null>(null)
 
   const failure = (r: Extract<TicketActionResult, { ok: false }>) => (t.has(`errors.${r.reason}`) ? t(`errors.${r.reason}` as 'errors.error') : t('errors.error'))
@@ -146,12 +153,21 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
     { id: 'note', label: narrow ? t('composer.noteShort') : t('composer.note'), sendLabel: t('composer.saveNote'), tone: 'note', hint: t('composer.noteHint') },
   ]
 
+  const viewerLabels = {
+    dialog: t('thread.viewer.dialog'),
+    close: t('thread.viewer.close'),
+    previous: t('thread.viewer.previous'),
+    next: t('thread.viewer.next'),
+    counter: (n: number, total: number) => t('thread.viewer.counter', { n, total }),
+  }
   const labels: MessageThreadLabels = {
     support: t('thread.support'),
     redacted: t('thread.redacted'),
     internalNote: t('thread.internalNote'),
     screenshotDeleted: t('thread.screenshotDeleted'),
     openScreenshot: (n) => t('thread.openScreenshot', { n }),
+    removedPart: t('thread.removedPart'),
+    viewer: viewerLabels,
     thread: t('thread.label'),
   }
   const formatEvent = (e: Extract<ThreadEntry, { kind: 'event' }>) => {
@@ -159,6 +175,7 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
     if (!line) return null
     const values = line.values
     if (line.key === 'statusChanged' && values) return t('events.statusChanged', { status: t(`status.${values.status as TicketStatus}`) })
+    if (line.key === 'messageRedactedPartial' && values) return t('events.messageRedactedPartial', { count: Number(values.count) })
     if (line.key === 'severityChanged' && values) return t('events.severityChanged', { severity: t(`severity.${values.severity as TicketSeverity}`) })
     return t(`events.${line.key}` as 'events.reopenedByReply')
   }
@@ -166,6 +183,7 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
   const screenshots: Array<TicketAttachmentView & { n: number }> = []
   for (const e of ticket.thread) if (e.kind === 'message') for (const a of e.attachments) screenshots.push({ ...a, n: screenshots.length + 1 })
 
+  const liveShots = screenshots.filter((a) => a.url)
   const ctx = ticket.context ?? {}
   const roleLabel = ctx.role ? (tRoles.has(ctx.role as 'owner') ? tRoles(ctx.role as 'owner') : ctx.role) : null
   const status = ticket.status
@@ -237,11 +255,22 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
             formatEvent={formatEvent}
             actions={(entry) =>
               entry.redacted ? null : (
-                <Button variant="link" onClick={() => setRedact(entry)}>
-                  {t('redact.action')}
+                <Button
+                  variant="link"
+                  onClick={() => {
+                    setRedactError(null)
+                    setRedactParts(entry)
+                  }}
+                >
+                  {t('redactParts.action')}
                 </Button>
               )
             }
+            imageActions={(a) => (
+              <Button variant="destructive" onClick={() => setRemoveShot({ id: a.id, n: 0 })}>
+                {t('panel.deleteScreenshot')}
+              </Button>
+            )}
           />
           <Panel tone={mode === 'note' ? 'muted' : 'card'}>
             <MessageComposer
@@ -314,25 +343,23 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
             {screenshots.length === 0 ? (
               <p className="text-sm leading-5 text-muted-foreground">{t('panel.noScreenshots')}</p>
             ) : (
-              <ul className="flex flex-col">
+              <ul className="grid grid-cols-3 items-start gap-2">
                 {screenshots.map((a) => (
-                  <li key={a.id} className="flex items-start justify-between gap-3 border-b border-border py-2.5 text-[0.9375rem] last:border-b-0">
-                    <span className="min-w-0">
-                      {a.url ? (
-                        <a href={a.url} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline-offset-4 hover:underline">
-                          {t('panel.screenshot', { n: a.n })}
-                        </a>
-                      ) : (
-                        <span className="text-muted-foreground">{t('panel.screenshot', { n: a.n })}</span>
-                      )}
-                      <span className="block text-sm leading-5 text-muted-foreground">
-                        {a.deleted ? t(`panel.deleted.${a.deleted}` as 'panel.deleted.redacted') : `${Math.max(1, Math.round(a.bytes / 1024))} KB`}
-                      </span>
-                    </span>
-                    {a.deleted ? null : (
-                      <Button variant="destructive" onClick={() => setRemoveShot({ id: a.id, n: a.n })}>
-                        {t('panel.deleteScreenshot')}
+                  <li key={a.id} className="min-w-0">
+                    {a.url ? (
+                      <Button
+                        variant="quiet"
+                        onClick={() => setPanelViewer(liveShots.findIndex((x) => x.id === a.id))}
+                        aria-label={t('panel.openScreenshot', { n: a.n })}
+                        className="aspect-square !h-auto w-full !min-h-0 overflow-hidden !rounded-xl border border-border bg-muted !p-0"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed link */}
+                        <img src={a.url} alt="" loading="lazy" className="size-full object-cover object-top" />
                       </Button>
+                    ) : (
+                      <span className="flex aspect-square w-full items-start rounded-xl border border-dashed border-border p-2 text-xs leading-4 text-muted-foreground">
+                        {a.deleted ? t(`panel.deleted.${a.deleted}` as 'panel.deleted.redacted') : t('thread.screenshotDeleted')}
+                      </span>
                     )}
                   </li>
                 ))}
@@ -342,6 +369,50 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
         </aside>
       </div>
 
+      <RedactPartsDialog
+        body={redactParts && !redact ? redactParts.body : null}
+        busy={busy}
+        error={redactError}
+        onClose={() => setRedactParts(null)}
+        onRemoveWhole={() => {
+          setRedact(redactParts)
+        }}
+        onConfirm={async (ranges: RedactionRange[]) => {
+          if (!redactParts) return
+          setBusy(true)
+          setRedactError(null)
+          try {
+            const r = await redactMessagePartsAction(ticket.id, redactParts.id, ranges)
+            if (!r.ok) setRedactError(failure(r))
+            else {
+              show({ message: t('toast.partsHidden'), tone: 'status' })
+              setRedactParts(null)
+              router.refresh()
+            }
+          } catch {
+            setRedactError(t('errors.error'))
+          } finally {
+            setBusy(false)
+          }
+        }}
+      />
+      <ImageViewer
+        open={panelViewer !== null && liveShots.length > 0}
+        images={liveShots.map((a) => ({
+          key: a.id,
+          src: a.url as string,
+          alt: t('panel.openScreenshot', { n: a.n }),
+          actions: (
+            <Button variant="destructive" onClick={() => setRemoveShot({ id: a.id, n: a.n })}>
+              {t('panel.deleteScreenshot')}
+            </Button>
+          ),
+        }))}
+        index={panelViewer ?? 0}
+        onIndexChange={setPanelViewer}
+        onClose={() => setPanelViewer(null)}
+        labels={viewerLabels}
+      />
       <ConfirmDialog
         open={redact !== null}
         title={t('redact.title')}
@@ -354,6 +425,7 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
           await run(() => redactMessageAction(ticket.id, redact.id), t('toast.textRemoved'))
           setBusy(false)
           setRedact(null)
+          setRedactParts(null)
         }}
         onCancel={() => setRedact(null)}
       />
