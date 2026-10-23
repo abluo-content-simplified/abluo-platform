@@ -46,7 +46,7 @@ export function useEventDates() {
     const s = new Date(start)
     if (Number.isNaN(s.getTime())) return ''
     const day: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }
-    const time: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
+    const time: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }
     const full = new Intl.DateTimeFormat(ui, { ...day, ...time })
     if (!end) return full.format(s)
     const e = new Date(end)

@@ -8,6 +8,8 @@ import {
   pendingInvitationCount,
   requestsWaitingRule,
   sortAdminAttention,
+  supportTicketRules,
+  type AttentionTicket,
   type AttentionProject,
 } from '../attention'
 
@@ -91,5 +93,46 @@ describe('admin attention rules', () => {
 
   it('counts pending invitations', () => {
     expect(pendingInvitationCount([{ expiresAt: at(1) }, { expiresAt: at(-1) }], NOW)).toBe(1)
+  })
+})
+
+describe('support ticket attention rules', () => {
+  const ticket = (over: Partial<AttentionTicket> & { id: string }): AttentionTicket => ({
+    reference: `ABL-${over.id}`,
+    title: 'Title',
+    status: 'open',
+    lastActivityAt: at(-1),
+    unread: true,
+    seen: false,
+    severity: 'normal',
+    project: { name: 'Proj' },
+    ...over,
+  })
+
+  it('flags never-opened tickets as New request and opened-but-unread as Client replied', () => {
+    const items = supportTicketRules([
+      ticket({ id: 'a' }),
+      ticket({ id: 'b', seen: true, unread: true }),
+      ticket({ id: 'c', seen: true, unread: false }),
+    ])
+    expect(items.map((i) => i.id)).toEqual(['supportNew:a', 'supportReplied:b'])
+    expect(items[0]).toMatchObject({ rule: 'supportNew', severity: 'info', href: '/support/a', titleKey: 'attention.supportNew.title', params: { reference: 'ABL-a', project: 'Proj', title: 'Title' } })
+  })
+
+  it('never lists resolved or waiting-for-client tickets', () => {
+    expect(supportTicketRules([ticket({ id: 'a', status: 'resolved' }), ticket({ id: 'b', status: 'waiting_for_user' })])).toEqual([])
+  })
+
+  it('puts High first, then newest', () => {
+    const items = sortAdminAttention(
+      supportTicketRules([
+        ticket({ id: 'old', lastActivityAt: at(-10) }),
+        ticket({ id: 'new', lastActivityAt: at(-1) }),
+        ticket({ id: 'high', severity: 'high', lastActivityAt: at(-50) }),
+        ticket({ id: 'rep', seen: true, lastActivityAt: at(-2) }),
+      ]),
+    )
+    expect(items.map((i) => i.id)).toEqual(['supportNew:high', 'supportNew:new', 'supportNew:old', 'supportReplied:rep'])
+    expect(items[0].severity).toBe('warn')
   })
 })

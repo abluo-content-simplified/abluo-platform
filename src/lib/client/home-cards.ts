@@ -17,13 +17,44 @@ export function partOfDay(hour: number): PartOfDay {
 /** First-pass steps in order (what the bar measures). */
 const PASS: WizardStep[] = ['category', 'title', 'story', 'cover', 'languages', 'cta', 'gallery', 'preview', 'publish']
 
-/** 0…1: how far the first pass got (overview / later = 1). */
-export function draftProgress(step: WizardStep): number {
-  const rank = WIZARD_STEP_ORDER.indexOf(step)
-  if (rank >= WIZARD_STEP_ORDER.indexOf('publish')) return 1
-  const at = PASS.indexOf(step)
-  if (at < 0) return 0
-  return Math.max(0, Math.min(1, (at + 1) / PASS.length))
+/** Steps at/after "publish": the overview is only honest when the draft is really complete. */
+const PAST_PASS = new Set<WizardStep>(['publish', 'promote', 'review', 'done'])
+
+/** The bar has four segments; a draft that is not published never fills the fourth. */
+export const BAR_SEGMENTS = 4
+/** "Ready to publish" (and "live, changes not published") = three of four. */
+export const READY_SEGMENTS = 3
+
+/**
+ * Filled segments (0…3) of a post draft that has never been published.
+ * Based on the furthest first-pass step really reached, mapped onto four
+ * segments; the four-segment maximum stays reserved. The overview / review
+ * steps only count as finished when the draft is really complete
+ * (a title, a story and a cover); otherwise at most two segments.
+ */
+export function postDraftSegments(input: { furthest: WizardStep; hasLive: boolean; complete: boolean }): number {
+  if (input.hasLive) return READY_SEGMENTS
+  const at = PAST_PASS.has(input.furthest) ? PASS.length - 1 : PASS.indexOf(input.furthest)
+  const done = Math.max(0, at) // steps before the one reached are finished
+  let n = Math.max(1, Math.floor((done * BAR_SEGMENTS) / PASS.length))
+  n = Math.min(n, READY_SEGMENTS)
+  if (PAST_PASS.has(input.furthest) && !input.complete) n = Math.min(n, 2)
+  return n
+}
+
+/**
+ * Gallery bar (galleries keep no wizard position): no photos 1, photos 2,
+ * every photo described 3, published with unpublished changes 3.
+ */
+export function gallerySegments(input: { count: number; allDescribed: boolean; isPublished: boolean }): number {
+  if (input.isPublished) return READY_SEGMENTS
+  if (input.count <= 0) return 1
+  return input.allDescribed ? READY_SEGMENTS : 2
+}
+
+/** Segments → 0…1 (what the card carries; `segmentFills` turns it back into four bars). */
+export function segmentsToProgress(segments: number): number {
+  return Math.max(0, Math.min(BAR_SEGMENTS, segments)) / BAR_SEGMENTS
 }
 
 /** Fill of each of `segments` bars (0…1 each) for a progress fraction. */

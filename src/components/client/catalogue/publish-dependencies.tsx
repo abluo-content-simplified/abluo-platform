@@ -146,7 +146,7 @@ export function PublishTogetherSheet({
   const error = current?.error ?? null
 
   const when = preview?.publishAt
-    ? t('whenScheduled', { date: new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', timeZone: zone }).format(new Date(preview.publishAt)) })
+    ? t('whenScheduled', { date: new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', hourCycle: 'h23', timeZone: zone }).format(new Date(preview.publishAt)) })
     : t('whenNow')
   const blocking = Boolean(preview && (preview.forbidden.length || preview.missing.length || preview.blocked.length))
 

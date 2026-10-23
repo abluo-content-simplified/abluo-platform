@@ -66,6 +66,8 @@ export type SetupChecklist = {
   total: number
   /** Show the card: something to show, not all done, not hidden by the person. */
   visible: boolean
+  /** Hidden by the person but not finished: Home keeps one line with "Show checklist". */
+  collapsed: boolean
 }
 
 function doneFor(id: SetupItemId, f: SetupFacts): boolean | null {
@@ -104,6 +106,7 @@ export function buildSetupChecklist(input: {
     doneCount,
     total: items.length,
     visible: !input.dismissed && items.length > 0 && doneCount < items.length,
+    collapsed: input.dismissed && items.length > 0 && doneCount < items.length,
   }
 }
 

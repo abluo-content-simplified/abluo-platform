@@ -8,6 +8,7 @@ import { blogAttention, blogGlance } from '../blog'
 import { summarizeRequests } from '../forms'
 import { galleryAttention, galleryGlance } from '../gallery'
 import { altMap, getMediaDashboard, summarizeMedia } from '../media'
+import { describedByGallery } from '../gallery-described'
 import { isOnOwnDomain, siteStatusFrom } from '../site'
 import { settle } from '../settle'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
@@ -145,5 +146,30 @@ describe('settle', () => {
     expect(await settle('x', async () => { throw new Error('boom') })).toBeNull()
     expect(spy).toHaveBeenCalledOnce()
     spy.mockRestore()
+  })
+})
+
+describe('gallery described (pure part)', () => {
+  it('true only when there are photos and every one has a description in the default language', () => {
+    const r = describedByGallery({
+      defaultLocale: 'it',
+      galleries: [
+        { _id: 'g-1', alts: [{ it: 'Una' }, { it: 'Due' }] },
+        { _id: 'g-2', alts: [{ it: 'Una' }, {}] },
+        { _id: 'g-3', alts: [] },
+      ],
+    })
+    expect(r).toEqual({ 'g-1': true, 'g-2': false, 'g-3': false })
+  })
+  it('the draft wins over the published copy', () => {
+    const r = describedByGallery({
+      defaultLocale: 'en',
+      galleries: [
+        { _id: 'g-1', alts: [{ en: 'x' }] },
+        { _id: 'drafts.g-1', alts: [{ en: 'x' }, {}] },
+      ],
+    })
+    expect(r['g-1']).toBe(false)
+    expect(describedByGallery(null)).toEqual({})
   })
 })

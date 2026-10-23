@@ -41,7 +41,7 @@ export function useLocalDateTime(iso: string | null): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return format.dateTime(d, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: zone ?? 'UTC', ...(zone ? {} : { timeZoneName: 'short' }) })
+  return format.dateTime(d, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: zone ?? 'UTC', ...(zone ? {} : { timeZoneName: 'short' }) })
 }
 
 const noSubscribe = () => () => {}
@@ -57,6 +57,15 @@ function browserZone(): string | null {
 export function useRoleLabel() {
   const t = useTranslations('admin.users.roles')
   return (role: string) => (t.has(role) ? t(role) : role)
+}
+
+/** Name of an extra permission (falls back to the stored id). */
+export function useExtraLabel() {
+  const t = useTranslations('clientDashboard.people.extras')
+  return (id: string) => {
+    const key = id.replace(/\.(\w)/g, (_, c: string) => c.toUpperCase())
+    return t.has(key) ? t(key) : id
+  }
 }
 
 /** Live access (not archived), for the list's Access column. */

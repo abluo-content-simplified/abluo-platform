@@ -72,7 +72,7 @@ export function MessageThread({
   const viewedEntry = viewing ? entries.find((e): e is Extract<ThreadEntry, { kind: 'message' }> => e.kind === 'message' && e.id === viewing.entryId) : undefined
   const live = viewedEntry ? viewedEntry.attachments.filter((a) => a.url && a.deleted === null) : []
   const viewIndex = viewing ? Math.max(0, live.findIndex((a) => a.id === viewing.attachmentId)) : 0
-  const fmt = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  const fmt = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   const time = (iso: string) => (
     <time dateTime={iso} suppressHydrationWarning className="text-xs leading-5 text-muted-foreground">
       {fmt.format(new Date(iso))}

@@ -40,12 +40,12 @@ export function PostActivitySheet({ open, onClose, projectSlug, postId }: { open
         month: 'short',
         year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit',
+        minute: '2-digit', hourCycle: 'h23',
         timeZoneName: 'short',
         ...(timeZone && { timeZone }),
       }).format(new Date(iso))
     } catch {
-      return new Date(iso).toLocaleString(locale)
+      return new Date(iso).toLocaleString(locale, { hourCycle: 'h23' })
     }
   }
   const who = (a: ActivityItem['actor']) => (a.kind === 'person' ? t('actor.person', { name: a.name ?? '' }) : t(`actor.${a.kind}`))

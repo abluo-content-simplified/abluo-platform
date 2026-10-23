@@ -5,14 +5,16 @@ import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/app/ui/Button'
 import type { SetupItem } from '@/lib/client/setup-checklist'
-import { hideSetupChecklistAction } from '@/app/[locale]/(client)/[tenant]/home/actions'
+import { hideSetupChecklistAction, showSetupChecklistAction } from '@/app/[locale]/(client)/[tenant]/home/actions'
 
 /**
  * "Get your site ready" on Home: a small, calm card listing the first steps,
  * each ticked off from real data (`buildSetupChecklist`). Open items link to
  * where you do them; done items stay, quietly ticked, so progress is visible.
  * "Hide checklist" stores the choice for this person on this project and the
- * card goes away; it also goes away by itself once everything is done.
+ * card collapses to one line ("Setup checklist · 3 of 6 done · Show checklist");
+ * "Show checklist" brings it back. Both live in the same spot. Everything done
+ * removes the card and the line (decided by the server).
  */
 export function SetupChecklist({
   projectSlug,
@@ -20,6 +22,7 @@ export function SetupChecklist({
   doneCount,
   total,
   canHide,
+  initiallyHidden = false,
 }: {
   projectSlug: string
   items: SetupItem[]
@@ -27,14 +30,14 @@ export function SetupChecklist({
   total: number
   /** False until migration 039 is applied (nowhere to store the choice). */
   canHide: boolean
+  /** The person hid it earlier: start as the one-line version. */
+  initiallyHidden?: boolean
 }) {
   const t = useTranslations('clientDashboard.home.setup')
   const router = useRouter()
-  const [hidden, setHidden] = useState(false)
+  const [hidden, setHidden] = useState(initiallyHidden)
   const [failed, setFailed] = useState(false)
   const [pending, start] = useTransition()
-  if (hidden) return null
-
   function hide() {
     setFailed(false)
     start(async () => {
@@ -44,6 +47,36 @@ export function SetupChecklist({
         router.refresh()
       } else setFailed(true)
     })
+  }
+
+  function show() {
+    setFailed(false)
+    start(async () => {
+      const r = await showSetupChecklistAction({ projectSlug })
+      if (r.ok) {
+        setHidden(false)
+        router.refresh()
+      } else setFailed(true)
+    })
+  }
+
+  if (hidden) {
+    return (
+      <section aria-label={t('heading')} className="rounded-xl border border-border bg-card px-4 py-2">
+        <div className="flex flex-wrap items-center gap-x-2">
+          <span className="text-sm leading-6 text-muted-foreground">{t('collapsed', { done: doneCount, total })}</span>
+          <span aria-hidden="true" className="text-muted-foreground">·</span>
+          <Button variant="link" onClick={show} disabled={pending}>
+            {t('show')}
+          </Button>
+        </div>
+        {failed ? (
+          <p role="alert" className="pb-1 text-sm text-muted-foreground">
+            {t('showFailed')}
+          </p>
+        ) : null}
+      </section>
+    )
   }
 
   return (

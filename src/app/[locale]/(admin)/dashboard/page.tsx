@@ -10,7 +10,8 @@ import { requireAbluoAdmin } from '@/lib/api/auth'
 import { getViewerAccount } from '@/lib/api/viewer-account'
 import { getAdminHome } from '@/lib/api/admin-dashboard/home'
 import { AdminSupportCard } from '@/components/admin/tickets/AdminSupportCard'
-import { adminSupportOverview } from '@/lib/support-tickets/service'
+import { listAdminTickets, summariseAdminTickets } from '@/lib/support-tickets/service'
+import { sortAdminAttention, supportTicketRules } from '@/lib/admin/attention'
 import { AdminAnalyticsSummary } from '@/components/admin/analytics/AdminAnalyticsSummary'
 
 export const dynamic = 'force-dynamic'
@@ -32,9 +33,11 @@ export default async function AdminHomePage() {
     getTranslations('admin.home'),
     getAdminHome(),
     getViewerAccount(actor.userId),
-    // Never blocks the home: any failure leaves the Support card out.
-    adminSupportOverview(actor.userId).catch(() => null),
+    // Read once: feeds the Support card and the attention list. A failure leaves both out.
+    listAdminTickets(actor.userId, { status: 'active' }).catch(() => null),
   ])
+  const tickets = support?.ok ? support.value : null
+  const overview = tickets ? summariseAdminTickets(tickets) : null
   const firstName = viewer.name.trim().split(/\s+/)[0] || null
 
   const c = home.projectCounts
@@ -56,7 +59,8 @@ export default async function AdminHomePage() {
   ].filter(Boolean)
   const someMissing = !c || !home.requests || home.pendingInvitations === null
 
-  const rows: AttentionRow[] = home.attention.map((i) => ({
+  const attention = sortAdminAttention([...home.attention, ...(tickets ? supportTicketRules(tickets) : [])])
+  const rows: AttentionRow[] = attention.map((i) => ({
     id: i.id,
     severity: i.severity,
     title: t(i.titleKey as 'attention.noOwner.title', i.params),
@@ -79,7 +83,7 @@ export default async function AdminHomePage() {
         ) : null}
       </section>
 
-      {support?.ok ? <AdminSupportCard overview={support.value} /> : null}
+      {overview ? <AdminSupportCard overview={overview} /> : null}
 
       <AdminAnalyticsSummary />
 

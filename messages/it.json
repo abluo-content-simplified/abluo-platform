@@ -545,9 +545,9 @@
       "progress": "A che punto è questa bozza",
       "meta": {
         "draft": "Bozza · Eri su “{step}” · {ago}",
-        "liveChanges": "Modifiche a un articolo online · {ago}",
+        "liveChanges": "Online · modifiche non pubblicate · {ago}",
         "galleryDraft": "Galleria · {count, plural, =0 {ancora nessuna foto} one {# foto} other {# foto}}",
-        "galleryChanges": "Modifiche a una galleria online · {count, plural, =0 {nessuna foto} one {# foto} other {# foto}}"
+        "galleryChanges": "Online · modifiche non pubblicate · {count, plural, =0 {nessuna foto} one {# foto} other {# foto}}"
       },
       "menu": {
         "label": "Altro per “{title}”",
@@ -685,7 +685,10 @@
             "detail": "Abluo collega il tuo dominio quando il sito è pronto per andare online.",
             "doneDetail": "Il tuo sito è online al suo indirizzo."
           }
-        }
+        },
+        "collapsed": "Primi passi · {done} di {total} completati",
+        "show": "Mostra l’elenco",
+        "showFailed": "Non siamo riusciti a mostrare l’elenco. Riprova."
       }
     },
     "create": {
@@ -3103,6 +3106,16 @@
           "title": "{project} è ancora in anteprima",
           "detail": "{days, plural, other {Creato # giorni fa e non ancora online}}",
           "action": "Apri progetto"
+        },
+        "supportNew": {
+          "title": "Nuova richiesta",
+          "detail": "{reference} · {project} · {title}",
+          "action": "Apri richiesta"
+        },
+        "supportReplied": {
+          "title": "Il cliente ha risposto",
+          "detail": "{reference} · {project} · {title}",
+          "action": "Apri richiesta"
         }
       }
     },
@@ -4372,7 +4385,19 @@
         "lastSignIn": "Ultimo accesso",
         "lastActive": "Ultima attività",
         "noActivity": "Ancora niente di registrato",
-        "noActivityBody": "Qui compaiono pubblicazioni, inviti e modifiche agli accessi."
+        "noActivityBody": "Qui compaiono pubblicazioni, inviti e modifiche agli accessi.",
+        "invitedOn": "Invitato il",
+        "wholeClientShort": "Tutti i siti di questo cliente",
+        "columns": {
+          "site": "Sito",
+          "role": "Ruolo",
+          "extras": "Extra",
+          "since": "Dal",
+          "when": "Quando",
+          "what": "Cosa",
+          "where": "Dove",
+          "by": "Da chi"
+        }
       },
       "activity": {
         "content": "{type} · {action}",
@@ -4413,6 +4438,11 @@
         "outcome": {
           "refused": "Rifiutato",
           "failed": "Non riuscito"
+        },
+        "what": {
+          "change": "Accesso cambiato in {role}",
+          "archive": "Accesso archiviato",
+          "restore": "Accesso ripristinato ({role})"
         }
       }
     }

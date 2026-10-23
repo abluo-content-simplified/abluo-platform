@@ -545,9 +545,9 @@
       "progress": "How far this draft got",
       "meta": {
         "draft": "Draft · You were on “{step}” · {ago}",
-        "liveChanges": "Changes to a live post · {ago}",
+        "liveChanges": "Live · changes not published · {ago}",
         "galleryDraft": "Gallery · {count, plural, =0 {no photos yet} one {# photo} other {# photos}}",
-        "galleryChanges": "Changes to a live gallery · {count, plural, =0 {no photos} one {# photo} other {# photos}}"
+        "galleryChanges": "Live · changes not published · {count, plural, =0 {no photos} one {# photo} other {# photos}}"
       },
       "menu": {
         "label": "More for “{title}”",
@@ -685,7 +685,10 @@
             "detail": "Abluo connects your domain when your site is ready to go live.",
             "doneDetail": "Your site is live on its own address."
           }
-        }
+        },
+        "collapsed": "Setup checklist · {done} of {total} done",
+        "show": "Show checklist",
+        "showFailed": "Couldn’t show the checklist. Please try again."
       }
     },
     "create": {
@@ -3103,6 +3106,16 @@
           "title": "{project} is still in preview",
           "detail": "{days, plural, other {Created # days ago and not live yet}}",
           "action": "Open project"
+        },
+        "supportNew": {
+          "title": "New request",
+          "detail": "{reference} · {project} · {title}",
+          "action": "Open ticket"
+        },
+        "supportReplied": {
+          "title": "Client replied",
+          "detail": "{reference} · {project} · {title}",
+          "action": "Open ticket"
         }
       }
     },
@@ -4372,7 +4385,19 @@
         "lastSignIn": "Last sign-in",
         "lastActive": "Last active",
         "noActivity": "Nothing recorded yet",
-        "noActivityBody": "Publishing, invitations and access changes show here."
+        "noActivityBody": "Publishing, invitations and access changes show here.",
+        "invitedOn": "Invited on",
+        "wholeClientShort": "All sites of this client",
+        "columns": {
+          "site": "Site",
+          "role": "Role",
+          "extras": "Extras",
+          "since": "Since",
+          "when": "When",
+          "what": "What",
+          "where": "Where",
+          "by": "By"
+        }
       },
       "activity": {
         "content": "{type} · {action}",
@@ -4413,6 +4438,11 @@
         "outcome": {
           "refused": "Refused",
           "failed": "Failed"
+        },
+        "what": {
+          "change": "Access changed to {role}",
+          "archive": "Access archived",
+          "restore": "Access restored ({role})"
         }
       }
     }

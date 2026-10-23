@@ -20,6 +20,7 @@ import { getViewerFirstName } from '@/lib/api/viewer-profile'
 import { getBlogDashboard } from '@/lib/api/dashboard/blog'
 import { getFormsDashboard } from '@/lib/api/dashboard/forms'
 import { getGalleryDashboard } from '@/lib/api/dashboard/gallery'
+import { getGalleriesDescribed } from '@/lib/api/dashboard/gallery-described'
 import { getCatalogueGlance, loadCatalogueNavLabel } from '@/lib/api/catalogue-drafts'
 import { getMediaDashboard } from '@/lib/api/dashboard/media'
 import { getPeopleDashboard } from '@/lib/api/dashboard/people'
@@ -29,7 +30,7 @@ import { buildSetupChecklist, setupFactsWanted, type SetupItemId } from '@/lib/c
 import { SetupChecklist } from '@/components/client/home/SetupChecklist'
 import { buildTenantSurfaces, hasWidget } from '@/lib/client/surfaces'
 import { allowedAttentionRules, sortAttention, type AttentionItem } from '@/lib/client/attention'
-import { draftProgress, navHref, percentChange, timeAgo } from '@/lib/client/home-cards'
+import { gallerySegments, navHref, percentChange, postDraftSegments, segmentsToProgress, timeAgo } from '@/lib/client/home-cards'
 import { ticketAccess } from '@/lib/support-tickets/access'
 import { clientTicketAttention } from '@/lib/support-tickets/service'
 import { getProjectAnalytics } from '@/lib/analytics/read'
@@ -201,7 +202,9 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
           thumb: d.coverThumb,
           topics: d.categoryKeys.length ? d.categoryKeys.map((k) => categoryLabel.get(k) ?? k.replace(/-/g, ' ')).join(' · ') : null,
           meta: d.hasLive ? th('meta.liveChanges', { ago }) : th('meta.draft', { step: t(`create.stepNames.${stepKey(d.step)}`), ago }),
-          progress: d.hasLive ? 1 : draftProgress(d.step),
+          progress: segmentsToProgress(
+            postDraftSegments({ furthest: d.furthest, hasLive: d.hasLive, complete: Boolean(d.title?.trim()) && d.bodyLanguages.length > 0 && Boolean(d.coverThumb) }),
+          ),
           href: `/${projectSlug}/posts/write/${d.id}`,
           hasLive: d.hasLive,
           canDelete: true,
@@ -209,11 +212,15 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
         }
       })
     : []
+  const galleryDrafts =
+    show('continueEditing') && canEditGalleries ? (gallery?.galleries ?? []).filter((g) => g.hasDraft).slice(0, CONTINUE_PER_KIND) : []
+  // Which of those have every photo described (the third segment). Unknown = not described.
+  const described = galleryDrafts.some((g) => g.count > 0 && !g.isPublished)
+    ? await getGalleriesDescribed(ctx, grant.projectId, galleryDrafts.filter((g) => !g.isPublished).map((g) => g.id))
+    : {}
   const galleryCards: DraftCard[] =
     show('continueEditing') && canEditGalleries
-      ? (gallery?.galleries ?? [])
-          .filter((g) => g.hasDraft)
-          .slice(0, CONTINUE_PER_KIND)
+      ? galleryDrafts
           .map((g) => ({
             kind: 'gallery',
             id: g.id,
@@ -222,8 +229,8 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
             thumb: g.coverThumb,
             topics: null,
             meta: g.isPublished ? th('meta.galleryChanges', { count: g.count }) : th('meta.galleryDraft', { count: g.count }),
-            // Galleries don't keep a wizard position: photos added = halfway.
-            progress: g.isPublished ? 1 : g.count > 0 ? 0.5 : 0.25,
+            // Galleries keep no wizard position: no photos 1/4, photos 2/4, all described 3/4, live with changes 3/4.
+            progress: segmentsToProgress(gallerySegments({ count: g.count, allDescribed: described[g.id] === true, isPublished: g.isPublished })),
             href: `/${projectSlug}/galleries/${g.id}`,
             hasLive: g.isPublished,
             canDelete: canDeleteGalleries(grant),
@@ -407,7 +414,7 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
 
         {/* Right after the greeting on phones; top of the main column on desktop.
             It replaces the first-run empty state (both say "start here"). */}
-        {checklist?.visible ? (
+        {checklist?.visible || checklist?.collapsed ? (
           <DashboardArea phoneOrder={2} desktopOrder={3}>
             <SetupChecklist
               projectSlug={projectSlug}
@@ -415,6 +422,7 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
               doneCount={checklist.doneCount}
               total={checklist.total}
               canHide={setupDismissal?.available ?? false}
+              initiallyHidden={checklist.collapsed}
             />
           </DashboardArea>
         ) : nothingYet ? (

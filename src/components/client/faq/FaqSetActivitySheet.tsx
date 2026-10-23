@@ -36,7 +36,7 @@ export function FaqSetActivitySheet({ open, onClose, projectSlug, setId }: { ope
 
   const when = (iso: string) => {
     try {
-      return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+      return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso))
     } catch {
       return iso
     }

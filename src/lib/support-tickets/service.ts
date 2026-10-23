@@ -491,20 +491,21 @@ export type AdminSupportOverview = {
   recent: TicketSummary[]
 }
 
+/** Pure: the Support card's numbers from the active admin ticket list (so a page can fetch the list once). */
+export function summariseAdminTickets(rows: readonly TicketSummary[], recentLimit = 5): AdminSupportOverview {
+  return {
+    newCount: rows.filter((t) => !t.seen).length,
+    repliedCount: rows.filter((t) => t.seen && t.unread).length,
+    waitingCount: rows.filter((t) => t.status === 'waiting_for_user').length,
+    highOpenCount: rows.filter((t) => t.severity === 'high').length,
+    recent: rows.slice(0, recentLimit),
+  }
+}
+
 export async function adminSupportOverview(adminUserId: string, recentLimit = 5): Promise<TicketResult<AdminSupportOverview>> {
   const list = await listAdminTickets(adminUserId, { status: 'active' })
   if (!list.ok) return list
-  const rows = list.value
-  return {
-    ok: true,
-    value: {
-      newCount: rows.filter((t) => !t.seen).length,
-      repliedCount: rows.filter((t) => t.seen && t.unread).length,
-      waitingCount: rows.filter((t) => t.status === 'waiting_for_user').length,
-      highOpenCount: rows.filter((t) => t.severity === 'high').length,
-      recent: rows.slice(0, recentLimit),
-    },
-  }
+  return { ok: true, value: summariseAdminTickets(list.value, recentLimit) }
 }
 
 /** When a ticket last changed for the admin (incl. notes) — the admin page polls this (round 4). */

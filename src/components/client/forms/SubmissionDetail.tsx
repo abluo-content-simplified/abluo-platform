@@ -33,7 +33,7 @@ export { rawValue }
 /** Locale-aware date+time in the VIEWER's timezone (render inside suppressHydrationWarning). */
 export function formatReceived(iso: string, locale: string): string {
   try {
-    return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
+    return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', hourCycle: 'h23' }).format(new Date(iso))
   } catch {
     return iso
   }

@@ -329,7 +329,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
               {t(`done.${done.kind}`)}
             </h1>
             <p className="mt-3 text-[1.0625rem] leading-7 text-muted-foreground">
-              {done.kind === 'scheduled' ? t('done.scheduledBody', { date: new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', timeZone: zone }).format(new Date(done.at)) }) : t(`done.${done.kind}Body`)}
+              {done.kind === 'scheduled' ? t('done.scheduledBody', { date: new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', hourCycle: 'h23', timeZone: zone }).format(new Date(done.at)) }) : t(`done.${done.kind}Body`)}
             </p>
             <div className="mt-10 flex w-full flex-col gap-3 sm:flex-row">
               <ButtonLink variant="primary" href={listHref}>

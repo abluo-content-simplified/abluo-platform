@@ -15,7 +15,7 @@ export function DoneStep({ result, homeHref }: { result: DoneResult; homeHref: s
   const ui = useLocale()
   const when =
     result.kind === 'scheduled'
-      ? new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short' }).format(new Date(result.at))
+      ? new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', hourCycle: 'h23' }).format(new Date(result.at))
       : ''
   const heading =
     result.kind === 'live'

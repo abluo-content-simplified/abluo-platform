@@ -98,7 +98,16 @@ describe('setup checklist — done detection and progress', () => {
   it('hidden by the person → not visible, items still derived', () => {
     const c = build({ dismissed: true })
     expect(c.visible).toBe(false)
+    expect(c.collapsed).toBe(true)
     expect(c.total).toBe(5)
+  })
+
+  it('collapsed only while unfinished: all done or no items → neither visible nor collapsed', () => {
+    const done = build({ dismissed: true, facts: ALL_DONE })
+    expect([done.visible, done.collapsed]).toEqual([false, false])
+    const none = build({ dismissed: true, grant: { permissions: [], enabledModuleIds: [] } })
+    expect([none.visible, none.collapsed]).toEqual([false, false])
+    expect(build().collapsed).toBe(false)
   })
 
   it('no items at all → not visible', () => {

@@ -545,9 +545,9 @@
       "progress": "Wie weit dieser Entwurf ist",
       "meta": {
         "draft": "Entwurf · Du warst bei „{step}“ · {ago}",
-        "liveChanges": "Änderungen an einem Live-Beitrag · {ago}",
+        "liveChanges": "Live · Änderungen nicht veröffentlicht · {ago}",
         "galleryDraft": "Galerie · {count, plural, =0 {noch keine Fotos} one {# Foto} other {# Fotos}}",
-        "galleryChanges": "Änderungen an einer Live-Galerie · {count, plural, =0 {keine Fotos} one {# Foto} other {# Fotos}}"
+        "galleryChanges": "Live · Änderungen nicht veröffentlicht · {count, plural, =0 {keine Fotos} one {# Foto} other {# Fotos}}"
       },
       "menu": {
         "label": "Mehr für „{title}“",
@@ -685,7 +685,10 @@
             "detail": "Abluo verbindet deine Domain, sobald deine Website live gehen kann.",
             "doneDetail": "Deine Website ist unter ihrer eigenen Adresse online."
           }
-        }
+        },
+        "collapsed": "Startschritte · {done} von {total} erledigt",
+        "show": "Checkliste anzeigen",
+        "showFailed": "Die Checkliste konnte nicht angezeigt werden. Bitte versuche es noch einmal."
       }
     },
     "create": {
@@ -3103,6 +3106,16 @@
           "title": "{project} ist noch in der Vorschau",
           "detail": "{days, plural, other {Vor # Tagen erstellt und noch nicht live}}",
           "action": "Projekt öffnen"
+        },
+        "supportNew": {
+          "title": "Neue Anfrage",
+          "detail": "{reference} · {project} · {title}",
+          "action": "Anfrage öffnen"
+        },
+        "supportReplied": {
+          "title": "Kunde hat geantwortet",
+          "detail": "{reference} · {project} · {title}",
+          "action": "Anfrage öffnen"
         }
       }
     },
@@ -4372,7 +4385,19 @@
         "lastSignIn": "Letzte Anmeldung",
         "lastActive": "Zuletzt aktiv",
         "noActivity": "Noch nichts aufgezeichnet",
-        "noActivityBody": "Hier erscheinen Veröffentlichungen, Einladungen und Zugangsänderungen."
+        "noActivityBody": "Hier erscheinen Veröffentlichungen, Einladungen und Zugangsänderungen.",
+        "invitedOn": "Eingeladen am",
+        "wholeClientShort": "Alle Websites dieses Kunden",
+        "columns": {
+          "site": "Website",
+          "role": "Rolle",
+          "extras": "Extras",
+          "since": "Seit",
+          "when": "Wann",
+          "what": "Was",
+          "where": "Wo",
+          "by": "Von wem"
+        }
       },
       "activity": {
         "content": "{type} · {action}",
@@ -4413,6 +4438,11 @@
         "outcome": {
           "refused": "Abgelehnt",
           "failed": "Fehlgeschlagen"
+        },
+        "what": {
+          "change": "Zugriff geändert auf {role}",
+          "archive": "Zugriff archiviert",
+          "restore": "Zugriff wiederhergestellt ({role})"
         }
       }
     }

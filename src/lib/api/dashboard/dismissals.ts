@@ -10,6 +10,7 @@
  * "not available" (the card then simply offers no Hide button).
  */
 import { createClient } from '@/lib/supabase/server'
+import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 
 /** Keys are code constants, never user input. Matches the CHECK in migration 039. */
 export const DISMISSAL_KEY_PATTERN = /^[a-z][a-zA-Z0-9.-]{0,63}$/
@@ -67,6 +68,39 @@ export async function writeDismissal(
       .upsert({ user_id: userId, project_id: projectId, key }, { onConflict: 'user_id,project_id,key', ignoreDuplicates: true })
     if (error) {
       console.warn(`[dashboard] dismissal not saved (${error.message ?? 'unknown'})`)
+      return false
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Un-hide ("Show checklist"). People can read and add their own rows but not
+ * delete them (migration 039 grants select + insert only), so this runs with
+ * the service role. The caller MUST already have resolved `userId` from the
+ * session and `projectId` from the person's own grant; the delete is pinned to
+ * exactly that (user, project, key) row. Idempotent.
+ */
+export async function clearDismissal(
+  userId: string,
+  projectId: string,
+  key: string,
+  deps: { client?: Db } = {},
+): Promise<boolean> {
+  if (!DISMISSAL_KEY_PATTERN.test(key)) return false
+  try {
+    const run = async (db: Db) =>
+      db.from('dashboard_dismissals').delete().eq('user_id', userId).eq('project_id', projectId).eq('key', key)
+    const { error } = deps.client
+      ? await run(deps.client)
+      : await runAsTrustedSystemOperation(
+          'Un-hide a dashboard card: delete the person\'s own dismissal row (039 grants them select+insert only), pinned to their user, grant project and key',
+          (admin) => run(admin as unknown as Db),
+        )
+    if (error) {
+      console.warn(`[dashboard] dismissal not cleared (${error.message ?? 'unknown'})`)
       return false
     }
     return true

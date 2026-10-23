@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/sanity/server-clients', () => ({ sanityWriteClient: {} }))
 
-import { draftProgress, navHref, partOfDay, percentChange, requestCounts, requestTrend, segmentFills, timeAgo } from '../home-cards'
+import { gallerySegments, navHref, partOfDay, percentChange, requestCounts, requestTrend, postDraftSegments, segmentFills, segmentsToProgress, timeAgo } from '../home-cards'
 
 describe('home cards', () => {
   it('greets by the local hour', () => {
@@ -11,12 +11,37 @@ describe('home cards', () => {
     expect(partOfDay(12)).toBe('afternoon')
     expect(partOfDay(18)).toBe('evening')
   })
-  it('progress grows with the first-pass step; the overview is full', () => {
-    expect(draftProgress('type')).toBe(0)
-    expect(draftProgress('title')).toBeGreaterThan(draftProgress('category'))
-    expect(draftProgress('story')).toBeLessThan(draftProgress('preview'))
-    expect(draftProgress('publish')).toBe(1)
-    expect(draftProgress('review')).toBe(1)
+  it('post bar: real first-pass position, never full for a draft', () => {
+    const at = (furthest: Parameters<typeof postDraftSegments>[0]['furthest'], complete = false, hasLive = false) =>
+      postDraftSegments({ furthest, hasLive, complete })
+    expect(at('type')).toBe(1)
+    expect(at('title')).toBe(1)
+    expect(at('story')).toBeGreaterThanOrEqual(at('title'))
+    expect(at('preview')).toBe(3)
+    expect(at('publish', true)).toBe(3)
+    for (const s of ['title', 'cover', 'preview', 'publish', 'review', 'done'] as const) expect(at(s, true)).toBeLessThanOrEqual(3)
+  })
+  it('post bar: overview / review does not count as finished unless complete', () => {
+    expect(postDraftSegments({ furthest: 'review', hasLive: false, complete: false })).toBe(2)
+    expect(postDraftSegments({ furthest: 'overview' as never, hasLive: false, complete: false })).toBe(1)
+    expect(postDraftSegments({ furthest: 'review', hasLive: false, complete: true })).toBe(3)
+    expect(postDraftSegments({ furthest: 'done', hasLive: false, complete: false })).toBe(2)
+  })
+  it('post bar: a live post with unpublished changes is three of four', () => {
+    expect(postDraftSegments({ furthest: 'story', hasLive: true, complete: false })).toBe(3)
+    expect(postDraftSegments({ furthest: 'review', hasLive: true, complete: true })).toBe(3)
+  })
+  it('gallery bar: 1 no photos, 2 photos, 3 all described, 3 published with changes', () => {
+    expect(gallerySegments({ count: 0, allDescribed: false, isPublished: false })).toBe(1)
+    expect(gallerySegments({ count: 4, allDescribed: false, isPublished: false })).toBe(2)
+    expect(gallerySegments({ count: 4, allDescribed: true, isPublished: false })).toBe(3)
+    expect(gallerySegments({ count: 0, allDescribed: false, isPublished: true })).toBe(3)
+    expect(gallerySegments({ count: 4, allDescribed: false, isPublished: true })).toBe(3)
+  })
+  it('segments become a 0…1 progress and back to four bars', () => {
+    expect(segmentFills(segmentsToProgress(3))).toEqual([1, 1, 1, 0])
+    expect(segmentFills(segmentsToProgress(1))).toEqual([1, 0, 0, 0])
+    expect(segmentsToProgress(9)).toBe(1)
   })
   it('splits progress over four segments', () => {
     expect(segmentFills(0)).toEqual([0, 0, 0, 0])

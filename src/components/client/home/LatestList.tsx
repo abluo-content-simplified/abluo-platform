@@ -39,7 +39,7 @@ export function LatestList({ heading, items, seeAllHref, kind }: { heading: stri
     if (Number.isNaN(d.getTime())) return t(`recent.${p.status}`)
     const date =
       p.status === 'scheduled'
-        ? new Intl.DateTimeFormat(ui, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d)
+        ? new Intl.DateTimeFormat(ui, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d)
         : new Intl.DateTimeFormat(ui, { day: 'numeric', month: 'short' }).format(d)
     return t(`recent.${p.status}On`, { date })
   }

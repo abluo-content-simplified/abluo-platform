@@ -30,7 +30,7 @@ export function useLocalTime(iso: string | null): string {
     if (!iso) return
     const d = new Date(iso)
     // eslint-disable-next-line react-hooks/set-state-in-effect -- the browser's time zone is only known after mount
-    if (!Number.isNaN(d.getTime())) setText(d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }))
+    if (!Number.isNaN(d.getTime())) setText(d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }))
   }, [iso, locale])
   return text
 }

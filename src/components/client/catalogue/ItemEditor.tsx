@@ -276,7 +276,7 @@ export function ItemEditor({
       </div>
       {result && !draft.hasDraft ? (
         <Notice tone="info">
-          {result.kind === 'scheduled' && result.at ? t('resultScheduled', { date: new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', timeZone: zone }).format(new Date(result.at)) }) : result.kind === 'scheduled' ? t('scheduled') : t('resultPublished')}
+          {result.kind === 'scheduled' && result.at ? t('resultScheduled', { date: new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', hourCycle: 'h23', timeZone: zone }).format(new Date(result.at)) }) : result.kind === 'scheduled' ? t('scheduled') : t('resultPublished')}
         </Notice>
       ) : null}
       {!readOnly && !canPublish ? <ItemIssueList issues={blockers} onFix={fix} /> : null}

@@ -39,7 +39,7 @@ export type DraftCard = {
 
 /**
  * Home · "Continue editing" (canvas Main): draft cards with a 96px thumbnail,
- * meta line, 4-segment progress and Continue — plus a ⋯ menu (Continue
+ * meta line and a soft 4-segment progress — the whole card opens the item (one stretched link, chevron on the right) — plus a ⋯ menu (Continue
  * editing · Preview · Delete for never-published drafts / Discard changes
  * for changes to something live). Delete and Discard wait five seconds behind
  * "Deleted · Undo" before the server is asked; Discard only removes the
@@ -120,7 +120,7 @@ export function ContinueEditing({
       {visible.length ? <SectionHeading id="continue-editing" title={t('continueEditing')} /> : null}
       <div className={`grid grid-cols-1 items-start gap-3 ${layout === 'grid' ? 'lg:grid-cols-2' : ''}`}>
       {visible.map((c) => (
-        <div key={key(c)} className="flex items-start gap-4 rounded-xl border border-border bg-card p-3">
+        <div key={key(c)} className="group relative flex items-start gap-4 rounded-xl border border-border bg-card p-3 transition-colors hover:bg-muted/40 focus-within:ring-2 focus-within:ring-ring">
           {c.thumb ? (
             // eslint-disable-next-line @next/next/no-img-element -- Sanity CDN thumbnail, already sized
             <img src={c.thumb} alt="" width={96} height={96} loading="lazy" className="size-24 shrink-0 rounded-lg bg-muted object-cover" />
@@ -148,11 +148,17 @@ export function ContinueEditing({
             <div className="flex items-start gap-1">
               <div className="min-w-0 flex-1 pt-0.5">
                 <p className="text-xs leading-4 font-medium text-muted-foreground">{t(c.kind === 'gallery' ? 'kind.gallery' : 'kind.post')}</p>
-                <p className="mt-0.5 line-clamp-2 text-[0.9375rem] leading-[1.375rem] font-semibold">{c.title}</p>
+                <p className="mt-0.5 line-clamp-2 text-[0.9375rem] leading-[1.375rem] font-semibold">
+                  {/* One link for the whole card: the title's link is stretched over it; the ⋯ menu sits above. */}
+                  <Link href={c.href} className="after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none">
+                    {c.title}
+                    <span className="sr-only"> · {t('continueEditing')}</span>
+                  </Link>
+                </p>
                 {c.topics ? <p className="mt-0.5 truncate text-sm font-medium text-foreground/80">{c.topics}</p> : null}
                 <p className="mt-0.5 text-sm leading-5 text-muted-foreground">{c.meta}</p>
               </div>
-              <div className="-mt-1 -mr-1">
+              <div className="relative z-10 -mt-1 -mr-1">
                 <CardMenu
                   label={t('menu.label', { title: c.title })}
                   items={[
@@ -167,19 +173,18 @@ export function ContinueEditing({
                 />
               </div>
             </div>
-            <div className="flex gap-1" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(c.progress * 100)} aria-label={t('progress')}>
-              {segmentFills(c.progress).map((f, i) => (
-                <span key={i} className="h-1 flex-1 overflow-hidden bg-border">
-                  <span className="block h-full bg-foreground" style={{ width: `${f * 100}%` }} />
-                </span>
-              ))}
+            <div className="flex items-center gap-2">
+              <div className="flex flex-1 gap-1" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(c.progress * 100)} aria-label={t('progress')}>
+                {segmentFills(c.progress).map((f, i) => (
+                  <span key={i} className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                    <span className="block h-full rounded-full bg-primary/45" style={{ width: `${f * 100}%` }} />
+                  </span>
+                ))}
+              </div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className="shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5">
+                <path d="m9 6 6 6-6 6" />
+              </svg>
             </div>
-            <Link
-              href={c.href}
-              className="inline-flex h-11 items-center self-start rounded-md bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              {t('continueEditing')}
-            </Link>
           </div>
         </div>
       ))}

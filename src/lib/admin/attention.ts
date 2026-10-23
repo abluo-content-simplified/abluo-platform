@@ -9,7 +9,7 @@
  */
 import type { AttentionSeverity } from '@/lib/client/attention'
 
-export type AdminAttentionRuleId = 'noOwner' | 'activityIssues' | 'requestsWaiting' | 'invitationExpired' | 'invitationExpiring' | 'longPreview'
+export type AdminAttentionRuleId = 'noOwner' | 'supportNew' | 'supportReplied' | 'activityIssues' | 'requestsWaiting' | 'invitationExpired' | 'invitationExpiring' | 'longPreview'
 
 export type AdminAttentionItem = {
   id: string
@@ -21,6 +21,8 @@ export type AdminAttentionItem = {
   actionKey: string
   params: Record<string, string | number>
   href: string
+  /** Optional timestamp (ms) — newest first inside a rule and severity. */
+  at?: number
 }
 
 const HOUR_MS = 3600 * 1000
@@ -38,11 +40,13 @@ export const REQUEST_WAITING_HOURS = 48
 /** Rule priority inside a severity (lower first). */
 const RULE_ORDER: Record<AdminAttentionRuleId, number> = {
   noOwner: 0,
-  activityIssues: 1,
-  requestsWaiting: 2,
-  invitationExpired: 3,
-  invitationExpiring: 4,
-  longPreview: 5,
+  supportNew: 1,
+  supportReplied: 2,
+  activityIssues: 3,
+  requestsWaiting: 4,
+  invitationExpired: 5,
+  invitationExpiring: 6,
+  longPreview: 7,
 }
 
 const keys = (rule: AdminAttentionRuleId) => ({
@@ -213,11 +217,56 @@ export function activityIssuesRule(
   return out
 }
 
-/** warn before info, then rule priority, then the id (stable). */
+/** The slice of an admin ticket summary the support rules read. */
+export type AttentionTicket = {
+  id: string
+  reference: string
+  title: string
+  status: string
+  lastActivityAt: string
+  unread: boolean
+  seen?: boolean
+  severity?: string
+  project?: { name: string }
+}
+
+export const supportHref = (ticketId: string) => `/support/${encodeURIComponent(ticketId)}`
+
+function supportItem(rule: 'supportNew' | 'supportReplied', t: AttentionTicket): AdminAttentionItem {
+  const at = Date.parse(t.lastActivityAt)
+  return {
+    id: `${rule}:${t.id}`,
+    rule,
+    // High severity is the only thing that makes a ticket "needs action".
+    severity: t.severity === 'high' ? 'warn' : 'info',
+    ...keys(rule),
+    params: { reference: t.reference, project: t.project?.name || '—', title: t.title },
+    href: supportHref(t.id),
+    at: Number.isNaN(at) ? 0 : at,
+  }
+}
+
+/**
+ * Support tickets that need Abluo: never opened by this admin ("New request")
+ * or opened before with a newer client reply ("Client replied"). Resolved
+ * tickets and tickets waiting for the client never appear. One item each.
+ */
+export function supportTicketRules(tickets: readonly AttentionTicket[]): AdminAttentionItem[] {
+  const out: AdminAttentionItem[] = []
+  for (const t of tickets) {
+    if (t.status === 'resolved' || t.status === 'waiting_for_user') continue
+    if (t.seen === false) out.push(supportItem('supportNew', t))
+    else if (t.seen && t.unread) out.push(supportItem('supportReplied', t))
+  }
+  return out
+}
+
+/** warn before info, then rule priority, then newest first, then the id (stable). */
 export function sortAdminAttention(items: readonly AdminAttentionItem[]): AdminAttentionItem[] {
   return [...items].sort((a, b) => {
     if (a.severity !== b.severity) return a.severity === 'warn' ? -1 : 1
     if (a.rule !== b.rule) return RULE_ORDER[a.rule] - RULE_ORDER[b.rule]
+    if ((a.at ?? 0) !== (b.at ?? 0)) return (b.at ?? 0) - (a.at ?? 0)
     return a.id.localeCompare(b.id)
   })
 }

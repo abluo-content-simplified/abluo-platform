@@ -7,19 +7,22 @@ import { Button } from '@/components/app/ui/Button'
 import { UpdatedNote } from '@/components/app/analytics/UpdatedNote'
 
 /**
- * "Updated 23 Oct, 14:32 · Update" (ADR-030 A1): the Users page is a snapshot
- * read when it opens; Update reads it again. Nothing is live.
+ * The Users pages are a snapshot read when they open (ADR-030 A1); Update
+ * reads them again. The button goes in the PageHeader actions (top right,
+ * like every other page action); the "Updated …" note sits on its own line
+ * under the page description — never next to the button (Tom, 2026-10-23).
  */
-export function UsersUpdateBar({ readAt }: { readAt: string }) {
+export function UsersUpdateButton() {
   const t = useTranslations('admin.users')
   const router = useRouter()
   const [pending, start] = useTransition()
   return (
-    <div className="flex flex-wrap items-start gap-3">
-      <UpdatedNote iso={readAt} stale={false} />
-      <Button disabled={pending} onClick={() => start(() => router.refresh())}>
-        {pending ? t('updating') : t('update')}
-      </Button>
-    </div>
+    <Button disabled={pending} onClick={() => start(() => router.refresh())}>
+      {pending ? t('updating') : t('update')}
+    </Button>
   )
+}
+
+export function UsersUpdatedNote({ readAt }: { readAt: string }) {
+  return <UpdatedNote iso={readAt} stale={false} />
 }

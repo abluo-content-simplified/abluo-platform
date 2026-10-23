@@ -6,7 +6,7 @@ import { StatGrid } from '@/components/app/ui/StatGrid'
 import { StatTile } from '@/components/app/ui/StatTile'
 import { ActiveNowStrip } from '@/components/admin/users/ActiveNowStrip'
 import { UsersBrowser } from '@/components/admin/users/UsersBrowser'
-import { UsersUpdateBar } from '@/components/admin/users/UsersUpdateBar'
+import { UsersUpdateButton, UsersUpdatedNote } from '@/components/admin/users/UsersUpdateBar'
 import { listAdminUsers } from '@/lib/api/admin-dashboard/users'
 import { activeNowPeople, summarizeUsers } from '@/lib/admin/users-model'
 import { requireAbluoAdmin } from '@/lib/api/auth'
@@ -33,10 +33,10 @@ export default async function UsersPage() {
   return (
     <PageShell>
       <div className="space-y-1">
-        <PageHeader title={t('title')} />
+        <PageHeader title={t('title')} actions={<UsersUpdateButton />} />
         <p className="text-sm text-muted-foreground">{t('description')}</p>
+        <UsersUpdatedNote readAt={readAt} />
       </div>
-      <UsersUpdateBar readAt={readAt} />
 
       {error ? (
         <Notice tone="error">{t('loadError', { message: error })}</Notice>

@@ -88,7 +88,7 @@ function SheetBody({ value, zone, after, allowPast, note, onDone }: { value: str
   const limit = allowPast ? (after ?? null) : afterIsLater ? after! : openedAt
   const minDay = limit ? toLocalInput(limit, zone).slice(0, 10) || undefined : undefined
   const steps = useMemo(() => timeSteps(initial ? initial.slice(11, 16) : undefined), [initial])
-  const timeFmt = useMemo(() => new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }), [locale])
+  const timeFmt = useMemo(() => new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }), [locale])
   const parsed = day ? fromLocalInput(`${day}T${time}`, zone) : null
   const tooEarly = !!parsed && !!limit && Date.parse(parsed.utc) <= Date.parse(limit)
   const reason = !day ? t('pickDay') : tooEarly ? (after && (allowPast || afterIsLater) ? t('mustBeAfter', { date: formatInZone(after, zone, locale) }) : t('mustBeFuture')) : null

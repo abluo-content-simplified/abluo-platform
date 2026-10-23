@@ -43,7 +43,7 @@ export function zoneName(zone: string): string {
 
 function when(iso: string, zone: string): string {
   const d = new Date(iso)
-  const date = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: zone }).format(d)
+  const date = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', hourCycle: 'h23', timeZone: zone }).format(d)
   const offset =
     new Intl.DateTimeFormat('en-GB', { timeZone: zone, timeZoneName: 'shortOffset' })
       .formatToParts(d)
@@ -102,6 +102,6 @@ export function publishingSummary(
 export function unpublishAfterPublish(value: unknown, publishedAt: unknown): true | string {
   if (typeof value !== 'string' || typeof publishedAt !== 'string') return true
   if (new Date(value) > new Date(publishedAt)) return true
-  const shown = new Date(publishedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+  const shown = new Date(publishedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', hourCycle: 'h23' })
   return `Must be after Publish on (${shown}). Change one of the two dates, otherwise this cannot be published.`
 }

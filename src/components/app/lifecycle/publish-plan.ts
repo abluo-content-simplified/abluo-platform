@@ -20,7 +20,7 @@ export function shortMoment(iso: string, zone: string, locale: string, now = new
   const d = new Date(iso)
   const year = (x: Date) => new Intl.DateTimeFormat('en', { year: 'numeric', timeZone: zone }).format(x)
   const date = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', ...(year(d) !== year(now) && { year: 'numeric' }), timeZone: zone }).format(d)
-  const time = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: zone }).format(d)
+  const time = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', hourCycle: 'h23', timeZone: zone }).format(d)
   return { date, time }
 }
 

@@ -26,7 +26,7 @@ export function formatInZone(iso: string | null | undefined, zone: string, local
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: zone }).format(d)
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', hourCycle: 'h23', timeZone: zone }).format(d)
 }
 
 /** "GMT+2" — the zone's offset at that moment (DST-aware). */

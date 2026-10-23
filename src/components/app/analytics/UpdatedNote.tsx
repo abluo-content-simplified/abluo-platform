@@ -18,7 +18,7 @@ export function UpdatedNote({ iso, stale }: { iso: string; stale: boolean }) {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
-    minute: '2-digit',
+    minute: '2-digit', hourCycle: 'h23',
     timeZone: zone ?? 'UTC',
     ...(zone ? {} : { timeZoneName: 'short' }),
   })
