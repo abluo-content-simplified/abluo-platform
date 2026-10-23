@@ -134,8 +134,8 @@ function SectionBlock({
           section.name,
         )}
       {section.items.length > 0 && itemsUseCards(section.items) && (
-        // Books and products: a grid of cards (one column on phones, two on tablets, three on wide screens).
-        <ul className="grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 xl:grid-cols-3" data-card-grid="">
+        // Books and products: a grid of cards (two on phones, three on tablets, four on desktop).
+        <ul className="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-3 md:gap-x-8 lg:grid-cols-4" data-card-grid="">
           {section.items.map((item, i) => (
             <li key={`${item.publicId ?? 'item'}-${i}`} data-cats={catsOf(item)}>
               <CatalogueItemCard item={item} display={display} messages={messages} href={itemHref(item)} headingLevel={Math.min(Math.max(section.name ? level + 1 : level, 2), 6) as 2 | 3 | 4 | 5 | 6} />

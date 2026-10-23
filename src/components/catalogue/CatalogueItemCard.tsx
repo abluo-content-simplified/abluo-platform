@@ -3,7 +3,7 @@
 // Used for every profile whose registry entry says `website.layout: 'card'`
 // (books, products). Reusable across tenants: nothing here knows a tenant.
 //
-//   cover / photo    book: 2:3, shown whole (never cropped); others: square
+//   cover / photo    book: whole cover, own proportions, bottom-left of a 2:3 box; others: square
 //   title            the item page link — stretched over the whole card, so a
 //                    click anywhere on the card opens the item (C6: only when
 //                    the item has a page in this locale)
@@ -59,20 +59,32 @@ export function CatalogueItemCard({
       data-item={item.publicId ?? undefined}
       data-item-card=""
     >
-      <div
-        className={`${portrait ? 'aspect-[2/3]' : 'aspect-square'} w-full overflow-hidden rounded-[var(--radius-md,0.5rem)]`}
-        style={{ backgroundColor: 'var(--color-surface, transparent)' }}
-      >
-        {src && (
-          <img
-            src={src}
-            alt={image.alt ?? ''}
-            loading="lazy"
-            className={`h-full w-full ${portrait ? 'object-contain' : 'object-cover'} transition-transform duration-300 group-hover:scale-[1.02]`}
-            style={portrait ? undefined : { objectPosition: image.objectPosition }}
-          />
-        )}
-      </div>
+      {portrait ? (
+        // Book covers keep their own proportions: no frame colour, no cropping, sitting on the bottom-left of a
+        // 2:3 box like books on a shelf — titles still line up because the box is the same for every card.
+        <div className="flex aspect-[2/3] w-full items-end justify-start" data-cover-shelf="">
+          {src && (
+            <img
+              src={src}
+              alt={image.alt ?? ''}
+              loading="lazy"
+              className="block h-auto max-h-full w-auto max-w-full rounded-[var(--radius-sm,0.25rem)] shadow-sm transition-transform duration-300 group-hover:-translate-y-1"
+            />
+          )}
+        </div>
+      ) : (
+        <div className="aspect-square w-full overflow-hidden rounded-[var(--radius-md,0.5rem)]" style={{ backgroundColor: 'var(--color-surface, transparent)' }}>
+          {src && (
+            <img
+              src={src}
+              alt={image.alt ?? ''}
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              style={{ objectPosition: image.objectPosition }}
+            />
+          )}
+        </div>
+      )}
       <div className="mt-4 flex flex-1 flex-col">
         <div className="flex items-start justify-between gap-3">
           {createElement(

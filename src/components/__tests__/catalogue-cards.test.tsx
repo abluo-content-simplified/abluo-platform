@@ -94,7 +94,7 @@ describe('book cards on the website', () => {
     expect((h.match(/data-buy-link/g) ?? []).length).toBe(1)
     expect(h).toContain('Buy on Amazon')
     expect(h).toContain('2 editions')
-    expect(h).toContain('aspect-[2/3]')
+    expect(h).toContain('data-cover-shelf')
   })
   it('shows the category filter bar when two categories are used', async () => {
     const h = await render([book, other])
