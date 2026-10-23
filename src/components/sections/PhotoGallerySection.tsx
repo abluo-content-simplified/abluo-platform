@@ -90,6 +90,7 @@ export function PhotoGallerySection({ section, surface, designSystem, locale }: 
         lightbox={section.lightbox}
         display={section.galleryDisplay}
         showAllTab={section.showAllTab}
+        initialCount={section.initialCount}
         anchorId={section.anchorId}
         structuredDataName={headline}
         locale={locale}

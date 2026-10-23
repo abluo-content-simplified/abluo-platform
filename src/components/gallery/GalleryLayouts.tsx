@@ -7,7 +7,7 @@ import { planTiles, aspectCss, type GalleryLayout, type TileShape } from '@/lib/
 import { GalleryTile } from './GalleryTile'
 
 // ── Layout renderers (ADR-022 §4) ─────────────────────────────────────────────
-// Grid family (grid, featured, wideLead): fixed tile shapes planned per
+// Grid family (grid, featured, wideLead, mosaic): fixed tile shapes planned per
 // breakpoint on a 12-track grid by planTiles() — see src/lib/gallery/layout.ts
 // for why this can never leave gaps or orphans.
 // No-crop family (rows, masonry): each photo keeps its own proportions.
@@ -43,9 +43,16 @@ const GRID_ITEM =
   '[grid-column:span_var(--g-b)/span_var(--g-b)] sm:[grid-column:span_var(--g-s)/span_var(--g-s)] md:[grid-column:span_var(--g-m)/span_var(--g-m)] ' +
   'md:[grid-row:span_var(--r-m)/span_var(--r-m)]'
 const GRID_BOX = 'grow [aspect-ratio:var(--a-b)] sm:[aspect-ratio:var(--a-s)] md:[aspect-ratio:var(--a-m)]'
+// Mosaic: the same, but on wide screens every tile is placed at its planned
+// column and row (a lead on the right cannot be auto-placed in gallery order).
+const MOSAIC_ITEM =
+  'flex min-h-0 flex-col ' +
+  '[grid-column:span_var(--g-b)/span_var(--g-b)] sm:[grid-column:span_var(--g-s)/span_var(--g-s)] ' +
+  'md:[grid-column:var(--c-m)/span_var(--g-m)] md:[grid-row:var(--rw-m)/span_var(--r-m)]'
 
 function GridLayout(p: LayoutProps) {
   const plan = planTiles(p.layout, p.items.length, p.columns, p.shape)
+  const mosaic = p.layout === 'mosaic'
   return (
     <div className={`grid grid-cols-12 ${GAP[p.spacing].gap}`}>
       {p.items.map((item, i) => {
@@ -58,10 +65,11 @@ function GridLayout(p: LayoutProps) {
           '--a-b': aspectCss(t.base.aspect),
           '--a-s': aspectCss(t.sm.aspect),
           '--a-m': aspectCss(t.md.aspect),
+          ...(mosaic && { '--c-m': t.md.col ?? 'auto', '--rw-m': t.md.row ?? 'auto' }),
         } as CSSProperties
         const sizes = `(max-width: 640px) ${Math.round((t.base.span / 12) * 100)}vw, (max-width: 768px) ${Math.round((t.sm.span / 12) * 100)}vw, ${Math.round((t.md.span / 12) * 100)}vw`
         return (
-          <SlideUp key={item.key} duration={p.duration} ease={p.ease} delay={Math.min(i * 0.04, 0.4)} className={GRID_ITEM} style={vars}>
+          <SlideUp key={item.key} duration={p.duration} ease={p.ease} delay={Math.min(i * 0.04, 0.4)} className={mosaic ? MOSAIC_ITEM : GRID_ITEM} style={vars}>
             <GalleryTile
               item={item}
               onOpen={p.openHandler(item)}

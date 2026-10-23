@@ -202,12 +202,14 @@ export const GALLERY_LAYOUT_OPTIONS = [
   { title: 'Grid — equal tiles', value: 'grid' },
   { title: 'Featured — first photo large, two beside it', value: 'featured' },
   { title: 'Wide lead — first photo across the full width', value: 'wideLead' },
+  { title: 'Mosaic — big photos left and right, rows of three between', value: 'mosaic' },
   { title: 'Rows — every photo uncropped, rows fill the width', value: 'rows' },
   { title: 'Masonry — uncropped columns', value: 'masonry' },
   { title: 'Carousel — one swipeable strip', value: 'carousel' },
 ]
 
-const usesTileShape = (layout: unknown) => !layout || layout === 'grid' || layout === 'featured' || layout === 'wideLead'
+const usesTileShape = (layout: unknown) =>
+  !layout || layout === 'grid' || layout === 'featured' || layout === 'wideLead' || layout === 'mosaic'
 
 const photoGallerySectionType = defineType({
   name: 'photoGallerySection',
@@ -296,8 +298,8 @@ const photoGallerySectionType = defineType({
         layout: 'radio',
       },
       initialValue: 3,
-      description: 'Featured always uses thirds on wide screens.',
-      hidden: ({ parent }) => parent?.layout === 'rows' || parent?.layout === 'carousel',
+      description: 'Featured and Mosaic always use thirds on wide screens.',
+      hidden: ({ parent }) => parent?.layout === 'rows' || parent?.layout === 'carousel' || parent?.layout === 'mosaic',
     }),
     defineField({
       name: 'imageRatio',
@@ -337,6 +339,16 @@ const photoGallerySectionType = defineType({
       type: 'boolean',
       initialValue: false,
       description: 'Display captions beneath each photo. The lightbox always shows them.',
+    }),
+    defineField({
+      // Tom, 2026-10-23: a long gallery on a story page is a lot of scrolling.
+      name: 'initialCount',
+      title: 'Photos shown at first',
+      type: 'number',
+      description:
+        'Show only the first photos, with a "See all photos" button for the rest (it opens the lightbox, or shows them all when the lightbox is off). Leave empty to show every photo.',
+      validation: (Rule) => Rule.integer().min(3).max(60),
+      hidden: ({ parent }) => parent?.layout === 'carousel',
     }),
     defineField({
       name: 'lightbox',

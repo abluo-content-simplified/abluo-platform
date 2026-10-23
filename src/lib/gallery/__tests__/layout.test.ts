@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gridCells, planTiles, normalizeShape, normalizeLayout, GRID_TRACKS, SHAPE_ASPECT } from '../layout'
+import { gridCells, planTiles, normalizeShape, normalizeLayout, isGridFamily, mosaicBlocks, GRID_TRACKS, SHAPE_ASPECT, type CellPlan } from '../layout'
 
 const sumSpans = (spans: number[]) => spans.reduce((a, b) => a + b, 0)
 
@@ -101,5 +101,77 @@ describe('normalizers', () => {
   it('falls back to grid for unknown layouts', () => {
     expect(normalizeLayout('nonsense')).toBe('grid')
     expect(normalizeLayout('rows')).toBe('rows')
+  })
+})
+
+describe('mosaic', () => {
+  /** Every wide-screen tile placed, no overlap, and every row covered edge to edge. */
+  function assertSolid(cells: CellPlan[]) {
+    const taken = new Map<string, number>()
+    let lastRow = 0
+    cells.forEach((c, i) => {
+      expect(c.col, `tile ${i} has a column`).toBeGreaterThanOrEqual(1)
+      expect(c.row, `tile ${i} has a row`).toBeGreaterThanOrEqual(1)
+      expect(c.col! - 1 + c.span).toBeLessThanOrEqual(GRID_TRACKS)
+      for (let r = c.row!; r < c.row! + c.rowSpan; r++) {
+        for (let t = c.col!; t < c.col! + c.span; t++) {
+          const key = `${r}:${t}`
+          expect(taken.has(key), `tile ${i} overlaps tile ${taken.get(key)} at ${key}`).toBe(false)
+          taken.set(key, i)
+        }
+        lastRow = Math.max(lastRow, r)
+      }
+    })
+    for (let r = 1; r <= lastRow; r++) {
+      for (let t = 1; t <= GRID_TRACKS; t++) expect(taken.has(`${r}:${t}`), `hole at row ${r}, track ${t}`).toBe(true)
+    }
+  }
+
+  it('is a known layout of the fixed-shape family', () => {
+    expect(normalizeLayout('mosaic')).toBe('mosaic')
+    expect(isGridFamily('mosaic')).toBe(true)
+  })
+
+  it('repeats big left · row of three · big right · row of three', () => {
+    expect(mosaicBlocks(12).map((b) => b.block)).toEqual(['bigLeft', 'row', 'bigRight', 'row'])
+    const md = planTiles('mosaic', 6, 3, 'landscape').map((t) => t.md)
+    expect(md[0]).toMatchObject({ span: 8, rowSpan: 2, aspect: null, col: 1, row: 1 })
+    expect(md[1]).toMatchObject({ span: 4, col: 9, row: 1 })
+    expect(md[2]).toMatchObject({ span: 4, col: 9, row: 2 })
+    expect(md.slice(3).map((c) => [c.col, c.row])).toEqual([[1, 3], [5, 3], [9, 3]])
+    const big = planTiles('mosaic', 9, 3, 'landscape')[6].md
+    expect(big).toMatchObject({ span: 8, rowSpan: 2, col: 5, row: 4 })
+  })
+
+  it('never leaves a hole or a lone tile, whatever the count', () => {
+    for (let count = 3; count <= 30; count++) {
+      const md = planTiles('mosaic', count, 3, 'landscape').map((t) => t.md)
+      expect(md).toHaveLength(count)
+      assertSolid(md)
+      // No tile is ever stranded alone on a row.
+      const perRow = new Map<number, number>()
+      for (const c of md) if (c.rowSpan === 1 && c.span !== 4) perRow.set(c.row!, (perRow.get(c.row!) ?? 0) + 1)
+      for (const n of perRow.values()) expect(n).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('handles the end like the grid: 2 leftovers share a row, 1 rebalances', () => {
+    expect(mosaicBlocks(11).map((b) => `${b.block}:${b.size}`)).toEqual(['bigLeft:3', 'row:3', 'bigRight:3', 'pair:2'])
+    expect(mosaicBlocks(7).map((b) => `${b.block}:${b.size}`)).toEqual(['bigLeft:3', 'pair:2', 'pair:2'])
+    expect(mosaicBlocks(4).map((b) => `${b.block}:${b.size}`)).toEqual(['bigLeft:4'])
+    // A pair keeps the height of a row of three.
+    const pair = planTiles('mosaic', 11, 3, 'landscape')[9].md
+    expect(pair.aspect).toBeCloseTo((4 / 3) * 1.5)
+  })
+
+  it('tablets: one wide photo, then pairs; phones: one column; ignores the authored column count', () => {
+    const plan = planTiles('mosaic', 7, 4, 'landscape')
+    expect(plan.map((t) => t.sm.span)).toEqual([12, 6, 6, 6, 6, 12, 12])
+    expect(plan.every((t) => t.base.span === 12)).toBe(true)
+    expect(plan[0].md.col).toBe(1)
+  })
+
+  it('fewer than three photos fall back to the grid', () => {
+    expect(planTiles('mosaic', 2, 3, 'square').map((t) => t.md.span)).toEqual([6, 6])
   })
 })

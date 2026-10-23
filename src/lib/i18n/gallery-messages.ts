@@ -29,6 +29,8 @@ export interface GalleryMessages {
   scrollForward: string
   /** Label on a video item, which does not open in the lightbox. */
   video: string
+  /** Button under a gallery that shows only its first photos: "See all {total} photos". */
+  seeAll: string
 }
 
 const MESSAGES: Record<string, GalleryMessages> = {
@@ -45,6 +47,7 @@ const MESSAGES: Record<string, GalleryMessages> = {
     scrollBack: 'Scroll back',
     scrollForward: 'Scroll forward',
     video: 'Video',
+    seeAll: 'See all {total} photos',
   },
   it: {
     allTab: 'Tutte',
@@ -59,6 +62,7 @@ const MESSAGES: Record<string, GalleryMessages> = {
     scrollBack: 'Scorri indietro',
     scrollForward: 'Scorri avanti',
     video: 'Video',
+    seeAll: 'Vedi tutte le {total} foto',
   },
   de: {
     allTab: 'Alle',
@@ -73,6 +77,7 @@ const MESSAGES: Record<string, GalleryMessages> = {
     scrollBack: 'Zurückblättern',
     scrollForward: 'Weiterblättern',
     video: 'Video',
+    seeAll: 'Alle {total} Fotos ansehen',
   },
   fr: {
     allTab: 'Toutes',
@@ -87,6 +92,7 @@ const MESSAGES: Record<string, GalleryMessages> = {
     scrollBack: 'Défiler vers l’arrière',
     scrollForward: 'Défiler vers l’avant',
     video: 'Vidéo',
+    seeAll: 'Voir les {total} photos',
   },
   es: {
     allTab: 'Todas',
@@ -101,6 +107,7 @@ const MESSAGES: Record<string, GalleryMessages> = {
     scrollBack: 'Desplazar hacia atrás',
     scrollForward: 'Desplazar hacia adelante',
     video: 'Vídeo',
+    seeAll: 'Ver las {total} fotos',
   },
   pt: {
     allTab: 'Todas',
@@ -115,6 +122,7 @@ const MESSAGES: Record<string, GalleryMessages> = {
     scrollBack: 'Recuar',
     scrollForward: 'Avançar',
     video: 'Vídeo',
+    seeAll: 'Ver as {total} fotos',
   },
   nl: {
     allTab: 'Alle',
@@ -129,6 +137,7 @@ const MESSAGES: Record<string, GalleryMessages> = {
     scrollBack: 'Terug scrollen',
     scrollForward: 'Verder scrollen',
     video: 'Video',
+    seeAll: 'Alle {total} foto\'s bekijken',
   },
 }
 

@@ -2205,8 +2205,10 @@ export interface PhotoGallerySection {
    * Layout family (ADR-022 §4). The layout decides the tile shape; the photo is
    * cropped into it around its focal point. See src/lib/gallery/layout.ts.
    */
-  layout?: 'grid' | 'featured' | 'wideLead' | 'rows' | 'masonry' | 'carousel' | null
+  layout?: 'grid' | 'featured' | 'wideLead' | 'mosaic' | 'rows' | 'masonry' | 'carousel' | null
   columns?: 2 | 3 | 4
+  /** Show only this many photos at first, with a "See all photos" button. Empty = all. */
+  initialCount?: number | null
   /** 'auto' is retired and reads as landscape. */
   imageRatio?: 'square' | 'landscape' | 'portrait' | 'auto'
   spacing?: 'tight' | 'normal' | 'loose'

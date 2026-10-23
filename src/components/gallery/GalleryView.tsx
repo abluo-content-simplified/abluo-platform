@@ -29,6 +29,12 @@ export interface GalleryViewProps {
   spacing: 'tight' | 'normal' | 'loose'
   showCaptions: boolean
   lightbox: boolean
+  /**
+   * Show only this many photos at first (null = all). A "See all photos"
+   * button opens the lightbox at the first hidden photo — or, with the
+   * lightbox off, shows the rest in place. Not for the carousel.
+   */
+  initialCount?: number | null
   hashPrefix: string
   messages: GalleryMessages
   /** Seconds — entrance animations (durationSlow) and the lightbox (durationBase). */
@@ -45,6 +51,8 @@ export function GalleryView(props: GalleryViewProps) {
   const { tabs, allItems, messages: m, hashPrefix } = props
   const [activeId, setActiveId] = useState(tabs[0]?.id)
   const [box, setBox] = useState<LightboxState>(null)
+  /** The tab whose hidden photos were revealed ("See all" with the lightbox off). */
+  const [expandedTab, setExpandedTab] = useState<string | null>(null)
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   const baseId = useId()
 
@@ -109,6 +117,20 @@ export function GalleryView(props: GalleryViewProps) {
 
   if (!active || active.items.length === 0) return null
 
+  const limit = props.layout === 'carousel' ? null : (props.initialCount ?? null)
+  const limited = expandedTab !== active.id && limit !== null && active.items.length > limit
+  const shown = limited ? active.items.slice(0, limit) : active.items
+  const seeAll = () => {
+    const firstHidden = active.items.slice(limit ?? 0).find(isImage)
+    const index = firstHidden ? images.findIndex((i) => i.key === firstHidden.key) : -1
+    if (props.lightbox && index >= 0) {
+      setBox({ items: images, index })
+      writeHash(images[index])
+    } else {
+      setExpandedTab(active.id)
+    }
+  }
+
   const showTabs = tabs.length > 1
   const panelId = `${baseId}-panel`
 
@@ -154,8 +176,8 @@ export function GalleryView(props: GalleryViewProps) {
         <GalleryLayoutView
           // Remount on tab change so the entrance animation replays and the
           // carousel starts from the beginning.
-          key={active.id}
-          items={active.items}
+          key={`${active.id}-${shown.length}`}
+          items={shown}
           layout={props.layout}
           columns={props.columns}
           shape={props.shape}
@@ -170,6 +192,23 @@ export function GalleryView(props: GalleryViewProps) {
           ease={props.ease}
         />
       </div>
+
+      {limited && (
+        <div className="mt-8 flex justify-center">
+          <button
+            type="button"
+            onClick={seeAll}
+            className="rounded-full px-5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            style={{
+              backgroundColor: 'color-mix(in oklch, var(--color-text-primary) 8%, transparent)',
+              color: 'var(--color-text-primary)',
+              outlineColor: 'var(--color-primary)',
+            }}
+          >
+            {formatGalleryMessage(m.seeAll, { total: active.items.length })}
+          </button>
+        </div>
+      )}
 
       {props.lightbox && (
         <Lightbox

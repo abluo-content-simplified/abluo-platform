@@ -21,7 +21,7 @@
 // column count changes with the viewport and so does the remainder. The plan is
 // pure data; the component turns it into CSS custom properties.
 
-export type GalleryLayout = 'grid' | 'featured' | 'wideLead' | 'rows' | 'masonry' | 'carousel'
+export type GalleryLayout = 'grid' | 'featured' | 'wideLead' | 'mosaic' | 'rows' | 'masonry' | 'carousel'
 export type TileShape = 'square' | 'landscape' | 'portrait'
 export type Breakpoint = 'base' | 'sm' | 'md'
 export const BREAKPOINTS: Breakpoint[] = ['base', 'sm', 'md']
@@ -35,7 +35,7 @@ export const SHAPE_ASPECT: Record<TileShape, number> = {
   portrait: 3 / 4,
 }
 
-const LAYOUTS: GalleryLayout[] = ['grid', 'featured', 'wideLead', 'rows', 'masonry', 'carousel']
+const LAYOUTS: GalleryLayout[] = ['grid', 'featured', 'wideLead', 'mosaic', 'rows', 'masonry', 'carousel']
 
 export function normalizeLayout(value: string | null | undefined): GalleryLayout {
   return LAYOUTS.includes(value as GalleryLayout) ? (value as GalleryLayout) : 'grid'
@@ -70,8 +70,15 @@ export interface CellPlan {
   span: number
   /** Rows spanned (1 unless the featured lead). */
   rowSpan: number
-  /** width/height, or null = stretch to the row height (featured lead only). */
+  /** width/height, or null = stretch to the row height (featured / mosaic lead only). */
   aspect: number | null
+  /**
+   * Mosaic, wide screens only: the explicit 1-based grid column and row the
+   * tile starts at. A lead on the RIGHT cannot be reached by auto-placement
+   * while keeping the photos in gallery order, so every mosaic tile is placed.
+   */
+  col?: number
+  row?: number
 }
 
 export type TilePlan = Record<Breakpoint, CellPlan>
@@ -111,7 +118,78 @@ export function gridCells(count: number, cols: number, aspect: number): CellPlan
 /** Wide lead shape on wide screens (16:9 — wider crops lose too much of a photo). */
 export const WIDE_LEAD_ASPECT = 16 / 9
 
+// ── Mosaic (Tom, 2026-10-23) ──────────────────────────────────────────────────
+// An editorial pattern for sets of same-shape photos, where masonry has nothing
+// to work with. Wide screens repeat four blocks of three photos:
+//
+//   big left + two stacked · a row of three · big right + two stacked · a row of three
+//
+// The big tile has no ratio of its own: it stretches to the two rows beside it
+// (the featured technique), so the edges are always straight. The end is
+// rebalanced like the grid — two leftovers share a row; one leftover turns a
+// row of three into 2 + 2, or joins a big block as a third stacked tile.
+// Tablets: one wide photo, then pairs. Phones: one column.
+
+type MosaicBlock = 'bigLeft' | 'bigRight' | 'row' | 'pair'
+const MOSAIC_CYCLE: MosaicBlock[] = ['bigLeft', 'row', 'bigRight', 'row']
+
+export function mosaicBlocks(count: number): { block: MosaicBlock; size: number }[] {
+  const blocks: { block: MosaicBlock; size: number }[] = []
+  let rest = count
+  for (let k = 0; rest >= 3; k++, rest -= 3) blocks.push({ block: MOSAIC_CYCLE[k % MOSAIC_CYCLE.length], size: 3 })
+  if (rest === 2) blocks.push({ block: 'pair', size: 2 })
+  if (rest === 1) {
+    const last = blocks[blocks.length - 1]
+    if (!last) blocks.push({ block: 'pair', size: 1 })
+    else if (last.block === 'row') blocks.splice(blocks.length - 1, 1, { block: 'pair', size: 2 }, { block: 'pair', size: 2 })
+    else last.size = 4
+  }
+  return blocks
+}
+
+/** Wide screens: every tile placed explicitly (column + row). */
+function mosaicWide(count: number, aspect: number): CellPlan[] {
+  const cells: CellPlan[] = []
+  let row = 1
+  for (const { block, size } of mosaicBlocks(count)) {
+    if (block === 'bigLeft' || block === 'bigRight') {
+      const beside = size - 1
+      const left = block === 'bigLeft'
+      cells.push({ span: 8, rowSpan: beside, aspect: null, col: left ? 1 : 5, row })
+      for (let j = 0; j < beside; j++) cells.push({ span: 4, rowSpan: 1, aspect, col: left ? 9 : 1, row: row + j })
+      row += beside
+    } else {
+      const per = block === 'row' ? 3 : size
+      const span = GRID_TRACKS / per
+      // Fewer tiles than three in a row are widened and given a proportionally
+      // wider shape, so the row keeps the height of a row of three.
+      const shape = (aspect * 3) / per
+      for (let j = 0; j < size; j++) cells.push({ span, rowSpan: 1, aspect: shape, col: 1 + j * span, row })
+      row += 1
+    }
+  }
+  return cells
+}
+
+/** Tablets: one wide photo, then two pairs, repeated. */
+function mosaicTwoColumns(count: number, aspect: number): CellPlan[] {
+  const cells: CellPlan[] = []
+  let i = 0
+  while (i < count) {
+    cells.push({ span: GRID_TRACKS, rowSpan: 1, aspect: WIDE_LEAD_ASPECT })
+    i += 1
+    const pairs = Math.min(4, count - i)
+    cells.push(...gridCells(pairs, 2, aspect))
+    i += pairs
+  }
+  return cells
+}
+
 function cellsAt(layout: GalleryLayout, count: number, cols: number, aspect: number, bp: Breakpoint): CellPlan[] {
+  if (layout === 'mosaic') {
+    if (count < 3 || cols === 1) return gridCells(count, cols, aspect)
+    return cols >= 3 ? mosaicWide(count, aspect) : mosaicTwoColumns(count, aspect)
+  }
   if (layout === 'featured' && count >= 3) {
     if (cols >= 3) {
       // Lead: two thirds wide, NO ratio — it stretches to the height of the
@@ -137,8 +215,8 @@ function cellsAt(layout: GalleryLayout, count: number, cols: number, aspect: num
 
 /**
  * The per-breakpoint plan for every tile of a grid-family layout
- * (grid, featured, wideLead). Featured uses three columns on wide screens
- * whatever the authored column count — the composition is defined in thirds.
+ * (grid, featured, wideLead, mosaic). Featured and mosaic use three columns on
+ * wide screens whatever the authored column count — they are defined in thirds.
  */
 export function planTiles(
   layout: GalleryLayout,
@@ -147,7 +225,7 @@ export function planTiles(
   shape: TileShape
 ): TilePlan[] {
   const aspect = SHAPE_ASPECT[shape]
-  const cols = columnsAt(layout === 'featured' ? 3 : columns)
+  const cols = columnsAt(layout === 'featured' || layout === 'mosaic' ? 3 : columns)
   const perBp = {} as Record<Breakpoint, CellPlan[]>
   for (const bp of BREAKPOINTS) perBp[bp] = cellsAt(layout, count, cols[bp], aspect, bp)
   return Array.from({ length: count }, (_, i) => ({
@@ -159,7 +237,7 @@ export function planTiles(
 
 /** Is this layout one of the fixed-shape grid family? */
 export function isGridFamily(layout: GalleryLayout): boolean {
-  return layout === 'grid' || layout === 'featured' || layout === 'wideLead'
+  return layout === 'grid' || layout === 'featured' || layout === 'wideLead' || layout === 'mosaic'
 }
 
 /** A photo's natural width/height, with a sane fallback when metadata is missing. */

@@ -585,6 +585,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       galleryDisplay,
       showAllTab,
       lightbox,
+      initialCount,
       // catalogueListingSection (ADR-033, spec §4.6). The collection is NOT
       // dereferenced here: hydrateSections reads it by id through
       // catalogueCollectionByIdQuery, which carries the lifecycle rule and
@@ -1987,6 +1988,7 @@ export const homePageQuery = /* groq */ `
       galleryDisplay,
       showAllTab,
       lightbox,
+      initialCount,
       // Not projected elsewhere in this (legacy homePage) query, unlike
       // PAGE_SECTIONS_PROJECTION where blogListingSection already names it.
       layout,

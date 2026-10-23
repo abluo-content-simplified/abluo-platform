@@ -23,6 +23,8 @@ export interface GalleryPlacementProps {
   lightbox?: boolean | null
   display?: 'combined' | 'tabs' | null
   showAllTab?: boolean | null
+  /** Show only this many photos at first, with a "See all photos" button (sections). */
+  initialCount?: number | null
   anchorId?: string | null
   /** Name for the ImageGallery structured data (section headline, gallery title). */
   structuredDataName?: string | null
@@ -66,6 +68,7 @@ export function GalleryPlacement(p: GalleryPlacementProps) {
       spacing={p.spacing ?? 'normal'}
       showCaptions={p.showCaptions ?? false}
       lightbox={p.lightbox !== false}
+      initialCount={typeof p.initialCount === 'number' && p.initialCount > 0 ? Math.floor(p.initialCount) : null}
       hashPrefix={hashPrefix(p.anchorId)}
       messages={messages}
       duration={duration}
