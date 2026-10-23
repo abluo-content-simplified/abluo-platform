@@ -62,7 +62,7 @@ export function CatalogueItemCard({
       {portrait ? (
         // Book covers keep their own proportions: no frame colour, no cropping, sitting on the bottom-left of a
         // 2:3 box like books on a shelf — titles still line up because the box is the same for every card.
-        <div className="flex aspect-[2/3] w-full items-end justify-start" data-cover-shelf="">
+        <div className="flex aspect-[2/3] w-full max-w-[16rem] items-end justify-start sm:max-w-none" data-cover-shelf="">
           {src && (
             <img
               src={src}

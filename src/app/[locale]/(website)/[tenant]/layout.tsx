@@ -440,10 +440,11 @@ ${D.accentRail ? `
        globally, so a tenant without a rail keeps the padding it has always had. */
     [data-accent-rail="on"] section { padding-left: var(--content-inset-left); }
     @media (max-width: 767px) {
-      /* On a phone the rail would eat a quarter of the viewport. It stays drawn
-         - it is the identity - but the content stops clearing it and runs past
-         it instead, which is what the source design does at this width. */
-      [data-accent-rail="on"] section { padding-left: 1.5rem; }
+      /* On a phone the rail moves close to the edge and gets slimmer, and the
+         content still clears it: the bar never crosses text or images (Tom,
+         2026-10-23 — it used to run through the content at this width). */
+      :root { --rail-inset: 0.75rem; --rail-width: 3px; --rail-clearance: 1rem; }
+      [data-accent-rail="on"] section { padding-left: var(--content-inset-left); padding-right: 1.25rem; }
     }` : ''}
   `.trim()
 }
