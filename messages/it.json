@@ -622,12 +622,12 @@
           "action": "Vedi le persone"
         },
         "supportWaiting": {
-          "title": "Abluo aspetta una tua risposta",
+          "title": "Il supporto Abluo attende una tua risposta",
           "detail": "{reference} · {title}",
           "action": "Rispondi ora"
         },
         "supportUpdate": {
-          "title": "Novità sulla tua richiesta",
+          "title": "Nuova risposta dal supporto Abluo",
           "detail": "{reference} · {title}",
           "action": "Apri la richiesta"
         }
@@ -2625,7 +2625,8 @@
         "emptyBody": "Qualcosa non funziona o hai una domanda sul tuo sito? Inviaci una richiesta e la seguiremo da qui.",
         "newRequest": "Nuova richiesta",
         "cannotWrite": "Solo chi può modificare questo sito può inviare richieste.",
-        "supportMode": "Non è possibile inviare richieste mentre si visualizza come cliente."
+        "supportMode": "Non è possibile inviare richieste mentre si visualizza come cliente.",
+        "needsReply": "Serve una tua risposta"
       },
       "new": {
         "title": "Nuova richiesta",
@@ -2720,15 +2721,20 @@
         "reference": "Riferimento",
         "reportedFrom": "Segnalata da",
         "screenshots": "Screenshot",
-        "goToReply": "Scrivi una risposta"
+        "goToReply": "Scrivi una risposta",
+        "screenshotsEmpty": "Nessuno screenshot"
       },
       "statusSentence": {
-        "open": "L’abbiamo ricevuta",
-        "in_progress": "Ci stiamo lavorando",
-        "waiting_for_user": "Ci serve una tua risposta",
-        "resolved": "Risolta il {date}",
-        "resolvedWindow": "Risolta il {date}. Se non è sistemato, rispondi entro {days} giorni.",
-        "resolvedNoDate": "Risolta"
+        "open": "Il supporto Abluo ha ricevuto la tua richiesta e la guarderà presto.",
+        "in_progress": "Ci stiamo lavorando.",
+        "waiting_for_user": "Ci serve una tua risposta per continuare.",
+        "resolved": "Risolta il {date}.",
+        "resolvedWindow": "Risolta il {date}. Non è sistemato? Rispondi entro {days} giorni.",
+        "resolvedNoDate": "Risolta."
+      },
+      "time": {
+        "today": "Oggi",
+        "yesterday": "Ieri"
       }
     }
   },
@@ -3034,7 +3040,8 @@
       "partners": "App partner",
       "translations": "Traduzioni",
       "lab": "Laboratorio componenti",
-      "support": "Ticket di supporto"
+      "support": "Ticket di supporto",
+      "users": "Utenti"
     },
     "home": {
       "title": "Home",
@@ -4077,7 +4084,9 @@
         "status": "Stato",
         "severity": "Gravità",
         "allSeverities": "Qualsiasi gravità",
-        "unreadOnly": "Novità"
+        "unreadOnly": "Novità",
+        "neverOpened": "Mai aperte",
+        "openedBefore": "Già aperte"
       },
       "statusFilters": {
         "active": "Attivi",
@@ -4217,7 +4226,8 @@
         "deleteScreenshot": "Elimina screenshot",
         "deleteTitle": "Eliminare questo screenshot?",
         "deleteBody": "Il file viene eliminato definitivamente e non si può recuperare.",
-        "openScreenshot": "Apri screenshot {n}"
+        "openScreenshot": "Apri screenshot {n}",
+        "lastUpdate": "Ultimo aggiornamento"
       },
       "picker": {
         "add": "Aggiungi immagini",
@@ -4235,8 +4245,8 @@
         "recent": "Ticket recenti",
         "none": "Nessun ticket attivo.",
         "new": {
-          "label": "Nuovi",
-          "sub": "Aperti e non letti"
+          "label": "Nuove richieste",
+          "sub": "Mai aperte"
         },
         "waiting": {
           "label": "In attesa del cliente",
@@ -4245,6 +4255,10 @@
         "high": {
           "label": "Gravità alta aperti",
           "sub": "Non ancora risolti"
+        },
+        "replied": {
+          "label": "Il cliente ha risposto",
+          "sub": "Aperte, nuova risposta"
         }
       },
       "redactParts": {
@@ -4263,6 +4277,141 @@
         "confirmBody": "Il cliente vedrà delle barre grigie al suo posto. Le parole nascoste vengono eliminate e non si possono recuperare.",
         "confirmAction": "Nascondi testo",
         "back": "Indietro"
+      },
+      "time": {
+        "today": "Oggi",
+        "yesterday": "Ieri"
+      }
+    },
+    "users": {
+      "title": "Utenti",
+      "description": "Tutti coloro che hanno accesso a un sito Abluo, alla data indicata di seguito. Premi Aggiorna per rileggerlo.",
+      "loadError": "Impossibile leggere gli utenti: {message}",
+      "update": "Aggiornamento",
+      "updating": "Aggiornamento…",
+      "summaryLabel": "Numero di utenti",
+      "tiles": {
+        "activeNow": "Tre attivi",
+        "people": "Persone con accesso",
+        "invitations": "Inviti in sospeso",
+        "withoutTwoFactor": "Senza verifica in due passaggi"
+      },
+      "activeNowEmpty": "Nessuno ha una dashboard aperta in questo momento.",
+      "activeNow": "Tre attivi",
+      "never": "Mai",
+      "superAdmin": "Super amministratore",
+      "mixedRoles": "Ruoli diversi",
+      "accessArchivedOnly": "Archiviato ovunque",
+      "search": "Utenti di ricerca",
+      "searchPlaceholder": "Nome, email o sito web",
+      "showing": "{shown} di {total}",
+      "clear": "Filtri trasparenti",
+      "noMatch": "Nessun utente corrisponde a questi filtri.",
+      "columns": {
+        "avatar": "Immagine",
+        "person": "Persona",
+        "access": "Accesso",
+        "status": "Stato",
+        "twoFactor": "2 fasi",
+        "lastActive": "Ultimo attivo"
+      },
+      "filters": {
+        "label": "Filtri",
+        "site": "Posizione",
+        "allSites": "Tutti i siti",
+        "role": "Ruolo",
+        "status": "Stato",
+        "roles": {
+          "all": "Tutti i ruoli",
+          "superAdmin": "Super amministratore",
+          "owner": "Proprietario",
+          "admin": "Amministratore del sito",
+          "editor": "Redattore"
+        },
+        "statuses": {
+          "all": "Tutti gli stati",
+          "active": "Attivo",
+          "invited": "Invitato",
+          "archived": "Archiviato",
+          "none": "Accesso negato"
+        }
+      },
+      "status": {
+        "active": "Attivo",
+        "invited": "Invitato",
+        "archived": "Archiviato",
+        "none": "Accesso negato"
+      },
+      "roles": {
+        "owner": "Proprietario",
+        "member": "Membro",
+        "admin": "Amministratore del sito",
+        "editor": "Redattore",
+        "viewer": "Spettatore"
+      },
+      "detail": {
+        "tabsLabel": "Informazioni su questa persona",
+        "tabs": {
+          "profile": "Profilo",
+          "access": "Accesso",
+          "security": "Sicurezza",
+          "activity": "Attività"
+        },
+        "name": "Nome",
+        "email": "E-mail",
+        "platformRole": "ruolo di Ablio",
+        "noPlatformRole": "Nessuno",
+        "accountCreated": "Account creato",
+        "noAccountYet": "Invitato — nessun account ancora",
+        "wholeClient": "{role} · tutti i siti di questo cliente",
+        "noAccess": "Accesso negato a qualsiasi sito.",
+        "accessSuperAdminOnly": "Super amministratore: nessun abbonamento al sito richiesto.",
+        "twoFactor": "Verifica in due passaggi",
+        "lastSignIn": "Ultimo accesso",
+        "lastActive": "Ultimo attivo",
+        "noActivity": "Ancora niente registrato",
+        "noActivityBody": "Le modifiche relative a pubblicazione, inviti e accesso sono riportate qui."
+      },
+      "activity": {
+        "content": "{type} · {action}",
+        "types": {
+          "post": "Inviare",
+          "event": "Evento",
+          "faqSet": "Set di domande frequenti",
+          "gallery": "Galleria",
+          "other": "Articolo"
+        },
+        "actions": {
+          "created": "creato",
+          "published": "pubblicato",
+          "scheduled": "programmato",
+          "schedule_changed": "programma modificato",
+          "unpublished": "inedito",
+          "archived": "archiviato",
+          "restored": "restaurato",
+          "deleted": "cancellato",
+          "delete_refused": "eliminazione rifiutata"
+        },
+        "about": {
+          "change": "Accesso modificato a {role} da {name}",
+          "archive": "Archiviato da {name}",
+          "restore": "Accesso ripristinato ( {role} ) da {name}"
+        },
+        "by": {
+          "change": "Accesso modificato di {name} a {role}",
+          "archive": "Archiviato {name}",
+          "restore": "Ripristinato {name} ( {role} )"
+        },
+        "invited": "Invitato come {role}",
+        "invitedBy": "Invitato come {role} da {name}",
+        "joined": "Entrato come {role}",
+        "inviteCancelled": "Invito annullato",
+        "someone": "qualcuno",
+        "support": "Supporto Abluo",
+        "outcome": {
+          "refused": "Rifiutato",
+          "failed": "Fallito"
+        }
       }
     }
   },

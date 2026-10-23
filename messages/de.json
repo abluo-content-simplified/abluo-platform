@@ -622,12 +622,12 @@
           "action": "Personen ansehen"
         },
         "supportWaiting": {
-          "title": "Abluo braucht deine Antwort",
+          "title": "Der Abluo Support wartet auf deine Antwort",
           "detail": "{reference} · {title}",
           "action": "Jetzt antworten"
         },
         "supportUpdate": {
-          "title": "Neuigkeiten zu deiner Anfrage",
+          "title": "Neue Antwort vom Abluo Support",
           "detail": "{reference} · {title}",
           "action": "Anfrage öffnen"
         }
@@ -2625,7 +2625,8 @@
         "emptyBody": "Etwas funktioniert nicht oder du hast eine Frage zu deiner Website? Schick uns eine Anfrage, wir verfolgen sie hier weiter.",
         "newRequest": "Neue Anfrage",
         "cannotWrite": "Nur Personen, die diese Website bearbeiten dürfen, können Anfragen senden.",
-        "supportMode": "Anfragen können nicht gesendet werden, solange du als Kunde ansiehst."
+        "supportMode": "Anfragen können nicht gesendet werden, solange du als Kunde ansiehst.",
+        "needsReply": "Deine Antwort fehlt"
       },
       "new": {
         "title": "Neue Anfrage",
@@ -2720,15 +2721,20 @@
         "reference": "Referenz",
         "reportedFrom": "Gemeldet auf",
         "screenshots": "Screenshots",
-        "goToReply": "Antwort schreiben"
+        "goToReply": "Antwort schreiben",
+        "screenshotsEmpty": "Keine Screenshots"
       },
       "statusSentence": {
-        "open": "Wir haben sie erhalten",
-        "in_progress": "Wir arbeiten daran",
-        "waiting_for_user": "Wir brauchen deine Antwort",
-        "resolved": "Gelöst am {date}",
-        "resolvedWindow": "Gelöst am {date}. Antworte innerhalb von {days} Tagen, falls es nicht behoben ist.",
-        "resolvedNoDate": "Gelöst"
+        "open": "Der Abluo Support hat deine Anfrage erhalten und schaut bald darauf.",
+        "in_progress": "Wir arbeiten daran.",
+        "waiting_for_user": "Wir brauchen deine Antwort, um weiterzumachen.",
+        "resolved": "Gelöst am {date}.",
+        "resolvedWindow": "Gelöst am {date}. Nicht behoben? Antworte innerhalb von {days} Tagen.",
+        "resolvedNoDate": "Gelöst."
+      },
+      "time": {
+        "today": "Heute",
+        "yesterday": "Gestern"
       }
     }
   },
@@ -3034,7 +3040,8 @@
       "partners": "Partner-Apps",
       "translations": "Übersetzungen",
       "lab": "Komponenten-Labor",
-      "support": "Support-Tickets"
+      "support": "Support-Tickets",
+      "users": "Benutzer"
     },
     "home": {
       "title": "Start",
@@ -4077,7 +4084,9 @@
         "status": "Status",
         "severity": "Schweregrad",
         "allSeverities": "Jeder Schweregrad",
-        "unreadOnly": "Neue Aktivität"
+        "unreadOnly": "Neue Aktivität",
+        "neverOpened": "Noch nie geöffnet",
+        "openedBefore": "Schon geöffnet"
       },
       "statusFilters": {
         "active": "Aktiv",
@@ -4217,7 +4226,8 @@
         "deleteScreenshot": "Screenshot löschen",
         "deleteTitle": "Diesen Screenshot löschen?",
         "deleteBody": "Die Datei wird endgültig gelöscht und lässt sich nicht wiederherstellen.",
-        "openScreenshot": "Screenshot {n} öffnen"
+        "openScreenshot": "Screenshot {n} öffnen",
+        "lastUpdate": "Letzte Aktualisierung"
       },
       "picker": {
         "add": "Bilder hinzufügen",
@@ -4235,8 +4245,8 @@
         "recent": "Aktuelle Tickets",
         "none": "Keine aktiven Tickets.",
         "new": {
-          "label": "Neu",
-          "sub": "Offen und ungelesen"
+          "label": "Neue Anfragen",
+          "sub": "Noch nie geöffnet"
         },
         "waiting": {
           "label": "Wartet auf Kunden",
@@ -4245,6 +4255,10 @@
         "high": {
           "label": "Hoher Schweregrad offen",
           "sub": "Noch nicht gelöst"
+        },
+        "replied": {
+          "label": "Kunde hat geantwortet",
+          "sub": "Geöffnet, neue Antwort"
         }
       },
       "redactParts": {
@@ -4263,6 +4277,141 @@
         "confirmBody": "Der Kunde sieht stattdessen graue Balken. Die ausgeblendeten Wörter werden gelöscht und lassen sich nicht wiederherstellen.",
         "confirmAction": "Text ausblenden",
         "back": "Zurück"
+      },
+      "time": {
+        "today": "Heute",
+        "yesterday": "Gestern"
+      }
+    },
+    "users": {
+      "title": "Benutzer",
+      "description": "Alle Personen mit Zugriff auf eine Abluo-Website (Stand: unten). Klicken Sie auf „Aktualisieren“, um den Text erneut zu lesen.",
+      "loadError": "Benutzer konnten nicht gelesen werden: {message}",
+      "update": "Aktualisieren",
+      "updating": "Aktualisierung…",
+      "summaryLabel": "Nutzerzahlen",
+      "tiles": {
+        "activeNow": "Jetzt aktiv",
+        "people": "Personen mit Zugang",
+        "invitations": "Ausstehende Einladungen",
+        "withoutTwoFactor": "Ohne Zwei-Faktor-Authentifizierung"
+      },
+      "activeNowEmpty": "Niemand hat momentan ein Dashboard geöffnet.",
+      "activeNow": "Jetzt aktiv",
+      "never": "Niemals",
+      "superAdmin": "Super-Admin",
+      "mixedRoles": "Unterschiedliche Rollen",
+      "accessArchivedOnly": "Überall archiviert",
+      "search": "Nutzer suchen",
+      "searchPlaceholder": "Name, E-Mail-Adresse oder Website",
+      "showing": "{shown} von {total}",
+      "clear": "Filter löschen",
+      "noMatch": "Es gibt keine Benutzer, die diesen Filtern entsprechen.",
+      "columns": {
+        "avatar": "Bild",
+        "person": "Person",
+        "access": "Zugang",
+        "status": "Status",
+        "twoFactor": "2-stufig",
+        "lastActive": "Zuletzt aktiv"
+      },
+      "filters": {
+        "label": "Filter",
+        "site": "Website",
+        "allSites": "Alle Websites",
+        "role": "Rolle",
+        "status": "Status",
+        "roles": {
+          "all": "Alle Rollen",
+          "superAdmin": "Super-Admin",
+          "owner": "Eigentümer",
+          "admin": "Website-Administrator",
+          "editor": "Editor"
+        },
+        "statuses": {
+          "all": "Alle Status",
+          "active": "Aktiv",
+          "invited": "Eingeladen",
+          "archived": "Archiviert",
+          "none": "Kein Zugriff"
+        }
+      },
+      "status": {
+        "active": "Aktiv",
+        "invited": "Eingeladen",
+        "archived": "Archiviert",
+        "none": "Kein Zugriff"
+      },
+      "roles": {
+        "owner": "Eigentümer",
+        "member": "Mitglied",
+        "admin": "Website-Administrator",
+        "editor": "Editor",
+        "viewer": "Zuschauer"
+      },
+      "detail": {
+        "tabsLabel": "Über diese Person",
+        "tabs": {
+          "profile": "Profil",
+          "access": "Zugang",
+          "security": "Sicherheit",
+          "activity": "Aktivität"
+        },
+        "name": "Name",
+        "email": "E-Mail",
+        "platformRole": "Abluo-Rolle",
+        "noPlatformRole": "Keiner",
+        "accountCreated": "Konto erstellt",
+        "noAccountYet": "Eingeladen – noch kein Konto vorhanden",
+        "wholeClient": "{role} · alle Standorte dieses Kunden",
+        "noAccess": "Kein Zugriff auf irgendeine Website.",
+        "accessSuperAdminOnly": "Super Admin — keine Website-Mitgliedschaften.",
+        "twoFactor": "2-stufige Verifizierung",
+        "lastSignIn": "Letzter Login",
+        "lastActive": "Zuletzt aktiv",
+        "noActivity": "Noch nichts aufgezeichnet",
+        "noActivityBody": "Änderungen bei Veröffentlichungen, Einladungen und Zugängen werden hier angezeigt."
+      },
+      "activity": {
+        "content": "{type} · {action}",
+        "types": {
+          "post": "Post",
+          "event": "Ereignis",
+          "faqSet": "FAQ-Set",
+          "gallery": "Galerie",
+          "other": "Artikel"
+        },
+        "actions": {
+          "created": "erstellt",
+          "published": "veröffentlicht",
+          "scheduled": "geplant",
+          "schedule_changed": "Der Zeitplan wurde geändert.",
+          "unpublished": "unveröffentlicht",
+          "archived": "archiviert",
+          "restored": "restauriert",
+          "deleted": "gelöscht",
+          "delete_refused": "Löschen abgelehnt"
+        },
+        "about": {
+          "change": "Zugriffsrechte wurden von {name} auf {role} } geändert.",
+          "archive": "Archiviert von {name}",
+          "restore": "Zugriff wiederhergestellt ( {role} ) durch {name}"
+        },
+        "by": {
+          "change": "Die Zugriffsrechte von {name} wurden auf {role} geändert.",
+          "archive": "Archiviert {name}",
+          "restore": "Wiederhergestellt {name} ( {role} )"
+        },
+        "invited": "Eingeladen als {role}",
+        "invitedBy": "Eingeladen als {role} von {name}",
+        "joined": "Beigetreten als {role}",
+        "inviteCancelled": "Einladung storniert",
+        "someone": "jemand",
+        "support": "Abluo-Unterstützung",
+        "outcome": {
+          "refused": "Abgelehnt",
+          "failed": "Fehlgeschlagen"
+        }
       }
     }
   },

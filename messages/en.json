@@ -622,12 +622,12 @@
           "action": "See people"
         },
         "supportWaiting": {
-          "title": "Abluo needs your reply",
+          "title": "Abluo Support needs your reply",
           "detail": "{reference} · {title}",
           "action": "Reply now"
         },
         "supportUpdate": {
-          "title": "Update on your request",
+          "title": "New reply from Abluo Support",
           "detail": "{reference} · {title}",
           "action": "Open request"
         }
@@ -2625,7 +2625,8 @@
         "emptyBody": "Something not working, or a question about your site? Send us a request and we’ll follow it up here.",
         "newRequest": "New Request",
         "cannotWrite": "Only people who can edit this site can send requests.",
-        "supportMode": "Requests can’t be sent while viewing as the client."
+        "supportMode": "Requests can’t be sent while viewing as the client.",
+        "needsReply": "Your reply needed"
       },
       "new": {
         "title": "New Request",
@@ -2720,15 +2721,20 @@
         "reference": "Reference",
         "reportedFrom": "Reported from",
         "screenshots": "Screenshots",
-        "goToReply": "Write a reply"
+        "goToReply": "Write a reply",
+        "screenshotsEmpty": "No screenshots"
       },
       "statusSentence": {
-        "open": "We’ve received it",
-        "in_progress": "We’re working on it",
-        "waiting_for_user": "We need your reply",
-        "resolved": "Resolved on {date}",
-        "resolvedWindow": "Resolved on {date}. Reply within {days} days if it’s not fixed.",
-        "resolvedNoDate": "Resolved"
+        "open": "Abluo Support has your request and will look at it soon.",
+        "in_progress": "We’re working on it.",
+        "waiting_for_user": "We need your reply to continue.",
+        "resolved": "Resolved on {date}.",
+        "resolvedWindow": "Resolved on {date}. Not fixed? Reply within {days} days.",
+        "resolvedNoDate": "Resolved."
+      },
+      "time": {
+        "today": "Today",
+        "yesterday": "Yesterday"
       }
     }
   },
@@ -3034,7 +3040,8 @@
       "partners": "Partner Apps",
       "translations": "Translations",
       "lab": "Component Lab",
-      "support": "Support Tickets"
+      "support": "Support Tickets",
+      "users": "Users"
     },
     "home": {
       "title": "Home",
@@ -4077,7 +4084,9 @@
         "status": "Status",
         "severity": "Severity",
         "allSeverities": "Any severity",
-        "unreadOnly": "New activity"
+        "unreadOnly": "New activity",
+        "neverOpened": "Never opened",
+        "openedBefore": "Opened before"
       },
       "statusFilters": {
         "active": "Active",
@@ -4217,7 +4226,8 @@
         "deleteScreenshot": "Delete screenshot",
         "deleteTitle": "Delete this screenshot?",
         "deleteBody": "The file is deleted for good and can’t be recovered.",
-        "openScreenshot": "Open screenshot {n}"
+        "openScreenshot": "Open screenshot {n}",
+        "lastUpdate": "Last update"
       },
       "picker": {
         "add": "Add images",
@@ -4235,8 +4245,8 @@
         "recent": "Recent tickets",
         "none": "No active tickets.",
         "new": {
-          "label": "New",
-          "sub": "Open and unread"
+          "label": "New Requests",
+          "sub": "Never opened"
         },
         "waiting": {
           "label": "Waiting for Client",
@@ -4245,6 +4255,10 @@
         "high": {
           "label": "High Severity Open",
           "sub": "Not resolved yet"
+        },
+        "replied": {
+          "label": "Client Replied",
+          "sub": "Opened, new reply"
         }
       },
       "redactParts": {
@@ -4263,6 +4277,143 @@
         "confirmBody": "The client will see grey bars instead. The hidden words are deleted and can’t be brought back.",
         "confirmAction": "Hide text",
         "back": "Back"
+      },
+      "time": {
+        "today": "Today",
+        "yesterday": "Yesterday"
+      }
+    },
+    "users": {
+      "title": "Users",
+      "description": "Everyone with access to an Abluo site, as of the time below. Press Update to read it again.",
+      "loadError": "Couldn’t read the users: {message}",
+      "update": "Update",
+      "updating": "Updating…",
+      "summaryLabel": "Users in numbers",
+      "tiles": {
+        "activeNow": "Active now",
+        "people": "People with access",
+        "invitations": "Pending invitations",
+        "withoutTwoFactor": "Without 2-step verification"
+      },
+      "activeNowHeading": "{count, plural, =0 {Active now} other {Active now ({count})}}",
+      "activeNowEmpty": "Nobody has a dashboard open right now.",
+      "activeNow": "Active now",
+      "never": "Never",
+      "superAdmin": "Super Admin",
+      "mixedRoles": "Different roles",
+      "placesCount": "{count, plural, one {# place} other {# places}}",
+      "accessArchivedOnly": "Archived everywhere",
+      "search": "Search users",
+      "searchPlaceholder": "Name, email or site",
+      "showing": "{shown} of {total}",
+      "clear": "Clear filters",
+      "noMatch": "No users match these filters.",
+      "columns": {
+        "avatar": "Picture",
+        "person": "Person",
+        "access": "Access",
+        "status": "Status",
+        "twoFactor": "2-step",
+        "lastActive": "Last active"
+      },
+      "filters": {
+        "label": "Filters",
+        "site": "Site",
+        "allSites": "All sites",
+        "role": "Role",
+        "status": "Status",
+        "roles": {
+          "all": "All roles",
+          "superAdmin": "Super Admin",
+          "owner": "Owner",
+          "admin": "Site admin",
+          "editor": "Editor"
+        },
+        "statuses": {
+          "all": "All statuses",
+          "active": "Active",
+          "invited": "Invited",
+          "archived": "Archived",
+          "none": "No access"
+        }
+      },
+      "status": {
+        "active": "Active",
+        "invited": "Invited",
+        "archived": "Archived",
+        "none": "No access"
+      },
+      "roles": {
+        "owner": "Owner",
+        "member": "Member",
+        "admin": "Site admin",
+        "editor": "Editor",
+        "viewer": "Viewer"
+      },
+      "detail": {
+        "tabsLabel": "About this person",
+        "tabs": {
+          "profile": "Profile",
+          "access": "Access",
+          "security": "Security",
+          "activity": "Activity"
+        },
+        "name": "Name",
+        "email": "Email",
+        "platformRole": "Abluo role",
+        "noPlatformRole": "None",
+        "accountCreated": "Account created",
+        "noAccountYet": "Invited — no account yet",
+        "wholeClient": "{role} · all sites of this client",
+        "noAccess": "No access to any site.",
+        "accessSuperAdminOnly": "Super Admin — no site memberships.",
+        "twoFactor": "2-step verification",
+        "lastSignIn": "Last sign-in",
+        "lastActive": "Last active",
+        "noActivity": "Nothing recorded yet",
+        "noActivityBody": "Publishing, invitations and access changes show here."
+      },
+      "activity": {
+        "content": "{type} · {action}",
+        "types": {
+          "post": "Post",
+          "event": "Event",
+          "faqSet": "FAQ set",
+          "gallery": "Gallery",
+          "other": "Item"
+        },
+        "actions": {
+          "created": "created",
+          "published": "published",
+          "scheduled": "scheduled",
+          "schedule_changed": "schedule changed",
+          "unpublished": "unpublished",
+          "archived": "archived",
+          "restored": "restored",
+          "deleted": "deleted",
+          "delete_refused": "delete refused"
+        },
+        "about": {
+          "change": "Access changed to {role} by {name}",
+          "archive": "Archived by {name}",
+          "restore": "Access restored ({role}) by {name}"
+        },
+        "by": {
+          "change": "Changed {name}’s access to {role}",
+          "archive": "Archived {name}",
+          "restore": "Restored {name} ({role})"
+        },
+        "invited": "Invited as {role}",
+        "invitedBy": "Invited as {role} by {name}",
+        "joined": "Joined as {role}",
+        "inviteCancelled": "Invitation cancelled",
+        "someone": "someone",
+        "support": "Abluo support",
+        "outcome": {
+          "refused": "Refused",
+          "failed": "Failed"
+        }
       }
     }
   },
