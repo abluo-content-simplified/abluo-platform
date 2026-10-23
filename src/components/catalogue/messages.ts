@@ -41,6 +41,11 @@ export const CATALOGUE_WEBSITE_KEYS = [
   // Amazon's required sentence (en/it/de in messages/*.json). The exact wording must be verified against
   // the tenant's Amazon Associates agreement; shown only when an Amazon affiliate link renders.
   'amazonStatement',
+  // Website listing cards: "Buy on Amazon", "3 editions", the category filter bar.
+  'buyOn',
+  'editionsCount',
+  'filterAll',
+  'filterLabel',
 ] as const
 
 export type CatalogueWebsiteKey = (typeof CATALOGUE_WEBSITE_KEYS)[number]

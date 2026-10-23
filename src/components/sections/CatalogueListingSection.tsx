@@ -27,7 +27,7 @@ import { getCatalogueWebsiteMessages } from '@/components/catalogue/messages'
 import { AffiliateDisclosure } from '@/components/catalogue/CatalogueItemParts'
 import { affiliateDisclosureText, collectionHasAffiliateLink } from '@/lib/modules/catalogue/affiliate'
 import { collectionHasAmazonAffiliateLink } from '@/lib/modules/catalogue/amazon-delivery'
-import { catalogueItemHref, collectionHasItems, listingAllergenPresentation, listingShowsPrices } from '@/lib/modules/catalogue/website'
+import { catalogueItemHref, collectionHasItems, collectionUsesCards, listingAllergenPresentation, listingShowsPrices } from '@/lib/modules/catalogue/website'
 
 interface Props {
   section: CatalogueListingSectionType
@@ -97,7 +97,8 @@ export function CatalogueListingSection({ section, surface, designSystem, locale
           )}
         </SlideUp>
       )}
-      <div className="max-w-3xl">
+      {/* A card grid (books, products) uses the full width; rows (menus) keep the reading column. */}
+      <div className={collectionUsesCards(collection) ? undefined : 'max-w-3xl'}>
         <CatalogueCollectionView
           collection={collection}
           display={display}
@@ -106,7 +107,7 @@ export function CatalogueListingSection({ section, surface, designSystem, locale
           itemHref={(item) => catalogueItemHref(item, siteBase, data.segment)}
           rootHeadingLevel={title ? 3 : 2}
         />
-        <AffiliateDisclosure text={disclosure} amazonStatement={collectionHasAmazonAffiliateLink(collection) ? messages.amazonStatement || null : null} className="mt-8 text-sm leading-relaxed" />
+        <AffiliateDisclosure text={disclosure} amazonStatement={collectionHasAmazonAffiliateLink(collection) ? messages.amazonStatement || null : null} className="mt-12 max-w-3xl text-sm leading-relaxed" />
       </div>
     </SectionContainer>
   )

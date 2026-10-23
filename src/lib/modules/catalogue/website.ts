@@ -49,6 +49,7 @@ import { collectionHasShop, deliverCollection } from './shop-delivery'
 import { shopOrder, type AffiliateSettings } from '@/lib/affiliate/affiliate-settings'
 import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import { isIndexable } from './visibility'
+import { PROFILES, profileOf } from './profiles'
 
 export type CatalogueFetch = <T>(query: string, params?: Record<string, unknown>) => Promise<T>
 
@@ -242,6 +243,45 @@ export function collectionHasItems(collection: CatalogueCollectionDTO | null | u
   const walk = (sections: CatalogueCollectionDTO['sections']): boolean =>
     sections.some((s) => s.items.length > 0 || walk(s.children))
   return !!collection && walk(collection.sections)
+}
+
+// ── Card grid and category filter (website listing) ──────────────────────────
+
+/** True when every one of these items is presented as a card (books, products, per the profile registry): the list becomes a grid. */
+export function itemsUseCards(items: readonly { itemProfile: unknown }[]): boolean {
+  return items.length > 0 && items.every((i) => PROFILES[profileOf(i.itemProfile)].website.layout === 'card')
+}
+
+function collectionItems(collection: CatalogueCollectionDTO): CatalogueCollectionDTO['sections'][number]['items'] {
+  const out: CatalogueCollectionDTO['sections'][number]['items'] = []
+  const walk = (sections: CatalogueCollectionDTO['sections']) => {
+    for (const s of sections) {
+      out.push(...s.items)
+      walk(s.children)
+    }
+  }
+  walk(collection.sections)
+  return out
+}
+
+/** True when the whole collection is cards (the listing then uses the full width, not the reading column). */
+export function collectionUsesCards(collection: CatalogueCollectionDTO): boolean {
+  return itemsUseCards(collectionItems(collection))
+}
+
+/** A category value usable as a filter key (term keys are machine values; anything else is skipped). */
+export const isFilterValue = (v: string): boolean => /^[A-Za-z0-9_-]{1,80}$/.test(v)
+
+/**
+ * The categories the collection's items use, first appearance first, one per value. The filter bar shows
+ * only when there are at least two — with one category there is nothing to choose.
+ */
+export function collectionFilterCategories(collection: CatalogueCollectionDTO): { value: string; label: string }[] {
+  const seen = new Map<string, string>()
+  for (const item of collectionItems(collection)) {
+    for (const c of item.categories) if (isFilterValue(c.value) && !seen.has(c.value)) seen.set(c.value, c.label || c.value)
+  }
+  return seen.size >= 2 ? [...seen].map(([value, label]) => ({ value, label })) : []
 }
 
 // ── URLs ──────────────────────────────────────────────────────────────────────

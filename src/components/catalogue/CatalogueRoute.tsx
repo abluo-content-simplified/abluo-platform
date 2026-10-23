@@ -48,7 +48,7 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { articlePortableTextComponents } from '@/components/portable-text/article-components'
 import { CatalogueCollectionView } from './CatalogueCollectionView'
-import { bookPublisherLine } from '@/lib/modules/catalogue/list-model'
+import { bookPublisherLine, catalogueImageShape } from '@/lib/modules/catalogue/list-model'
 import { affiliateDisclosureText, collectionHasAffiliateLink, hasAffiliateLink } from '@/lib/modules/catalogue/affiliate'
 import { collectionHasAmazon, collectionHasAmazonAffiliateLink, hasAmazonAffiliateLink, itemHasAmazonLink, linksHaveAmazon } from '@/lib/modules/catalogue/amazon-delivery'
 import { collectionHasShop, deliverCollection, deliverItem, linksHaveShop } from '@/lib/modules/catalogue/shop-delivery'
@@ -338,64 +338,128 @@ function CatalogueItemPageView({
   const amazonStatement = hasAmazonAffiliateLink(item.links) ? m.amazonStatement || null : null
   const infoLinks = item.links.filter((l) => l.kind !== 'buy')
   const hero = item.images[0]
+  // Profile registry: a book's cover is portrait and is shown whole, beside the details.
+  const portrait = catalogueImageShape({ itemProfile: item.itemProfile }) === 'portrait'
   const heroSource = hero ? (hero.image as unknown as ResolvedImage) : null
   const optionLists = item.optionLists.filter((l) => l.options.length > 0)
   const decl = item.allergenDeclaration
   const hasDietaryInfo = (decl !== null && decl.status !== 'notReviewed') || item.dietary.length > 0
   return (
     <div style={{ backgroundColor: 'var(--color-background)' }}>
-      <article className="mx-auto max-w-3xl px-5 py-12 md:px-10 md:py-20" data-item={item.publicId ?? undefined}>
-        {heroSource && (
-          <SlideUp duration={duration} ease={ease} className="mb-10">
-            <img
-              src={imageUrl(heroSource, 1600)}
-              srcSet={imageSrcSet(heroSource, [600, 900, 1200, 1600])}
-              sizes="(min-width: 768px) 48rem, 100vw"
-              alt={hero.alt ?? ''}
-              className="aspect-[4/3] w-full rounded-[var(--radius-lg,1rem)] object-cover"
-              style={{ objectPosition: hero.objectPosition }}
-            />
-          </SlideUp>
-        )}
-
-        <SlideUp duration={duration} ease={ease} delay={0.05}>
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+      <article className={`mx-auto ${portrait ? 'max-w-5xl' : 'max-w-3xl'} px-5 py-12 md:px-10 md:py-20`} data-item={item.publicId ?? undefined}>
+        {portrait ? (
+          // Books: the whole cover on the left (never cropped), the details beside it.
+          <div className="grid gap-10 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:gap-14" data-item-cover-layout="">
             <div>
-              <h1 style={H1_STYLE}>{item.name}</h1>
-              <Byline byline={item.byline} className="mt-2 text-lg" />
-              {/* Amendment K — "Publisher · 1979" beside the author line (books only). */}
-              <Byline byline={bookPublisherLine({ publisher: item.bookDetails?.publisher, year: item.bookDetails?.year })} className="mt-1 text-base" />
+              {heroSource && (
+                <SlideUp duration={duration} ease={ease}>
+                  <img
+                    src={imageUrl(heroSource, 1200)}
+                    srcSet={imageSrcSet(heroSource, [400, 600, 900, 1200])}
+                    sizes="(min-width: 768px) 24rem, 80vw"
+                    alt={hero.alt ?? ''}
+                    className="mx-auto h-auto w-full max-w-sm rounded-[var(--radius-md,0.5rem)] object-contain md:max-w-none"
+                  />
+                </SlideUp>
+              )}
             </div>
-            {showPrices && !itemHasAmazonLink(item) && item.offers.length > 0 && (
-              <div className="sm:pt-3">
-                <span className="sr-only">{m.pricesHeading}</span>
-                <OfferList offers={item.offers} m={m} />
+            <div>
+            <SlideUp duration={duration} ease={ease} delay={0.05}>
+              <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h1 style={H1_STYLE}>{item.name}</h1>
+                  <Byline byline={item.byline} className="mt-2 text-lg" />
+                  {/* Amendment K — "Publisher · 1979" beside the author line (books only). */}
+                  <Byline byline={bookPublisherLine({ publisher: item.bookDetails?.publisher, year: item.bookDetails?.year })} className="mt-1 text-base" />
+                </div>
+                {showPrices && !itemHasAmazonLink(item) && item.offers.length > 0 && (
+                  <div className="sm:pt-3">
+                    <span className="sr-only">{m.pricesHeading}</span>
+                    <OfferList offers={item.offers} m={m} />
+                  </div>
+                )}
               </div>
+              {item.description && (
+                <p className="mt-4 text-lg leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
+                  {item.description}
+                </p>
+              )}
+            </SlideUp>
+
+            {item.tags.length > 0 && (
+              <SlideUp duration={duration} ease={ease} delay={0.06} className="mt-5">
+                <ItemTags tags={item.tags} label={m.tagsHeading} />
+              </SlideUp>
             )}
+
+            {item.links.some((l) => l.kind === 'buy') && (
+              <SlideUp duration={duration} ease={ease} delay={0.07} className="mt-8">
+                <BuyLinks links={item.links} siteHosts={siteHosts} m={m} shopOrder={shopOrder} />
+              </SlideUp>
+            )}
+
+            {infoLinks.length > 0 && (
+              <SlideUp duration={duration} ease={ease} delay={0.08} className="mt-8">
+                <ItemLinks links={infoLinks} siteHosts={siteHosts} compact={false} heading={m.linksHeading} />
+              </SlideUp>
+            )}
+            </div>
           </div>
-          {item.description && (
-            <p className="mt-4 text-lg leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
-              {item.description}
-            </p>
-          )}
-        </SlideUp>
+        ) : (
+          <>
+            {heroSource && (
+              <SlideUp duration={duration} ease={ease} className="mb-10">
+                <img
+                  src={imageUrl(heroSource, 1600)}
+                  srcSet={imageSrcSet(heroSource, [600, 900, 1200, 1600])}
+                  sizes="(min-width: 768px) 48rem, 100vw"
+                  alt={hero.alt ?? ''}
+                  className="aspect-[4/3] w-full rounded-[var(--radius-lg,1rem)] object-cover"
+                  style={{ objectPosition: hero.objectPosition }}
+                />
+              </SlideUp>
+            )}
 
-        {item.tags.length > 0 && (
-          <SlideUp duration={duration} ease={ease} delay={0.06} className="mt-5">
-            <ItemTags tags={item.tags} label={m.tagsHeading} />
-          </SlideUp>
-        )}
+            <SlideUp duration={duration} ease={ease} delay={0.05}>
+              <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h1 style={H1_STYLE}>{item.name}</h1>
+                  <Byline byline={item.byline} className="mt-2 text-lg" />
+                  {/* Amendment K — "Publisher · 1979" beside the author line (books only). */}
+                  <Byline byline={bookPublisherLine({ publisher: item.bookDetails?.publisher, year: item.bookDetails?.year })} className="mt-1 text-base" />
+                </div>
+                {showPrices && !itemHasAmazonLink(item) && item.offers.length > 0 && (
+                  <div className="sm:pt-3">
+                    <span className="sr-only">{m.pricesHeading}</span>
+                    <OfferList offers={item.offers} m={m} />
+                  </div>
+                )}
+              </div>
+              {item.description && (
+                <p className="mt-4 text-lg leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
+                  {item.description}
+                </p>
+              )}
+            </SlideUp>
 
-        {item.links.some((l) => l.kind === 'buy') && (
-          <SlideUp duration={duration} ease={ease} delay={0.07} className="mt-8">
-            <BuyLinks links={item.links} siteHosts={siteHosts} m={m} shopOrder={shopOrder} />
-          </SlideUp>
-        )}
+            {item.tags.length > 0 && (
+              <SlideUp duration={duration} ease={ease} delay={0.06} className="mt-5">
+                <ItemTags tags={item.tags} label={m.tagsHeading} />
+              </SlideUp>
+            )}
 
-        {infoLinks.length > 0 && (
-          <SlideUp duration={duration} ease={ease} delay={0.08} className="mt-8">
-            <ItemLinks links={infoLinks} siteHosts={siteHosts} compact={false} heading={m.linksHeading} />
-          </SlideUp>
+            {item.links.some((l) => l.kind === 'buy') && (
+              <SlideUp duration={duration} ease={ease} delay={0.07} className="mt-8">
+                <BuyLinks links={item.links} siteHosts={siteHosts} m={m} shopOrder={shopOrder} />
+              </SlideUp>
+            )}
+
+            {infoLinks.length > 0 && (
+              <SlideUp duration={duration} ease={ease} delay={0.08} className="mt-8">
+                <ItemLinks links={infoLinks} siteHosts={siteHosts} compact={false} heading={m.linksHeading} />
+              </SlideUp>
+            )}
+          </>
         )}
 
         {item.body && (

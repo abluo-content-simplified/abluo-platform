@@ -32,9 +32,14 @@ export type ProfileDef = {
   jsonLd: { itemPage: 'Book' | 'Product' | 'Service'; needsOffer: boolean }
   /** Slice 4d: the dashboard list. `secondary` is the line under the name; `imageShape` the frame of the item's image. */
   list: { secondary: 'author' | 'byline'; imageShape: 'portrait' | 'landscape' }
+  /**
+   * How the public website presents the item in a listing: 'card' = a grid card (cover/photo on top,
+   * whole card opens the item), 'row' = a compact row (name, price, allergens — menus).
+   */
+  website: { layout: 'card' | 'row' }
 }
 
-const def = (d: ProfileDef): ProfileDef => Object.freeze({ ...d, capabilities: Object.freeze({ ...d.capabilities }), jsonLd: Object.freeze({ ...d.jsonLd }), list: Object.freeze({ ...d.list }) })
+const def = (d: ProfileDef): ProfileDef => Object.freeze({ ...d, capabilities: Object.freeze({ ...d.capabilities }), jsonLd: Object.freeze({ ...d.jsonLd }), list: Object.freeze({ ...d.list }), website: Object.freeze({ ...d.website }) })
 
 export const PROFILES: Readonly<Record<ItemProfile, ProfileDef>> = Object.freeze({
   book: def({
@@ -47,6 +52,7 @@ export const PROFILES: Readonly<Record<ItemProfile, ProfileDef>> = Object.freeze
     capabilities: { bookDetails: 'default', foodInformation: 'off', pricing: 'onDemand', channelPricing: 'onDemand', options: 'off', links: 'default' },
     jsonLd: { itemPage: 'Book', needsOffer: false },
     list: { secondary: 'author', imageShape: 'portrait' },
+    website: { layout: 'card' },
   }),
   foodOrDrink: def({
     id: 'foodOrDrink',
@@ -58,6 +64,7 @@ export const PROFILES: Readonly<Record<ItemProfile, ProfileDef>> = Object.freeze
     capabilities: { bookDetails: 'off', foodInformation: 'default', pricing: 'default', channelPricing: 'default', options: 'default', links: 'onDemand' },
     jsonLd: { itemPage: 'Product', needsOffer: true },
     list: { secondary: 'byline', imageShape: 'landscape' },
+    website: { layout: 'row' },
   }),
   product: def({
     id: 'product',
@@ -71,6 +78,7 @@ export const PROFILES: Readonly<Record<ItemProfile, ProfileDef>> = Object.freeze
     capabilities: { bookDetails: 'off', foodInformation: 'off', pricing: 'default', channelPricing: 'onDemand', options: 'onDemand', links: 'default' },
     jsonLd: { itemPage: 'Product', needsOffer: true },
     list: { secondary: 'byline', imageShape: 'landscape' },
+    website: { layout: 'card' },
   }),
   service: def({
     id: 'service',
@@ -82,6 +90,7 @@ export const PROFILES: Readonly<Record<ItemProfile, ProfileDef>> = Object.freeze
     capabilities: { bookDetails: 'off', foodInformation: 'off', pricing: 'default', channelPricing: 'default', options: 'onDemand', links: 'onDemand' },
     jsonLd: { itemPage: 'Service', needsOffer: false },
     list: { secondary: 'byline', imageShape: 'landscape' },
+    website: { layout: 'row' },
   }),
 })
 

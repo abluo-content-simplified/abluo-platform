@@ -4705,7 +4705,8 @@
           "publishOn": "Veröffentlichen am",
           "unpublishOn": "Offline am",
           "price": "Preis",
-          "toComplete": "Zu ergänzen"
+          "toComplete": "Zu ergänzen",
+          "type": "Typ"
         },
         "menuFor": "Aktionen für {name}",
         "display": {
@@ -4776,6 +4777,12 @@
             "restore": "{count, plural, one {# wiederhergestellt} other {# wiederhergestellt}}"
           },
           "attention": "{count, plural, one {# braucht Aufmerksamkeit: {details}} other {# brauchen Aufmerksamkeit: {details}}}"
+        },
+        "types": {
+          "book": "Buch",
+          "foodOrDrink": "Speise oder Getränk",
+          "product": "Produkt",
+          "service": "Dienstleistung"
         }
       },
       "item": {
@@ -5264,7 +5271,11 @@
       "editionOriginal": "Original",
       "affiliateMarker": "Affiliate-Link",
       "affiliateDisclosureDefault": "Einige Links auf dieser Seite sind Affiliate-Links. Wenn du über sie kaufst, erhalten wir eine kleine Provision – für dich entstehen keine zusätzlichen Kosten.",
-      "amazonStatement": "Als Amazon-Partner verdiene ich an qualifizierten Verkäufen."
+      "amazonStatement": "Als Amazon-Partner verdiene ich an qualifizierten Verkäufen.",
+      "buyOn": "Bei {shop} kaufen",
+      "editionsCount": "{count} Ausgaben",
+      "filterAll": "Alle",
+      "filterLabel": "Nach Kategorie filtern"
     }
   },
   "supportTicketEmail": {

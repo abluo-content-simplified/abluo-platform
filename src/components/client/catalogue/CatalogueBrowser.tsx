@@ -30,6 +30,7 @@ import type { LifecycleState } from '@/lib/lifecycle/status'
 import type { Referrer } from '@/lib/lifecycle/service'
 import { catalogueImageShape, itemSecondaryLine, type ImageShape } from '@/lib/modules/catalogue/list-model'
 import { formatPrice } from '@/lib/modules/catalogue/resolve'
+import { isItemProfile } from '@/lib/modules/catalogue/profiles'
 import { inCatalogueStatus, itemGaps, parseStatusFilter, searchable, type CatalogueStatusFilter, type ItemGap } from '@/lib/modules/catalogue/dashboard-form'
 import type { CatalogueKind } from '@/lib/modules/catalogue/dashboard-patch'
 import {
@@ -68,6 +69,8 @@ type Row = {
   shape: ImageShape
   status: LifecycleState
   details: string
+  /** Items only: what the item is ("Book", "Food or drink" …), from its profile. */
+  typeLabel?: string
   chips: string[]
   gaps: ItemGap[]
   updatedAt: string
@@ -176,6 +179,7 @@ export function CatalogueBrowser({
           shape: i.itemProfile ? catalogueImageShape({ itemProfile: i.itemProfile }) : site.imageShape,
           details: itemSecondaryLine({ itemProfile: i.itemProfile, byline: textIn(i.byline, ui, d), author: i.bookAuthor, year: i.bookYear }),
           chips,
+          typeLabel: isItemProfile(i.itemProfile) ? t(`types.${i.itemProfile}`) : '',
           gaps: itemGaps({ ...i, categoryCount: i.categories.length }).filter((g) => g !== 'noPrice'),
           search: searchable(`${Object.values(i.names).join(' ')} ${Object.values(i.byline).join(' ')} ${i.bookAuthor ?? ''} ${chips.join(' ')}`),
           categories: i.categories,
@@ -401,6 +405,7 @@ export function CatalogueBrowser({
         </div>
       ),
     },
+    ...(view === 'items' ? [{ key: 'type', header: t('columns.type'), width: 'w-36', render: (r: Row) => <span className="flex min-h-6 items-center text-sm leading-6 text-foreground">{r.typeLabel || <span className="text-muted-foreground">—</span>}</span> }] : []),
     { key: 'status', header: t('columns.status'), sortable: true, width: 'w-32', render: (r) => <LifecycleBadge status={r.status.status} /> },
     // What is still missing, at a glance (like the PLU "To complete" column): quiet badges, never blocking.
     ...(view === 'items' ? [{ key: 'toComplete', header: t('columns.toComplete'), width: 'w-44', render: (r: Row) => (r.gaps.length ? <GapBadges gaps={r.gaps} /> : <CellDate iso={null} />) }] : []),

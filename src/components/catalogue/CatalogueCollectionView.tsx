@@ -22,6 +22,9 @@ import { AllergensAndDietary, Byline, ItemLinks, OfferList, OptionsSummary } fro
 import type { CatalogueWebsiteMessages } from './messages'
 import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import { itemHasAmazonLink } from '@/lib/modules/catalogue/amazon-delivery'
+import { collectionFilterCategories, isFilterValue, itemsUseCards } from '@/lib/modules/catalogue/website'
+import { CatalogueItemCard } from './CatalogueItemCard'
+import { CatalogueCategoryFilter } from './CatalogueCategoryFilter'
 
 export type CatalogueDisplay = {
   showPrices: boolean
@@ -65,7 +68,7 @@ export function CatalogueCollectionView({
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
   const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
-  return (
+  const tree = (
     <div className="flex flex-col gap-14" data-collection={collection.publicId ?? undefined}>
       {collection.sections.map((section) => (
         <SlideUp key={section.key} duration={duration} ease={ease}>
@@ -80,6 +83,19 @@ export function CatalogueCollectionView({
       ))}
     </div>
   )
+  // The category filter bar: only when the items use at least two categories.
+  const categories = collectionFilterCategories(collection)
+  if (categories.length === 0) return tree
+  return (
+    <CatalogueCategoryFilter categories={categories} allLabel={messages.filterAll} label={messages.filterLabel}>
+      {tree}
+    </CatalogueCategoryFilter>
+  )
+}
+
+/** The item's category keys for the filter bar (data-cats). */
+function catsOf(item: CatalogueItemDTO): string {
+  return item.categories.map((c) => c.value).filter(isFilterValue).join(' ')
 }
 
 function SectionBlock({
@@ -117,13 +133,24 @@ function SectionBlock({
           },
           section.name,
         )}
-      {section.items.length > 0 && (
+      {section.items.length > 0 && itemsUseCards(section.items) && (
+        // Books and products: a grid of cards (one column on phones, two on tablets, three on wide screens).
+        <ul className="grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 xl:grid-cols-3" data-card-grid="">
+          {section.items.map((item, i) => (
+            <li key={`${item.publicId ?? 'item'}-${i}`} data-cats={catsOf(item)}>
+              <CatalogueItemCard item={item} display={display} messages={messages} href={itemHref(item)} headingLevel={Math.min(Math.max(section.name ? level + 1 : level, 2), 6) as 2 | 3 | 4 | 5 | 6} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {section.items.length > 0 && !itemsUseCards(section.items) && (
         <ul className="flex flex-col divide-y" style={{ borderColor: 'var(--color-border)' }}>
           {section.items.map((item, i) => (
             <li
               key={`${item.publicId ?? 'item'}-${i}`}
               className="py-5 first:pt-0"
               style={{ borderColor: 'var(--color-border)' }}
+              data-cats={catsOf(item)}
             >
               <CatalogueItemRow item={item} display={display} messages={messages} href={itemHref(item)} />
             </li>

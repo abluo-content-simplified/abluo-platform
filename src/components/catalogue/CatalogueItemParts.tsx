@@ -16,7 +16,7 @@ import type {
   CatalogueTermDTO,
 } from '@/lib/modules/catalogue/dto'
 import { buyLabel, catalogueLinkRel } from '@/lib/modules/catalogue/affiliate'
-import { editionLabel, editionLanguageName, editionLinks, orderBuyLinks } from '@/lib/modules/catalogue/editions'
+import { editionLabel, editionLanguageName, editionLinks, orderBuyLinks, shopOfUrl } from '@/lib/modules/catalogue/editions'
 import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import { shopById } from '@/lib/affiliate/shops'
 import { sortByShopOrder } from '@/lib/modules/catalogue/shop-delivery'
@@ -142,13 +142,13 @@ export function BuyLinks({ links, siteHosts = [], m, shopOrder }: { links: reado
   )
 }
 
-function BuyButton({ l, siteHosts, text, m }: { l: CatalogueItemLinkDTO; siteHosts: readonly string[]; text: string; m: CatalogueWebsiteMessages }) {
+export function BuyButton({ l, siteHosts, text, m, size = 'large' }: { l: CatalogueItemLinkDTO; siteHosts: readonly string[]; text: string; m: CatalogueWebsiteMessages; /** 'small' on listing cards. */ size?: 'large' | 'small' }) {
   const blank = opensInNewTab({ href: l.url }, siteHosts)
   return (
     <>
       <a
         href={l.url}
-        className="inline-flex items-center gap-2 px-8 py-3.5 text-base font-semibold tracking-wide transition-all duration-200 hover:opacity-90"
+        className={`inline-flex items-center gap-2 font-semibold tracking-wide transition-all duration-200 hover:opacity-90 ${size === 'small' ? 'px-5 py-2.5 text-sm' : 'px-8 py-3.5 text-base'}`}
         style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', borderRadius: 'var(--radius-btn)' }}
         data-buy-link=""
         {...(blank ? { target: '_blank' } : {})}
@@ -187,7 +187,7 @@ function buyEntries(buy: readonly CatalogueItemLinkDTO[], order: readonly Affili
 }
 
 /** orderBuyLinks, then the shops of each edition in the tenant's order (the first entry is the card's one link). */
-function orderBuyLinksByShop(links: readonly CatalogueItemLinkDTO[], locale: string | undefined, order: readonly AffiliateShopId[] | undefined): CatalogueItemLinkDTO[] {
+export function orderBuyLinksByShop(links: readonly CatalogueItemLinkDTO[], locale: string | undefined, order: readonly AffiliateShopId[] | undefined): CatalogueItemLinkDTO[] {
   return buyEntries(orderBuyLinks(links, locale), order).flatMap((e) => (e.kind === 'group' ? e.links : [e.l]))
 }
 
@@ -415,6 +415,49 @@ function DietaryTags({ tags, label }: { tags: readonly CatalogueTermDTO[]; label
             borderColor: t.color ?? 'var(--color-border)',
             color: 'var(--color-text-secondary)',
           }}
+        >
+          {t.label}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * A listing card's one buy action: the first buy link for the visitor (their language's edition first, then the
+ * tenant's shop order), worded "Buy on Amazon" when the shop is known, with "3 editions" beside it when the
+ * book has several. Sits above the card's stretched link, so it opens the shop, not the item page.
+ */
+export function CardBuyLink({ links, siteHosts = [], m, shopOrder }: { links: readonly CatalogueItemLinkDTO[]; siteHosts?: readonly string[]; m: CatalogueWebsiteMessages; shopOrder?: readonly AffiliateShopId[] }) {
+  const primary = orderBuyLinksByShop(links, m.locale, shopOrder)[0]
+  if (!primary) return null
+  const shop = shopOfUrl(primary.url)
+  const own = primary.label.trim()
+  const text = own || (shop && m.buyOn ? fillMessage(m.buyOn, { shop: shop.name }) : buyLabel('', m.buyDefault))
+  const languages = new Set(editionLinks(links).map((l) => l.edition!.language)).size
+  return (
+    <div className="relative z-10 mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-4" data-card-buy="">
+      <BuyButton l={primary} siteHosts={siteHosts} text={text} m={m} size="small" />
+      {languages >= 2 && m.editionsCount ? (
+        <span className="text-xs" style={MUTED} data-card-editions="">
+          {fillMessage(m.editionsCount, { count: languages })}
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
+/** Up to `max` tags as small chips (listing cards). */
+export function TagChips({ tags, label, max = 3 }: { tags: readonly CatalogueTermDTO[]; label: string; max?: number }) {
+  const shown = tags.slice(0, max)
+  if (shown.length === 0) return null
+  return (
+    <ul className="flex flex-wrap gap-1.5" aria-label={label || undefined} data-card-tags="">
+      {shown.map((t) => (
+        <li
+          key={t.value}
+          className="rounded-[var(--radius-full,9999px)] border px-2.5 py-0.5 text-xs"
+          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
         >
           {t.label}
         </li>
