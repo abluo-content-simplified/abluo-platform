@@ -4,6 +4,8 @@ import { schemaTypes, initialValueTemplates } from './src/lib/sanity/schema'
 import { MODULE_REGISTRY } from './src/lib/modules'
 import { buildCollectionItems } from './src/lib/modules/navigation'
 import { DesignSystemPreview } from './src/sanity/components/DesignSystemPreview'
+import { sectionPickerInput } from './src/sanity/components/section-picker/SectionPicker'
+import { sectionOwnerMap } from './src/lib/sanity/sections/catalogue'
 import { DesignSystemAssignPane } from './src/sanity/components/DesignSystemAssignPane'
 import { ExportDesignSystemAction } from './src/sanity/actions/ExportDesignSystemAction'
 import { ImportDesignSystemAction } from './src/sanity/actions/ImportDesignSystemAction'
@@ -779,6 +781,13 @@ export default defineConfig({
       },
     }),
   ],
+
+  // Page sections arrays get the grouped "Add section" picker (src/sanity/components/section-picker).
+  form: {
+    components: {
+      input: sectionPickerInput(sectionOwnerMap(MODULE_REGISTRY)),
+    },
+  },
 
   schema: {
     types: schemaTypes,
