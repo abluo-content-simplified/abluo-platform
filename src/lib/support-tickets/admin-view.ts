@@ -12,9 +12,11 @@ export type AdminTicketView = {
   project: string
   status: StatusFilter
   severity: TicketSeverity | ''
+  /** Only tickets with activity this admin has not seen yet. */
+  unread: boolean
 }
 
-export const DEFAULT_ADMIN_VIEW: AdminTicketView = { project: '', status: 'active', severity: '' }
+export const DEFAULT_ADMIN_VIEW: AdminTicketView = { project: '', status: 'active', severity: '', unread: false }
 
 export const STATUS_FILTERS: readonly StatusFilter[] = ['active', ...TICKET_STATUSES, 'all']
 
@@ -34,6 +36,7 @@ export function parseAdminView(params: Params): AdminTicketView {
     project: first(params, 'project').trim().slice(0, 100),
     status: status === 'all' || status === 'active' || isTicketStatus(status) ? (status as StatusFilter) : 'active',
     severity: isTicketSeverity(severity) ? severity : '',
+    unread: first(params, 'unread') === '1',
   }
 }
 
@@ -43,18 +46,19 @@ export function adminViewQuery(view: AdminTicketView): string {
   if (view.project) q.set('project', view.project)
   if (view.status !== 'active') q.set('status', view.status)
   if (view.severity) q.set('severity', view.severity)
+  if (view.unread) q.set('unread', '1')
   const s = q.toString()
   return s ? `?${s}` : ''
 }
 
 export function isDefaultAdminView(view: AdminTicketView): boolean {
-  return !view.project && view.status === 'active' && !view.severity
+  return !view.project && view.status === 'active' && !view.severity && !view.unread
 }
 
 /** Applies the filters to the full list and sorts by last activity, newest first. */
 export function applyAdminView(tickets: TicketSummary[], view: AdminTicketView): TicketSummary[] {
   return tickets
-    .filter((t) => (!view.project || t.project?.slug === view.project) && (!view.severity || t.severity === view.severity))
+    .filter((t) => (!view.project || t.project?.slug === view.project) && (!view.severity || t.severity === view.severity) && (!view.unread || t.unread))
     .filter((t) => (view.status === 'all' ? true : view.status === 'active' ? t.status !== 'resolved' : t.status === view.status))
     .sort((a, b) => (a.lastActivityAt < b.lastActivityAt ? 1 : a.lastActivityAt > b.lastActivityAt ? -1 : 0))
 }
@@ -65,6 +69,13 @@ export function projectOptions(tickets: TicketSummary[]): Array<{ slug: string; 
   for (const t of tickets) if (t.project?.slug) map.set(t.project.slug, t.project.name || t.project.slug)
   return [...map].map(([slug, name]) => ({ slug, name })).sort((a, b) => a.name.localeCompare(b.name))
 }
+
+/** The three Support card numbers on the admin home, each as the list filter behind it. */
+export const SUPPORT_CARD_LINKS = {
+  new: '/support?status=open&unread=1',
+  waiting: '/support?status=waiting_for_user',
+  high: '/support?severity=high',
+} as const
 
 export type EventLine = { key: string; values?: Record<string, string> }
 

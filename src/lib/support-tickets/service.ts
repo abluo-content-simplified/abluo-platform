@@ -101,16 +101,41 @@ async function loadPeople(db: Db, ids: Array<string | null>, withEmail: boolean)
 }
 const person = (map: Map<string, TicketPerson>, id: string | null): TicketPerson => (id ? map.get(id) ?? { id, name: '' } : { id: null, name: '' })
 
-async function readMarks(db: Db, userId: string, ticketIds: string[]): Promise<Map<string, string>> {
+/** Which side a read mark belongs to (migration 047): a person who is both a client and an Abluo admin keeps two. */
+type ReadSide = 'client' | 'support'
+
+/** 42703 / PGRST204 / 42P10: migration 047 not applied yet — fall back to one mark per person (046). */
+const isMissingSide = (e: { code?: string | null } | null) => !!e && ['42703', 'PGRST204', '42P10'].includes(e.code ?? '')
+
+async function readMarks(db: Db, userId: string, ticketIds: string[], side: ReadSide): Promise<Map<string, string>> {
   const marks = new Map<string, string>()
   if (!ticketIds.length) return marks
-  const { data } = await db.from('support_ticket_reads').select('ticket_id, last_read_at').eq('user_id', userId).in('ticket_id', ticketIds)
-  for (const r of (data ?? []) as Array<{ ticket_id: string; last_read_at: string }>) marks.set(r.ticket_id, r.last_read_at)
+  let res = await db.from('support_ticket_reads').select('ticket_id, last_read_at').eq('user_id', userId).eq('side', side).in('ticket_id', ticketIds)
+  if (isMissingSide(res.error)) res = await db.from('support_ticket_reads').select('ticket_id, last_read_at').eq('user_id', userId).in('ticket_id', ticketIds)
+  for (const r of (res.data ?? []) as Array<{ ticket_id: string; last_read_at: string }>) marks.set(r.ticket_id, r.last_read_at)
   return marks
 }
 
-async function markRead(db: Db, ticketId: string, userId: string): Promise<void> {
-  await db.from('support_ticket_reads').upsert({ ticket_id: ticketId, user_id: userId, last_read_at: new Date().toISOString() }, { onConflict: 'ticket_id,user_id' })
+async function markRead(db: Db, ticketId: string, userId: string, side: ReadSide): Promise<void> {
+  const at = new Date().toISOString()
+  const res = await db.from('support_ticket_reads').upsert({ ticket_id: ticketId, user_id: userId, side, last_read_at: at }, { onConflict: 'ticket_id,user_id,side' })
+  if (isMissingSide(res.error)) await db.from('support_ticket_reads').upsert({ ticket_id: ticketId, user_id: userId, last_read_at: at }, { onConflict: 'ticket_id,user_id' })
+}
+
+/** Uploads prepared screenshots and links them to a message. A failed upload is logged and skipped, never fatal. */
+async function storeAttachments(db: Db, projectId: string, ticketId: string, messageId: string | null, images: ReturnType<typeof stripMetadata>[], uploadedBy: string): Promise<void> {
+  for (const img of images) {
+    if (!img) continue
+    const ext = img.mime === 'image/png' ? 'png' : img.mime === 'image/webp' ? 'webp' : 'jpg'
+    const path = `${projectId}/${ticketId}/${crypto.randomUUID()}.${ext}`
+    const up = await db.storage.from(ATTACHMENT_BUCKET).upload(path, img.bytes, { contentType: img.mime, upsert: false })
+    if (up.error) { console.error('[support-tickets] screenshot upload failed', up.error.message); continue }
+    const ins = await db.from('support_ticket_attachments').insert({
+      ticket_id: ticketId, message_id: messageId, storage_path: path,
+      mime: img.mime, bytes: img.bytes.length, width: img.width, height: img.height, uploaded_by: uploadedBy,
+    })
+    if (ins.error) { console.error('[support-tickets] screenshot row failed', ins.error.message); await db.storage.from(ATTACHMENT_BUCKET).remove([path]) }
+  }
 }
 
 async function attachmentViews(db: Db, rows: AttachmentRow[]): Promise<Map<string, TicketAttachmentView[]>> {
@@ -154,7 +179,7 @@ export async function listClientTickets(access: TicketAccess): Promise<TicketRes
     const { data, error } = await query.order('last_public_activity_at', { ascending: false }).limit(500)
     if (error) return fail(error)
     const rows = (data ?? []) as TicketRow[]
-    const [marks, people] = await Promise.all([readMarks(db, access.userId, rows.map((r) => r.id)), loadPeople(db, rows.map((r) => r.created_by), false)])
+    const [marks, people] = await Promise.all([readMarks(db, access.userId, rows.map((r) => r.id), 'client'), loadPeople(db, rows.map((r) => r.created_by), false)])
     return { ok: true, value: rows.map((r) => summary(r, r.last_public_activity_at, isUnread(r.last_public_activity_at, marks.get(r.id)), person(people, r.created_by))) }
   })
 }
@@ -186,7 +211,10 @@ export async function getClientTicket(access: TicketAccess, ticketId: string, op
       messages, notes: [], events: (events.data ?? []) as EventRow[], people, byMessage,
       firstMessageId: messages[0]?.id ?? null, hideSupportNames: true,
     })
-    if (options.markRead !== false) await markRead(db, t.id, access.userId)
+    // Only the page path from the admin-only context: it is the client's own dashboard page.
+    const fromRow = await db.from('support_tickets').select('page:context->>page').eq('id', t.id).maybeSingle()
+    const reported = (fromRow.data as { page: string | null } | null)?.page ?? undefined
+    if (options.markRead !== false) await markRead(db, t.id, access.userId, 'client')
     const outcome = clientReplyOutcome(t.status, t.resolved_at)
     return {
       ok: true,
@@ -195,6 +223,7 @@ export async function getClientTicket(access: TicketAccess, ticketId: string, op
         resolvedAt: t.resolved_at,
         reply: !access.canWrite ? 'forbidden' : outcome.allowed ? 'allowed' : 'closed',
         thread,
+        reportedFrom: reported,
       },
     }
   })
@@ -265,20 +294,9 @@ export async function createTicket(access: TicketAccess, input: NewTicketInput):
     const row = (Array.isArray(data) ? data[0] : data) as { id: string; number: number; created: boolean } | undefined
     if (!row) return { ok: false as const, reason: 'error' as const }
     if (row.created) {
-      await markRead(db, row.id, access.userId)
+      await markRead(db, row.id, access.userId, 'client')
       const firstMessage = await db.from('support_ticket_messages').select('id').eq('ticket_id', row.id).order('created_at').limit(1).maybeSingle()
-      for (const img of prepared.value) {
-        if (!img) continue
-        const ext = img.mime === 'image/png' ? 'png' : img.mime === 'image/webp' ? 'webp' : 'jpg'
-        const path = `${access.projectId}/${row.id}/${crypto.randomUUID()}.${ext}`
-        const up = await db.storage.from(ATTACHMENT_BUCKET).upload(path, img.bytes, { contentType: img.mime, upsert: false })
-        if (up.error) { console.error('[support-tickets] screenshot upload failed', up.error.message); continue }
-        const ins = await db.from('support_ticket_attachments').insert({
-          ticket_id: row.id, message_id: (firstMessage.data as { id: string } | null)?.id ?? null, storage_path: path,
-          mime: img.mime, bytes: img.bytes.length, width: img.width, height: img.height, uploaded_by: access.userId,
-        })
-        if (ins.error) { console.error('[support-tickets] screenshot row failed', ins.error.message); await db.storage.from(ATTACHMENT_BUCKET).remove([path]) }
-      }
+      await storeAttachments(db, access.projectId, row.id, (firstMessage.data as { id: string } | null)?.id ?? null, prepared.value, access.userId)
     }
     return { ok: true as const, value: { id: row.id, number: Number(row.number), reference: formatTicketNumber(row.number), created: row.created } }
   })
@@ -287,12 +305,14 @@ export async function createTicket(access: TicketAccess, input: NewTicketInput):
   return { ok: true, value: { id: result.value.id, number: result.value.number, reference: result.value.reference } }
 }
 
-export async function replyAsClient(access: TicketAccess, ticketId: string, body: string): Promise<TicketResult> {
+export async function replyAsClient(access: TicketAccess, ticketId: string, body: string, files?: NewTicketFile[]): Promise<TicketResult> {
   if (access.supportMode) return { ok: false, reason: 'supportMode' }
   if (!access.canWrite) return { ok: false, reason: 'forbidden' }
   const bodyError = validateBody(body)
   if (bodyError) return { ok: false, reason: 'invalid', field: bodyError }
   if (!isUuid(ticketId)) return { ok: false, reason: 'notFound' }
+  const prepared = prepareAttachments(files)
+  if (!prepared.ok) return prepared
   const result = await withDb('add a client reply after the D3 check', async (db): Promise<TicketResult> => {
     const { data, error } = await db.from('support_tickets').select('id, project_id, created_by').eq('id', ticketId).maybeSingle()
     if (error) return fail(error)
@@ -302,11 +322,23 @@ export async function replyAsClient(access: TicketAccess, ticketId: string, body
       p_environment: getAppEnvironment(), p_reopen_days: TICKET_LIMITS.reopenDays, p_max_per_hour: TICKET_LIMITS.repliesPerHour,
     })
     if (rpc.error) return fail(rpc.error)
-    await markRead(db, ticketId, access.userId)
+    await storeAttachments(db, access.projectId, ticketId, (rpc.data as string | null) ?? null, prepared.value, access.userId)
+    await markRead(db, ticketId, access.userId, 'client')
     return { ok: true, value: undefined }
   })
   if (result.ok) scheduleTicketNotifications()
   return result
+}
+
+/** What the client Home's "Needs your attention" shows (round 2): requests waiting for them first, then unread news. */
+export type TicketAttentionItem = { kind: 'waiting' | 'update'; ticket: TicketSummary }
+
+export async function clientTicketAttention(access: TicketAccess): Promise<TicketAttentionItem[]> {
+  const list = await listClientTickets(access)
+  if (!list.ok) return []
+  const waiting = list.value.filter((t) => t.status === 'waiting_for_user').map((ticket) => ({ kind: 'waiting' as const, ticket }))
+  const updates = list.value.filter((t) => t.status !== 'waiting_for_user' && t.unread).map((ticket) => ({ kind: 'update' as const, ticket }))
+  return [...waiting, ...updates]
 }
 
 // ══ Admin side — callers have passed requireAbluoAdmin() ════════════════════
@@ -330,7 +362,7 @@ export async function listAdminTickets(adminUserId: string, filters: AdminTicket
     const rows = (data ?? []) as TicketRow[]
     const projectIds = [...new Set(rows.map((r) => r.project_id))]
     const [marks, people, projects] = await Promise.all([
-      readMarks(db, adminUserId, rows.map((r) => r.id)),
+      readMarks(db, adminUserId, rows.map((r) => r.id), 'support'),
       loadPeople(db, rows.map((r) => r.created_by), false),
       projectIds.length ? db.from('projects').select('id, slug, name').in('id', projectIds) : Promise.resolve({ data: [] as unknown[] }),
     ])
@@ -371,7 +403,7 @@ export async function getAdminTicket(adminUserId: string, ticketId: string, opti
     const eventRows = (events.data ?? []) as EventRow[]
     const people = await loadPeople(db, [t.created_by, ...messages.map((m) => m.author_id), ...noteRows.map((n) => n.author_id), ...eventRows.map((e) => e.actor_id)], true)
     const byMessage = await attachmentViews(db, (atts.data ?? []) as AttachmentRow[])
-    if (options.markRead !== false) await markRead(db, t.id, adminUserId)
+    if (options.markRead !== false) await markRead(db, t.id, adminUserId, 'support')
     return {
       ok: true,
       value: {
@@ -387,21 +419,51 @@ export async function getAdminTicket(adminUserId: string, ticketId: string, opti
   })
 }
 
-export async function replyAsSupport(adminUserId: string, ticketId: string, body: string): Promise<TicketResult> {
+export async function replyAsSupport(adminUserId: string, ticketId: string, body: string, files?: NewTicketFile[]): Promise<TicketResult> {
   const bodyError = validateBody(body)
   if (bodyError) return { ok: false, reason: 'invalid', field: bodyError }
   if (!isUuid(ticketId)) return { ok: false, reason: 'notFound' }
+  const prepared = prepareAttachments(files)
+  if (!prepared.ok) return prepared
   const result = await withDb('Abluo admin replies to a client on a ticket', async (db): Promise<TicketResult> => {
+    const { data: t } = await db.from('support_tickets').select('project_id').eq('id', ticketId).maybeSingle()
+    if (!t) return { ok: false, reason: 'notFound' }
     const rpc = await db.rpc('support_ticket_reply', {
       p_ticket_id: ticketId, p_author_id: adminUserId, p_author_kind: 'support', p_body: body.trim(),
       p_environment: getAppEnvironment(), p_reopen_days: TICKET_LIMITS.reopenDays, p_max_per_hour: TICKET_LIMITS.repliesPerHour,
     })
     if (rpc.error) return fail(rpc.error)
-    await markRead(db, ticketId, adminUserId)
+    await storeAttachments(db, (t as { project_id: string }).project_id, ticketId, (rpc.data as string | null) ?? null, prepared.value, adminUserId)
+    await markRead(db, ticketId, adminUserId, 'support')
     return { ok: true, value: undefined }
   })
   if (result.ok) scheduleTicketNotifications()
   return result
+}
+
+/** The admin dashboard's Support card (round 2). */
+export type AdminSupportOverview = {
+  /** Open and not yet read by this admin. */
+  newCount: number
+  waitingCount: number
+  highOpenCount: number
+  /** Most recently active, not resolved, newest first. */
+  recent: TicketSummary[]
+}
+
+export async function adminSupportOverview(adminUserId: string, recentLimit = 5): Promise<TicketResult<AdminSupportOverview>> {
+  const list = await listAdminTickets(adminUserId, { status: 'active' })
+  if (!list.ok) return list
+  const rows = list.value
+  return {
+    ok: true,
+    value: {
+      newCount: rows.filter((t) => t.status === 'open' && t.unread).length,
+      waitingCount: rows.filter((t) => t.status === 'waiting_for_user').length,
+      highOpenCount: rows.filter((t) => t.severity === 'high').length,
+      recent: rows.slice(0, recentLimit),
+    },
+  }
 }
 
 /** Internal note — never visible to the client, never emailed (D7). */
@@ -413,7 +475,7 @@ export async function addNote(adminUserId: string, ticketId: string, body: strin
     const ins = await db.from('support_ticket_notes').insert({ ticket_id: ticketId, author_id: adminUserId, body: body.trim() })
     if (ins.error) return fail(ins.error)
     await db.from('support_tickets').update({ last_activity_at: new Date().toISOString() }).eq('id', ticketId)
-    await markRead(db, ticketId, adminUserId)
+    await markRead(db, ticketId, adminUserId, 'support')
     return { ok: true, value: undefined }
   })
 }
@@ -426,10 +488,10 @@ export async function setTicketStatus(adminUserId: string, ticketId: string, sta
       p_ticket_id: ticketId, p_actor_id: adminUserId, p_status: status, p_environment: getAppEnvironment(), p_retention_days: TICKET_LIMITS.retentionDays,
     })
     if (rpc.error) return fail(rpc.error)
-    await markRead(db, ticketId, adminUserId)
+    await markRead(db, ticketId, adminUserId, 'support')
     return { ok: true, value: undefined }
   })
-  if (result.ok && status === 'resolved') scheduleTicketNotifications()
+  if (result.ok && (status === 'resolved' || status === 'waiting_for_user')) scheduleTicketNotifications()
   return result
 }
 
@@ -439,7 +501,7 @@ export async function setTicketSeverity(adminUserId: string, ticketId: string, s
   return withDb('Abluo admin changes a ticket severity', async (db) => {
     const rpc = await db.rpc('support_ticket_set_severity', { p_ticket_id: ticketId, p_actor_id: adminUserId, p_severity: severity })
     if (rpc.error) return fail(rpc.error)
-    await markRead(db, ticketId, adminUserId)
+    await markRead(db, ticketId, adminUserId, 'support')
     return { ok: true, value: undefined }
   })
 }

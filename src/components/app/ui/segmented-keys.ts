@@ -33,7 +33,7 @@ export type SegmentedAppearance = 'solid' | 'soft' | 'pill' | 'chips'
 
 const GROUP: Record<SegmentedAppearance, string> = {
   solid: 'flex max-w-full gap-1 overflow-x-auto rounded-xl border border-border p-1',
-  soft: 'flex h-11 w-full items-stretch gap-1 rounded-xl border border-border bg-background p-1 sm:w-auto',
+  soft: 'flex h-11 w-full max-w-full items-stretch gap-1 overflow-x-auto rounded-xl border border-border bg-background p-1 sm:w-auto',
   pill: 'inline-flex max-w-full gap-1 overflow-x-auto rounded-full border border-border bg-muted p-1',
   chips: 'flex flex-wrap items-start gap-2',
 }
@@ -45,7 +45,7 @@ const SEG: Record<SegmentedAppearance, { base: string; on: string; off: string }
     off: 'text-foreground hover:bg-hover',
   },
   soft: {
-    base: `${SEG_BASE} flex-1 px-3 text-[0.9375rem]`,
+    base: `${SEG_BASE} flex-1 px-3 text-[0.9375rem] whitespace-nowrap`,
     on: 'bg-muted text-foreground',
     off: 'text-muted-foreground hover:text-foreground',
   },

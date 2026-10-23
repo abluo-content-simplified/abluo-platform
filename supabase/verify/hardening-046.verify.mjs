@@ -197,3 +197,35 @@ describe('046 — status rules', () => {
     expect((await q(`select count(*)::int as n from public.support_ticket_events where ticket_id = $1 and kind = 'message_redacted'`, [a.id]))[0].n).toBe(1)
   })
 })
+
+describe('047 — round 2', () => {
+  it('applies on top of 046', async () => {
+    await applyMigrationFile(client, MIG('047_support_tickets_round2.sql'))
+    expect(await errOf(() => applyMigrationFile(client, MIG('047_support_tickets_round2.sql')))).not.toBeNull()
+  })
+  it('read marks are per side', async () => {
+    const a = await create()
+    await q(`insert into public.support_ticket_reads (ticket_id, user_id, side) values ($1, $2, 'client'), ($1, $2, 'support')`, [a.id, ids.admin])
+    expect((await q(`select count(*)::int as n from public.support_ticket_reads where ticket_id = $1`, [a.id]))[0].n).toBe(2)
+  })
+  it('waiting_for_user without a recent reply queues an email; with a recent reply it does not', async () => {
+    const a = await create()
+    await setStatus(a.id, 'waiting_for_user')
+    expect((await q(`select event_type from public.support_ticket_outbox where ticket_id = $1 order by created_at`, [a.id])).map((r) => r.event_type)).toEqual(['ticket.created', 'ticket.waiting_for_user'])
+    const b = await create()
+    await reply(b.id, ids.admin, 'support')
+    await setStatus(b.id, 'waiting_for_user')
+    expect((await q(`select event_type from public.support_ticket_outbox where ticket_id = $1 order by created_at`, [b.id])).map((r) => r.event_type)).toEqual(['ticket.created', 'ticket.support_replied'])
+  })
+  it('a reply right after "waiting" skips the pending waiting email', async () => {
+    const a = await create()
+    await setStatus(a.id, 'waiting_for_user')
+    await reply(a.id, ids.admin, 'support')
+    const rows = await q(`select event_type, status from public.support_ticket_outbox where ticket_id = $1 order by created_at`, [a.id])
+    expect(rows).toEqual([{ event_type: 'ticket.created', status: 'pending' }, { event_type: 'ticket.waiting_for_user', status: 'skipped' }, { event_type: 'ticket.support_replied', status: 'pending' }])
+  })
+  it('members still cannot call the functions', async () => {
+    await asUser(ids.ownerA)
+    expect((await errOf(() => q(`select public.support_ticket_set_status(gen_random_uuid(), $1, 'resolved', 'production')`, [ids.ownerA])))?.code).toBe('42501')
+  })
+})

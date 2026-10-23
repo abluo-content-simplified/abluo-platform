@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import {
@@ -13,6 +13,7 @@ import {
   viewAsClientAction,
   type TicketActionResult,
 } from '@/app/[locale]/(admin)/support/ticket-actions'
+import { AttachmentPicker } from '@/components/app/ui/AttachmentPicker'
 import { BackLink } from '@/components/app/ui/BackLink'
 import { Button } from '@/components/app/ui/Button'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
@@ -27,8 +28,11 @@ import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
 import { LocalDate } from '@/components/app/ui/list/cells'
+import { fitScreenshots } from '@/lib/client/ticket-upload'
 import { eventLine } from '@/lib/support-tickets/admin-view'
+import { CLIENT_UPLOAD_BUDGET_BYTES } from '@/lib/support-tickets/client-form'
 import {
+  ATTACHMENT_MIME_TYPES,
   TICKET_LIMITS,
   TICKET_SEVERITIES,
   TICKET_STATUSES,
@@ -42,21 +46,40 @@ import { SEVERITY_TONE, STATUS_TONE } from './ticket-bits'
 
 type MessageEntry = Extract<ThreadEntry, { kind: 'message' }>
 
+/** A reply from Abluo this recent means the ticket email for "Waiting for User" is held back (service rule). */
+const RECENT_REPLY_MS = 10 * 60 * 1000
+
+const NARROW = '(max-width: 479px)'
+function useNarrow(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const m = window.matchMedia(NARROW)
+      m.addEventListener('change', cb)
+      return () => m.removeEventListener('change', cb)
+    },
+    () => window.matchMedia(NARROW).matches,
+    () => false,
+  )
+}
+
 /**
  * One ticket for the Abluo admin (ADR-039 D4–D8, D11, D16): the conversation
  * with internal notes (MessageThread), the composer with two explicit modes,
  * and the side panel (status, severity, project, requester, context,
- * screenshots). On phones the panel sits below the thread. Every write goes
+ * screenshots). On phones the status and severity come first, then the
+ * conversation and composer, and the details last; on computers they are a side panel. Every write goes
  * through ticket-actions.ts and then refreshes the page.
  */
 export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetail; supportNotice: 'unavailable' | 'failed' | null }) {
   const t = useTranslations('admin.supportTickets')
   const tRoles = useTranslations('app.roles')
   const router = useRouter()
+  const narrow = useNarrow()
   const { toast, show } = useUndo()
 
   const [mode, setMode] = useState<'reply' | 'note'>('reply')
   const [text, setText] = useState('')
+  const [files, setFiles] = useState<File[]>([])
   const [pending, setPending] = useState(false)
   const [composeError, setComposeError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -65,14 +88,15 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
 
   const failure = (r: Extract<TicketActionResult, { ok: false }>) => (t.has(`errors.${r.reason}`) ? t(`errors.${r.reason}` as 'errors.error') : t('errors.error'))
 
-  async function run(action: () => Promise<TicketActionResult>, done: string): Promise<boolean> {
+  async function run(action: () => Promise<TicketActionResult>, done: string | null): Promise<boolean> {
     try {
       const r = await action()
       if (!r.ok) {
         show({ message: failure(r), tone: 'error' })
         return false
       }
-      show({ message: done, tone: 'status' })
+      // Only a consequence the person cannot see on screen gets a message (a changed pill or a new line in the thread speaks for itself).
+      if (done) show({ message: done, tone: 'status' })
       router.refresh()
       return true
     } catch {
@@ -86,13 +110,29 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
     setPending(true)
     setComposeError(null)
     try {
-      const r = mode === 'reply' ? await replyAsSupportAction(ticket.id, text) : await addNoteAction(ticket.id, text)
+      let r: TicketActionResult
+      if (mode === 'reply') {
+        const form = new FormData()
+        form.set('ticketId', ticket.id)
+        form.set('body', text)
+        if (files.length) {
+          const ready = await fitScreenshots(files, CLIENT_UPLOAD_BUDGET_BYTES)
+          if (!ready) {
+            setComposeError(t('errors.uploadTooLarge'))
+            return
+          }
+          for (const f of ready) form.append('files', f)
+        }
+        r = await replyAsSupportAction(form)
+      } else {
+        r = await addNoteAction(ticket.id, text)
+      }
       if (!r.ok) {
         setComposeError(failure(r))
         return
       }
       setText('')
-      show({ message: mode === 'reply' ? t('toast.replySent') : t('toast.noteSaved'), tone: 'status' })
+      if (mode === 'reply') setFiles([])
       router.refresh()
     } catch {
       setComposeError(t('errors.error'))
@@ -102,8 +142,8 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
   }
 
   const modes: ComposerMode[] = [
-    { id: 'reply', label: t('composer.reply'), sendLabel: t('composer.sendReply'), tone: 'reply', hint: t('composer.replyHint') },
-    { id: 'note', label: t('composer.note'), sendLabel: t('composer.saveNote'), tone: 'note', hint: t('composer.noteHint') },
+    { id: 'reply', label: narrow ? t('composer.replyShort') : t('composer.reply'), sendLabel: t('composer.sendReply'), tone: 'reply', hint: t('composer.replyHint') },
+    { id: 'note', label: narrow ? t('composer.noteShort') : t('composer.note'), sendLabel: t('composer.saveNote'), tone: 'note', hint: t('composer.noteHint') },
   ]
 
   const labels: MessageThreadLabels = {
@@ -129,6 +169,15 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
   const ctx = ticket.context ?? {}
   const roleLabel = ctx.role ? (tRoles.has(ctx.role as 'owner') ? tRoles(ctx.role as 'owner') : ctx.role) : null
   const status = ticket.status
+  const name = ticket.createdBy.name?.trim().split(/\s+/)[0] || t('toast.theClient')
+  const lastSupportReply = [...ticket.thread].reverse().find((e) => e.kind === 'message' && e.authorKind === 'support')
+  const repliedJustNow = () => (lastSupportReply ? Date.now() - new Date(lastSupportReply.createdAt).getTime() < RECENT_REPLY_MS : false)
+  const statusToast = (next: TicketStatus): string | null =>
+    next === 'resolved'
+      ? t('toast.resolved', { name })
+      : next === 'waiting_for_user'
+        ? t(repliedJustNow() ? 'toast.waitingNoEmail' : 'toast.waiting', { name })
+        : null
   const severity = ticket.severity ?? 'normal'
 
   return (
@@ -152,8 +201,36 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
       />
       {supportNotice ? <Notice tone="error">{t(`support.${supportNotice}`)}</Notice> : null}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
-        <div className="flex min-w-0 flex-col gap-6">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem] lg:grid-rows-[auto_1fr]">
+        <div className="flex flex-col gap-4 lg:col-start-2 lg:row-start-1">
+          <Panel as="section" aria-labelledby="tk-status">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col items-start gap-2">
+                <SectionHeading id="tk-status" title={t('panel.status')} />
+                <PillSelect<TicketStatus>
+                  size="lg"
+                  label={t('panel.status')}
+                  value={status}
+                  options={TICKET_STATUSES.map((s) => ({ value: s, label: t(`status.${s}`), tone: STATUS_TONE[s] }))}
+                  onChange={(next) => void run(() => setTicketStatusAction(ticket.id, next), next === status ? null : statusToast(next))}
+                />
+              </div>
+              <div className="flex flex-col items-start gap-2">
+                <h3 className="text-[1.0625rem] leading-6 font-semibold">{t('panel.severity')}</h3>
+                <PillSelect<TicketSeverity>
+                  size="lg"
+                  label={t('panel.severity')}
+                  value={severity}
+                  options={TICKET_SEVERITIES.map((s) => ({ value: s, label: t(`severity.${s}`), tone: SEVERITY_TONE[s] }))}
+                  onChange={(next) => void run(() => setTicketSeverityAction(ticket.id, next), null)}
+                />
+                <p className="text-sm leading-5 text-muted-foreground">{t('panel.severityHint')}</p>
+              </div>
+            </div>
+          </Panel>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-6 lg:col-start-1 lg:row-span-2 lg:row-start-1">
           <MessageThread
             entries={ticket.thread}
             labels={labels}
@@ -183,37 +260,30 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
                 setComposeError(null)
               }}
               modeSwitchLabel={t('composer.modeLabel')}
+              attachments={
+                mode === 'reply' ? (
+                  <AttachmentPicker
+                    files={files}
+                    onChange={setFiles}
+                    max={TICKET_LIMITS.attachmentsMax}
+                    maxBytes={TICKET_LIMITS.attachmentBytesMax}
+                    accept={ATTACHMENT_MIME_TYPES}
+                    disabled={pending}
+                    labels={{
+                      add: t('picker.add'),
+                      hint: t('picker.hint', { max: TICKET_LIMITS.attachmentsMax, size: Math.round(TICKET_LIMITS.attachmentBytesMax / 1048576) }),
+                      remove: (n) => t('picker.remove', { name: n }),
+                      problem: (p) => t(`picker.problem.${p.kind}`, { name: p.name, size: Math.round(TICKET_LIMITS.attachmentBytesMax / 1048576), max: TICKET_LIMITS.attachmentsMax }),
+                    }}
+                  />
+                ) : null
+              }
             />
           </Panel>
         </div>
 
-        <aside aria-label={t('panel.label')} className="flex flex-col gap-4">
-          <Panel as="section" aria-labelledby="tk-status">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col items-start gap-2">
-                <SectionHeading id="tk-status" title={t('panel.status')} />
-                <PillSelect<TicketStatus>
-                  size="lg"
-                  label={t('panel.status')}
-                  value={status}
-                  options={TICKET_STATUSES.map((s) => ({ value: s, label: t(`status.${s}`), tone: STATUS_TONE[s] }))}
-                  onChange={(next) => void run(() => setTicketStatusAction(ticket.id, next), t('toast.statusSaved'))}
-                />
-              </div>
-              <div className="flex flex-col items-start gap-2">
-                <h3 className="text-[1.0625rem] leading-6 font-semibold">{t('panel.severity')}</h3>
-                <PillSelect<TicketSeverity>
-                  size="lg"
-                  label={t('panel.severity')}
-                  value={severity}
-                  options={TICKET_SEVERITIES.map((s) => ({ value: s, label: t(`severity.${s}`), tone: SEVERITY_TONE[s] }))}
-                  onChange={(next) => void run(() => setTicketSeverityAction(ticket.id, next), t('toast.severitySaved'))}
-                />
-                <p className="text-sm leading-5 text-muted-foreground">{t('panel.severityHint')}</p>
-              </div>
-            </div>
-          </Panel>
 
+        <aside aria-label={t('panel.label')} className="flex flex-col gap-4 lg:col-start-2 lg:row-start-2">
           <Panel as="section" aria-labelledby="tk-who">
             <SectionHeading id="tk-who" title={t('panel.people')} />
             <dl>

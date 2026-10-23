@@ -620,6 +620,16 @@
           "title": "{count, plural, one {Un invito è scaduto} other {# inviti sono scaduti}}",
           "detail": "{count, plural, one {Invialo di nuovo per farla entrare.} other {Inviali di nuovo per farle entrare.}}",
           "action": "Vedi le persone"
+        },
+        "supportWaiting": {
+          "title": "Abluo aspetta una tua risposta",
+          "detail": "{reference} · {title}",
+          "action": "Rispondi ora"
+        },
+        "supportUpdate": {
+          "title": "Novità sulla tua richiesta",
+          "detail": "{reference} · {title}",
+          "action": "Apri la richiesta"
         }
       },
       "glance": {
@@ -2686,6 +2696,26 @@
         "bodyTooLong": "Il testo è troppo lungo.",
         "uploadTooLarge": "Le immagini insieme sono troppo grandi da inviare. Rimuovine una o usa immagini più piccole.",
         "error": "Qualcosa è andato storto. Riprova."
+      },
+      "recap": {
+        "status": "Stato",
+        "statusLabel": "Stato della richiesta",
+        "details": "Dettagli",
+        "opened": "Aperta",
+        "by": "da {name}",
+        "lastUpdate": "Ultimo aggiornamento",
+        "reference": "Riferimento",
+        "reportedFrom": "Segnalata da",
+        "screenshots": "Screenshot",
+        "goToReply": "Scrivi una risposta"
+      },
+      "statusSentence": {
+        "open": "L’abbiamo ricevuta",
+        "in_progress": "Ci stiamo lavorando",
+        "waiting_for_user": "Ci serve una tua risposta",
+        "resolved": "Risolta il {date}",
+        "resolvedWindow": "Risolta il {date}. Se non è sistemato, rispondi entro {days} giorni.",
+        "resolvedNoDate": "Risolta"
       }
     }
   },
@@ -4033,7 +4063,8 @@
         "allProjects": "Tutti i progetti",
         "status": "Stato",
         "severity": "Gravità",
-        "allSeverities": "Qualsiasi gravità"
+        "allSeverities": "Qualsiasi gravità",
+        "unreadOnly": "Novità"
       },
       "statusFilters": {
         "active": "Attivi",
@@ -4097,11 +4128,13 @@
         "sendReply": "Invia al cliente",
         "saveNote": "Salva nota",
         "replyHint": "Il cliente lo vede come Supporto Abluo.",
-        "noteHint": "Nota interna: la vedono solo gli admin Abluo. Il cliente non ne sa nulla.",
+        "noteHint": "Nota interna: la vedono solo gli admin Abluo. Il cliente non ne sa nulla. Le note sono solo testo, senza immagini.",
         "replyPlaceholder": "Scrivi la tua risposta",
         "notePlaceholder": "Scrivi una nota per il team",
         "sending": "Invio…",
-        "remaining": "{count} caratteri rimasti"
+        "remaining": "{count} caratteri rimasti",
+        "replyShort": "Rispondi",
+        "noteShort": "Nota"
       },
       "errors": {
         "forbidden": "Non hai l’accesso per farlo.",
@@ -4109,15 +4142,20 @@
         "rateLimited": "Troppi messaggi in poco tempo. Riprova tra un po’.",
         "invalid": "Non è possibile salvarlo. Controlla il testo e riprova.",
         "unavailable": "I ticket di supporto non sono ancora disponibili.",
-        "error": "Qualcosa è andato storto. Riprova."
+        "error": "Qualcosa è andato storto. Riprova.",
+        "uploadTooLarge": "Le immagini sono troppo grandi per essere inviate insieme. Togline una o usa immagini più piccole."
       },
       "toast": {
         "replySent": "Risposta inviata",
         "noteSaved": "Nota salvata",
         "statusSaved": "Stato aggiornato",
         "severitySaved": "Gravità aggiornata",
-        "textRemoved": "Testo rimosso",
-        "screenshotDeleted": "Screenshot eliminato"
+        "textRemoved": "Testo rimosso per sempre. Il cliente vede «Rimosso dal supporto Abluo».",
+        "screenshotDeleted": "Screenshot eliminato per sempre.",
+        "theClient": "Il cliente",
+        "resolved": "Segnato come risolto. {name} riceverà un’email.",
+        "waiting": "{name} vedrà che serve la sua risposta. Gli scriviamo anche un’email.",
+        "waitingNoEmail": "{name} vedrà che serve la sua risposta."
       },
       "redact": {
         "action": "Rimuovi testo",
@@ -4154,6 +4192,34 @@
         "deleteScreenshot": "Elimina",
         "deleteTitle": "Eliminare questo screenshot?",
         "deleteBody": "Il file viene eliminato definitivamente e non si può recuperare."
+      },
+      "picker": {
+        "add": "Aggiungi immagini",
+        "hint": "Fino a {max} immagini (PNG, JPG o WebP), {size} MB ciascuna. Il cliente le vede.",
+        "remove": "Rimuovi {name}",
+        "problem": {
+          "type": "{name}: si possono allegare solo immagini PNG, JPG o WebP.",
+          "size": "{name}: l’immagine supera {size} MB.",
+          "count": "{name}: puoi allegare al massimo {max} immagini.",
+          "total": "{name}: le immagini insieme sono troppo grandi da inviare."
+        }
+      },
+      "card": {
+        "heading": "Supporto",
+        "recent": "Ticket recenti",
+        "none": "Nessun ticket attivo.",
+        "new": {
+          "label": "Nuovi",
+          "sub": "Aperti e non letti"
+        },
+        "waiting": {
+          "label": "In attesa del cliente",
+          "sub": "In attesa della sua risposta"
+        },
+        "high": {
+          "label": "Gravità alta aperti",
+          "sub": "Non ancora risolti"
+        }
       }
     }
   },
@@ -4998,6 +5064,11 @@
     },
     "button": "Apri la richiesta",
     "linkHint": "Oppure copia questo link nel browser:",
-    "privacy": "Per la tua privacy questa email non riporta il contenuto della richiesta. Non rispondere a questa email: apri la richiesta."
+    "privacy": "Per la tua privacy questa email non riporta il contenuto della richiesta. Non rispondere a questa email: apri la richiesta.",
+    "waitingForUser": {
+      "subject": "[{ref}] Ci serve una tua risposta",
+      "heading": "Ci serve una tua risposta su {ref}",
+      "body": "Il supporto Abluo ha bisogno di qualche informazione in più da te per proseguire con la tua richiesta {ref} su {project}."
+    }
   }
 }

@@ -9,6 +9,8 @@ import { Greeting } from '@/components/client/home/Greeting'
 import { requireAbluoAdmin } from '@/lib/api/auth'
 import { getViewerAccount } from '@/lib/api/viewer-account'
 import { getAdminHome } from '@/lib/api/admin-dashboard/home'
+import { AdminSupportCard } from '@/components/admin/tickets/AdminSupportCard'
+import { adminSupportOverview } from '@/lib/support-tickets/service'
 import { AdminAnalyticsSummary } from '@/components/admin/analytics/AdminAnalyticsSummary'
 
 export const dynamic = 'force-dynamic'
@@ -26,7 +28,13 @@ export default async function AdminHomePage() {
   const actor = await requireAbluoAdmin()
   if (!actor) notFound()
 
-  const [t, home, viewer] = await Promise.all([getTranslations('admin.home'), getAdminHome(), getViewerAccount(actor.userId)])
+  const [t, home, viewer, support] = await Promise.all([
+    getTranslations('admin.home'),
+    getAdminHome(),
+    getViewerAccount(actor.userId),
+    // Never blocks the home: any failure leaves the Support card out.
+    adminSupportOverview(actor.userId).catch(() => null),
+  ])
   const firstName = viewer.name.trim().split(/\s+/)[0] || null
 
   const c = home.projectCounts
@@ -70,6 +78,8 @@ export default async function AdminHomePage() {
           </p>
         ) : null}
       </section>
+
+      {support?.ok ? <AdminSupportCard overview={support.value} /> : null}
 
       <AdminAnalyticsSummary />
 

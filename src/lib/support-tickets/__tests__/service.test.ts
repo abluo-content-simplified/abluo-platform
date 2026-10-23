@@ -16,7 +16,7 @@ function body(name: string): string {
 }
 
 describe('client paths never touch internal data', () => {
-  for (const fn of ['listClientTickets', 'getClientTicket', 'createTicket', 'replyAsClient', 'countClientUnread']) {
+  for (const fn of ['listClientTickets', 'getClientTicket', 'createTicket', 'replyAsClient', 'countClientUnread', 'clientTicketAttention']) {
     it(fn, () => {
       const b = body(fn)
       expect(b).not.toContain('support_ticket_notes')

@@ -20,6 +20,7 @@ import {
   setTicketSeverity,
   setTicketStatus,
   ticketProject,
+  type NewTicketFile,
 } from '@/lib/support-tickets/service'
 import type { TicketFailure, TicketResult, TicketSeverity, TicketStatus } from '@/lib/support-tickets/model'
 
@@ -39,10 +40,22 @@ function refresh(result: TicketResult, ticketId?: string): TicketActionResult {
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
 
-export async function replyAsSupportAction(ticketId: unknown, body: unknown): Promise<TicketActionResult> {
-  const id = await actorId()
-  if (!id) return { ok: false, reason: 'forbidden' }
-  return refresh(await replyAsSupport(id, str(ticketId), str(body)), str(ticketId))
+/** The reply form: `ticketId`, `body` and up to 3 `files` (already shrunk by the browser). */
+export async function replyAsSupportAction(form: FormData): Promise<TicketActionResult> {
+  try {
+    const id = await actorId()
+    if (!id) return { ok: false, reason: 'forbidden' }
+    const files: NewTicketFile[] = []
+    for (const entry of form.getAll('files')) {
+      if (typeof entry === 'string' || entry.size === 0) continue
+      files.push({ name: entry.name, type: entry.type, bytes: new Uint8Array(await entry.arrayBuffer()) })
+    }
+    const ticketId = str(form.get('ticketId'))
+    return refresh(await replyAsSupport(id, ticketId, str(form.get('body')), files), ticketId)
+  } catch (e) {
+    console.error('[support-tickets] admin reply failed', e instanceof Error ? e.message : e)
+    return { ok: false, reason: 'error' }
+  }
 }
 
 export async function addNoteAction(ticketId: unknown, body: unknown): Promise<TicketActionResult> {

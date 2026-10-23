@@ -117,7 +117,8 @@ export function SupportTicketsBrowser({
                 value: status,
                 options: [
                   { value: 'all', label: `${t('list.allStatuses')} (${counts.all})` },
-                  ...TICKET_STATUSES.map((s) => ({ value: s, label: `${t(`status.${s}`)} (${counts[s]})` })),
+                  // "Waiting for You" first: it is the one that needs the person.
+                  ...[...TICKET_STATUSES].sort((a, b) => Number(b === 'waiting_for_user') - Number(a === 'waiting_for_user')).map((s) => ({ value: s, label: `${t(`status.${s}`)} (${counts[s]})` })),
                 ],
                 onChange: (v) => setStatus(v as 'all' | TicketStatus),
               },

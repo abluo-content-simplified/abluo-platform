@@ -2,7 +2,7 @@
 
 import { useLocale, useTranslations } from 'next-intl'
 import { Pill, type PillTone } from '@/components/app/ui/list/cells'
-import type { TicketStatus, ThreadEntry } from '@/lib/support-tickets/model'
+import { TICKET_LIMITS, type TicketDetail, type TicketStatus, type ThreadEntry } from '@/lib/support-tickets/model'
 
 /** Status pill in the client's wording (Open / In Progress / Waiting for You / Resolved). */
 const TONE: Record<TicketStatus, PillTone> = {
@@ -48,5 +48,19 @@ export function useEventFormatter(): (event: Extract<ThreadEntry, { kind: 'event
       default:
         return null
     }
+  }
+}
+
+/** The plain sentence under a status ("We're working on it"); resolved carries its own date and reply window. */
+export function useStatusSentence(): (ticket: Pick<TicketDetail, 'status' | 'resolvedAt'>) => string {
+  const t = useTranslations('clientDashboard.supportTickets.statusSentence')
+  const locale = useLocale()
+  return (ticket) => {
+    if (ticket.status !== 'resolved') return t(ticket.status)
+    const at = ticket.resolvedAt ? new Date(ticket.resolvedAt) : null
+    if (!at || Number.isNaN(at.getTime())) return t('resolvedNoDate')
+    const date = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(at)
+    const until = at.getTime() + TICKET_LIMITS.reopenDays * 86_400_000
+    return Date.now() < until ? t('resolvedWindow', { date, days: TICKET_LIMITS.reopenDays }) : t('resolved', { date })
   }
 }

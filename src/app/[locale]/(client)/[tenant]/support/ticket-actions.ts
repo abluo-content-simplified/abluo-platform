@@ -55,11 +55,16 @@ export async function createTicketAction(projectSlug: string, form: FormData): P
   }
 }
 
-export async function replyToTicketAction(projectSlug: string, ticketId: string, body: string): Promise<TicketActionResult> {
+export async function replyToTicketAction(projectSlug: string, ticketId: string, form: FormData): Promise<TicketActionResult> {
   try {
     const access = await accessFor(projectSlug)
     if (!access) return { ok: false, reason: 'forbidden' }
-    const result = await replyAsClient(access, ticketId, typeof body === 'string' ? body : '')
+    const files: NewTicketFile[] = []
+    for (const entry of form.getAll('files')) {
+      if (typeof entry === 'string' || entry.size === 0) continue
+      files.push({ name: entry.name, type: entry.type, bytes: new Uint8Array(await entry.arrayBuffer()) })
+    }
+    const result = await replyAsClient(access, ticketId, text(form, 'body'), files)
     return result.ok ? { ok: true, value: undefined } : { ok: false, reason: result.reason, field: result.field }
   } catch (e) {
     console.error('[support-tickets] reply failed', e instanceof Error ? e.message : e)

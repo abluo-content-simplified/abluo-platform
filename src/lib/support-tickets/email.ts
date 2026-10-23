@@ -11,7 +11,7 @@ import en from '../../../messages/en.json'
 import it from '../../../messages/it.json'
 import de from '../../../messages/de.json'
 
-export type TicketEventType = 'ticket.created' | 'ticket.client_replied' | 'ticket.support_replied' | 'ticket.resolved'
+export type TicketEventType = 'ticket.created' | 'ticket.client_replied' | 'ticket.support_replied' | 'ticket.resolved' | 'ticket.waiting_for_user'
 export type EmailLocale = 'en' | 'it' | 'de'
 export type TicketEmailMessages = typeof en.supportTicketEmail
 
@@ -71,6 +71,7 @@ const KEY = {
   'ticket.client_replied': 'clientReplied',
   'ticket.support_replied': 'supportReplied',
   'ticket.resolved': 'resolved',
+  'ticket.waiting_for_user': 'waitingForUser',
 } as const
 
 export type TicketEmailInput = {

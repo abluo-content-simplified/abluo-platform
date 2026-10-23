@@ -168,4 +168,6 @@ export type TicketDetail = TicketSummary & {
   reply: 'allowed' | 'closed' | 'forbidden'
   thread: ThreadEntry[]
   context?: TicketContext // admin only
+  /** Client side: the dashboard page the request was sent from (never the rest of the context). */
+  reportedFrom?: string
 }

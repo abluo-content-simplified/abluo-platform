@@ -30,6 +30,8 @@ import { SetupChecklist } from '@/components/client/home/SetupChecklist'
 import { buildTenantSurfaces, hasWidget } from '@/lib/client/surfaces'
 import { allowedAttentionRules, sortAttention, type AttentionItem } from '@/lib/client/attention'
 import { draftProgress, navHref, percentChange, timeAgo } from '@/lib/client/home-cards'
+import { ticketAccess } from '@/lib/support-tickets/access'
+import { clientTicketAttention } from '@/lib/support-tickets/service'
 import { getProjectAnalytics } from '@/lib/analytics/read'
 import { DailySparkline } from '@/components/app/analytics/AnalyticsOverview'
 
@@ -99,7 +101,12 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
   const wantPeople = rules.has('pendingInvites') || setup.has('team')
   const peopleHref = link('people')
 
-  const [firstName, site, blog, forms, gallery, media, people, traffic, setupDismissal] = await Promise.all([
+  // Support requests that need this person (waiting for their reply, or news). Fail-safe: [] on any error.
+  const supportAccess = show('attention') ? ticketAccess(ctx, projectSlug) : null
+  const supportHref = link('support')
+
+  const [supportAttention, firstName, site, blog, forms, gallery, media, people, traffic, setupDismissal] = await Promise.all([
+    supportAccess ? clientTicketAttention(supportAccess).catch(() => []) : [],
     getViewerFirstName(ctx).catch(() => null),
     show('siteStatus') ? getSiteStatus(ctx, grant.projectId) : null,
     blogList || blogDrafts
@@ -140,13 +147,29 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
   ])
 
   // ── Needs your attention ────────────────────────────────────────────────
-  const attentionItems: AttentionItem[] = sortAttention([
-    ...(forms?.attention ?? []),
-    ...(blog?.attention ?? []),
-    ...(gallery?.attention ?? []),
-    ...(media?.attention ?? []),
-    ...(people?.attention ?? []),
-  ]).filter((i) => i.href)
+  const supportItems: AttentionItem[] = supportHref
+    ? supportAttention.map(({ kind, ticket }) => ({
+        id: `support-${kind}-${ticket.id}`,
+        severity: kind === 'waiting' ? 'warn' : 'info',
+        titleKey: kind === 'waiting' ? 'attention.supportWaiting.title' : 'attention.supportUpdate.title',
+        detailKey: kind === 'waiting' ? 'attention.supportWaiting.detail' : 'attention.supportUpdate.detail',
+        actionKey: kind === 'waiting' ? 'attention.supportWaiting.action' : 'attention.supportUpdate.action',
+        params: { reference: ticket.reference, title: ticket.title },
+        href: `${supportHref}/${ticket.id}`,
+      }))
+    : []
+  const supportWaitingItems = supportItems.filter((i) => i.id.startsWith('support-waiting-'))
+  const attentionItems: AttentionItem[] = [
+    ...supportWaitingItems,
+    ...sortAttention([
+      ...(forms?.attention ?? []),
+      ...(blog?.attention ?? []),
+      ...(gallery?.attention ?? []),
+      ...(media?.attention ?? []),
+      ...(people?.attention ?? []),
+      ...supportItems.filter((i) => !i.id.startsWith('support-waiting-')),
+    ]),
+  ].filter((i) => i.href)
   const attentionRows: AttentionRow[] = attentionItems.map((i) => ({
     id: i.id,
     severity: i.severity,
@@ -162,7 +185,8 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
     ((rules.has('stalePostDrafts') || rules.has('scheduledSoon') || rules.has('missingLanguage')) && !!(blog?.list || blog?.drafts)) ||
     (rules.has('staleGalleryDrafts') && gallery !== null) ||
     (rules.has('missingAltText') && media !== null) ||
-    (rules.has('pendingInvites') && !!link('people'))
+    (rules.has('pendingInvites') && !!link('people')) ||
+    supportItems.length > 0
 
   // ── Continue editing (unchanged behaviour: posts then galleries, ⋯ menu) ──
   const categoryLabel = new Map((blog?.list?.categories ?? []).map((c) => [c.value, c.label]))

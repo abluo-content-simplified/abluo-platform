@@ -620,6 +620,16 @@
           "title": "{count, plural, one {An invitation has expired} other {# invitations have expired}}",
           "detail": "{count, plural, one {Send it again so they can join.} other {Send them again so they can join.}}",
           "action": "See people"
+        },
+        "supportWaiting": {
+          "title": "Abluo needs your reply",
+          "detail": "{reference} · {title}",
+          "action": "Reply now"
+        },
+        "supportUpdate": {
+          "title": "Update on your request",
+          "detail": "{reference} · {title}",
+          "action": "Open request"
         }
       },
       "glance": {
@@ -2686,6 +2696,26 @@
         "bodyTooLong": "The text is too long.",
         "uploadTooLarge": "The images together are too large to send. Remove one or use smaller images.",
         "error": "Something went wrong. Please try again."
+      },
+      "recap": {
+        "status": "Status",
+        "statusLabel": "Request status",
+        "details": "Details",
+        "opened": "Opened",
+        "by": "by {name}",
+        "lastUpdate": "Last update",
+        "reference": "Reference",
+        "reportedFrom": "Reported from",
+        "screenshots": "Screenshots",
+        "goToReply": "Write a reply"
+      },
+      "statusSentence": {
+        "open": "We’ve received it",
+        "in_progress": "We’re working on it",
+        "waiting_for_user": "We need your reply",
+        "resolved": "Resolved on {date}",
+        "resolvedWindow": "Resolved on {date}. Reply within {days} days if it’s not fixed.",
+        "resolvedNoDate": "Resolved"
       }
     }
   },
@@ -4033,7 +4063,8 @@
         "allProjects": "All projects",
         "status": "Status",
         "severity": "Severity",
-        "allSeverities": "Any severity"
+        "allSeverities": "Any severity",
+        "unreadOnly": "New activity"
       },
       "statusFilters": {
         "active": "Active",
@@ -4097,11 +4128,13 @@
         "sendReply": "Send to Client",
         "saveNote": "Save Note",
         "replyHint": "The client sees this as Abluo Support.",
-        "noteHint": "Internal note: only Abluo admins can see it. The client is never told.",
+        "noteHint": "Internal note: only Abluo admins can see it. The client is never told. Notes are text only — no images.",
         "replyPlaceholder": "Write your reply",
         "notePlaceholder": "Write a note for the team",
         "sending": "Sending…",
-        "remaining": "{count} characters left"
+        "remaining": "{count} characters left",
+        "replyShort": "Reply",
+        "noteShort": "Note"
       },
       "errors": {
         "forbidden": "You don’t have access to do that.",
@@ -4109,15 +4142,20 @@
         "rateLimited": "Too many messages in a short time. Try again in a while.",
         "invalid": "That can’t be saved. Check the text and try again.",
         "unavailable": "Support tickets aren’t available yet.",
-        "error": "Something went wrong. Try again."
+        "error": "Something went wrong. Try again.",
+        "uploadTooLarge": "The images are too large to send together. Remove one or use smaller images."
       },
       "toast": {
         "replySent": "Reply sent",
         "noteSaved": "Note saved",
         "statusSaved": "Status updated",
         "severitySaved": "Severity updated",
-        "textRemoved": "Text removed",
-        "screenshotDeleted": "Screenshot deleted"
+        "textRemoved": "Text removed for good. The client sees ‘Removed by Abluo Support’.",
+        "screenshotDeleted": "Screenshot deleted for good.",
+        "theClient": "The client",
+        "resolved": "Marked as resolved. {name} will get an email.",
+        "waiting": "{name} will see that you need their reply. We’ll email them.",
+        "waitingNoEmail": "{name} will see that you need their reply."
       },
       "redact": {
         "action": "Remove text",
@@ -4154,6 +4192,34 @@
         "deleteScreenshot": "Delete",
         "deleteTitle": "Delete this screenshot?",
         "deleteBody": "The file is deleted for good and can’t be recovered."
+      },
+      "picker": {
+        "add": "Add images",
+        "hint": "Up to {max} images (PNG, JPG or WebP), {size} MB each. The client sees them.",
+        "remove": "Remove {name}",
+        "problem": {
+          "type": "{name}: only PNG, JPG or WebP images can be attached.",
+          "size": "{name}: this image is larger than {size} MB.",
+          "count": "{name}: you can attach up to {max} images.",
+          "total": "{name}: the images together are too large to send."
+        }
+      },
+      "card": {
+        "heading": "Support",
+        "recent": "Recent tickets",
+        "none": "No active tickets.",
+        "new": {
+          "label": "New",
+          "sub": "Open and unread"
+        },
+        "waiting": {
+          "label": "Waiting for Client",
+          "sub": "Waiting for their reply"
+        },
+        "high": {
+          "label": "High Severity Open",
+          "sub": "Not resolved yet"
+        }
       }
     }
   },
@@ -4998,6 +5064,11 @@
     },
     "button": "Open the request",
     "linkHint": "Or copy this link into your browser:",
-    "privacy": "For your privacy this email does not include the content of the request. Please do not reply to this email: open the request instead."
+    "privacy": "For your privacy this email does not include the content of the request. Please do not reply to this email: open the request instead.",
+    "waitingForUser": {
+      "subject": "[{ref}] We need your reply",
+      "heading": "We need your reply on {ref}",
+      "body": "Abluo Support needs a little more information from you to continue with your request {ref} on {project}."
+    }
   }
 }

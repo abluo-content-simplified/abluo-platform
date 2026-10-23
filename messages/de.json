@@ -620,6 +620,16 @@
           "title": "{count, plural, one {Eine Einladung ist abgelaufen} other {# Einladungen sind abgelaufen}}",
           "detail": "{count, plural, one {Schick sie noch einmal, damit die Person beitreten kann.} other {Schick sie noch einmal, damit die Personen beitreten können.}}",
           "action": "Personen ansehen"
+        },
+        "supportWaiting": {
+          "title": "Abluo braucht deine Antwort",
+          "detail": "{reference} · {title}",
+          "action": "Jetzt antworten"
+        },
+        "supportUpdate": {
+          "title": "Neuigkeiten zu deiner Anfrage",
+          "detail": "{reference} · {title}",
+          "action": "Anfrage öffnen"
         }
       },
       "glance": {
@@ -2686,6 +2696,26 @@
         "bodyTooLong": "Der Text ist zu lang.",
         "uploadTooLarge": "Die Bilder sind zusammen zu groß zum Senden. Entferne eines oder nimm kleinere Bilder.",
         "error": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+      },
+      "recap": {
+        "status": "Status",
+        "statusLabel": "Status der Anfrage",
+        "details": "Details",
+        "opened": "Eröffnet",
+        "by": "von {name}",
+        "lastUpdate": "Letzte Änderung",
+        "reference": "Referenz",
+        "reportedFrom": "Gemeldet auf",
+        "screenshots": "Screenshots",
+        "goToReply": "Antwort schreiben"
+      },
+      "statusSentence": {
+        "open": "Wir haben sie erhalten",
+        "in_progress": "Wir arbeiten daran",
+        "waiting_for_user": "Wir brauchen deine Antwort",
+        "resolved": "Gelöst am {date}",
+        "resolvedWindow": "Gelöst am {date}. Antworte innerhalb von {days} Tagen, falls es nicht behoben ist.",
+        "resolvedNoDate": "Gelöst"
       }
     }
   },
@@ -4033,7 +4063,8 @@
         "allProjects": "Alle Projekte",
         "status": "Status",
         "severity": "Schweregrad",
-        "allSeverities": "Jeder Schweregrad"
+        "allSeverities": "Jeder Schweregrad",
+        "unreadOnly": "Neue Aktivität"
       },
       "statusFilters": {
         "active": "Aktiv",
@@ -4097,11 +4128,13 @@
         "sendReply": "An Kunden senden",
         "saveNote": "Notiz speichern",
         "replyHint": "Der Kunde sieht dies als Abluo Support.",
-        "noteHint": "Interne Notiz: nur Abluo-Admins sehen sie. Der Kunde erfährt nichts davon.",
+        "noteHint": "Interne Notiz: nur Abluo-Admins sehen sie. Der Kunde erfährt nichts davon. Notizen bestehen nur aus Text, ohne Bilder.",
         "replyPlaceholder": "Schreibe deine Antwort",
         "notePlaceholder": "Schreibe eine Notiz für das Team",
         "sending": "Wird gesendet…",
-        "remaining": "Noch {count} Zeichen"
+        "remaining": "Noch {count} Zeichen",
+        "replyShort": "Antwort",
+        "noteShort": "Notiz"
       },
       "errors": {
         "forbidden": "Dafür hast du keinen Zugriff.",
@@ -4109,15 +4142,20 @@
         "rateLimited": "Zu viele Nachrichten in kurzer Zeit. Versuche es später erneut.",
         "invalid": "Das lässt sich nicht speichern. Prüfe den Text und versuche es erneut.",
         "unavailable": "Support-Tickets sind noch nicht verfügbar.",
-        "error": "Etwas ist schiefgelaufen. Versuche es erneut."
+        "error": "Etwas ist schiefgelaufen. Versuche es erneut.",
+        "uploadTooLarge": "Die Bilder sind zu groß, um sie zusammen zu senden. Entferne eines oder nimm kleinere Bilder."
       },
       "toast": {
         "replySent": "Antwort gesendet",
         "noteSaved": "Notiz gespeichert",
         "statusSaved": "Status aktualisiert",
         "severitySaved": "Schweregrad aktualisiert",
-        "textRemoved": "Text entfernt",
-        "screenshotDeleted": "Screenshot gelöscht"
+        "textRemoved": "Text endgültig entfernt. Der Kunde sieht „Von Abluo Support entfernt“.",
+        "screenshotDeleted": "Screenshot endgültig gelöscht.",
+        "theClient": "Der Kunde",
+        "resolved": "Als gelöst markiert. {name} bekommt eine E-Mail.",
+        "waiting": "{name} sieht, dass deine Antwort gebraucht wird. Wir schicken auch eine E-Mail.",
+        "waitingNoEmail": "{name} sieht, dass deine Antwort gebraucht wird."
       },
       "redact": {
         "action": "Text entfernen",
@@ -4154,6 +4192,34 @@
         "deleteScreenshot": "Löschen",
         "deleteTitle": "Diesen Screenshot löschen?",
         "deleteBody": "Die Datei wird endgültig gelöscht und lässt sich nicht wiederherstellen."
+      },
+      "picker": {
+        "add": "Bilder hinzufügen",
+        "hint": "Bis zu {max} Bilder (PNG, JPG oder WebP), je {size} MB. Der Kunde sieht sie.",
+        "remove": "{name} entfernen",
+        "problem": {
+          "type": "{name}: Es können nur PNG-, JPG- oder WebP-Bilder angehängt werden.",
+          "size": "{name}: Das Bild ist größer als {size} MB.",
+          "count": "{name}: Du kannst bis zu {max} Bilder anhängen.",
+          "total": "{name}: Die Bilder sind zusammen zu groß zum Senden."
+        }
+      },
+      "card": {
+        "heading": "Support",
+        "recent": "Aktuelle Tickets",
+        "none": "Keine aktiven Tickets.",
+        "new": {
+          "label": "Neu",
+          "sub": "Offen und ungelesen"
+        },
+        "waiting": {
+          "label": "Wartet auf Kunden",
+          "sub": "Wartet auf die Antwort"
+        },
+        "high": {
+          "label": "Hoher Schweregrad offen",
+          "sub": "Noch nicht gelöst"
+        }
       }
     }
   },
@@ -4998,6 +5064,11 @@
     },
     "button": "Anfrage öffnen",
     "linkHint": "Oder kopiere diesen Link in deinen Browser:",
-    "privacy": "Zum Schutz deiner Daten enthält diese E-Mail nicht den Inhalt der Anfrage. Bitte antworte nicht auf diese E-Mail, sondern öffne die Anfrage."
+    "privacy": "Zum Schutz deiner Daten enthält diese E-Mail nicht den Inhalt der Anfrage. Bitte antworte nicht auf diese E-Mail, sondern öffne die Anfrage.",
+    "waitingForUser": {
+      "subject": "[{ref}] Wir brauchen deine Antwort",
+      "heading": "Wir brauchen deine Antwort zu {ref}",
+      "body": "Der Abluo Support braucht noch ein paar Informationen von dir, um mit deiner Anfrage {ref} zu {project} weiterzumachen."
+    }
   }
 }

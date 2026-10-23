@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { chooseAdminEmails, chooseEmailLocale, recipientKindFor, renderTicketEmail, ticketUrl, type TicketEventType } from '../email'
 import { isProductionEnvironment } from '@/lib/notifications/environment'
 
-const EVENTS: TicketEventType[] = ['ticket.created', 'ticket.client_replied', 'ticket.support_replied', 'ticket.resolved']
+const EVENTS: TicketEventType[] = ['ticket.created', 'ticket.client_replied', 'ticket.support_replied', 'ticket.resolved', 'ticket.waiting_for_user']
 
 describe('recipients', () => {
   it('routes events per ADR-039 D13', () => {
@@ -10,6 +10,7 @@ describe('recipients', () => {
     expect(recipientKindFor('ticket.client_replied')).toBe('admins')
     expect(recipientKindFor('ticket.support_replied')).toBe('creator')
     expect(recipientKindFor('ticket.resolved')).toBe('creator')
+    expect(recipientKindFor('ticket.waiting_for_user')).toBe('creator')
   })
   const users = [
     { email: 'Tom@tmz.it', app_metadata: { platform_role: 'abluo_admin' } },

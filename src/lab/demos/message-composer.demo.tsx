@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { AttachmentPicker } from '@/components/app/ui/AttachmentPicker'
 import { MessageComposer } from '@/components/app/ui/MessageComposer'
 import { DemoBlock, DemoStack } from '../demo-kit'
 
@@ -10,6 +11,8 @@ export default function MessageComposerDemo() {
   const [a, setA] = useState('')
   const [b, setB] = useState('')
   const [mode, setMode] = useState('reply')
+  const [files, setFiles] = useState<File[]>([])
+  const [d, setD] = useState('')
   const [c, setC] = useState('x'.repeat(95))
   return (
     <DemoStack>
@@ -32,6 +35,25 @@ export default function MessageComposerDemo() {
               { id: 'reply', label: 'Reply', sendLabel: 'Send reply' },
               { id: 'note', label: 'Internal note', sendLabel: 'Save note', tone: 'note', hint: 'Only Abluo Support sees notes.' },
             ]}
+          />
+        </div>
+      </DemoBlock>
+      <DemoBlock title="With attachments" note="attachments: a slot between the box and the send button, here an AttachmentPicker.">
+        <div className="w-full max-w-xl">
+          <MessageComposer
+            value={d}
+            onChange={setD}
+            onSend={() => { setD(''); setFiles([]) }}
+            labels={LABELS}
+            attachments={
+              <AttachmentPicker
+                files={files}
+                onChange={setFiles}
+                max={3}
+                maxBytes={5 * 1024 * 1024}
+                labels={{ add: 'Add images', hint: 'Up to 3 images, 5 MB each', remove: (n) => `Remove ${n}`, problem: (p) => `${p.name}: does not fit` }}
+              />
+            }
           />
         </div>
       </DemoBlock>

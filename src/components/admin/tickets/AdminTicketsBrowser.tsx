@@ -90,7 +90,8 @@ export function AdminTicketsBrowser({
   if (view.project) chips.push({ id: 'project', label: projects.find((p) => p.slug === view.project)?.name ?? view.project })
   if (view.status !== DEFAULT_ADMIN_VIEW.status) chips.push({ id: 'status', label: view.status === 'all' ? t('statusFilters.all') : t(`status.${view.status}`) })
   if (view.severity) chips.push({ id: 'severity', label: t(`severity.${view.severity}`) })
-  const removeChip = (id: string) => go(id === 'project' ? { project: '' } : id === 'status' ? { status: 'active' } : { severity: '' })
+  if (view.unread) chips.push({ id: 'unread', label: t('filters.unreadOnly') })
+  const removeChip = (id: string) => go(id === 'project' ? { project: '' } : id === 'status' ? { status: 'active' } : id === 'unread' ? { unread: false } : { severity: '' })
 
   const columns: DataTableColumn<TicketSummary>[] = [
     {

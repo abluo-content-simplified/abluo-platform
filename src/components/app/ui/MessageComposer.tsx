@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, type KeyboardEvent } from 'react'
+import { useId, type KeyboardEvent, type ReactNode } from 'react'
 import { Button } from './Button'
 import { SegmentedControl } from './SegmentedControl'
 import { TextArea } from './TextInput'
@@ -16,7 +16,9 @@ import { TextArea } from './TextInput'
  *   • `modes`: a segmented switch above the box (e.g. Reply | Internal note).
  *     A mode with `tone: 'note'` turns the box a different colour and its
  *     send button reads `sendLabel`, so a note can never be mistaken for a
- *     reply. Ctrl / Cmd + Enter sends.
+ *     reply. Ctrl / Cmd + Enter sends. Labels never wrap; the switch sizes to
+ *     its content and scrolls sideways if the column is too narrow.
+ *   • `attachments`: a slot between the box and the send button.
  *
  * Controlled — the parent owns the text and the mode. All text via props.
  */
@@ -38,6 +40,7 @@ export function MessageComposer({
   onModeChange,
   modeSwitchLabel,
   rows = 4,
+  attachments,
 }: {
   value: string
   onChange: (value: string) => void
@@ -56,6 +59,8 @@ export function MessageComposer({
   /** Accessible name of the mode switch. */
   modeSwitchLabel?: string
   rows?: number
+  /** Optional slot between the text box and the send button (e.g. an AttachmentPicker). */
+  attachments?: ReactNode
 }) {
   const reasonId = useId()
   const current = modes?.find((m) => m.id === mode) ?? modes?.[0] ?? null
@@ -75,6 +80,7 @@ export function MessageComposer({
   return (
     <div className="flex flex-col items-start gap-3">
       {modes && modes.length > 1 && current ? (
+        <div className="max-w-full [&>div]:w-auto">
         <SegmentedControl
           label={modeSwitchLabel ?? ''}
           value={current.id}
@@ -82,6 +88,7 @@ export function MessageComposer({
           options={modes.map((m) => ({ value: m.id, label: m.label }))}
           appearance="soft"
         />
+        </div>
       ) : null}
       {current?.hint ? <p className="text-sm leading-5 text-muted-foreground">{current.hint}</p> : null}
       <div className={`w-full rounded-2xl ${isNote ? 'bg-accent p-2' : ''}`}>
@@ -98,6 +105,7 @@ export function MessageComposer({
         className={isNote ? 'border-dashed' : ''}
       />
       </div>
+      {attachments ? <div className="w-full">{attachments}</div> : null}
       {nearLimit && remainingLabel && remaining !== null ? (
         <p aria-live="polite" className={`text-sm leading-5 ${remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
           {remainingLabel(remaining)}
