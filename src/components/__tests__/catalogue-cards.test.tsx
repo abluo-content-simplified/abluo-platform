@@ -95,6 +95,8 @@ describe('book cards on the website', () => {
     expect(h).toContain('Buy on Amazon')
     expect(h).toContain('2 editions')
     expect(h).toContain('data-cover-shelf')
+    // The page's disclosure covers the cards: no "Affiliate link" note under each button.
+    expect(h).not.toContain('data-affiliate-marker')
   })
   it('shows the category filter bar when two categories are used', async () => {
     const h = await render([book, other])

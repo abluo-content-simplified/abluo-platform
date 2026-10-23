@@ -107,7 +107,7 @@ export function CatalogueListingSection({ section, surface, designSystem, locale
           itemHref={(item) => catalogueItemHref(item, siteBase, data.segment)}
           rootHeadingLevel={title ? 3 : 2}
         />
-        <AffiliateDisclosure text={disclosure} amazonStatement={collectionHasAmazonAffiliateLink(collection) ? messages.amazonStatement || null : null} className="mt-12 max-w-3xl text-sm leading-relaxed" />
+        <AffiliateDisclosure text={disclosure} amazonStatement={collectionHasAmazonAffiliateLink(collection) ? messages.amazonStatement || null : null} className="mt-20 max-w-3xl text-sm leading-relaxed md:mt-28" />
       </div>
     </SectionContainer>
   )

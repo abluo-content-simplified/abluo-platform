@@ -142,7 +142,7 @@ export function BuyLinks({ links, siteHosts = [], m, shopOrder }: { links: reado
   )
 }
 
-export function BuyButton({ l, siteHosts, text, m, size = 'large' }: { l: CatalogueItemLinkDTO; siteHosts: readonly string[]; text: string; m: CatalogueWebsiteMessages; /** 'small' on listing cards. */ size?: 'large' | 'small' }) {
+export function BuyButton({ l, siteHosts, text, m, size = 'large', marker = true }: { l: CatalogueItemLinkDTO; siteHosts: readonly string[]; text: string; m: CatalogueWebsiteMessages; /** 'small' on listing cards. */ size?: 'large' | 'small'; /** The small "Affiliate link" note under the button. Off on listing cards: the page's disclosure covers them. */ marker?: boolean }) {
   const blank = opensInNewTab({ href: l.url }, siteHosts)
   return (
     <>
@@ -156,7 +156,7 @@ export function BuyButton({ l, siteHosts, text, m, size = 'large' }: { l: Catalo
       >
         {text}
       </a>
-      {l.affiliate && m.affiliateMarker && (
+      {marker && l.affiliate && m.affiliateMarker && (
         <span className="text-xs" style={MUTED} data-affiliate-marker="">{m.affiliateMarker}</span>
       )}
     </>
@@ -437,7 +437,7 @@ export function CardBuyLink({ links, siteHosts = [], m, shopOrder }: { links: re
   const languages = new Set(editionLinks(links).map((l) => l.edition!.language)).size
   return (
     <div className="relative z-10 mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-4" data-card-buy="">
-      <BuyButton l={primary} siteHosts={siteHosts} text={text} m={m} size="small" />
+      <BuyButton l={primary} siteHosts={siteHosts} text={text} m={m} size="small" marker={false} />
       {languages >= 2 && m.editionsCount ? (
         <span className="text-xs" style={MUTED} data-card-editions="">
           {fillMessage(m.editionsCount, { count: languages })}
