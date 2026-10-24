@@ -298,11 +298,14 @@
           "whenPast": "Vergangen",
           "whenAll": "Jederzeit",
           "status": "Status",
-          "statusAll": "Jeder Status"
+          "statusAll": "Jeder Status",
+          "category": "Kategorie",
+          "categoryAll": "Jede Kategorie"
         },
         "count": "{shown} von {total} Veranstaltungen",
         "clear": "Filter zurücksetzen",
         "noMatch": "Keine Veranstaltung passt zu diesen Filtern.",
+        "categoriesLabel": "Kategorien: {names}",
         "showPast": "Vergangene Veranstaltungen anzeigen",
         "view": {
           "label": "Ansicht",
@@ -314,7 +317,8 @@
           "when": "Wann",
           "where": "Wo",
           "status": "Status",
-          "updated": "Aktualisiert"
+          "updated": "Aktualisiert",
+          "category": "Kategorie"
         }
       },
       "new": {
@@ -2286,6 +2290,9 @@
       "readOnly": "Sie können sich diese ansehen, ändern kann sie aber nur, wer Bearbeitungsrechte hat.",
       "clear": "Suche löschen",
       "noMatch": "Kein Tag passt zu Ihrer Suche.",
+      "sort": "Sortieren",
+      "sortAz": "A–Z",
+      "sortUsed": "Meistverwendet",
       "columns": {
         "tag": "Tag",
         "usedBy": "Verwendet von",

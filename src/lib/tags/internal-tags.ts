@@ -70,6 +70,36 @@ export function countTags(rows: readonly TagRow[]): TagCount[] {
   return [...counts.entries()].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
 }
 
+// ── Tags manager: order and search ────────────────────────────────────────────
+
+/** How the Categories & Tags → Media / Galleries list is ordered. A–Z is the default. */
+export const TAG_SORTS = ['az', 'used'] as const
+export type TagSort = (typeof TAG_SORTS)[number]
+
+/** The search box shows only once a list is longer than this. */
+export const TAG_SEARCH_THRESHOLD = 20
+
+/** Whether the tags manager offers a search box for a list of `total` tags. */
+export function showTagSearch(total: number): boolean {
+  return total > TAG_SEARCH_THRESHOLD
+}
+
+/**
+ * The tags in the chosen order. A–Z follows the dashboard language and ignores
+ * case and accents ("été" sits with "ete", "Zebra" after "apple"); Most used is
+ * by number of items, ties A–Z. Never mutates `counts`.
+ */
+export function sortTagCounts(counts: readonly TagCount[], sort: TagSort, locale = 'en'): TagCount[] {
+  let collator: Intl.Collator
+  try {
+    collator = new Intl.Collator(locale, { sensitivity: 'base', numeric: true })
+  } catch {
+    collator = new Intl.Collator('en', { sensitivity: 'base', numeric: true })
+  }
+  const az = (a: TagCount, b: TagCount) => collator.compare(a.tag, b.tag) || (a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0)
+  return [...counts].sort(sort === 'used' ? (a, b) => b.count - a.count || az(a, b) : az)
+}
+
 /** The `n` most used tags (the chips shown under an empty tag box). */
 export function topTags(counts: readonly TagCount[], n = 8, exclude: readonly string[] = []): string[] {
   const out = new Set(exclude)

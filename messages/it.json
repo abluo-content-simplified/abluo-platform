@@ -298,11 +298,14 @@
           "whenPast": "Passati",
           "whenAll": "Sempre",
           "status": "Stato",
-          "statusAll": "Qualsiasi stato"
+          "statusAll": "Qualsiasi stato",
+          "category": "Categoria",
+          "categoryAll": "Qualsiasi categoria"
         },
         "count": "{shown} di {total} eventi",
         "clear": "Azzera filtri",
         "noMatch": "Nessun evento corrisponde a questi filtri.",
+        "categoriesLabel": "Categorie: {names}",
         "showPast": "Mostra eventi passati",
         "view": {
           "label": "Vista",
@@ -314,7 +317,8 @@
           "when": "Quando",
           "where": "Dove",
           "status": "Stato",
-          "updated": "Aggiornato"
+          "updated": "Aggiornato",
+          "category": "Categoria"
         }
       },
       "new": {
@@ -2286,6 +2290,9 @@
       "readOnly": "Puoi guardarli, ma solo chi ha i permessi di modifica può cambiarli.",
       "clear": "Cancella la ricerca",
       "noMatch": "Nessun tag corrisponde alla ricerca.",
+      "sort": "Ordina",
+      "sortAz": "A–Z",
+      "sortUsed": "Più usati",
       "columns": {
         "tag": "Tag",
         "usedBy": "Usato da",

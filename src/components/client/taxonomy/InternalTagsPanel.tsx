@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { BarButton } from '@/components/app/ui/BarButton'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
@@ -10,13 +10,14 @@ import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { FieldError, FieldLabel } from '@/components/app/ui/FieldLabel'
-import { ListToolbar } from '@/components/app/ui/ListToolbar'
+import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
 import { Notice } from '@/components/app/ui/Notice'
 import { RadioList } from '@/components/app/ui/RadioList'
 import { SelectionBar } from '@/components/app/ui/SelectionBar'
 import { TextInput } from '@/components/app/ui/TextInput'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
+import { useViewPreference } from '@/components/app/ui/use-view-preference'
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
 import { ListRow } from '@/components/app/ui/list/ListRow'
 import { CellText } from '@/components/app/ui/list/cells'
@@ -30,11 +31,15 @@ import {
   normaliseInternalTag,
   renameCollision,
   resolveTagSpelling,
+  showTagSearch,
+  sortTagCounts,
+  TAG_SORTS,
   tagMatchKey,
   type InternalTagScope,
   type TagChange,
   type TagCount,
   type TagRow,
+  type TagSort,
 } from '@/lib/tags/internal-tags'
 
 /**
@@ -45,6 +50,10 @@ import {
  * once and is carried out after a few seconds, so "Undo" simply cancels it
  * (useUndo); a failed save puts the list back and says so. Photos and
  * galleries have SEPARATE lists. The server re-checks every call.
+ *
+ * Order: A–Z (default, accent-insensitive, in the dashboard language) or Most
+ * used, remembered per person and list (useViewPreference). The search box
+ * shows only once a list has more than TAG_SEARCH_THRESHOLD (20) tags.
  */
 
 type Dialog = { kind: 'rename'; tag: string } | { kind: 'merge'; tags: string[] } | null
@@ -63,6 +72,9 @@ export function InternalTagsPanel({ projectSlug, scope, canWrite }: { projectSlu
   const t = useTranslations('clientDashboard.internalTags')
   const ts = useTranslations(scope === 'media' ? 'clientDashboard.internalTags.media' : 'clientDashboard.internalTags.galleries')
   const { toast, show, schedule } = useUndo()
+  const locale = useLocale()
+  // A–Z by default; the choice is remembered per person and per list.
+  const [sort, setSort] = useViewPreference<TagSort>(`tags.${scope}.sort`, TAG_SORTS, 'az')
 
   const [rows, setRows] = useState<TagRow[]>([])
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -85,8 +97,20 @@ export function InternalTagsPanel({ projectSlug, scope, canWrite }: { projectSlu
   }, [load])
 
   const counts: TagCount[] = useMemo(() => countTags(rows), [rows])
-  const q = tagMatchKey(searchText(query))
-  const shown = useMemo(() => counts.filter((c) => !q || tagMatchKey(c.tag).includes(q)), [counts, q])
+  // Search only once the list is long enough to need it.
+  const searchable = showTagSearch(counts.length)
+  const q = searchable ? tagMatchKey(searchText(query)) : ''
+  const shown = useMemo(() => sortTagCounts(counts.filter((c) => !q || tagMatchKey(c.tag).includes(q)), sort, locale), [counts, q, sort, locale])
+  const sortFilter: ListToolbarFilter = {
+    key: 'sort',
+    label: t('sort'),
+    value: sort,
+    options: [
+      { value: 'az', label: t('sortAz') },
+      { value: 'used', label: t('sortUsed') },
+    ],
+    onChange: (v) => setSort(v as TagSort),
+  }
   const usedHref = (tag: string) => `/${projectSlug}/${scope === 'media' ? 'media' : 'galleries'}?tag=${encodeURIComponent(tag)}`
 
   // ── Changes ────────────────────────────────────────────────────────────────
@@ -160,7 +184,8 @@ export function InternalTagsPanel({ projectSlug, scope, canWrite }: { projectSlu
         <>
           <ListToolbar
             label={ts('search')}
-            search={{ value: query, onChange: setQuery, placeholder: ts('search'), label: ts('search') }}
+            search={searchable ? { value: query, onChange: setQuery, placeholder: ts('search'), label: ts('search') } : undefined}
+            filters={[sortFilter]}
             summary={ts('count', { shown: shown.length, total: counts.length })}
             clear={{ label: t('clear'), onClear: () => setQuery(''), visible: Boolean(q) }}
             sheet={{ activeCount: 0, resultCount: shown.length, chips: [], onRemoveChip: () => undefined }}

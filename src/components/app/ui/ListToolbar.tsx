@@ -85,7 +85,8 @@ export function ListToolbar({
 }: {
   /** Accessible name of the filters group. */
   label?: string
-  search: { value: string; onChange: (value: string) => void; placeholder: string; label?: string }
+  /** Leave out when the list is too short to need one (e.g. a handful of tags). */
+  search?: { value: string; onChange: (value: string) => void; placeholder: string; label?: string }
   filters?: ListToolbarFilter[]
   date?: ListToolbarDate
   /** "N of M posts" (live region). */
@@ -160,13 +161,15 @@ export function ListToolbar({
       <div role="group" aria-label={label} className="hidden flex-col gap-3 md:flex">
         {/* Line A: search + the filter selects, one line */}
         <div className="flex flex-wrap items-center gap-2">
-          <FilterSearch
-            value={search.value}
-            onChange={search.onChange}
-            label={search.label}
-            placeholder={search.placeholder}
-            sizing="min-w-[16rem] flex-1"
-          />
+          {search ? (
+            <FilterSearch
+              value={search.value}
+              onChange={search.onChange}
+              label={search.label}
+              placeholder={search.placeholder}
+              sizing="min-w-[16rem] flex-1"
+            />
+          ) : null}
           {selects(false)}
         </div>
         {/* Line B: the date sentence (+ the page's controls, right-aligned) */}
@@ -182,7 +185,7 @@ export function ListToolbar({
 
       {/* Phones */}
       <div className="flex flex-col items-stretch gap-2 md:hidden">
-        <FilterSearch value={search.value} onChange={search.onChange} label={search.label} placeholder={search.placeholder} />
+        {search ? <FilterSearch value={search.value} onChange={search.onChange} label={search.label} placeholder={search.placeholder} /> : null}
         <FilterSheet activeCount={sheet.activeCount} resultCount={sheet.resultCount} onClearAll={clear.onClear}>
           {selects(true)}
           {sentence(true)}

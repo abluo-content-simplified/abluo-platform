@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import type { EventListItem } from '@/lib/api/event-drafts'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { EmptyState } from '@/components/app/ui/EmptyState'
@@ -15,7 +15,10 @@ import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTa
 import { ViewSwitch } from '@/components/app/ui/ViewSwitch'
 import { useViewPreference } from '@/components/app/ui/use-view-preference'
 import { searchText as searchable } from '@/lib/client/search-text'
+import type { EventCategoryOption } from '@/lib/modules/events/categories'
 import { EVENT_ICONS, EventStatePill, eventState, type EventState, useEventDates } from './event-bits'
+import { EventCategoryChip } from './EventCategoryChip'
+import { eventCategoryFilterOptions, eventCategoryNames, hasEventCategories, matchesEventCategory } from './event-category-view'
 
 type When = 'upcoming' | 'past' | 'all'
 type SortKey = 'title' | 'when' | 'updated'
@@ -28,8 +31,26 @@ type Status = EventState | 'all'
  * computers a table or cards (the view switch, list first, remembered per
  * person) and on phones one row per event: photo, title, when, where and its
  * state. "New event" when this person can write events.
+ *
+ * Categories (ADR-033 Amendment J): when the project has any, a Category
+ * filter and column (phones: a chip under the title), first name + "+N",
+ * named in the dashboard language.
  */
-export function EventList({ projectSlug, events, canWrite }: { projectSlug: string; events: EventListItem[]; canWrite: boolean }) {
+export function EventList({
+  projectSlug,
+  events,
+  canWrite,
+  categoryOptions = [],
+  defaultLocale = 'en',
+}: {
+  projectSlug: string
+  events: EventListItem[]
+  canWrite: boolean
+  /** The project's event categories (empty → no Category column or filter). */
+  categoryOptions?: EventCategoryOption[]
+  /** The site's default language, the fallback for a category name. */
+  defaultLocale?: string
+}) {
   const t = useTranslations('clientDashboard.events.list')
   const ts = useTranslations('clientDashboard.events.state')
   const dates = useEventDates()
@@ -37,6 +58,15 @@ export function EventList({ projectSlug, events, canWrite }: { projectSlug: stri
   const [query, setQuery] = useState('')
   const [when, setWhen] = useState<When>('upcoming')
   const [status, setStatus] = useState<Status>('all')
+  const [category, setCategory] = useState('')
+  const ui = useLocale()
+  const withCategories = hasEventCategories(categoryOptions)
+  const categoryFilter = withCategories ? category : ''
+  const namesOf = (e: EventListItem) => (withCategories ? eventCategoryNames(e.categories ?? [], categoryOptions, ui, defaultLocale) : [])
+  const categoryChip = (e: EventListItem) => {
+    const names = namesOf(e)
+    return names.length ? <EventCategoryChip names={names} label={t('categoriesLabel', { names: names.join(', ') })} /> : null
+  }
   const [view, setView] = useViewPreference<'list' | 'cards'>('events.view', VIEWS, 'list')
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'when', dir: 'asc' })
 
@@ -47,9 +77,10 @@ export function EventList({ projectSlug, events, canWrite }: { projectSlug: stri
         (e) =>
           (when === 'all' || (when === 'past' ? e.timing === 'past' : e.timing !== 'past')) &&
           (status === 'all' || eventState(e) === status) &&
+          matchesEventCategory(e.categories ?? [], categoryFilter) &&
           (!q || searchable(`${e.title} ${e.location ?? ''}`).includes(q))
       ),
-    [events, when, status, q]
+    [events, when, status, categoryFilter, q]
   )
   const sorted = useMemo(() => {
     const value = (e: EventListItem) => (sort.key === 'title' ? (e.title || '').toLocaleLowerCase() : sort.key === 'updated' ? e.updatedAt : (e.startDate ?? ''))
@@ -57,11 +88,12 @@ export function EventList({ projectSlug, events, canWrite }: { projectSlug: stri
     return sort.dir === 'asc' ? out : out.reverse()
   }, [shown, sort])
   const onSort = (key: string) => setSort((s) => (s.key === key ? { key: s.key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key: key as SortKey, dir: key === 'updated' ? 'desc' : 'asc' }))
-  const isDefault = !query.trim() && when === 'upcoming' && status === 'all'
+  const isDefault = !query.trim() && when === 'upcoming' && status === 'all' && !categoryFilter
   const reset = () => {
     setQuery('')
     setWhen('upcoming')
     setStatus('all')
+    setCategory('')
   }
 
   const whenOptions = (['upcoming', 'past', 'all'] as const).map((v) => ({ value: v, label: t(`filters.when${v[0].toUpperCase()}${v.slice(1)}` as 'filters.whenUpcoming') }))
@@ -70,9 +102,12 @@ export function EventList({ projectSlug, events, canWrite }: { projectSlug: stri
     { key: 'when', label: t('filters.when'), value: when, options: whenOptions, onChange: (v) => setWhen(v as When) },
     { key: 'status', label: t('filters.status'), value: status, options: statusOptions, onChange: (v) => setStatus(v as Status) },
   ]
+  const categoryChoices = withCategories ? [{ value: '', label: t('filters.categoryAll') }, ...eventCategoryFilterOptions(categoryOptions, ui, defaultLocale)] : []
+  if (withCategories) filters.push({ key: 'category', label: t('filters.category'), value: categoryFilter, options: categoryChoices, onChange: setCategory })
   const chips: FilterChip[] = [
     ...(when !== 'upcoming' ? [{ id: 'when', label: whenOptions.find((o) => o.value === when)!.label }] : []),
     ...(status !== 'all' ? [{ id: 'status', label: statusOptions.find((o) => o.value === status)!.label }] : []),
+    ...(categoryFilter ? [{ id: 'category', label: categoryChoices.find((o) => o.value === categoryFilter)?.label ?? categoryFilter }] : []),
   ]
 
   const newButton = canWrite ? (
@@ -116,6 +151,9 @@ export function EventList({ projectSlug, events, canWrite }: { projectSlug: stri
     { key: 'when', header: t('columns.when'), sortable: true, width: 'w-64', render: (e) => <span className="flex min-h-6 items-center text-sm leading-6 text-foreground">{dates(e.startDate, e.endDate) || '—'}</span> },
     { key: 'where', header: t('columns.where'), width: 'w-48', render: (e) => <span className="line-clamp-2 text-sm leading-6 text-muted-foreground">{e.location || '—'}</span> },
     { key: 'status', header: t('columns.status'), width: 'w-44', render: (e) => <EventStatePill state={eventState(e)} /> },
+    ...(withCategories
+      ? [{ key: 'category', header: t('columns.category'), width: 'w-40', render: (e: EventListItem) => categoryChip(e) ?? <span className="text-sm leading-6 text-muted-foreground">—</span> }]
+      : []),
     { key: 'updated', header: t('columns.updated'), sortable: true, width: 'w-32', render: (e) => <CellDate iso={e.updatedAt} /> },
   ]
 
@@ -143,7 +181,7 @@ export function EventList({ projectSlug, events, canWrite }: { projectSlug: stri
               activeCount: chips.length,
               resultCount: shown.length,
               chips,
-              onRemoveChip: (id) => (id === 'when' ? setWhen('upcoming') : setStatus('all')),
+              onRemoveChip: (id) => (id === 'when' ? setWhen('upcoming') : id === 'category' ? setCategory('') : setStatus('all')),
             }}
           />
 
@@ -158,7 +196,7 @@ export function EventList({ projectSlug, events, canWrite }: { projectSlug: stri
               {/* Computers: a table or cards. */}
               <div className="hidden md:block">
                 {view === 'list' ? (
-                  <DataTable label={t('title')} rows={sorted} columns={columns} rowKey={(e) => e.id} rowHref={hrefOf} sort={{ column: sort.key, dir: sort.dir, onSort }} minWidth="min-w-[56rem]" />
+                  <DataTable label={t('title')} rows={sorted} columns={columns} rowKey={(e) => e.id} rowHref={hrefOf} sort={{ column: sort.key, dir: sort.dir, onSort }} minWidth={withCategories ? 'min-w-[64rem]' : 'min-w-[56rem]'} />
                 ) : (
                 <CardGrid label={t('title')}>
                   {sorted.map((e) => (
@@ -176,6 +214,7 @@ export function EventList({ projectSlug, events, canWrite }: { projectSlug: stri
                 {sorted.map((e) => (
                   <ListRow key={e.id} href={`${base}/${e.id}`} leading={<MediaFrame src={e.coverThumb} alt="" size={{ width: '4.5rem', height: '4.5rem' }} className="shrink-0 rounded-lg" />}>
                     <span className="line-clamp-2 text-[0.9375rem] leading-6 font-semibold text-foreground">{e.title || t('untitled')}</span>
+                    {categoryChip(e)}
                     {detail(e) ? <span className="line-clamp-2 text-sm leading-5 text-muted-foreground">{detail(e)}</span> : null}
                     <EventStatePill state={eventState(e)} />
                   </ListRow>

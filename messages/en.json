@@ -298,11 +298,14 @@
           "whenPast": "Past",
           "whenAll": "Any time",
           "status": "Status",
-          "statusAll": "Any status"
+          "statusAll": "Any status",
+          "category": "Category",
+          "categoryAll": "Any category"
         },
         "count": "{shown} of {total} events",
         "clear": "Clear filters",
         "noMatch": "No events match these filters.",
+        "categoriesLabel": "Categories: {names}",
         "showPast": "Show past events",
         "view": {
           "label": "View",
@@ -314,7 +317,8 @@
           "when": "When",
           "where": "Where",
           "status": "Status",
-          "updated": "Updated"
+          "updated": "Updated",
+          "category": "Category"
         }
       },
       "new": {
@@ -2286,6 +2290,9 @@
       "readOnly": "You can look at these, but only someone with edit access can change them.",
       "clear": "Clear search",
       "noMatch": "No tags match your search.",
+      "sort": "Sort",
+      "sortAz": "A–Z",
+      "sortUsed": "Most used",
       "columns": {
         "tag": "Tag",
         "usedBy": "Used by",

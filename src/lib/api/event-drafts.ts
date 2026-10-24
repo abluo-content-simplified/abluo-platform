@@ -260,10 +260,12 @@ export type EventListItem = {
   hasDraft: boolean
   isPublished: boolean
   updatedAt: string
+  /** ADR-033 Amendment J — the stored category keys (names come from the vocabulary). */
+  categories: string[]
 }
 
 const LIST_QUERY = /* groq */ `*[_type == "event" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{
-    _id, _updatedAt, title, location, startDate, endDate, status,
+    _id, _updatedAt, title, location, startDate, endDate, status, categories,
     "coverUrl": heroImage.asset->url, "coverHotspot": heroImage.hotspot
   }`
 
@@ -277,6 +279,7 @@ type ListRow = {
   status?: string | null
   coverUrl?: string | null
   coverHotspot?: { x?: number; y?: number } | null
+  categories?: unknown
 }
 
 /** This project's events (draft shown over published), upcoming first by date, then past newest first. Read permission. */
@@ -284,9 +287,30 @@ export async function listEvents(ctx: TenantAuthorizationContext, projectId: str
   const grant = grantFor(ctx, projectId, EVENT_READ_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   const site = await readSite(client, grant.projectSlug)
-  const now = (deps.now ?? (() => new Date()))()
-  const rows = (await client.fetch<ListRow[] | null>(LIST_QUERY, { projectSlug: grant.projectSlug }, { perspective: 'raw' })) ?? []
+  const rows = await readListRows(client, grant.projectSlug)
+  return listItemsOf(rows, site, (deps.now ?? (() => new Date()))())
+}
 
+/** The Events list screen: the events, plus the categories they can carry (to label and filter them) and the site's default language. */
+export type EventListScreen = { events: EventListItem[]; categoryOptions: EventCategoryOption[]; defaultLocale: string }
+
+/**
+ * As `listEvents`, plus the project's event categories. Three reads in
+ * parallel, one each (events — category KEYS only —, site, vocabulary): no
+ * per-event lookup; the dashboard turns keys into names from the vocabulary.
+ */
+export async function listEventsWithCategories(ctx: TenantAuthorizationContext, projectId: string, deps: EventDeps = {}): Promise<EventListScreen> {
+  const grant = grantFor(ctx, projectId, EVENT_READ_PERMISSION)
+  const client = deps.client ?? sanityWriteClient
+  const [site, rows, categoryOptions] = await Promise.all([readSite(client, grant.projectSlug), readListRows(client, grant.projectSlug), readCategoryOptions(client, grant.projectSlug)])
+  return { events: listItemsOf(rows, site, (deps.now ?? (() => new Date()))()), categoryOptions, defaultLocale: site.defaultLocale }
+}
+
+async function readListRows(client: Client, projectSlug: string): Promise<ListRow[]> {
+  return (await client.fetch<ListRow[] | null>(LIST_QUERY, { projectSlug }, { perspective: 'raw' })) ?? []
+}
+
+function listItemsOf(rows: readonly ListRow[], site: EventSite, now: Date): EventListItem[] {
   const byId = new Map<string, { published?: ListRow; draft?: ListRow }>()
   for (const row of rows) {
     if (typeof row?._id !== 'string') continue
@@ -313,6 +337,7 @@ export async function listEvents(ctx: TenantAuthorizationContext, projectId: str
       hasDraft: Boolean(draft),
       isPublished: Boolean(published),
       updatedAt: row._updatedAt ?? '',
+      categories: categoryKeysOfDoc({ categories: row.categories }),
     })
   }
   return sortEvents(items)

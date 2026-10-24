@@ -14,6 +14,7 @@ import {
   eventTiming,
   getEvent,
   listEvents,
+  listEventsWithCategories,
   openEventForEdit,
   parseEventDate,
   patchEventDraft,
@@ -112,7 +113,7 @@ function fake(opts: { docs?: Docs; commitError?: unknown; slugRows?: unknown[]; 
     if (q.includes('_type == "event"')) {
       return Object.values(docs)
         .filter((d) => d._type === 'event' && d.projectSlug === p.projectSlug)
-        .map((d) => ({ _id: d._id, _updatedAt: '2026-10-01T00:00:00Z', title: d.title, location: d.location, startDate: d.startDate, endDate: d.endDate, status: d.status }))
+        .map((d) => ({ _id: d._id, _updatedAt: '2026-10-01T00:00:00Z', title: d.title, location: d.location, startDate: d.startDate, endDate: d.endDate, status: d.status, categories: d.categories }))
     }
     if (q.includes('*[_id == $ref]')) return null
     throw new Error(`unexpected query ${q}`)
@@ -187,6 +188,26 @@ describe('list and read', () => {
     const f = fake({ docs: withDraft({ title: { en: 'MIR Rimini (new)' } }) })
     const items = await listEvents(ctx(grant()), 'project-a', f.deps)
     expect(items).toEqual([expect.objectContaining({ id: E, title: 'MIR Rimini (new)', hasDraft: true, isPublished: true, timing: 'past' })])
+  })
+
+  it('lists the category keys and the vocabulary in one read each (no per-event lookup)', async () => {
+    const docs = baseDocs()
+    docs[E].categories = ['yoga', { _ref: 'legacy' }, 'retreat', 'yoga']
+    const f = fake({ docs, vocabulary: { terms: [], config: [{ value: 'yoga', label: { en: 'Yoga', it: 'Yoga IT' } }, { value: 'retreat', label: { en: 'Retreats' } }] } })
+    const screen = await listEventsWithCategories(ctx(grant()), 'project-a', f.deps)
+    expect(screen.events).toEqual([expect.objectContaining({ id: E, categories: ['yoga', 'retreat'] })])
+    expect(screen.categoryOptions.map((o) => o.value)).toEqual(['yoga', 'retreat'])
+    expect(screen.defaultLocale).toBe('en')
+    const queries = f.client.fetch.mock.calls.map((c) => c[0] as string)
+    expect(queries.filter((q) => q.includes('"taxonomyTerm"'))).toHaveLength(1)
+    expect(queries.filter((q) => q.includes('_type == "event"') && !q.includes('"taxonomyTerm"'))).toHaveLength(1)
+  })
+
+  it('an event without categories lists an empty list; a project without categories has no options', async () => {
+    const f = fake()
+    const screen = await listEventsWithCategories(ctx(viewer()), 'project-a', f.deps)
+    expect(screen.events[0].categories).toEqual([])
+    expect(screen.categoryOptions).toEqual([])
   })
 
   it('flags Studio-only content and the public slug', async () => {
