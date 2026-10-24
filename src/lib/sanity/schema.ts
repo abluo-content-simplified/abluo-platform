@@ -20,6 +20,7 @@ import {
 import { ICON_OPTIONS } from '@/components/icons/registry'
 import { buildSchema } from '@/lib/modules/schema'
 import { taxonomyTermType } from '@/lib/taxonomy/schema'
+import { internalTagListType } from '@/lib/tags/list-schema'
 import { buildModuleConfigSchemaTypes, buildModuleInstallationsField } from '@/lib/modules/config-schema'
 import { buildIntegrationSchemaTypes, buildIntegrationConfigsField } from '@/lib/integrations/schema'
 import { activeFormReferenceFilter } from '@/lib/sanity/form-reference-filter'
@@ -6019,6 +6020,7 @@ export const schemaTypes = [
   // ADR-033 Amendment J — categories and tags, one record each. Platform-level
   // (not module-owned): every module that declares `taxonomies` shares the type.
   taxonomyTermType,
+  internalTagListType,
   // Module-owned types — derived from MODULE_REGISTRY via buildSchema().
   // heroLiveCaptureSection and heroLensSection are platform-distributed section
   // templates registered above; their availability is not module-gated.

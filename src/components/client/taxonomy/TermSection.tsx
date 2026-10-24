@@ -4,11 +4,8 @@ import { useState, type Dispatch, type SetStateAction } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
-import { Button } from '@/components/app/ui/Button'
 import { DragGrip } from '@/components/app/ui/DragGrip'
 import { dropEdgeClass, dropIndex, usePointerDrag } from '@/components/app/ui/use-pointer-drag'
-import { TextInput } from '@/components/app/ui/TextInput'
-import { FieldError } from '@/components/app/ui/FieldLabel'
 import { ListRow } from '@/components/app/ui/list/ListRow'
 import { CellText, Pill } from '@/components/app/ui/list/cells'
 import { searchText } from '@/lib/client/search-text'
@@ -16,6 +13,7 @@ import { languageName } from '@/components/client/create/StepHeading'
 import { createTaxonomyTermAction, reorderTaxonomyTermsAction } from '@/app/[locale]/(client)/[tenant]/taxonomy/actions'
 import type { TermList } from '@/lib/taxonomy/service'
 import { TermSheet } from './TermSheet'
+import { InlineAdd } from './InlineAdd'
 import {
   applyOrder,
   buildRows,
@@ -133,58 +131,31 @@ export function TermSection({
   const canMove = canWrite && fullList && rows.length > 1
   const openTerm = list.terms.find((x) => x.key === openKey) ?? null
 
-  const addControl = !canWrite ? null : adding ? (
-    <form
-      className="flex flex-wrap items-start gap-2"
-      onSubmit={(e) => {
-        e.preventDefault()
-        void add()
+  const addControl = !canWrite ? null : (
+    <InlineAdd
+      id={`${headingId}-add`}
+      open={adding}
+      onOpen={() => setAdding(true)}
+      onCancel={() => {
+        setAdding(false)
+        setAddText('')
+        setAddError(null)
       }}
-    >
-      <div className="min-w-0 flex-1 basis-56">
-        <label className="sr-only" htmlFor={`${headingId}-add`}>
-          {t(`${kind}.placeholder`)}
-        </label>
-        <TextInput
-          flush
-          controlSize="md"
-          id={`${headingId}-add`}
-          value={addText}
-          maxLength={80}
-          autoFocus
-          placeholder={t(`${kind}.placeholder`)}
-          aria-invalid={addError ? true : undefined}
-          onChange={(e) => {
-            setAddText(e.target.value)
-            setAddError(null)
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') setAdding(false)
-          }}
-        />
-        <FieldError>{addError}</FieldError>
-      </div>
-      <Button variant="primary" type="submit" disabled={addBusy || !addText.trim()}>
-        {addBusy ? t('adding') : t('addSubmit')}
-      </Button>
-      <Button
-        variant="quiet"
-        onClick={() => {
-          setAdding(false)
-          setAddText('')
-          setAddError(null)
-        }}
-      >
-        {t('cancel')}
-      </Button>
-    </form>
-  ) : (
-    <Button variant="primary" onClick={() => setAdding(true)}>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M12 5v14M5 12h14" />
-      </svg>
-      {t(`${kind}.add`)}
-    </Button>
+      addLabel={t(`${kind}.add`)}
+      placeholder={t(`${kind}.placeholder`)}
+      submitLabel={t('addSubmit')}
+      busyLabel={t('adding')}
+      cancelLabel={t('cancel')}
+      value={addText}
+      onValueChange={(v) => {
+        setAddText(v)
+        setAddError(null)
+      }}
+      busy={addBusy}
+      error={addError}
+      maxLength={80}
+      onSubmit={() => void add()}
+    />
   )
 
   const gripFor = (row: RowView, n: number) => (

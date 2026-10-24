@@ -10,7 +10,7 @@ import { resolveProjectAction } from '@/lib/api/project-action'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { span, traced } from '@/lib/perf/timing'
-import { changeInternalTags, listInternalTagRows, TagError, type TagChangeResult, type TagErrorCode } from '@/lib/tags/service'
+import { addInternalTag, changeInternalTags, listInternalTagRows, TagError, type TagAddResult, type TagChangeResult, type TagErrorCode } from '@/lib/tags/service'
 import type { InternalTagScope, TagChange, TagRow } from '@/lib/tags/internal-tags'
 
 export type InternalTagsError = 'unauthenticated' | 'forbidden' | TagErrorCode
@@ -33,8 +33,8 @@ async function run<T>(op: string, projectSlug: unknown, fn: (ctx: TenantAuthoriz
 
 const isScope = (s: unknown): s is InternalTagScope => s === 'media' || s === 'galleries'
 
-/** Photos (or galleries) that carry tags, with their tags. */
-export async function listInternalTagsAction(input: { projectSlug: string; scope: InternalTagScope }): Promise<Result<{ rows: TagRow[]; canWrite: boolean }>> {
+/** Photos (or galleries) that carry tags, with their tags, and the added tags nothing uses yet. */
+export async function listInternalTagsAction(input: { projectSlug: string; scope: InternalTagScope }): Promise<Result<{ rows: TagRow[]; listed: string[]; canWrite: boolean }>> {
   return run('list', input?.projectSlug, (ctx, pid) => {
     if (!isScope(input.scope)) throw new TagError('invalid_value', 'Unknown list.')
     return listInternalTagRows(ctx, pid, input.scope)
@@ -46,5 +46,13 @@ export async function changeInternalTagsAction(input: { projectSlug: string; sco
   return run('change', input?.projectSlug, (ctx, pid) => {
     if (!isScope(input.scope)) throw new TagError('invalid_value', 'Unknown list.')
     return changeInternalTags(ctx, pid, input.scope, input.change)
+  })
+}
+
+/** "Add a tag": a tag nothing uses yet (refused as `duplicate` when it matches one ignoring case/accents). */
+export async function addInternalTagAction(input: { projectSlug: string; scope: InternalTagScope; name: string }): Promise<Result<TagAddResult>> {
+  return run('add', input?.projectSlug, (ctx, pid) => {
+    if (!isScope(input.scope)) throw new TagError('invalid_value', 'Unknown list.')
+    return addInternalTag(ctx, pid, input.scope, input.name)
   })
 }

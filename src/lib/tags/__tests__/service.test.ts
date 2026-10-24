@@ -2,12 +2,12 @@ import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('@/lib/sanity/server-clients', () => ({ sanityWriteClient: {} }))
 
-import { changeInternalTags, listInternalTagRows, TagError } from '../service'
+import { addInternalTag, changeInternalTags, listInternalTagRows, TagError } from '../service'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { grantPermissions, type ProjectGrant, type TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
-type Doc = { _id: string; _type: string; _rev: string; projectSlug: string; tags?: string[]; image?: unknown }
+type Doc = { _id: string; _type: string; _rev: string; projectSlug: string; tags?: string[]; image?: unknown; scope?: string }
 
 const grant = (o: Partial<ProjectGrant> = {}): ProjectGrant => ({
   projectId: 'project-a',
@@ -30,6 +30,11 @@ function fakeClient(docs: Doc[], opts: { failCommit?: number } = {}) {
     writes,
     fetch: vi.fn(async (query: string, params: Record<string, unknown> = {}) => {
       if (query.includes('_type == "project"')) return params.projectSlug === 'amelie' || params.projectSlug === 'other' ? 1 : 0
+      if (query.includes('"internalTagList"')) {
+        expect(query).toContain('projectSlug == $projectSlug')
+        const d = store.get(params.listId as string)
+        return d && d._type === 'internalTagList' && d.projectSlug === params.projectSlug ? { _id: d._id, _rev: d._rev, tags: d.tags } : null
+      }
       const type = query.includes('"mediaAsset"') ? 'mediaAsset' : 'gallery'
       expect(query).toContain('projectSlug == $projectSlug')
       return [...store.values()]
@@ -39,15 +44,25 @@ function fakeClient(docs: Doc[], opts: { failCommit?: number } = {}) {
     }),
     transaction: () => {
       const ops: { id: string; rev: string; set: Record<string, unknown>; unset?: string[] }[] = []
+      const creates: Doc[] = []
       const tx = {
         patch(id: string, p: { ifRevisionID: string; set: Record<string, unknown>; unset?: string[] }) {
           ops.push({ id, rev: p.ifRevisionID, set: p.set, unset: p.unset })
+          return tx
+        },
+        create(d: Doc) {
+          creates.push(d)
           return tx
         },
         async commit() {
           commits++
           if (opts.failCommit) throw Object.assign(new Error('x'), { statusCode: opts.failCommit })
           for (const o of ops) if (store.get(o.id)?._rev !== o.rev) throw Object.assign(new Error('rev'), { statusCode: 409 })
+          for (const d of creates) if (store.has(d._id)) throw Object.assign(new Error('exists'), { statusCode: 409 })
+          for (const d of creates) {
+            store.set(d._id, { ...d, _rev: 'n1' })
+            writes.push({ id: d._id, patch: { create: true } })
+          }
           for (const o of ops) {
             const d = store.get(o.id)!
             Object.assign(d, o.set)
@@ -163,5 +178,100 @@ describe('changeInternalTags — galleries', () => {
     const c = fakeClient([gallery('g1', ['a']), photo('p1', ['a'])])
     await changeInternalTags(ctx(grant()), 'project-a', 'galleries', { op: 'delete', tags: ['a'] }, { client: c as never })
     expect(c.store.get('p1')!.tags).toEqual(['a'])
+  })
+})
+
+// ── Added-but-unused tags (internalTagList) ────────────────────────────────────
+
+const LIST = 'internalTagList.amelie.media'
+const list = (tags: string[], projectSlug = 'amelie', id = LIST): Doc => ({ _id: id, _type: 'internalTagList', _rev: 'l1', projectSlug, scope: 'media', tags })
+
+describe('addInternalTag', () => {
+  it('creates the list on first use; the new tag lists with no item (count 0)', async () => {
+    const c = fakeClient([photo('a', ['sea'])])
+    const r = await addInternalTag(ctx(grant()), 'project-a', 'media', '  Été  ', { client: c as never })
+    // Stored the way every internal tag is (lib/tag-text: lower case).
+    expect(r).toEqual({ tag: 'été', listed: ['été'] })
+    expect(c.store.get(LIST)).toMatchObject({ _type: 'internalTagList', projectSlug: 'amelie', scope: 'media', tags: ['été'] })
+    const l = await listInternalTagRows(ctx(grant()), 'project-a', 'media', { client: c as never })
+    expect(l.listed).toEqual(['été'])
+    expect(l.rows).toEqual([{ id: 'a', tags: ['sea'] }])
+  })
+  it('appends to an existing list with its revision', async () => {
+    const c = fakeClient([list(['sun'])])
+    await addInternalTag(ctx(grant()), 'project-a', 'media', 'moon', { client: c as never })
+    expect(c.store.get(LIST)!.tags).toEqual(['sun', 'moon'])
+  })
+  it('refuses a duplicate of a used or listed tag, ignoring case and accents', async () => {
+    const c = fakeClient([photo('a', ['Été']), list(['Café'])])
+    for (const name of ['ete', 'ÉTÉ', 'cafe', ' CAFÉ ']) {
+      await expect(addInternalTag(ctx(grant()), 'project-a', 'media', name, { client: c as never })).rejects.toMatchObject({ code: 'duplicate' })
+    }
+    expect(c.commits()).toBe(0)
+  })
+  it('refuses an empty name, and people who may not change tags, before any I/O', async () => {
+    const c = fakeClient([])
+    await expect(addInternalTag(ctx(grant()), 'project-a', 'media', '   ', { client: c as never })).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(addInternalTag(ctx(grant({ role: 'viewer' })), 'project-a', 'media', 'x', { client: c as never })).rejects.toBeInstanceOf(TenantAuthorizationError)
+    await expect(addInternalTag(ctx(grant({ role: 'viewer' })), 'project-a', 'galleries', 'x', { client: c as never })).rejects.toBeInstanceOf(TenantAuthorizationError)
+    expect(c.fetch).not.toHaveBeenCalled()
+  })
+  it('two first adds at once: the second create conflicts instead of overwriting', async () => {
+    const c = fakeClient([])
+    const realFetch = c.fetch
+    c.fetch = vi.fn(async (q: string, p?: Record<string, unknown>) => {
+      const r = await realFetch(q, p)
+      // Someone else creates the list between our read and our write.
+      if (q.includes('"internalTagList"') && !c.store.has(LIST)) c.store.set(LIST, list(['theirs']))
+      return q.includes('"internalTagList"') ? null : r
+    })
+    await expect(addInternalTag(ctx(grant()), 'project-a', 'media', 'mine', { client: c as never })).rejects.toMatchObject({ code: 'conflict' })
+    expect(c.store.get(LIST)!.tags).toEqual(['theirs'])
+  })
+  it('stays in the project: another project’s list with this id shape is ignored', async () => {
+    const c = fakeClient([list(['x'], 'other')])
+    const l = await listInternalTagRows(ctx(grant()), 'project-a', 'media', { client: c as never })
+    expect(l.listed).toEqual([])
+  })
+  it('galleries keep their own list', async () => {
+    const c = fakeClient([])
+    await addInternalTag(ctx(grant()), 'project-a', 'galleries', 'trips', { client: c as never })
+    expect(c.store.get('internalTagList.amelie.galleries')!.tags).toEqual(['trips'])
+    expect(c.store.has(LIST)).toBe(false)
+  })
+})
+
+describe('changeInternalTags keeps the added-tags list in step', () => {
+  it('rename of an unused tag only touches the list', async () => {
+    const c = fakeClient([photo('a', ['sea']), list(['sun'])])
+    const r = await changeInternalTags(ctx(grant()), 'project-a', 'media', { op: 'merge', from: ['sun'], to: 'star' }, { client: c as never })
+    expect(r).toEqual({ changed: 0 })
+    expect(c.commits()).toBe(1)
+    expect(c.store.get(LIST)!.tags).toEqual(['star'])
+    expect(c.store.get('a')!.tags).toEqual(['sea'])
+  })
+  it('merge rewrites photos and the list in ONE transaction, each name once', async () => {
+    const c = fakeClient([photo('a', ['sea']), list(['ocean', 'sun'])])
+    await changeInternalTags(ctx(grant()), 'project-a', 'media', { op: 'merge', from: ['sea', 'ocean', 'sun'], to: 'water' }, { client: c as never })
+    expect(c.commits()).toBe(1)
+    expect(c.store.get('a')!.tags).toEqual(['water'])
+    expect(c.store.get(LIST)!.tags).toEqual(['water'])
+  })
+  it('delete removes the tag from the list too', async () => {
+    const c = fakeClient([photo('a', ['x']), list(['x', 'y'])])
+    await changeInternalTags(ctx(grant()), 'project-a', 'media', { op: 'delete', tags: ['x', 'y'] }, { client: c as never })
+    expect(c.store.get(LIST)!.tags).toEqual([])
+    expect(c.store.get('a')!.tags).toBeUndefined()
+  })
+  it('a list changed elsewhere fails the whole change', async () => {
+    const c = fakeClient([photo('a', ['x']), list(['x'])])
+    const realFetch = c.fetch
+    c.fetch = vi.fn(async (q: string, p?: Record<string, unknown>) => {
+      const r = await realFetch(q, p)
+      if (q.includes('"internalTagList"')) c.store.get(LIST)!._rev = 'l2'
+      return r
+    })
+    await expect(changeInternalTags(ctx(grant()), 'project-a', 'media', { op: 'delete', tags: ['x'] }, { client: c as never })).rejects.toMatchObject({ code: 'conflict' })
+    expect(c.store.get('a')!.tags).toEqual(['x'])
   })
 })

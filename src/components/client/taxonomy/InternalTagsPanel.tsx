@@ -22,14 +22,17 @@ import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTa
 import { ListRow } from '@/components/app/ui/list/ListRow'
 import { CellText } from '@/components/app/ui/list/cells'
 import { searchText } from '@/lib/client/search-text'
-import { changeInternalTagsAction, listInternalTagsAction } from '@/app/[locale]/(client)/[tenant]/taxonomy/internal-tags-actions'
+import { addInternalTagAction, changeInternalTagsAction, listInternalTagsAction } from '@/app/[locale]/(client)/[tenant]/taxonomy/internal-tags-actions'
+import { InlineAdd } from './InlineAdd'
 import {
   applyChangeToRows,
   countAffected,
-  countTags,
+  countTagsWithListed,
+  findDuplicateTag,
   INTERNAL_TAG_LIMITS,
   normaliseInternalTag,
   renameCollision,
+  rewriteListed,
   resolveTagSpelling,
   showTagSearch,
   sortTagCounts,
@@ -48,7 +51,10 @@ import {
  * there are no colours, order or translations — just a list with how many
  * items use each tag, and Rename, Merge and Delete. Every change shows at
  * once and is carried out after a few seconds, so "Undo" simply cancels it
- * (useUndo); a failed save puts the list back and says so. Photos and
+ * (useUndo); a failed save puts the list back and says so. "Add a tag" (the
+ * same inline control as "Add category") adds one nothing uses yet: it shows
+ * as "Not used yet"; a name that matches an existing tag ignoring case and
+ * accents is refused with a message. Photos and
  * galleries have SEPARATE lists. The server re-checks every call.
  *
  * Order: A–Z (default, accent-insensitive, in the dashboard language) or Most
@@ -77,6 +83,11 @@ export function InternalTagsPanel({ projectSlug, scope, canWrite }: { projectSlu
   const [sort, setSort] = useViewPreference<TagSort>(`tags.${scope}.sort`, TAG_SORTS, 'az')
 
   const [rows, setRows] = useState<TagRow[]>([])
+  const [listed, setListed] = useState<string[]>([])
+  const [adding, setAdding] = useState(false)
+  const [addText, setAddText] = useState('')
+  const [addBusy, setAddBusy] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -87,16 +98,20 @@ export function InternalTagsPanel({ projectSlug, scope, canWrite }: { projectSlu
     const r = await listInternalTagsAction({ projectSlug, scope })
     if (!r.ok) return setState((s) => (s === 'ready' ? s : 'error'))
     setRows(r.rows)
+    setListed(r.listed ?? [])
     setState('ready')
   }, [projectSlug, scope])
   useEffect(() => {
     setState('loading')
     setSelected(new Set())
     setQuery('')
+    setAdding(false)
+    setAddText('')
+    setAddError(null)
     void load()
   }, [load])
 
-  const counts: TagCount[] = useMemo(() => countTags(rows), [rows])
+  const counts: TagCount[] = useMemo(() => countTagsWithListed(rows, listed), [rows, listed])
   // Search only once the list is long enough to need it.
   const searchable = showTagSearch(counts.length)
   const q = searchable ? tagMatchKey(searchText(query)) : ''
@@ -116,8 +131,10 @@ export function InternalTagsPanel({ projectSlug, scope, canWrite }: { projectSlu
   // ── Changes ────────────────────────────────────────────────────────────────
   function run(change: TagChange, message: (n: number) => string) {
     const before = rows
+    const listedBefore = listed
     const n = countAffected(before, change)
     setRows(applyChangeToRows(before, change))
+    setListed(rewriteListed(listedBefore, change))
     setSelected(new Set())
     schedule({
       id: `tags-${Date.now()}`,
@@ -129,11 +146,60 @@ export function InternalTagsPanel({ projectSlug, scope, canWrite }: { projectSlu
         if (!r.ok) void load()
         return r.ok
       },
-      restore: () => setRows(before),
+      restore: () => {
+        setRows(before)
+        setListed(listedBefore)
+      },
     })
   }
   const rename = (from: string, into: string) => run({ op: 'merge', from: [from], to: into }, (n) => ts('renamed', { count: n, tag: into }))
   const remove = (tags: string[]) => run({ op: 'delete', tags }, (n) => ts('deleted', { count: n, tags: tags.length }))
+
+  // ── Add ────────────────────────────────────────────────────────────────────
+  async function add() {
+    const name = normaliseInternalTag(addText)
+    if (!name) return setAddError(t('errors.nameRequired'))
+    const same = findDuplicateTag(name, counts.map((c) => c.tag))
+    if (same) return setAddError(t('errors.duplicate', { tag: same }))
+    setAddBusy(true)
+    setAddError(null)
+    const r = await addInternalTagAction({ projectSlug, scope, name })
+    setAddBusy(false)
+    if (!r.ok) {
+      if (r.error === 'duplicate') void load()
+      return setAddError(t(r.error === 'duplicate' ? 'errors.duplicateServer' : r.error === 'too_many' ? 'errors.tooMany' : 'failed'))
+    }
+    setListed(r.listed)
+    setAddText('')
+    show({ message: t('added', { tag: r.tag }), tone: 'status' })
+  }
+  const cancelAdd = () => {
+    setAdding(false)
+    setAddText('')
+    setAddError(null)
+  }
+  const addControl = canWrite ? (
+    <InlineAdd
+      id={`internal-tag-add-${scope}`}
+      open={adding}
+      onOpen={() => setAdding(true)}
+      onCancel={cancelAdd}
+      addLabel={t('add')}
+      placeholder={t('addPlaceholder')}
+      submitLabel={t('addSubmit')}
+      busyLabel={t('adding')}
+      cancelLabel={t('cancel')}
+      value={addText}
+      onValueChange={(v) => {
+        setAddText(v)
+        setAddError(null)
+      }}
+      busy={addBusy}
+      error={addError}
+      maxLength={INTERNAL_TAG_LIMITS.length}
+      onSubmit={() => void add()}
+    />
+  ) : null
 
   // ── Rows ───────────────────────────────────────────────────────────────────
   const menuFor = (c: TagCount): CardMenuItem[] =>
@@ -169,7 +235,11 @@ export function InternalTagsPanel({ projectSlug, scope, canWrite }: { projectSlu
 
   return (
     <>
-      <p className="text-[0.9375rem] leading-6 text-muted-foreground">{ts('note')}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="min-w-0 flex-1 basis-64 text-[0.9375rem] leading-6 text-muted-foreground">{ts('note')}</p>
+        {state === 'ready' && counts.length > 0 && !adding ? addControl : null}
+      </div>
+      {state === 'ready' && adding && counts.length > 0 ? addControl : null}
       {!canWrite ? <p className="text-sm text-muted-foreground">{t('readOnly')}</p> : null}
 
       {state === 'loading' ? (
@@ -179,7 +249,7 @@ export function InternalTagsPanel({ projectSlug, scope, canWrite }: { projectSlu
       ) : state === 'error' ? (
         <EmptyState titleAs="p" title={t('loadError')} action={<Button onClick={() => (setState('loading'), void load())}>{t('retry')}</Button>} />
       ) : counts.length === 0 ? (
-        <EmptyState title={ts('emptyTitle')} body={ts('emptyBody')} />
+        <EmptyState title={ts('emptyTitle')} body={ts('emptyBody')} action={addControl ?? undefined} />
       ) : (
         <>
           <ListToolbar

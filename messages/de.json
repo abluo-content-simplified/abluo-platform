@@ -2293,6 +2293,11 @@
       "sort": "Sortieren",
       "sortAz": "A–Z",
       "sortUsed": "Meistverwendet",
+      "add": "Tag hinzufügen",
+      "addPlaceholder": "Name des Tags",
+      "addSubmit": "Hinzufügen",
+      "adding": "Wird hinzugefügt…",
+      "added": "„{tag}“ hinzugefügt",
       "columns": {
         "tag": "Tag",
         "usedBy": "Verwendet von",
@@ -2324,7 +2329,10 @@
       "keepNew": "Ein anderer Name",
       "mergeConfirm": "Zusammenführen",
       "errors": {
-        "nameRequired": "Geben Sie dem Tag einen Namen."
+        "nameRequired": "Geben Sie dem Tag einen Namen.",
+        "duplicate": "„{tag}“ gibt es schon. Tags, die sich nur in Groß-/Kleinschreibung oder Akzenten unterscheiden, gelten als gleich.",
+        "duplicateServer": "Diesen Tag gibt es schon. Die Liste wurde aktualisiert.",
+        "tooMany": "Es gibt zu viele unbenutzte Tags. Löschen Sie zuerst einen, den Sie nicht mehr brauchen."
       },
       "media": {
         "note": "Nur Sie sehen diese Tags. Sie helfen Ihnen, Fotos zu finden, und erscheinen nie auf Ihrer Website.",

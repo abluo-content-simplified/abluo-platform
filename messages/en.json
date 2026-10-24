@@ -2293,6 +2293,11 @@
       "sort": "Sort",
       "sortAz": "A–Z",
       "sortUsed": "Most used",
+      "add": "Add a tag",
+      "addPlaceholder": "Name of the tag",
+      "addSubmit": "Add",
+      "adding": "Adding…",
+      "added": "“{tag}” added",
       "columns": {
         "tag": "Tag",
         "usedBy": "Used by",
@@ -2324,7 +2329,10 @@
       "keepNew": "A different name",
       "mergeConfirm": "Merge",
       "errors": {
-        "nameRequired": "Give the tag a name."
+        "nameRequired": "Give the tag a name.",
+        "duplicate": "“{tag}” already exists. Tags that differ only in capitals or accents count as the same.",
+        "duplicateServer": "That tag already exists. The list has been refreshed.",
+        "tooMany": "There are too many unused tags. Delete one you no longer need first."
       },
       "media": {
         "note": "Only you see these. They help you find photos and never appear on your website.",

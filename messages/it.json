@@ -2293,6 +2293,11 @@
       "sort": "Ordina",
       "sortAz": "A–Z",
       "sortUsed": "Più usati",
+      "add": "Aggiungi un tag",
+      "addPlaceholder": "Nome del tag",
+      "addSubmit": "Aggiungi",
+      "adding": "Aggiunta…",
+      "added": "“{tag}” aggiunto",
       "columns": {
         "tag": "Tag",
         "usedBy": "Usato da",
@@ -2324,7 +2329,10 @@
       "keepNew": "Un altro nome",
       "mergeConfirm": "Unisci",
       "errors": {
-        "nameRequired": "Dai un nome al tag."
+        "nameRequired": "Dai un nome al tag.",
+        "duplicate": "“{tag}” esiste già. I tag che differiscono solo per maiuscole o accenti contano come uguali.",
+        "duplicateServer": "Questo tag esiste già. L’elenco è stato aggiornato.",
+        "tooMany": "Ci sono troppi tag non usati. Eliminane uno che non serve più."
       },
       "media": {
         "note": "Solo tu li vedi. Ti aiutano a trovare le foto e non compaiono mai sul tuo sito.",

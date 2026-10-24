@@ -828,6 +828,6 @@ export default defineConfig({
     // Note: Sanity always re-sorts the menu alphabetically in the UI layer —
     // custom ordering via newDocumentOptions is not possible. Filter only.
     newDocumentOptions: (prev) =>
-      prev.filter((opt) => !['blogCategory', 'newsCategory', 'eventCategory', 'blogCategoryProjectOwned', 'newsCategoryProjectOwned', 'eventCategoryProjectOwned', 'homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned', 'blogPageProjectOwned', 'newsPageProjectOwned', 'cataloguePageProjectOwned', 'callToActionProjectOwned', 'taxonomyTerm', 'taxonomyTermProjectOwned'].includes(opt.templateId)),
+      prev.filter((opt) => !['blogCategory', 'newsCategory', 'eventCategory', 'blogCategoryProjectOwned', 'newsCategoryProjectOwned', 'eventCategoryProjectOwned', 'homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned', 'blogPageProjectOwned', 'newsPageProjectOwned', 'cataloguePageProjectOwned', 'callToActionProjectOwned', 'taxonomyTerm', 'taxonomyTermProjectOwned', 'internalTagList'].includes(opt.templateId)),
   },
 })

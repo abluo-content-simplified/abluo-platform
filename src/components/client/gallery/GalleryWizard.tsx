@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent }
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { listInternalTagsAction } from '@/app/[locale]/(client)/[tenant]/taxonomy/internal-tags-actions'
-import { countTags, type TagCount } from '@/lib/tags/internal-tags'
+import { countTagsWithListed, type TagCount } from '@/lib/tags/internal-tags'
 import {
   createGalleryAction,
   deleteGalleryAction,
@@ -205,7 +205,7 @@ export function GalleryWizard({
     let alive = true
     void listInternalTagsAction({ projectSlug, scope: 'galleries' })
       .then((r) => {
-        if (alive && r.ok) setGalleryTagCounts(countTags(r.rows))
+        if (alive && r.ok) setGalleryTagCounts(countTagsWithListed(r.rows, r.listed))
       })
       .catch(() => undefined)
     return () => {

@@ -3,10 +3,13 @@
  * public). Pure helpers shared by the dashboard and the server; no I/O.
  *
  * Two SEPARATE vocabularies (Tom): `media` (photos in the Media Library) and
- * `galleries`. A vocabulary is not stored anywhere — it is what the items
- * carry, so a tag exists as long as one item has it.
+ * `galleries`. A vocabulary is what the items carry, PLUS the tags added in
+ * Categories & Tags before any item uses them: those live in one small
+ * `internalTagList` document per project and scope (deterministic id), so a
+ * new tag shows "Not used yet". Rename / merge / delete keep that list in step.
  */
 import { internalTag } from '@/lib/tag-text'
+import { SLUG_PART_PATTERN } from '@/lib/taxonomy/ids'
 
 export type InternalTagScope = 'media' | 'galleries'
 
@@ -33,6 +36,34 @@ export function internalTagScopes(grant: InternalTagGrant): { scope: InternalTag
     out.push({ scope: 'galleries', canWrite: grant.permissions.includes(GALLERY_WRITE) })
   }
   return out
+}
+
+// ── The added-but-unused list ─────────────────────────────────────────────────
+
+/** Document type of the per-project, per-scope list of added tags. */
+export const INTERNAL_TAG_LIST_TYPE = 'internalTagList'
+/** Most tags one list may hold (a finding aid, not a dictionary). */
+export const INTERNAL_TAG_LIST_MAX = 500
+export const INTERNAL_TAG_SCOPES = ['media', 'galleries'] as const
+
+/**
+ * The list's deterministic id: `internalTagList.<projectSlug>.<scope>`. One per
+ * project and scope, never shared. Throws on a slug that could forge another id.
+ */
+export function internalTagListId(projectSlug: string, scope: InternalTagScope): string {
+  if (!SLUG_PART_PATTERN.test(projectSlug ?? '')) throw new Error('Invalid project slug for a tag list.')
+  if (!(INTERNAL_TAG_SCOPES as readonly string[]).includes(scope)) throw new Error('Invalid tag list scope.')
+  return `${INTERNAL_TAG_LIST_TYPE}.${projectSlug}.${scope}`
+}
+
+/**
+ * The existing tag that `typed` would duplicate (same letters ignoring case,
+ * accents and spacing: "Ete" duplicates "Été"), or null.
+ */
+export function findDuplicateTag(typed: string, existing: readonly string[]): string | null {
+  const key = tagMatchKey(normaliseInternalTag(typed))
+  if (!key) return null
+  return existing.find((e) => tagMatchKey(e) === key) ?? null
 }
 
 /** Lower case, spaces collapsed, accents folded: "Café  Bar" and "cafe bar" are the same tag. */
@@ -98,6 +129,28 @@ export function sortTagCounts(counts: readonly TagCount[], sort: TagSort, locale
   }
   const az = (a: TagCount, b: TagCount) => collator.compare(a.tag, b.tag) || (a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0)
   return [...counts].sort(sort === 'used' ? (a, b) => b.count - a.count || az(a, b) : az)
+}
+
+/**
+ * The manager's list: the tags items carry (with their counts) plus the added
+ * tags no item uses yet, at 0. A listed name that items already carry (even
+ * spelt with other accents) is not shown twice.
+ */
+export function countTagsWithListed(rows: readonly TagRow[], listed: readonly string[]): TagCount[] {
+  const counts = countTags(rows)
+  const seen = new Set(counts.map((c) => tagMatchKey(c.tag)))
+  for (const tag of listed) {
+    const key = tagMatchKey(tag)
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    counts.push({ tag, count: 0 })
+  }
+  return counts
+}
+
+/** The added-tags list after a rename / merge / delete (each name once). */
+export function rewriteListed(listed: readonly string[], change: TagChange): string[] {
+  return [...new Set(rewriteTags(listed, change))]
 }
 
 /** The `n` most used tags (the chips shown under an empty tag box). */
