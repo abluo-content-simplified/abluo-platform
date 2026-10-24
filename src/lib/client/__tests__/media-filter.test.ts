@@ -6,6 +6,7 @@ import {
   isDefaultMediaFilters,
   mediaName,
   mediaTags,
+  mediaTagCounts,
   nextMediaSort,
   type FilterableMedia,
   type MediaFilters,
@@ -125,5 +126,26 @@ describe('media filter helpers', () => {
     expect(formatBytes(2_400_000, 'it')).toBe('2,4 MB')
     expect(formatBytes(undefined)).toBe('')
     expect(formatBytes(-1)).toBe('')
+  })
+})
+
+describe('mediaTagCounts (tag box suggestions)', () => {
+  const photos = [
+    { assetId: 'a', tags: ['sea', 'été'] },
+    { assetId: 'b', tags: ['sea'] },
+  ]
+  it('counts the photos’ tags, most used first', () => {
+    expect(mediaTagCounts(photos)).toEqual([
+      { tag: 'sea', count: 2 },
+      { tag: 'été', count: 1 },
+    ])
+  })
+  it('adds the tags added in Categories & Tags that no photo uses yet, at 0, without doubles', () => {
+    expect(mediaTagCounts(photos, ['moon', 'ete', 'sea'])).toEqual([
+      { tag: 'sea', count: 2 },
+      { tag: 'été', count: 1 },
+      { tag: 'moon', count: 0 },
+    ])
+    expect(mediaTagCounts([], ['moon'])).toEqual([{ tag: 'moon', count: 0 }])
   })
 })

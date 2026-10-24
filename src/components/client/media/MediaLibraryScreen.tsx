@@ -19,7 +19,7 @@ import { useUndo } from '@/components/app/ui/use-undo'
 import { useViewPreference } from '@/components/app/ui/use-view-preference'
 import { deleteFromLibrary, listLibrary, type MediaLibraryScope } from '@/components/client/media/media-api'
 import type { MediaLibraryItem } from '@/lib/api/media-library'
-import { countTags } from '@/lib/tags/internal-tags'
+import { listInternalTagsAction } from '@/app/[locale]/(client)/[tenant]/taxonomy/internal-tags-actions'
 import { fillMediaLink, type MediaLinks } from '@/lib/client/media-links'
 import {
   activeMediaFilterCount,
@@ -29,6 +29,7 @@ import {
   localeFor,
   mediaName,
   mediaTags,
+  mediaTagCounts,
   nextMediaSort,
   type MediaDescriptionFilter,
   type LocaleOf,
@@ -170,7 +171,23 @@ export function MediaLibraryScreen({
   const reset = () => setFilters((f) => ({ ...DEFAULT_MEDIA_FILTERS, sort: f.sort }))
   const shown = useMemo(() => applyMediaFilters(items, filters, localeOf), [items, filters, localeOf])
   const tags = useMemo(() => mediaTags(items), [items])
-  const tagCounts = useMemo(() => countTags(items.map((i) => ({ id: i.assetId, tags: i.tags }))), [items])
+  // Tags added in Categories & Tags that no photo carries yet: offered in the tag box too (client, one project).
+  const [listedTags, setListedTags] = useState<string[]>([])
+  useEffect(() => {
+    setListedTags([])
+    if (scope !== 'media' || !projectSlug) return
+    let alive = true
+    void listInternalTagsAction({ projectSlug, scope: 'media' })
+      .then((r) => {
+        if (alive && r.ok) setListedTags(r.listed ?? [])
+      })
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [projectSlug, scope, reloadKey])
+  const tagCounts = useMemo(() => mediaTagCounts(items, listedTags), [items, listedTags])
+  const tagNames = useMemo(() => tagCounts.map((c) => c.tag), [tagCounts])
   const isDefault = isDefaultMediaFilters(filters)
 
   const position = useMemo(() => new Map(items.map((i, n) => [i.assetId, n + 1])), [items])
@@ -491,7 +508,7 @@ export function MediaLibraryScreen({
           mode={batch.mode}
           assetIds={batchItems.map((i) => i.assetId)}
           thumbs={batchItems.map((i) => i.thumbUrl)}
-          tagSuggestions={tags}
+          tagSuggestions={tagNames}
           tagCounts={tagCounts}
           site={siteOf(batchItems[0])}
           described={batchItems.filter((i) => Object.values(i.alt ?? {}).some((v) => typeof v === 'string' && v.trim())).length}
@@ -520,8 +537,8 @@ export function MediaLibraryScreen({
           links={links}
           site={siteOf(open)}
           item={open}
-          tagSuggestions={several ? mediaTags(items.filter((i) => slugOf(i) === slugOf(open))) : tags}
-          tagCounts={several ? countTags(items.filter((i) => slugOf(i) === slugOf(open)).map((i) => ({ id: i.assetId, tags: i.tags }))) : tagCounts}
+          tagSuggestions={several ? mediaTags(items.filter((i) => slugOf(i) === slugOf(open))) : tagNames}
+          tagCounts={several ? mediaTagCounts(items.filter((i) => slugOf(i) === slugOf(open))) : tagCounts}
           onChange={onPhotoChange}
           onSaving={onSaving}
           onClose={closeSheet}

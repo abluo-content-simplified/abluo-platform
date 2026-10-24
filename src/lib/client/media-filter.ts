@@ -11,6 +11,7 @@
  */
 import { presetRange, todayISO, type RangePreset } from './date-range'
 import { localDay, normalizeSearch } from './posts-filter'
+import { countTagsWithListed, type TagCount } from '@/lib/tags/internal-tags'
 
 /** The facts of a photo the filters read (a subset of MediaLibraryItem). */
 export type FilterableMedia = {
@@ -141,6 +142,15 @@ export function mediaTags(items: Pick<FilterableMedia, 'tags'>[]): string[] {
   const counts = new Map<string, number>()
   for (const m of items) for (const t of m.tags) counts.set(t, (counts.get(t) ?? 0) + 1)
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t)
+}
+
+/**
+ * Tag suggestions for the photo panel and "Add tags": the photos' tags with
+ * their counts, plus the tags added in Categories & Tags that no photo uses
+ * yet (`listed`, count 0), so a new tag can be picked at once.
+ */
+export function mediaTagCounts(items: Pick<FilterableMedia, 'assetId' | 'tags'>[], listed: readonly string[] = []): TagCount[] {
+  return countTagsWithListed(items.map((i) => ({ id: i.assetId, tags: i.tags })), listed)
 }
 
 export function isDefaultMediaFilters(f: MediaFilters): boolean {
