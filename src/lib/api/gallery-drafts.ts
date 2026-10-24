@@ -33,6 +33,7 @@ import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
 import { lifecycleAction, snapshotOf } from '@/lib/lifecycle/transition'
 import { coverThumbUrl } from '@/lib/api/post-drafts'
 import { slugFromTitle, uniqueSlug } from '@/lib/api/post-publish'
+import { ensureInternalTagList } from '@/lib/tags/list-sync'
 
 export const GALLERY_READ_PERMISSION = 'gallery.gallery.read'
 export const GALLERY_WRITE_PERMISSION = 'gallery.gallery.write'
@@ -723,6 +724,8 @@ export async function patchGalleryDraft(
     if (unset.length) p = p.unset(unset)
     return p.commit(DRAFT_SAVE)
   }, guard)) as { _rev?: string } | undefined
+  // Tags typed on a gallery stay in Categories & Tags (best effort; never fails the save).
+  if (Array.isArray(set.tags) && set.tags.length) await ensureInternalTagList(client as never, grant.projectSlug, 'galleries', set.tags)
   return { rev: result?._rev ?? '', ...(keys && { keys }) }
 }
 
@@ -897,5 +900,7 @@ export async function batchGalleries(
       } else results.push({ id, ok: false, code: 'failed' })
     }
   }
+  // The added tags stay in Categories & Tags: once, after the per-gallery writes (best effort).
+  if (add.length && results.some((r) => r.ok)) await ensureInternalTagList(client as never, grant.projectSlug, 'galleries', add)
   return { results }
 }

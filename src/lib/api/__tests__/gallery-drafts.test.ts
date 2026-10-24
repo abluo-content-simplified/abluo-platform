@@ -17,10 +17,12 @@ import {
   openGalleryForEdit,
   patchGalleryDraft,
   publishGalleryDraft,
+  batchGalleries,
 } from '../gallery-drafts'
 import { TenantAuthorizationError } from '../tenant-scoped-sanity'
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
+import { withListStore } from '@/lib/tags/__tests__/fake-list-store'
 
 const G = 'gal-1'
 const grant = (o: Partial<ProjectGrant> = {}): ProjectGrant => ({
@@ -569,5 +571,32 @@ describe('launch hardening', () => {
       patchGalleryDraft(ctx(editor()), 'project-a', { id: G, rev: 'd1', set: { 'title.it': 'x' } }, f.deps)
     ).rejects.toMatchObject({ code: 'not_found' })
     expect(f.writes).toEqual([])
+  })
+})
+
+// ── Gallery tags stay in Categories & Tags (internalTagList, galleries) ───────
+
+describe('gallery tags join the galleries tag list', () => {
+  const LIST = 'internalTagList.hoffmann.galleries'
+  it('tags typed on a gallery land in the galleries list (not the photos list)', async () => {
+    const f = fake()
+    const store = withListStore(f.client)
+    await patchGalleryDraft(ctx(editor()), 'project-a', { id: G, rev: 'd1', set: { tags: ['Trips', 'Été'] } }, f.deps)
+    expect(store.lists.get(LIST)!.tags).toEqual(['trips', 'été'])
+    expect(store.lists.has('internalTagList.hoffmann.media')).toBe(false)
+  })
+  it('clearing the gallery tags leaves the list alone', async () => {
+    const f = fake()
+    const store = withListStore(f.client, { [LIST]: { projectSlug: 'hoffmann', scope: 'galleries', tags: ['trips'] } })
+    await patchGalleryDraft(ctx(editor()), 'project-a', { id: G, rev: 'd1', set: { tags: [] } }, f.deps)
+    expect(store.listCommits).toEqual([])
+    expect(store.lists.get(LIST)!.tags).toEqual(['trips'])
+  })
+  it('batch "Add tags" on galleries adds the names to the list once', async () => {
+    const f = fake()
+    const store = withListStore(f.client)
+    const r = await batchGalleries(ctx(editor()), 'project-a', { ids: [G], op: 'tags', addTags: ['Trips'] }, f.deps)
+    expect(r.results).toEqual([{ id: G, ok: true }])
+    expect(store.lists.get(LIST)!.tags).toEqual(['trips'])
   })
 })

@@ -51,6 +51,7 @@ import { tracedDetached } from '@/lib/perf/timing'
 import type { OptimizeImageResult } from '@/lib/media/optimize-image'
 import { BLOG_POST_WRITE_PERMISSION, isPostId } from '@/lib/api/post-drafts'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
+import { ensureInternalTagList } from '@/lib/tags/list-sync'
 
 export const POST_MEDIA_LIMITS = {
   /** Upload size limit (before optimisation). */
@@ -218,6 +219,17 @@ function toLocalized(value: unknown): Record<string, string> {
   return out
 }
 
+/**
+ * The tag an upload files the photo under ("gallery", "blog") stays in
+ * Categories & Tags like any other (lib/tags/list-sync). Best effort, after
+ * the upload; a client without fetch/transaction (tests) skips it.
+ */
+async function keepUploadTag(client: unknown, projectSlug: string, tag: string): Promise<void> {
+  const c = client as { fetch?: unknown; transaction?: unknown }
+  if (!tag || typeof c?.fetch !== 'function' || typeof c?.transaction !== 'function') return
+  await ensureInternalTagList(c as never, projectSlug, 'media', [tag])
+}
+
 /** Optimises and files one image as this project's Media Library asset (blog: tag `blog`, gate blog.post.write). */
 export async function uploadPostImage(
   ctx: TenantAuthorizationContext,
@@ -323,7 +335,7 @@ export async function uploadProjectImage(
     const work = () =>
       tracedDetached('media.process', () =>
         completeMediaAsset(client, reserved.mediaAssetId, binary, { optimize: deps.optimize, decide: deps.decide, log: deps.log, now: deps.now })
-      ).then(() => undefined)
+      ).then(() => keepUploadTag(client, grant.projectSlug, tag))
     ;(deps.defer ?? after)(work)
     return {
       assetId: reserved.mediaAssetId,
@@ -345,6 +357,7 @@ export async function uploadProjectImage(
   } catch {
     throw new PostMediaError('failed', 'Could not upload.')
   }
+  await keepUploadTag(client, grant.projectSlug, tag)
   return {
     assetId: created.mediaAssetId,
     status: 'ready',

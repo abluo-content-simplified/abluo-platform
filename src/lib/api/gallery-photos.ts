@@ -23,6 +23,7 @@ import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
 import { GALLERY_WRITE_PERMISSION, GalleryError, photoFromAsset, type FocalPoint, type GalleryPhoto } from '@/lib/api/gallery-drafts'
+import { appendListOps, ensureInternalTagList, planTagListSync } from '@/lib/tags/list-sync'
 
 export const PHOTO_LIMITS = { name: 120, batch: 100, alt: 200, title: 120, caption: 300, tags: 10, tagLength: 40, hotspotSize: 0.3 } as const
 
@@ -153,6 +154,8 @@ export async function updateGalleryPhoto(
     if ((error as { statusCode?: number })?.statusCode === 409) throw new GalleryError('conflict', 'This photo was changed elsewhere.')
     throw new GalleryError('failed', 'Could not save.')
   }
+  // The tags typed here stay in Categories & Tags (best effort; never fails the save).
+  if (tags?.length) await ensureInternalTagList(client as never, grant.projectSlug, 'media', tags)
 
   const url = await client.fetch<string | null>(`*[_type == "mediaAsset" && _id == $id && projectSlug == $projectSlug][0].image.asset->url`, {
     id: input.assetId,
@@ -269,8 +272,11 @@ export async function batchUpdatePhotos(
 
   await assertSingleSanityProject((q, p) => client.fetch(q, p), grant.projectSlug)
   if (!client.transaction) throw new GalleryError('failed', 'Could not save.')
+  // The added tags join Categories & Tags in the SAME transaction (unguarded appends: cannot fail the save).
+  const listAdd = add.length && patches.some((p) => 'tags' in p.set) ? await planTagListSync((q, p, o) => client.fetch(q, p, o), grant.projectSlug, 'media', add) : []
   let tx = client.transaction()
   for (const p of patches) tx = tx.patch(p.id, { ifRevisionID: p.rev, set: p.set })
+  tx = appendListOps(tx, grant.projectSlug, 'media', listAdd)
   try {
     await tx.commit()
   } catch (error) {

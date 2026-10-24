@@ -4,10 +4,11 @@ import { INTERNAL_TAG_LIMITS, INTERNAL_TAG_LIST_MAX, INTERNAL_TAG_LIST_TYPE, INT
 
 // ── internalTagList — the added-but-unused internal tags of one project ───────
 // One document per project and scope (media | galleries), id
-// `internalTagList.<projectSlug>.<scope>` (internalTagListId). Written ONLY by
-// the dashboard's tag service (Categories & Tags → Add a tag; rename / merge /
-// delete keep it in step) — read-only in the Studio, absent from its
-// navigation and its "create" menu. Internal (ADR-022): never public, so no
+// `internalTagList.<projectSlug>.<scope>` (internalTagListId). Written by the
+// dashboard only: Categories & Tags (Add a tag; rename / merge / delete keep
+// it in step) and every photo / gallery tag write, which appends the names it
+// sets (lib/tags/list-sync) — so a tag stays until it is deleted there.
+// Read-only in the Studio, absent from its navigation and its "create" menu. Internal (ADR-022): never public, so no
 // translations, order or colour; just names.
 
 export const internalTagListType = defineType({

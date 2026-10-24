@@ -6,6 +6,8 @@ import { batchUpdatePhotos, cleanTags, updateGalleryPhoto, PHOTO_LIMITS } from '
 import { TenantAuthorizationError } from '../tenant-scoped-sanity'
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
+import { withListStore } from '@/lib/tags/__tests__/fake-list-store'
+import { INTERNAL_TAG_LIST_MAX } from '@/lib/tags/internal-tags'
 
 const grant = (o: Partial<ProjectGrant> = {}): ProjectGrant => ({
   projectId: 'project-a',
@@ -245,5 +247,64 @@ describe('batchUpdatePhotos', () => {
   it('a revision clash is a conflict', async () => {
     const f = fakeBatch([row('a')], { statusCode: 409 })
     await expect(run(f, { assetIds: ['a'], baseName: 'x' })).rejects.toMatchObject({ code: 'conflict' })
+  })
+})
+
+// ── Tags typed on photos stay in Categories & Tags (internalTagList) ─────────
+
+describe('photo tags join the media tag list', () => {
+  const LIST = 'internalTagList.hoffmann.media'
+  it('a tag typed onto a photo lands in the list (new names only, any accent or case)', async () => {
+    const f = fake()
+    const store = withListStore(f.client, { [LIST]: { projectSlug: 'hoffmann', scope: 'media', tags: ['estate'] } })
+    await update(f, { tags: ['Estate', 'Été', 'studio'] })
+    expect(store.lists.get(LIST)!.tags).toEqual(['estate', 'été', 'studio'])
+    await update(f, { tags: ['ete', 'STUDIO'] })
+    expect(store.lists.get(LIST)!.tags).toEqual(['estate', 'été', 'studio'])
+  })
+  it('removing a tag from the photo leaves the list alone', async () => {
+    const f = fake()
+    const store = withListStore(f.client, { [LIST]: { projectSlug: 'hoffmann', scope: 'media', tags: ['studio'] } })
+    await update(f, { tags: [] })
+    expect(store.listCommits).toEqual([])
+    expect(store.lists.get(LIST)!.tags).toEqual(['studio'])
+  })
+  it('a full list does not fail the photo save', async () => {
+    const f = fake()
+    const full = Array.from({ length: INTERNAL_TAG_LIST_MAX }, (_, i) => `t${i}`)
+    const store = withListStore(f.client, { [LIST]: { projectSlug: 'hoffmann', scope: 'media', tags: full } })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const r = await update(f, { tags: ['brand new'] })
+    expect(r.rev).toBe('a2')
+    expect(store.lists.get(LIST)!.tags).toHaveLength(INTERNAL_TAG_LIST_MAX)
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
+})
+
+describe('batch "Add tags" joins the media tag list in the same transaction', () => {
+  type Row = { _id: string; _rev: string; _type: string; projectSlug: string; tags?: string[] }
+  function fakeBatch(rows: Row[]) {
+    const tx: Array<[string, unknown]> = []
+    const transaction = vi.fn(() => {
+      const t = { patch: (id: string, op: unknown) => (tx.push([id, op]), t), commit: vi.fn(async () => ({})) }
+      return t
+    })
+    const fetch = vi.fn(async (q: string, p?: { ids?: string[] }) => {
+      if (q.includes('count(*[_type == "project"')) return 1
+      if (q.startsWith('*[_id in $ids]')) return rows.filter((r) => p?.ids?.includes(r._id))
+      if (q.includes('{ _id, _rev, name }')) return (p?.ids ?? []).map((id) => ({ _id: id, _rev: `${id}-new` }))
+      throw new Error(q)
+    })
+    const client = { getDocument: vi.fn(), fetch, patch: vi.fn(), transaction }
+    return { client, tx, deps: { client: client as never } }
+  }
+  it('adds the new tags to the list once, with the photo patches', async () => {
+    const f = fakeBatch([{ _id: 'a', _rev: 'a-r', _type: 'mediaAsset', projectSlug: 'hoffmann' }, { _id: 'b', _rev: 'b-r', _type: 'mediaAsset', projectSlug: 'hoffmann' }])
+    const store = withListStore(f.client)
+    await batchUpdatePhotos(ctx(grant()), 'project-a', { assetIds: ['a', 'b'], addTags: ['Party', 'Été'] }, f.deps)
+    expect(f.tx.map(([id]) => id)).toEqual(['a', 'b'])
+    expect(store.listCommits).toHaveLength(1)
+    expect(store.lists.get('internalTagList.hoffmann.media')).toEqual({ projectSlug: 'hoffmann', scope: 'media', tags: ['party', 'été'] })
   })
 })
