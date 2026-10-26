@@ -116,6 +116,7 @@ export function CatalogueBrowser({
   initialSort?: string | null
 }) {
   const t = useTranslations('catalogue.dashboard.list')
+  const tb = useTranslations('catalogue.dashboard.item.fields.book')
   const tl = useTranslations('app.lifecycle')
   const ui = useLocale()
   const router = useRouter()
@@ -179,7 +180,8 @@ export function CatalogueBrowser({
           shape: i.itemProfile ? catalogueImageShape({ itemProfile: i.itemProfile }) : site.imageShape,
           details: itemSecondaryLine({ itemProfile: i.itemProfile, byline: textIn(i.byline, ui, d), author: i.bookAuthor, year: i.bookYear }),
           chips,
-          typeLabel: isItemProfile(i.itemProfile) ? t(`types.${i.itemProfile}`) : '',
+          // "Book · Want to read": the type, and a book's reading status when set.
+          typeLabel: isItemProfile(i.itemProfile) ? [t(`types.${i.itemProfile}`), i.itemProfile === 'book' && i.bookStatus ? tb(`readingStatusOptions.${i.bookStatus}`) : ''].filter(Boolean).join(' · ') : '',
           gaps: itemGaps({ ...i, categoryCount: i.categories.length }).filter((g) => g !== 'noPrice'),
           search: searchable(`${Object.values(i.names).join(' ')} ${Object.values(i.byline).join(' ')} ${i.bookAuthor ?? ''} ${chips.join(' ')}`),
           categories: i.categories,

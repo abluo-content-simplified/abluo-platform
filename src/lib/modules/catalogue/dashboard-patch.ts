@@ -14,6 +14,7 @@
 // No I/O. References (photos, items, option lists) are returned for the caller
 // to check against the project; the slug namespace check is the caller's too.
 
+import { isReadingStatus } from './reading-status'
 import { ALLERGEN_DECLARATION_STATUSES, isAllergenKey, orderedAllergens, type AllergenDeclarationStatus } from './allergens'
 import { offerIssues, type Offer } from './offers'
 import { ruleIssues, WEEKDAYS } from './availability'
@@ -535,7 +536,7 @@ export function cleanCatalogueSet(kind: CatalogueKind, input: Record<string, unk
 
 // ── Book details (Amendment I-3) ──────────────────────────────────────────────
 
-const BOOK_INPUT_KEYS = new Set(['author', 'publisher', 'year', 'isbn'])
+const BOOK_INPUT_KEYS = new Set(['author', 'publisher', 'year', 'isbn', 'readingStatus'])
 
 /**
  * All three values are optional and blank is always fine. The author is one
@@ -567,6 +568,11 @@ export function cleanBookDetails(value: unknown): Record<string, unknown> | null
   }
   const isbn = normalizeIsbn(v.isbn).slice(0, CATALOGUE_LIMITS.isbn)
   if (isbn) out.isbn = isbn
+  // Reading status: one of the known values, or nothing.
+  if (v.readingStatus != null && v.readingStatus !== '') {
+    if (!isReadingStatus(v.readingStatus)) bad('Unknown reading status.', 'bookDetails.readingStatus')
+    out.readingStatus = v.readingStatus
+  }
   return Object.keys(out).length ? out : null
 }
 

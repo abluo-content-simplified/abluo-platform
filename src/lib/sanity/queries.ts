@@ -2392,7 +2392,7 @@ const CATALOGUE_ITEM_FIELDS = /* groq */ `
   // ADR-033 Amendment F — a short line under the name; links with a label per locale.
   "byline": ${loc('byline')},
   // ADR-033 Amendment I — plain, non-localized; read only for a profile that carries it.
-  bookDetails { author, publisher, year, isbn },
+  bookDetails { author, publisher, year, isbn, readingStatus },
   "description": ${loc('description')},
   "slugMap": slug,
   categories,

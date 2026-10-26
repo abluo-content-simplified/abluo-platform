@@ -105,6 +105,18 @@ describe('book cards on the website', () => {
     expect(h).toContain('Science fiction')
     expect(h).toContain('data-cats="literature"')
   })
+  it('groups books into reading-status shelves with headings when there is more than one shelf', async () => {
+    const read = { ...book, bookDetails: { author: 'Douglas Adams', year: 1979, readingStatus: 'read' } }
+    const want = { ...other, publicId: 'w', bookDetails: { author: 'Someone', readingStatus: 'wantToRead' } }
+    const h = await render([want, read])
+    expect(h).toContain('data-shelf="read"')
+    expect(h).toContain('data-shelf="wantToRead"')
+    expect(h.indexOf('data-shelf="read"')).toBeLessThan(h.indexOf('data-shelf="wantToRead"'))
+    expect(h).toContain('>Want to read<')
+    // One shelf only (all read): no shelf heading, one grid as before.
+    const one = await render([read])
+    expect(one).not.toContain('data-shelf')
+  })
   it('a menu (food) keeps rows and no grid', async () => {
     const h = await render([dish])
     expect(h).not.toContain('data-card-grid')

@@ -4839,7 +4839,14 @@
             "yearInvalid": "Scrivi un anno intero tra 1000 e {max}. Non viene salvato finché non lo è.",
             "isbn": "ISBN",
             "isbnAdvice": "Questo non sembra un ISBN valido. Puoi comunque tenerlo.",
-            "publisher": "Editore"
+            "publisher": "Editore",
+            "readingStatus": "Stato di lettura",
+            "readingStatusHelp": "Raggruppa i libri sul sito. Tocca di nuovo per togliere.",
+            "readingStatusOptions": {
+              "read": "Letto",
+              "reading": "In lettura",
+              "wantToRead": "Da leggere"
+            }
           },
           "buyLink": {
             "url": "Link di acquisto",
@@ -5290,7 +5297,10 @@
       "buyOn": "Compra su {shop}",
       "editionsCount": "{count} edizioni",
       "filterAll": "Tutti",
-      "filterLabel": "Filtra per categoria"
+      "filterLabel": "Filtra per categoria",
+      "shelfReading": "In lettura",
+      "shelfRead": "Letti",
+      "shelfWantToRead": "Da leggere"
     }
   },
   "supportTicketEmail": {

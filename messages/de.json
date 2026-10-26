@@ -4839,7 +4839,14 @@
             "yearInvalid": "Gib ein ganzes Jahr zwischen 1000 und {max} an. Es wird erst dann gespeichert.",
             "isbn": "ISBN",
             "isbnAdvice": "Das sieht nicht nach einer gültigen ISBN aus. Du kannst sie trotzdem behalten.",
-            "publisher": "Verlag"
+            "publisher": "Verlag",
+            "readingStatus": "Lesestatus",
+            "readingStatusHelp": "Gruppiert deine Bücher auf der Website. Nochmals tippen zum Entfernen.",
+            "readingStatusOptions": {
+              "read": "Gelesen",
+              "reading": "Lese ich gerade",
+              "wantToRead": "Möchte ich lesen"
+            }
           },
           "buyLink": {
             "url": "Kauf-Link",
@@ -5290,7 +5297,10 @@
       "buyOn": "Bei {shop} kaufen",
       "editionsCount": "{count} Ausgaben",
       "filterAll": "Alle",
-      "filterLabel": "Nach Kategorie filtern"
+      "filterLabel": "Nach Kategorie filtern",
+      "shelfReading": "Lese ich gerade",
+      "shelfRead": "Gelesen",
+      "shelfWantToRead": "Möchte ich lesen"
     }
   },
   "supportTicketEmail": {

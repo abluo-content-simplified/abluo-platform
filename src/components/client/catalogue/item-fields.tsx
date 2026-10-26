@@ -13,6 +13,8 @@ import { applyEditionChange, EDITION_LANGUAGES } from '@/lib/modules/catalogue/e
 import { RadioList } from '@/components/app/ui/RadioList'
 import { ToggleChips } from '@/components/app/ui/ToggleChips'
 import { Switch } from '@/components/app/ui/Switch'
+import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
+import { READING_STATUS_EDIT_ORDER } from '@/lib/modules/catalogue/reading-status'
 import { MediaFrame, Pill } from '@/components/app/ui/list/cells'
 import { PhotoSource } from '@/components/client/media/PhotoSource'
 import { PhotoEditSheet } from '@/components/client/media/PhotoEditSheet'
@@ -198,6 +200,17 @@ export function BookDetailsFields({ value, onChange }: { value: BookDetailsForm;
           {t('isbnAdvice')}
         </p>
       ) : null}
+      {/* Reading status: where the book stands for the owner; groups the books on the website. */}
+      <div>
+        <FieldLabel as="p">{t('readingStatus')}</FieldLabel>
+        <SegmentedControl
+          label={t('readingStatus')}
+          value={value.readingStatus}
+          onChange={(v) => onChange({ ...value, readingStatus: v === value.readingStatus ? '' : v })}
+          options={READING_STATUS_EDIT_ORDER.map((s) => ({ value: s, label: t(`readingStatusOptions.${s}`) }))}
+        />
+        <p className="mt-1.5 text-sm text-muted-foreground">{t('readingStatusHelp')}</p>
+      </div>
     </div>
   )
 }

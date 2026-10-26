@@ -24,6 +24,7 @@ import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import { itemHasAmazonLink } from '@/lib/modules/catalogue/amazon-delivery'
 import { collectionFilterCategories, isFilterValue, itemsUseCards } from '@/lib/modules/catalogue/website'
 import { CatalogueItemCard } from './CatalogueItemCard'
+import { shelvesOf, type ReadingStatus } from '@/lib/modules/catalogue/reading-status'
 import { CatalogueCategoryFilter } from './CatalogueCategoryFilter'
 
 export type CatalogueDisplay = {
@@ -134,14 +135,7 @@ function SectionBlock({
           section.name,
         )}
       {section.items.length > 0 && itemsUseCards(section.items) && (
-        // Books and products: a grid of cards (one on phones, two on large phones, three on tablets, four on desktop).
-        <ul className="grid grid-cols-1 gap-y-12 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-10 md:grid-cols-3 md:gap-x-8 lg:grid-cols-4" data-card-grid="">
-          {section.items.map((item, i) => (
-            <li key={`${item.publicId ?? 'item'}-${i}`} data-cats={catsOf(item)}>
-              <CatalogueItemCard item={item} display={display} messages={messages} href={itemHref(item)} headingLevel={Math.min(Math.max(section.name ? level + 1 : level, 2), 6) as 2 | 3 | 4 | 5 | 6} />
-            </li>
-          ))}
-        </ul>
+        <CardShelves items={section.items} level={section.name ? level + 1 : level} display={display} messages={messages} itemHref={itemHref} />
       )}
       {section.items.length > 0 && !itemsUseCards(section.items) && (
         <ul className="flex flex-col divide-y" style={{ borderColor: 'var(--color-border)' }}>
@@ -228,5 +222,71 @@ export function CatalogueItemRow({
         <AllergensAndDietary item={item} m={messages} compact={display.allergens === 'compact'} />
       </div>
     </article>
+  )
+}
+
+const SHELF_TITLE: Record<ReadingStatus, 'shelfReading' | 'shelfRead' | 'shelfWantToRead'> = {
+  reading: 'shelfReading',
+  read: 'shelfRead',
+  wantToRead: 'shelfWantToRead',
+}
+
+/**
+ * Books and products as a grid of cards (one on phones, two on large phones, three on tablets, four on
+ * desktop). Books with a reading status are grouped into shelves — "Reading now", "Read", "Want to read" —
+ * with a heading each, only when there is more than one shelf; otherwise one grid, as before.
+ */
+function CardShelves({
+  items,
+  level,
+  display,
+  messages,
+  itemHref,
+}: {
+  items: CatalogueItemDTO[]
+  level: number
+  display: CatalogueDisplay
+  messages: CatalogueWebsiteMessages
+  itemHref: (item: CatalogueItemDTO) => string | null
+}) {
+  const shelves = shelvesOf(items, (i) => i.bookDetails?.readingStatus ?? null)
+  const titled = shelves.length > 1
+  const cardLevel = (titled ? level + 1 : level)
+  const grid = (list: CatalogueItemDTO[]) => (
+    <ul className="grid grid-cols-1 gap-y-12 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-10 md:grid-cols-3 md:gap-x-8 lg:grid-cols-4" data-card-grid="">
+      {list.map((item, i) => (
+        <li key={`${item.publicId ?? 'item'}-${i}`} data-cats={catsOf(item)}>
+          <CatalogueItemCard item={item} display={display} messages={messages} href={itemHref(item)} headingLevel={Math.min(Math.max(cardLevel, 2), 6) as 2 | 3 | 4 | 5 | 6} />
+        </li>
+      ))}
+    </ul>
+  )
+  if (!titled) return grid(items)
+  return (
+    <div className="flex flex-col gap-16">
+      {shelves.map((shelf) => {
+        const title = shelf.status ? messages[SHELF_TITLE[shelf.status]] : ''
+        return (
+          <section key={shelf.status ?? 'none'} aria-label={title || undefined} data-shelf={shelf.status ?? 'none'}>
+            {title &&
+              createElement(
+                headingTag(level),
+                {
+                  className: 'mb-6',
+                  style: {
+                    color: 'var(--color-text-primary)',
+                    fontFamily: 'var(--font-heading)',
+                    fontSize: 'var(--font-size-h3, 1.5rem)',
+                    fontWeight: 'var(--font-weight-h3, 600)',
+                    lineHeight: 1.3,
+                  },
+                },
+                title,
+              )}
+            {grid(shelf.items)}
+          </section>
+        )
+      })}
+    </div>
   )
 }

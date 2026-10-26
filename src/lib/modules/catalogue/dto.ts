@@ -37,6 +37,7 @@
 //                effectiveCurrency, state → availability), page, publicId
 // Product.sku does not exist in V1 (B3).
 
+import type { ReadingStatus } from './reading-status'
 import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import type { PortableTextContent, SanityCrop, SanityHotspot, SanityImageAsset } from '@/lib/sanity/types'
 import type { AllergenKey } from './allergens'
@@ -198,6 +199,8 @@ export type CatalogueBookDetailsDTO = {
   year: number | null
   /** Normalised (no spaces or hyphens), exactly what was typed otherwise. May not be a valid ISBN: check with `isValidIsbn`. */
   isbn: string | null
+  /** Where the book stands for the owner (reading-status.ts); null when not set. */
+  readingStatus: ReadingStatus | null
 }
 
 export type CatalogueItemDTO = {

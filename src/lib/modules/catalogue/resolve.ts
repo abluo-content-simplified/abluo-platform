@@ -13,6 +13,7 @@
 //                    content (B4)
 //   gallery/focal    focalObjectPosition — Media Library focal point (ADR-022)
 
+import { isReadingStatus } from './reading-status'
 import { focalObjectPosition } from '@/lib/gallery/focal'
 import { LIFECYCLE_PUBLIC_RULES } from '@/lib/lifecycle/public-types'
 import { isPublicAt, type LifecycleFields } from '@/lib/lifecycle/visibility'
@@ -130,7 +131,7 @@ export type RawCatalogueItem = LifecycleFields & {
   /** F-1 — locale-resolved by GROQ, or a raw localized object. */
   byline?: RawText
   /** Amendment I-3 — as stored; every value unchecked until resolveBookDetails. */
-  bookDetails?: { author?: unknown; publisher?: unknown; year?: unknown; isbn?: unknown } | null
+  bookDetails?: { author?: unknown; publisher?: unknown; year?: unknown; isbn?: unknown; readingStatus?: unknown } | null
   description?: RawText
   /** F-2 — `label` locale-resolved by GROQ (or raw localized); `url` unchecked until resolveLinks. */
   links?: ({ _key?: string | null; label?: RawText; url?: unknown; kind?: unknown; affiliate?: unknown; moreUrls?: unknown; edition?: unknown } | null)[] | null
@@ -539,8 +540,9 @@ export function resolveBookDetails(raw: RawCatalogueItem['bookDetails'], profile
   const publisher = typeof raw.publisher === 'string' ? raw.publisher.trim().replace(/[ \t]+/g, ' ') : ''
   const isbn = normalizeIsbn(raw.isbn)
   const year = parseBookYear(raw.year)
-  if (!author && !publisher && !isbn && year === null) return null
-  return { author: author || null, publisher: publisher || null, year, isbn: isbn || null }
+  const readingStatus = isReadingStatus(raw.readingStatus) ? raw.readingStatus : null
+  if (!author && !publisher && !isbn && year === null && !readingStatus) return null
+  return { author: author || null, publisher: publisher || null, year, isbn: isbn || null, readingStatus }
 }
 
 // ── Items ─────────────────────────────────────────────────────────────────────

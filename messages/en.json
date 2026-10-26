@@ -4839,7 +4839,14 @@
             "yearInvalid": "Use a whole year between 1000 and {max}. It is not saved until it is.",
             "isbn": "ISBN",
             "isbnAdvice": "This doesn’t look like a valid ISBN. You can still keep it.",
-            "publisher": "Publisher"
+            "publisher": "Publisher",
+            "readingStatus": "Reading status",
+            "readingStatusHelp": "Groups your books on the website. Tap again to clear.",
+            "readingStatusOptions": {
+              "read": "Read",
+              "reading": "Reading now",
+              "wantToRead": "Want to read"
+            }
           },
           "buyLink": {
             "url": "Buy link",
@@ -5290,7 +5297,10 @@
       "buyOn": "Buy on {shop}",
       "editionsCount": "{count} editions",
       "filterAll": "All",
-      "filterLabel": "Filter by category"
+      "filterLabel": "Filter by category",
+      "shelfReading": "Reading now",
+      "shelfRead": "Read",
+      "shelfWantToRead": "Want to read"
     }
   },
   "supportTicketEmail": {

@@ -1,4 +1,5 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
+import { isReadingStatus } from './reading-status'
 import { validateUniquePublicId } from '@/lib/sanity/fields/public-id'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, BACKGROUND_SURFACE_OPTIONS } from '@/lib/sanity/fields/shared'
 import { PUBLISHING_GROUP, publishingStatusField, publishOnField, unpublishOnField, archivedFields } from '@/lib/sanity/fields/publishing'
@@ -578,6 +579,15 @@ export const catalogueItem = defineType({
           validation: (Rule) => Rule.integer().min(BOOK_YEAR_MIN).max(bookYearMax()),
         }),
         defineField({ name: 'isbn', title: 'ISBN', type: 'string', description: 'Optional. Hyphens and spaces are ignored.' }),
+        // Reading status (2026-10-24) — additive, optional. Older code ignores it.
+        defineField({
+          name: 'readingStatus',
+          title: 'Reading status',
+          type: 'string',
+          description: 'Optional. Groups the books on the website: Reading now, Read, Want to read.',
+          options: { list: [{ title: 'Read', value: 'read' }, { title: 'Reading now', value: 'reading' }, { title: 'Want to read', value: 'wantToRead' }], layout: 'radio', direction: 'horizontal' },
+          validation: (Rule) => Rule.custom((v) => (v === undefined || isReadingStatus(v) ? true : 'Unknown reading status')),
+        }),
       ],
     }),
     defineField({ name: 'description', title: 'Short description', type: 'localizedText', group: 'content' }),

@@ -487,11 +487,11 @@ describe('byline and links — ADR-033 Amendment F', () => {
 
   it('Amendment K: the publisher is read (trimmed), alone it keeps the details, and the query projects kind, affiliate and publisher', () => {
     const b = (bookDetails: object) => resolveItem(item({ itemProfile: 'book', offers: [], bookDetails }), ctx())!.bookDetails
-    expect(b({ publisher: '  Pan   Books ' })).toEqual({ author: null, publisher: 'Pan Books', year: null, isbn: null })
-    expect(b({ author: 'A' })).toEqual({ author: 'A', publisher: null, year: null, isbn: null })
+    expect(b({ publisher: '  Pan   Books ' })).toEqual({ author: null, publisher: 'Pan Books', year: null, isbn: null, readingStatus: null })
+    expect(b({ author: 'A' })).toEqual({ author: 'A', publisher: null, year: null, isbn: null, readingStatus: null })
     expect(b({ publisher: 7 })).toBeNull()
     for (const q of [queries.catalogueItemBySlugQuery, queries.catalogueCollectionBySlugQuery, queries.catalogueCollectionByIdQuery]) {
-      expect(q).toContain('bookDetails { author, publisher, year, isbn }')
+      expect(q).toContain('bookDetails { author, publisher, year, isbn, readingStatus }')
       expect(q).toMatch(/links\[\] \{ _key, "label": [^}]*url, kind, affiliate, moreUrls, edition \{ language, original \} \}/)
     }
   })
@@ -518,7 +518,7 @@ describe('book details — ADR-033 Amendment I-3', () => {
   it('reads a book: profile, details (ISBN normalised) and no food data', () => {
     const dto = resolveItem(book(), ctx())!
     expect(dto.itemProfile).toBe('book')
-    expect(dto.bookDetails).toEqual({ author: 'Douglas Adams', publisher: null, year: 1979, isbn: '9780345391803' })
+    expect(dto.bookDetails).toEqual({ author: 'Douglas Adams', publisher: null, year: 1979, isbn: '9780345391803', readingStatus: null })
     expect(dto.allergenDeclaration).toBeNull()
   })
 
@@ -539,7 +539,7 @@ describe('book details — ADR-033 Amendment I-3', () => {
 
   it('drops stored values that are not acceptable and returns null when nothing is left', () => {
     expect(resolveItem(book({ bookDetails: { author: '  ', year: 1979.5, isbn: '' } }), ctx())!.bookDetails).toBeNull()
-    expect(resolveItem(book({ bookDetails: { author: 'A', year: 3000, isbn: 7 } }), ctx())!.bookDetails).toEqual({ author: 'A', publisher: null, year: null, isbn: null })
+    expect(resolveItem(book({ bookDetails: { author: 'A', year: 3000, isbn: 7 } }), ctx())!.bookDetails).toEqual({ author: 'A', publisher: null, year: null, isbn: null, readingStatus: null })
     expect(resolveItem(book({ bookDetails: null }), ctx())!.bookDetails).toBeNull()
     expect(resolveItem(book({ bookDetails: undefined }), ctx())!.bookDetails).toBeNull()
   })
@@ -552,7 +552,7 @@ describe('book details — ADR-033 Amendment I-3', () => {
 
   it('the item queries project bookDetails (plain, not localized)', () => {
     for (const q of [queries.catalogueItemBySlugQuery, queries.catalogueCollectionByIdQuery]) {
-      expect(q).toContain('bookDetails { author, publisher, year, isbn }')
+      expect(q).toContain('bookDetails { author, publisher, year, isbn, readingStatus }')
     }
   })
 })

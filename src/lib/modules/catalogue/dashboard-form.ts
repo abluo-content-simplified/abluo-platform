@@ -9,6 +9,7 @@
 // stored offers, what a gap is, and the section-tree edits of the builder. No
 // I/O, no React — the server re-validates every value (dashboard-patch.ts).
 
+import { isReadingStatus, type ReadingStatus } from './reading-status'
 import { slugifyNestedPath } from '@/lib/sanity/fields/nested-slug'
 import { searchText } from '@/lib/client/search-text'
 import { offerIssues, type Offer, type OfferIssue } from './offers'
@@ -636,16 +637,17 @@ export function withBuyLink(
 // ── Book details (Amendment I-3): plain values, all optional ──────────────────
 
 /** What the fields hold while typing: the year stays text so a half-typed number is not lost. */
-export type BookDetailsForm = { author: string; publisher: string; year: string; isbn: string }
-export const EMPTY_BOOK_DETAILS: BookDetailsForm = { author: '', publisher: '', year: '', isbn: '' }
+export type BookDetailsForm = { author: string; publisher: string; year: string; isbn: string; /** '' = not set. */ readingStatus: ReadingStatus | '' }
+export const EMPTY_BOOK_DETAILS: BookDetailsForm = { author: '', publisher: '', year: '', isbn: '', readingStatus: '' }
 
 export function bookDetailsFromDoc(value: unknown): BookDetailsForm {
-  const v = (value && typeof value === 'object' ? value : {}) as { author?: unknown; publisher?: unknown; year?: unknown; isbn?: unknown }
+  const v = (value && typeof value === 'object' ? value : {}) as { author?: unknown; publisher?: unknown; year?: unknown; isbn?: unknown; readingStatus?: unknown }
   return {
     author: typeof v.author === 'string' ? v.author : '',
     publisher: typeof v.publisher === 'string' ? v.publisher : '',
     year: typeof v.year === 'number' && Number.isInteger(v.year) ? String(v.year) : '',
     isbn: typeof v.isbn === 'string' ? v.isbn : '',
+    readingStatus: isReadingStatus(v.readingStatus) ? v.readingStatus : '',
   }
 }
 
@@ -654,12 +656,12 @@ export function bookDetailsFromDoc(value: unknown): BookDetailsForm {
  * that is not acceptable is not sent — `fallbackYear` (the last one that was)
  * stands in, so the author and ISBN typed meanwhile still save.
  */
-export function bookDetailsPatch(form: BookDetailsForm, fallbackYear = ''): { author?: string; publisher?: string; year?: number; isbn?: string } {
+export function bookDetailsPatch(form: BookDetailsForm, fallbackYear = ''): { author?: string; publisher?: string; year?: number; isbn?: string; readingStatus?: ReadingStatus } {
   const year = parseBookYear(form.year) ?? parseBookYear(fallbackYear)
   const author = form.author.trim()
   const publisher = form.publisher.trim()
   const isbn = normalizeIsbn(form.isbn)
-  return { ...(author ? { author } : {}), ...(publisher ? { publisher } : {}), ...(year !== null ? { year } : {}), ...(isbn ? { isbn } : {}) }
+  return { ...(author ? { author } : {}), ...(publisher ? { publisher } : {}), ...(year !== null ? { year } : {}), ...(isbn ? { isbn } : {}), ...(form.readingStatus ? { readingStatus: form.readingStatus } : {}) }
 }
 
 /** The field-level error under the year input (blank is fine). */

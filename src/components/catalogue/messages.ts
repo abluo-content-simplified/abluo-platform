@@ -46,6 +46,10 @@ export const CATALOGUE_WEBSITE_KEYS = [
   'editionsCount',
   'filterAll',
   'filterLabel',
+  // Reading status shelves (books): headings shown when there is more than one shelf.
+  'shelfReading',
+  'shelfRead',
+  'shelfWantToRead',
 ] as const
 
 export type CatalogueWebsiteKey = (typeof CATALOGUE_WEBSITE_KEYS)[number]

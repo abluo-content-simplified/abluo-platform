@@ -31,7 +31,7 @@ const LIFECYCLE = `publishedAt, expiresAt, archivedAt`
 /** Every item, collection and option list of the project — published and draft copies (raw perspective). */
 export const CATALOGUE_DASHBOARD_LIST_QUERY = /* groq */ `{
   "items": *[_type == "catalogueItem" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{
-    _id, _rev, _createdAt, _updatedAt, name, byline, slug, itemProfile, "bookAuthor": bookDetails.author, "bookYear": bookDetails.year, "allergenStatus": allergenDeclaration.status, categories, hasPage, visibility, ${LIFECYCLE},
+    _id, _rev, _createdAt, _updatedAt, name, byline, slug, itemProfile, "bookAuthor": bookDetails.author, "bookYear": bookDetails.year, "bookStatus": bookDetails.readingStatus, "allergenStatus": allergenDeclaration.status, categories, hasPage, visibility, ${LIFECYCLE},
     "imageCount": count(images), "firstImage": images[0]._ref,
     "offerCount": count(offers), "prices": offers[].price,
     "lists": optionLists[].list._ref

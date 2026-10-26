@@ -182,7 +182,7 @@ describe('Book on its own page (Amendment I-3.5)', () => {
   const book = (over: Partial<CatalogueItemPageDTO> = {}): CatalogueItemPageDTO =>
     pageItem({
       itemProfile: 'book', name: 'The Hitchhiker’s Guide to the Galaxy', byline: 'Douglas Adams', allergenDeclaration: null, offers: [], hasOffers: false,
-      bookDetails: { author: 'Douglas Adams', publisher: null, year: 1979, isbn: '9780345391803' }, ...over,
+      bookDetails: { author: 'Douglas Adams', publisher: null, year: 1979, isbn: '9780345391803', readingStatus: null }, ...over,
     })
 
   it('emits Book with author as Person, isbn and datePublished — valid without an offer', () => {
@@ -200,7 +200,7 @@ describe('Book on its own page (Amendment I-3.5)', () => {
   })
 
   it('omits an ISBN that does not check out (the page still shows it)', () => {
-    const ld = catalogueItemJsonLd(book({ bookDetails: { author: 'Douglas Adams', publisher: null, year: 1979, isbn: '9780345391804' } }), ctx)!
+    const ld = catalogueItemJsonLd(book({ bookDetails: { author: 'Douglas Adams', publisher: null, year: 1979, isbn: '9780345391804', readingStatus: null } }), ctx)!
     expect(ld).not.toHaveProperty('isbn')
     expect(ld).toMatchObject({ '@type': 'Book', datePublished: '1979' })
   })
