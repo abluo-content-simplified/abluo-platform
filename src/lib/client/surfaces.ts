@@ -140,9 +140,9 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   { kind: 'nav', id: 'support', segment: 'support', group: 'support', requires: {} },
   // ADR-031: partner apps reading this site. Owners and Site admins only; always listed (calm empty state).
   { kind: 'nav', id: 'connections', segment: 'apps', group: 'support', requires: { permission: 'connections.manage' } },
-  // Settings (Tom, 2026-10-18) is out of the sidebar since 2026-10-26: its only content, the affiliate programs and
-  // the disclosure, moved to Connected Apps as cards. /settings redirects there. When contact and legal details
-  // arrive, the entry comes back here — gated on `site.details.read`, never `settings.manage`.
+  // Settings (Tom, 2026-10-18): the client's own business facts (Amazon IDs, affiliate disclosure; contact and legal later).
+  // Never technical configuration: gated on its own content-style permission, NOT `settings.manage`.
+  { kind: 'nav', id: 'settings', segment: 'settings', group: 'support', requires: { permission: 'site.details.read' } },
 
   // ── Home widgets (ADR-029 §5) ───────────────────────────────────────────
   { kind: 'widget', id: 'siteStatus', slot: 'header', requires: {} },

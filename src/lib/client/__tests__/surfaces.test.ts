@@ -143,8 +143,8 @@ describe('buildTenantSurfaces', () => {
   it('an owner with every module sees every nav item and the module widgets', () => {
     const s = buildTenantSurfaces(grantFor('owner', ['blog', 'forms', 'gallery']))
     // Sidebar order and groups (Tom, 2026-10-22): content · activity · support & configuration. Categories & Tags closes the content group.
-    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'media', 'people', 'taxonomy', 'forms', 'analytics', 'support', 'connections'])
-    expect(s.nav.map((n) => n.group)).toEqual(['content', 'content', 'content', 'content', 'content', 'activity', 'activity', 'support', 'support'])
+    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'media', 'people', 'taxonomy', 'forms', 'analytics', 'support', 'connections', 'settings'])
+    expect(s.nav.map((n) => n.group)).toEqual(['content', 'content', 'content', 'content', 'content', 'activity', 'activity', 'support', 'support', 'support'])
     expect(ids(s.widgets)).toEqual(expect.arrayContaining(['siteStatus', 'attention', 'glance.posts', 'glance.requests', 'glance.galleries', 'traffic', 'latest.posts']))
   })
 
@@ -166,9 +166,10 @@ describe('buildTenantSurfaces', () => {
     expect(ids(s.nav)).not.toContain('forms') // module not installed
   })
 
-  it('Settings is not in the sidebar: the affiliate programs live in Connected Apps (2026-10-26)', () => {
-    for (const role of ['owner', 'editor'] as const) expect(ids(buildTenantSurfaces(grantFor(role, ['blog'])).nav)).not.toContain('settings')
-    expect(ids(buildTenantSurfaces(grantFor('owner', ['blog'])).nav)).toContain('connections')
+  it('Settings: Owner, Site admin and Editor see it; nobody without site.details.read', () => {
+    for (const role of ['owner', 'editor'] as const) expect(ids(buildTenantSurfaces(grantFor(role, ['blog'])).nav)).toContain('settings')
+    expect(ids(buildTenantSurfaces({ permissions: [], enabledModuleIds: [] }).nav)).not.toContain('settings')
+    expect(ids(buildTenantSurfaces({ permissions: ['settings.manage'], enabledModuleIds: [] }).nav)).not.toContain('settings')
   })
 
   it('a member with no extras gets only widgets that require nothing', () => {
