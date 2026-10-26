@@ -2196,6 +2196,28 @@
         "not_found": "Questa app non è più collegata. Ricarica la pagina.",
         "invalid_state": "Nel frattempo questa app è cambiata. Ricarica la pagina.",
         "failed": "Qualcosa è andato storto. Riprova."
+      },
+      "pageIntro": "Account esterni collegati al tuo sito.",
+      "partnersTitle": "App Partner",
+      "affiliate": {
+        "manage": "Gestisci",
+        "view": "Vedi",
+        "manageNamed": "Gestisci {program}",
+        "viewNamed": "Vedi {program}",
+        "close": "Chiudi",
+        "status": {
+          "on": "Configurato",
+          "off": "Non configurato"
+        },
+        "facts": {
+          "stores": "Negozi",
+          "publisherId": "ID publisher",
+          "shops": "Negozi",
+          "wording": "Testo",
+          "none": "Nessuno",
+          "standard": "Testo standard",
+          "ownText": "Il tuo testo ({count} di {total} lingue)"
+        }
       }
     },
     "activity": {

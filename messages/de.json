@@ -2196,6 +2196,28 @@
         "not_found": "Diese App ist nicht mehr verbunden. Lade die Seite neu.",
         "invalid_state": "Diese App hat sich inzwischen geändert. Lade die Seite neu.",
         "failed": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal."
+      },
+      "pageIntro": "Externe Konten, die mit deiner Website verbunden sind.",
+      "partnersTitle": "Partner-Apps",
+      "affiliate": {
+        "manage": "Verwalten",
+        "view": "Ansehen",
+        "manageNamed": "{program} verwalten",
+        "viewNamed": "{program} ansehen",
+        "close": "Schließen",
+        "status": {
+          "on": "Eingerichtet",
+          "off": "Nicht eingerichtet"
+        },
+        "facts": {
+          "stores": "Shops",
+          "publisherId": "Publisher-ID",
+          "shops": "Shops",
+          "wording": "Text",
+          "none": "Noch keine",
+          "standard": "Standardtext",
+          "ownText": "Eigener Text ({count} von {total} Sprachen)"
+        }
       }
     },
     "activity": {

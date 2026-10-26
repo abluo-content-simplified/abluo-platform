@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { FactRow } from '@/components/app/ui/FactRow'
 import { PageHeader } from '@/components/app/ui/PageHeader'
+import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { Panel } from '@/components/app/ui/Panel'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
@@ -34,15 +35,21 @@ export function ConnectedAppsBrowser({
   title,
   projectSlug,
   locale,
-  connections,
+  connections: allConnections,
   readOnly,
+  children,
 }: {
   title: string
   projectSlug: string
   locale: string
-  connections: ConnectionSummary[]
+  /** null when this person may not manage partner apps: that section is left out. */
+  connections: ConnectionSummary[] | null
   readOnly: boolean
+  /** Other linked accounts shown first (Affiliate programs). */
+  children?: ReactNode
 }) {
+  const partnersId = useId()
+  const connections = allConnections ?? []
   const t = useTranslations('clientDashboard.connections')
   const tRes = useTranslations('clientDashboard.connect.resources')
   const router = useRouter()
@@ -107,7 +114,13 @@ export function ConnectedAppsBrowser({
   return (
     <div className="space-y-4">
       <PageHeader title={title} />
-      <p className="max-w-2xl text-[0.9375rem] leading-6 text-muted-foreground">{t('intro')}</p>
+      {children ? <p className="max-w-2xl text-[0.9375rem] leading-6 text-muted-foreground">{t('pageIntro')}</p> : null}
+      {children ? <div className="pt-2 pb-6">{children}</div> : null}
+
+      {allConnections ? (
+        <section aria-labelledby={partnersId} className="space-y-4">
+          {children ? <SectionHeading id={partnersId} title={t('partnersTitle')} /> : null}
+          <p className="max-w-2xl text-[0.9375rem] leading-6 text-muted-foreground">{t('intro')}</p>
 
       {visible.length === 0 ? (
         <EmptyState title={t('emptyTitle')} body={t('emptyBody')} />
@@ -155,6 +168,8 @@ export function ConnectedAppsBrowser({
           })}
         </ul>
       )}
+        </section>
+      ) : null}
 
       <ConfirmDialog
         open={confirm !== null}

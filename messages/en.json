@@ -2196,6 +2196,28 @@
         "not_found": "This app is no longer connected. Reload the page.",
         "invalid_state": "This app has changed meanwhile. Reload the page.",
         "failed": "Something went wrong. Please try again."
+      },
+      "pageIntro": "Outside accounts linked to your website.",
+      "partnersTitle": "Partner Apps",
+      "affiliate": {
+        "manage": "Manage",
+        "view": "View",
+        "manageNamed": "Manage {program}",
+        "viewNamed": "View {program}",
+        "close": "Close",
+        "status": {
+          "on": "Set up",
+          "off": "Not set up"
+        },
+        "facts": {
+          "stores": "Stores",
+          "publisherId": "Publisher ID",
+          "shops": "Shops",
+          "wording": "Wording",
+          "none": "None yet",
+          "standard": "Standard wording",
+          "ownText": "Your own text ({count} of {total} languages)"
+        }
       }
     },
     "activity": {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useId, useState } from 'react'
+import { useCallback, useId, useState, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/app/ui/Button'
 import { buttonClass } from '@/components/app/ui/button-styles'
@@ -11,7 +11,9 @@ import { EmptyState } from '@/components/app/ui/EmptyState'
 import { Field } from '@/components/app/ui/Field'
 import { FieldLabel } from '@/components/app/ui/FieldLabel'
 import { Notice } from '@/components/app/ui/Notice'
-import { PageHeader } from '@/components/app/ui/PageHeader'
+import { FactRow } from '@/components/app/ui/FactRow'
+import { SidePanel } from '@/components/app/ui/SidePanel'
+import { Pill } from '@/components/app/ui/list/cells'
 import { Panel } from '@/components/app/ui/Panel'
 import { SavePill } from '@/components/app/ui/SavePill'
 import { SectionHeading } from '@/components/app/ui/SectionHeading'
@@ -30,14 +32,16 @@ import { AMAZON_PATH, AWIN_PATH, SHOPS_PATH, DISCLOSURE_PREFIX, MAX_DISCLOSURE_L
 import type { SettingsView } from '@/lib/settings/service'
 
 /**
- * Client dashboard — Settings (Tom, 2026-10-18), first version: the client's
- * own business facts. Amazon tracking IDs (one per Amazon store) and the
- * affiliate disclosure per site language. Contact and legal details come later
- * as further sections. Every field saves by itself (SavePill: "Saved" only
- * after the server confirmed). People who may only look get the same page with
- * the controls locked and a line saying why.
+ * Connected Apps → Affiliate programs (Tom, 2026-10-26; moved from Settings).
+ * One card per program — Amazon, Awin and, with the Catalogue, the disclosure
+ * text — showing at a glance whether it is set up; "Manage" opens the same
+ * fields as before in a side panel (a bottom sheet on phones). Every field
+ * saves by itself (SavePill: "Saved" only after the server confirmed). People
+ * who may only look get the same cards and panels with the controls locked.
  */
-export function SettingsForm({
+type Program = 'amazon' | 'awin' | 'disclosure'
+
+export function AffiliatePrograms({
   projectSlug,
   initial,
   standardWording,
@@ -51,6 +55,8 @@ export function SettingsForm({
   readOnly: boolean
 }) {
   const t = useTranslations('clientDashboard.settings')
+  const tc = useTranslations('clientDashboard.connections.affiliate')
+  const [open, setOpen] = useState<Program | null>(null)
   const uiLocale = useLocale()
   const editable = initial.canWrite && !readOnly
   const amazonId = useId()
@@ -149,22 +155,58 @@ export function SettingsForm({
   const suggestions = pendingSuggestions(initial.locales, rows)
   const duplicates = new Set<string>(duplicateMarketplaces(rows))
 
-  return (
-    <div className="flex flex-col gap-8">
-      <PageHeader title={t('title')} actions={editable ? <SavePill state={auto.state} onReload={reload} /> : null} />
-
+  // What each card says at a glance.
+  const amazonStores = rows.filter((r) => r.marketplace && cleanTrackingId(r.trackingId)).map((r) => marketplaceLabel(r.marketplace as Exclude<AmazonRow['marketplace'], ''>))
+  const awinShops = shops.order.filter((id) => shopById(id).provider === 'awin').map((id) => shopById(id).name)
+  const ownTexts = initial.locales.filter((l) => (disclosure[l] ?? '').trim() !== '').length
+  const pill = editable ? <SavePill state={auto.state} onReload={reload} /> : null
+  const panelTop = (
+    <>
       {editable ? <p className="text-sm text-muted-foreground">{t('changesLive')}</p> : <Notice tone="info">{t('readOnly')}</Notice>}
-
       {auto.rejected.length > 0 ? <Notice tone="error">{t('rejected')}</Notice> : null}
-
-      <section aria-labelledby={affiliateId} className="flex flex-col gap-8">
-        <div className="flex flex-col gap-3">
-          <SectionHeading id={affiliateId} title={t('affiliate.title')} />
-          <p className="text-sm text-muted-foreground">{t('affiliate.intro')}</p>
+    </>
+  )
+  const card = (id: Program, title: string, on: boolean, facts: ReactNode) => (
+    <Panel as="li" key={id} className="flex flex-col gap-3 md:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <h3 className="truncate text-[1.0625rem] leading-6 font-semibold text-foreground">{title}</h3>
+          <span className="flex flex-wrap gap-1.5">
+            <Pill tone={on ? 'success' : 'outline'}>{tc(on ? 'status.on' : 'status.off')}</Pill>
+          </span>
         </div>
+        <Button variant="secondary" onClick={() => setOpen(id)} aria-label={tc(editable ? 'manageNamed' : 'viewNamed', { program: title })}>
+          {tc(editable ? 'manage' : 'view')}
+        </Button>
+      </div>
+      <dl>{facts}</dl>
+    </Panel>
+  )
 
-        <div className="flex flex-col gap-3">
-          <h3 id={amazonId} className="text-base font-semibold">{t('amazon.title')}</h3>
+  return (
+    <section aria-labelledby={affiliateId} className="flex flex-col gap-4">
+      <SectionHeading id={affiliateId} title={t('affiliate.title')} />
+      <p className="max-w-2xl text-[0.9375rem] leading-6 text-muted-foreground">{t('affiliate.intro')}</p>
+      <ul className="grid gap-4 md:grid-cols-2">
+        {card('amazon', t('amazon.title'), amazonStores.length > 0, <FactRow label={tc('facts.stores')}>{amazonStores.length ? amazonStores.join(' · ') : tc('facts.none')}</FactRow>)}
+        {card(
+          'awin',
+          t('awin.title'),
+          awinId !== '',
+          <>
+            <FactRow label={tc('facts.publisherId')}>{awinId || tc('facts.none')}</FactRow>
+            <FactRow label={tc('facts.shops')}>{awinShops.length ? awinShops.join(' · ') : tc('facts.none')}</FactRow>
+          </>,
+        )}
+        {initial.catalogueInstalled
+          ? card('disclosure', t('disclosure.title'), true, <FactRow label={tc('facts.wording')}>{ownTexts > 0 ? tc('facts.ownText', { count: ownTexts, total: initial.locales.length }) : tc('facts.standard')}</FactRow>)
+          : null}
+      </ul>
+
+      <SidePanel open={open === 'amazon'} title={t('amazon.title')} closeLabel={tc('close')} onClose={() => setOpen(null)} actions={pill}>
+        <div className="flex flex-col gap-4">
+          {panelTop}
+        <div id={amazonId} className="flex flex-col gap-3">
           <p className="text-sm text-muted-foreground">{t('amazon.intro')}</p>
 
           {rows.length === 0 ? (
@@ -244,8 +286,13 @@ export function SettingsForm({
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-3">
-          <h3 id={awinHeadingId} className="text-base font-semibold">{t('awin.title')}</h3>
+        </div>
+      </SidePanel>
+
+      <SidePanel open={open === 'awin'} title={t('awin.title')} closeLabel={tc('close')} onClose={() => setOpen(null)} actions={pill}>
+        <div className="flex flex-col gap-4">
+          {panelTop}
+        <div id={awinHeadingId} className="flex flex-col gap-3">
           <p className="text-sm text-muted-foreground">{t('awin.intro')}</p>
           <Field label={t('awin.publisherId')} hint={t('awin.publisherIdHint')} error={awinId && !looksLikeAwinPublisherId(awinId) ? <>{t('awin.looksOff')} {t('awin.notSaved')}</> : undefined} className="sm:w-60">
             {(p) => (
@@ -309,12 +356,14 @@ export function SettingsForm({
             </>
           ) : null}
         </div>
-      </section>
+        </div>
+      </SidePanel>
 
       {initial.catalogueInstalled ? (
-        <section aria-labelledby={disclosureId} className="flex flex-col gap-3">
-          <SectionHeading id={disclosureId} title={t('disclosure.title')} />
-          <p className="text-sm text-muted-foreground">{t('disclosure.intro')}</p>
+        <SidePanel open={open === 'disclosure'} title={t('disclosure.title')} closeLabel={tc('close')} onClose={() => setOpen(null)} actions={pill}>
+          <div id={disclosureId} className="flex flex-col gap-4">
+            {panelTop}
+            <p className="text-sm text-muted-foreground">{t('disclosure.intro')}</p>
           <Panel>
             <ul className="flex flex-col gap-5">
               {initial.locales.map((locale) => {
@@ -344,8 +393,9 @@ export function SettingsForm({
               })}
             </ul>
           </Panel>
-        </section>
+          </div>
+        </SidePanel>
       ) : null}
-    </div>
+    </section>
   )
 }
