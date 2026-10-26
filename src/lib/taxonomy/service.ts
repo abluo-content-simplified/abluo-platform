@@ -105,6 +105,32 @@ export type TaxonomyDeps = {
   now?: () => Date
   /** Manifests to read `taxonomies` from (tests); defaults to the module registry. */
   registry?: readonly ModuleManifest[]
+  /**
+   * Usage held outside Sanity (`externalUsage` on the declaration, e.g. the
+   * Documents module's documents in Supabase): key → items holding it.
+   * Defaults to the real store reader.
+   */
+  externalUsage?: (projectId: string, source: NonNullable<ModuleTaxonomyDef['externalUsage']>, kind: TermKind) => Promise<Map<string, ExternalUsageItem[]>>
+}
+
+type ExternalUsageItem = { id: string; type: string; name: unknown }
+
+async function defaultExternalUsage(projectId: string, source: NonNullable<ModuleTaxonomyDef['externalUsage']>, kind: TermKind): Promise<Map<string, ExternalUsageItem[]>> {
+  if (source === 'documents') return (await import('@/lib/access/taxonomy-usage')).readDocumentTermUsage(projectId, kind)
+  return new Map()
+}
+
+/** Usage outside Sanity for this declaration (empty when it declares none). */
+function readExternalUsage(a: { def: ModuleTaxonomyDef; kind: TermKind }, projectId: string, deps: TaxonomyDeps): Promise<Map<string, ExternalUsageItem[]>> {
+  if (!a.def.externalUsage) return Promise.resolve(new Map())
+  return span('external.readUsage', () => (deps.externalUsage ?? defaultExternalUsage)(projectId, a.def.externalUsage!, a.kind))
+}
+
+/** The Sanity where-used rows for one key, or none when the declaration names no Sanity field. */
+function readSanityUsage(scoped: TenantScopedSanityClient, a: { def: ModuleTaxonomyDef }, key: string): Promise<UsageRow[]> {
+  if (a.def.usedBy.length === 0) return Promise.resolve([])
+  const usage = buildUsageQuery(a.def.usedBy, key)
+  return span('sanity.readUsage', () => scoped.fetch<UsageRow[] | null>(usage.query, usage.params)).then((r) => r ?? [])
 }
 
 type TermDoc = {
@@ -299,14 +325,16 @@ export async function listTerms(ctx: TenantAuthorizationContext, projectId: stri
   const a = authorize(ctx, projectId, module, kind, 'read', deps)
   const client = deps.client ?? sanityWriteClient
   const scoped = scopedClient(ctx, projectId, client)
-  const counts = buildUsageCountsQuery(a.def.usedBy)
-  const [site, docs, usageRows] = await readsInOrder([
+  const counts = a.def.usedBy.length > 0 ? buildUsageCountsQuery(a.def.usedBy) : null
+  const [site, docs, usageRows, external] = await readsInOrder([
     readSite(scoped),
     readTermDocs(scoped, a),
-    span('sanity.readUsageCounts', () => scoped.fetch<UsageCountRow[] | null>(counts.query)),
+    counts ? span('sanity.readUsageCounts', () => scoped.fetch<UsageCountRow[] | null>(counts.query)) : Promise.resolve([] as UsageCountRow[]),
+    // A count is a hint on the list: if the outside store cannot be read, show 0 (delete re-checks and fails closed).
+    readExternalUsage(a, projectId, deps).catch(() => new Map<string, ExternalUsageItem[]>()),
   ] as const)
   const usage = countUsageByKey(usageRows ?? [])
-  const terms = docs.filter((d) => isOurs(d, a)).map((d) => ({ ...view(d, site), usedBy: usage.get(String(d.key)) ?? 0 }))
+  const terms = docs.filter((d) => isOurs(d, a)).map((d) => ({ ...view(d, site), usedBy: (usage.get(String(d.key)) ?? 0) + (external.get(String(d.key))?.length ?? 0) }))
   return {
     module: a.module,
     kind: a.kind,
@@ -492,15 +520,18 @@ export async function deleteTerm(ctx: TenantAuthorizationContext, projectId: str
   const client = deps.client ?? sanityWriteClient
   const scoped = scopedClient(ctx, projectId, client)
   const id = idOf(a, key)
-  const usage = buildUsageQuery(a.def.usedBy, key)
-  const [site, current, rows] = await readsInOrder([
+  const [site, current, rows, external] = await readsInOrder([
     readSite(scoped),
     span('sanity.readTerm', () => client.getDocument(id) as Promise<TermDoc | undefined>),
-    span('sanity.readUsage', () => scoped.fetch<UsageRow[] | null>(usage.query, usage.params)),
+    readSanityUsage(scoped, a, key),
+    // Fails closed: if the outside store cannot be read, nothing is deleted.
+    readExternalUsage(a, projectId, deps).catch(() => {
+      throw new TaxonomyError('failed', 'Could not check where this is used.')
+    }),
     singleProjectGuard(client, a.projectSlug),
-  ] as const).then(([s, d, r]) => [s, d, r] as const)
+  ] as const).then(([s, d, r, e]) => [s, d, r, e] as const)
   if (!isOurs(current, a) || current.key !== key) throw new TaxonomyError('not_found', 'Unknown term.')
-  const used = summarizeUsage(rows ?? [])
+  const used = summarizeUsage([...rows, ...(external.get(key) ?? []).map((i) => ({ _id: i.id, _type: i.type, name: i.name }))])
   if (used.inUse) {
     throw new TaxonomyError('in_use', 'This term is still used.', {
       count: used.count,
@@ -534,8 +565,7 @@ export async function termUsage(
   if (!isValidTermKey(key)) throw new TaxonomyError('invalid_value', 'Invalid term key.')
   const client = deps.client ?? sanityWriteClient
   const scoped = scopedClient(ctx, projectId, client)
-  const usage = buildUsageQuery(a.def.usedBy, key)
-  const [site, rows] = await readsInOrder([readSite(scoped), span('sanity.readUsage', () => scoped.fetch<UsageRow[] | null>(usage.query, usage.params))] as const).then(([s, r]) => [s, r] as const)
-  const used = summarizeUsage(rows ?? [])
+  const [site, rows, external] = await readsInOrder([readSite(scoped), readSanityUsage(scoped, a, key), readExternalUsage(a, projectId, deps)] as const).then(([s, r, e]) => [s, r, e] as const)
+  const used = summarizeUsage([...rows, ...(external.get(key) ?? []).map((i) => ({ _id: i.id, _type: i.type, name: i.name }))])
   return { count: used.count, items: used.items.slice(0, IN_USE_ITEM_LIMIT).map((i) => ({ id: i.id, type: i.type, name: pickName(i.name, site.defaultLocale) })) }
 }

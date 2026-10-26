@@ -82,6 +82,7 @@ const ICONS = {
   faq: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12zM9.6 9.5a2.5 2.5 0 0 1 4.9.8c0 1.7-2.5 2.2-2.5 2.2M12 15.5h.01',
   taxonomy: 'M3 10V4h6l11 11-6 6zM7.5 7.5h.01',
   members: 'M6 11V8a6 6 0 0 1 12 0v3M5 11h14v10H5zM12 15v2',
+  documents: 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M12 11v6M9 14l3 3 3-3',
   support: APP_ICONS.support,
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   plus: 'M12 5v14M5 12h14',

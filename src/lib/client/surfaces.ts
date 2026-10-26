@@ -109,6 +109,8 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   // ADR-037 D9: the FAQ Sets library (list + editor).
   { kind: 'nav', id: 'faq', segment: 'faq-sets', group: 'content', requires: { module: 'faq', permission: 'faq.set.read' } },
   // ADR-040 B2.5 — groups, passwords, protected documents and who can see each page.
+  // ADR-040 §15 — Documents (the library) and Access (groups and passwords).
+  { kind: 'nav', id: 'documents', segment: 'document-library', group: 'content', requires: { module: 'documents', permission: 'documents.document.read' } },
   { kind: 'nav', id: 'members', segment: 'access', group: 'content', requires: { module: 'members', permission: 'members.access.read' } },
   // ADR-033 Amendment J: Categories & Tags, one manager for every module that declares a taxonomy.
   // Shown when the person may manage terms (`<module>.taxonomy.write`) or at least read them
@@ -122,7 +124,7 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
     group: 'content',
     requires: {
       anyOf: [
-        { anyModule: ['blog', 'catalogue', 'events', 'news'], anyPermission: ['blog.taxonomy.write', 'blog.post.read', 'catalogue.taxonomy.write', 'catalogue.item.read', 'events.taxonomy.write', 'events.event.read', 'news.taxonomy.write', 'news.article.read'] },
+        { anyModule: ['blog', 'catalogue', 'documents', 'events', 'news'], anyPermission: ['blog.taxonomy.write', 'blog.post.read', 'catalogue.taxonomy.write', 'catalogue.item.read', 'documents.taxonomy.write', 'documents.document.read', 'events.taxonomy.write', 'events.event.read', 'news.taxonomy.write', 'news.article.read'] },
         // Internal tags of the media library and of galleries (Media and Galleries tabs).
         { permission: 'media.library.manage' },
         { module: 'gallery', anyPermission: ['gallery.gallery.read', 'gallery.gallery.write'] },

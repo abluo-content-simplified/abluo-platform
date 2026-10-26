@@ -159,7 +159,19 @@ export default async function WebsitePage({ params }: PageProps) {
   // contract depends on (unresolved fails open; resolved-empty gates).
   const enabledModuleIds = getEnabledModuleIds(moduleConfig)
 
-  await hydrateSections(homePage.sections, { fetchForTenant, projectSlug: String(tenantId), locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
+  await hydrateSections(homePage.sections, {
+    fetchForTenant, projectSlug: String(tenantId), locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig,
+    // ADR-040 §15 — the home page is always public: a Download section here lists documents for everyone only.
+    downloads: homePage._id ? {
+      projectSegment: String(tenantId),
+      pageId: homePage._id,
+      page: { restricted: false, groupIds: [] },
+      visitorGroupIds: null,
+      locale,
+      defaultLocale,
+      siteBaseFor: (l) => siteBasePath(l, tenantId, hostScoped),
+    } : undefined,
+  })
 
   // ADR-037 D7 — one FAQPage from every FAQ section this page renders (none
   // when the FAQ module is not installed: the sections do not render either).

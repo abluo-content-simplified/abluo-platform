@@ -27,12 +27,12 @@ const grant = (over: Record<string, unknown> = {}) => ({
   projectId: 'p-a', projectSlug: 'site-a', membershipId: 'm', role: 'owner',
   permissions: ['members.access.read', 'members.access.manage'], enabledModuleIds: ['members'], ...over,
 })
-const open = () => AccessPage({ params: Promise.resolve({ tenant: 'site-a' }), searchParams: Promise.resolve({}) })
+const open = () => AccessPage({ params: Promise.resolve({ tenant: 'site-a' }) })
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const screenProps = (el: any) => el.props.children.props
 
 beforeEach(() => {
-  h.load.mockReset().mockResolvedValue({ notReady: true, site: { defaultLocale: 'en', locales: ['en'], url: null } })
+  h.load.mockReset().mockResolvedValue({ notReady: true })
 })
 
 describe('the Access page', () => {

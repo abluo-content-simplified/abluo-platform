@@ -12,6 +12,7 @@
 // derived from SECTION_MAP (src/lib/modules/sections.ts).
 
 import { withSchedule, withSchedules } from '@/lib/scheduling/read.server'
+import { hydrateDownloadSections, type DownloadHydration } from '@/lib/access/download-section.server'
 import type { tenantClient } from '@/lib/sanity/client'
 import { HeroSection } from '@/components/sections/HeroSection'
 import { HeroLiveCaptureSection } from '@/components/sections/HeroLiveCaptureSection'
@@ -289,9 +290,16 @@ export async function hydrateSections(
      * defaults apply and categories render empty rather than breaking.
      */
     moduleConfig?: ProjectModuleConfig
+    /**
+     * ADR-040 §15 — what a Download section needs: the page, its protection
+     * and the visitor's groups (from the page gate). Without it Download
+     * sections stay empty and render nothing.
+     */
+    downloads?: Omit<DownloadHydration, 'enabledModuleIds'>
   }
 ): Promise<void> {
   if (!sections) return
+  if (ctx.downloads) await hydrateDownloadSections(sections, { ...ctx.downloads, enabledModuleIds: ctx.enabledModuleIds ?? null })
   // Catalogue config is read once per page, and only when a catalogue section
   // is actually present — most pages never pay for it.
   let catalogueConfig: Promise<CatalogueConfigDTO | null> | undefined

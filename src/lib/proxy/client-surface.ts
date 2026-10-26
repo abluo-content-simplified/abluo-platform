@@ -51,8 +51,11 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   'galleries',
   // ADR-037 D9: the FAQ Sets library (`/{project}/faq-sets`, `/{project}/faq-sets/{id}`).
   'faq-sets',
-  // ADR-040 B2.5: Access — groups, passwords, protected documents (`/{project}/access`).
+  // ADR-040 B2.5: Access — groups, passwords, sign-outs (`/{project}/access`).
   'access',
+  // ADR-040 §15: Documents (`/{project}/document-library`). Deliberately not
+  // 'documents' / 'downloads', which a site may well use as a page slug.
+  'document-library',
   'agenda',
   'media',
   'people',

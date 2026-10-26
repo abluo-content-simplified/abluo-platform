@@ -3,6 +3,8 @@
  *
  *   POST /{locale}/{project}/site-access/unlock     password → session cookie
  *   POST /{locale}/{project}/site-access/sign-out   revoke session, clear cookie
+ *   GET  /{locale}/{project}/site-access/status     { signedIn } for the members bar
+ *                                                   (R9: sign-out findable on every page)
  *
  * (On a project's own domain the visible path has no project segment; the
  * proxy adds it, exactly as for pages.)
@@ -34,7 +36,7 @@ import { resolveScopeFromProjectSegment } from '@/lib/tenancy/host-scope'
 import { ACCESS_MODULE_ID } from './model'
 import { accessEnvironment, accessIpSalt, withSiteAccessStore } from './server'
 import { sessionCookieAttributes, sessionCookieName } from './session-token'
-import { logout, unlockWithPassword } from './visitor'
+import { logout, resolveVisitor, unlockWithPassword } from './visitor'
 import {
   accessSiteBase,
   isSameOriginPost,
@@ -91,16 +93,22 @@ async function prepare(request: Request, params: RouteParams): Promise<Prepared>
 }
 
 /** The Access module is enabled for the project (Sanity installation record); unreadable → off. */
-export async function accessModuleEnabled(project: AccessRouteProject, locale: string): Promise<boolean> {
+/** The project's enabled module ids; null when unreadable (callers treat that as off). */
+export async function projectEnabledModuleIds(project: AccessRouteProject, locale: string): Promise<readonly string[] | null> {
   try {
     const scope = resolveScopeFromProjectSegment(project.segment)
     const { fetchForTenant } = tenantClient(asUrlProjectSegment(project.segment))
     const config = await fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale: scope?.defaultLocale ?? locale })
     const enabled = getEnabledModuleIds(config)
-    return Array.isArray(enabled) && enabled.includes(ACCESS_MODULE_ID)
+    return Array.isArray(enabled) ? enabled : null
   } catch {
-    return false // unreadable → off (deny by default)
+    return null // unreadable → off (deny by default)
   }
+}
+
+export async function accessModuleEnabled(project: AccessRouteProject, locale: string): Promise<boolean> {
+  const enabled = await projectEnabledModuleIds(project, locale)
+  return Array.isArray(enabled) && enabled.includes(ACCESS_MODULE_ID)
 }
 
 export async function handleUnlock(request: Request, params: RouteParams): Promise<NextResponse> {
@@ -165,4 +173,31 @@ export async function handleSignOut(request: Request, params: RouteParams): Prom
   // Secure, Path=/ and host-only to be overwritten).
   response.cookies.set(name, '', { ...sessionCookieAttributes(p.secure), maxAge: 0 })
   return response
+}
+
+
+/**
+ * R9 (ADR-040 §15) — is this browser signed in to the project? Answers only a
+ * boolean about the visitor's OWN session (never groups, pages or names), so
+ * the site can show "Members area · Sign out" on every page. No cookie → no
+ * database call. Any failure → not signed in.
+ */
+export async function handleStatus(request: Request, params: RouteParams): Promise<NextResponse> {
+  const h = request.headers
+  const answer = (signedIn: boolean) => NextResponse.json({ signedIn }, { headers: NO_STORE })
+  if (!isSupportedLocale(params.locale)) return answer(false)
+  const project = resolveAccessRouteProject(h.get('host'), params.tenant)
+  if (!project) return answer(false)
+  const token = readCookie(h, sessionCookieName(project.projectId, isSecureAccessRequest(h)))
+  if (!token) return answer(false)
+  const environment = accessEnvironment()
+  if (!environment) return answer(false)
+  try {
+    const visitor = await withSiteAccessStore('members bar: is this browser signed in to the project', (store) =>
+      resolveVisitor({ store, projectId: project.projectId, environment, token })
+    )
+    return answer(Boolean(visitor))
+  } catch {
+    return answer(false)
+  }
 }

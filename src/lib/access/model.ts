@@ -26,6 +26,20 @@ export const ACCESS_PERMISSIONS = {
   manage: 'members.access.manage',
 } as const
 
+/**
+ * The Documents module (ADR-040 §15, R9): the document library. Any project may
+ * install it; with Access (`members`) also installed, a document may be limited
+ * to groups. Shown as "Documents".
+ */
+export const DOCUMENTS_MODULE_ID = 'documents'
+
+export const DOCUMENTS_PERMISSIONS = {
+  /** See the documents and on which pages they show. */
+  read: 'documents.document.read',
+  /** Add, change, place and archive documents — never groups or passwords. */
+  manage: 'documents.document.manage',
+} as const
+
 export const ACCESS_LIMITS = {
   /** Default "remember me" (Tom, 2026-10-24: 30 days, revocable). */
   sessionDays: 30,
@@ -37,8 +51,13 @@ export const ACCESS_LIMITS = {
   credentialsPerProject: 50,
   documentsPerProject: 500,
   grantsPerSession: 20,
-  /** PDF only in Phase 1. Bucket limit and DB check agree. */
+  /** The largest file of any type (PDF). Bucket limit and DB check agree; images are capped at 10 MB. */
   fileBytesMax: 20 * 1024 * 1024,
+  /** A short note shown to visitors under a document's title. */
+  noteMax: 200,
+  documentTitleMax: 120,
+  tagsPerDocument: 20,
+  pagesPerDocument: 50,
   /** Signed storage URLs are bearer links: usable WITHOUT a session until they expire. */
   signedUrlSeconds: 60,
 } as const

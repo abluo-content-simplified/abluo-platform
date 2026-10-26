@@ -127,6 +127,7 @@ export function itemHref(projectSlug: string, item: Pick<TermUsageItem, 'id' | '
   if (item.type === 'catalogueItem') return `/${projectSlug}/catalogue/${id}`
   if (item.type === 'post') return `/${projectSlug}/posts/write/${id}`
   if (item.type === 'event') return `/${projectSlug}/agenda/${id}`
+  if (item.type === 'document') return `/${projectSlug}/document-library/${id}`
   return null
 }
 

@@ -3,13 +3,16 @@
  * schema's validation and the tests run the same code.
  *
  *   - The home page is always public: the field is hidden there and a stored
- *     `restricted` value on a home page is a validation error.
+ *     `restricted` value on a home page is a validation error. The same holds
+ *     for legal pages (cookie policy, legal notice, privacy): the law requires
+ *     them to be public (R9, ADR-040 §15).
  *   - A restricted page needs at least one group, each a group id (UUID). The
  *     groups are managed from the dashboard (B2.5); until then they are set by
  *     an Abluo admin.
  *   - A restricted page may not carry a "Download a file" CTA: Sanity files are
  *     served from the public asset CDN, so the file would be public whatever
- *     the page says. Protected files go through Access (B2.4).
+ *     the page says. Protected files are Documents placed on the page through
+ *     its Download section (R9).
  */
 export const ACCESS_GROUP_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -42,6 +45,7 @@ export function validatePageAccess(
   if (!access || access.visibility === undefined || access.visibility === 'public') return true
   if (access.visibility !== 'restricted') return 'Choose who can see this page: everyone or members only.'
   if (doc?.pageType === 'home') return 'The home page is always public. Restrict another page instead.'
+  if (doc?.pageType === 'legal') return 'Legal pages (cookie policy, legal notice, privacy) must stay public.'
   const groups = Array.isArray(access.groups) ? access.groups : []
   if (groups.length === 0) return 'A members-only page needs at least one access group.'
   if (!groups.every((g) => typeof g === 'string' && ACCESS_GROUP_ID_RE.test(g)))
@@ -50,7 +54,7 @@ export function validatePageAccess(
     return 'Navigation must be "hidden" or "show with a lock".'
   const downloads = findFileDownloadCtas(doc?.sections)
   if (downloads.length > 0)
-    return 'A members-only page cannot have a "Download a file" button: files uploaded here are public by link. Use a protected file from Access instead, or remove the button.'
+    return 'A members-only page cannot have a "Download a file" button: files uploaded here are public by link. Add a Download section and place the file there as a document (dashboard → Documents), or remove the button.'
   return true
 }
 

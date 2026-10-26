@@ -192,6 +192,10 @@ export const GRANTABLE_MODULE_PERMISSIONS: Readonly<Record<string, { requires?: 
   // Honoured only while the Access module is enabled (resolve.ts step 3).
   'members.access.read': {},
   'members.access.manage': { requires: 'members.access.read' },
+  // ADR-040 §15 — documents (never groups or passwords). Honoured only while
+  // the Documents module is enabled.
+  'documents.document.read': {},
+  'documents.document.manage': { requires: 'documents.document.read' },
 }
 
 const BY_ID = new Map(PLATFORM_PERMISSIONS.map((p) => [p.id, p]))

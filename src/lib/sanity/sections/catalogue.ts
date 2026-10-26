@@ -72,6 +72,7 @@ export const SECTION_CATALOGUE: Record<string, SectionCatalogueEntry> = {
   photoGallerySection: { group: 'modules', description: 'One or more photo galleries, with tabs and a full-screen viewer.' },
   faqSection: { group: 'modules', description: 'Frequently asked questions that open and close.' },
   catalogueListingSection: { group: 'modules', description: 'Items from your catalogue or menu, with prices if you want them.' },
+  downloadSection: { group: 'modules', description: 'Documents to view or download — the ones the site placed on this page in the dashboard.' },
 
   // Get in touch
   contactSection: { group: 'contact', description: 'Phone, email and address, with an optional map and message button.' },

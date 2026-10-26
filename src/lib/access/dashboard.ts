@@ -1,23 +1,21 @@
 /**
- * Site Access — what the tenant dashboard's Access screen shows (ADR-040
- * B2.5). Server-only. One read for the whole screen: groups with their
- * passwords (never a hash), how many visitors are signed in, documents and
- * their files, the site's pages and who may see them.
+ * Site Access — what the tenant dashboard's Access screen shows (ADR-040 B2.5,
+ * trimmed in R9 §15). Server-only. Groups with their passwords (never a hash),
+ * how many visitors are signed in, and what each group opens (protected pages,
+ * set in Studio; group documents, from the Documents module). Page protection
+ * and documents are no longer edited here.
  *
  * Everything is read with the caller's `members.access.read` grant on ONE
  * project; pages through the tenant-scoped Sanity client. When the Supabase
- * tables are not installed yet (migrations 050/052 unapplied) the screen gets
- * `notReady` instead of an error; a missing summary (053) only hides the
- * signed-in counts.
+ * tables are not installed the screen gets `notReady` instead of an error; a
+ * missing summary (053) only hides the signed-in counts.
  */
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { tenantScopedSanityClient } from '@/lib/api/tenant-scoped-sanity'
-import { getSiteStatus } from '@/lib/api/dashboard/site'
 import { accessEnvironment, withSiteAccessStore } from './server'
-import { authorizeAccessManagement, getSignedInSummary, listDocuments, listGroups, listSharedPasswords } from './management'
-import { listAccessPages, type AccessPageItem } from './page-visibility'
+import { authorizeAccessManagement, getSignedInSummary, listGroups, listSharedPasswords } from './management'
 import { ACCESS_LIMITS, ACCESS_PERMISSIONS, AccessError } from './model'
-import { ACCESS_ROUTE_SEGMENT } from './request'
+import { parseAccessPolicy } from './policy'
 import type { LocalizedName } from './store'
 
 export type AccessGroupView = {
@@ -28,36 +26,18 @@ export type AccessGroupView = {
   passwords: Array<{ id: string; label: string; inUse: boolean; changedAt: string }>
   /** null = the count is not available. */
   signedIn: number | null
-}
-
-export type AccessDocumentView = {
-  id: string
-  title: string
-  archived: boolean
-  groupIds: string[]
-  files: Array<{ locale: string; sizeBytes: number; filename: string | null; uploadedAt: string }>
-  /** The stable link visitors use (the site's own address); null while the site is not online. */
-  link: string | null
-}
-
-export type AccessSite = {
-  defaultLocale: string
-  locales: string[]
-  /** The public site address, e.g. https://example.com — null while not online. */
-  url: string | null
+  /** What the group opens: protected pages (Studio) and group documents (Documents). */
+  opens: { pages: number; documents: number }
 }
 
 export type AccessDashboardData =
-  | { notReady: true; site: AccessSite }
+  | { notReady: true }
   | {
       notReady: false
-      site: AccessSite
       groups: AccessGroupView[]
-      documents: AccessDocumentView[]
-      pages: AccessPageItem[]
       /** Visitors signed in now (each once); null = not available. */
       signedInTotal: number | null
-      limits: { fileBytesMax: number; passwordMinLength: number; passwordMaxLength: number; nameMax: number }
+      limits: { passwordMinLength: number; passwordMaxLength: number; nameMax: number }
     }
 
 export function pickName(name: LocalizedName | null | undefined, locale: string, fallback: string): string {
@@ -65,46 +45,45 @@ export function pickName(name: LocalizedName | null | undefined, locale: string,
   return n[locale] ?? n[fallback] ?? Object.values(n)[0] ?? ''
 }
 
-/** The stable document link on the site's own address (language falls back on the site). */
-export function documentLink(siteUrl: string | null, locale: string, documentId: string): string | null {
-  if (!siteUrl) return null
-  return `${siteUrl.replace(/\/+$/, '')}/${locale}/${ACCESS_ROUTE_SEGMENT}/documents/${documentId}`
-}
+const notInstalled = (e: unknown) => e instanceof AccessError && e.code === 'unavailable' && /not installed/.test(e.message)
 
-async function readSite(ctx: TenantAuthorizationContext, projectId: string): Promise<AccessSite> {
+/** Protected pages per group (published pages of the project, own rule only). */
+const PROTECTED_PAGES_QUERY = /* groq */ `*[_type == "page" && projectSlug == $projectSlug && access.visibility == "restricted" && !(_id in path("drafts.**")) && !(_id in path("versions.**"))]{ access }`
+
+export async function loadAccessDashboard(ctx: TenantAuthorizationContext, projectId: string, locale: string): Promise<AccessDashboardData> {
+  const grant = authorizeAccessManagement(ctx, projectId, 'read')
   const scoped = tenantScopedSanityClient(ctx, projectId)
   const config = await scoped.fetch<{ defaultLocale?: string | null; supportedLocales?: string[] | null } | null>(
     `*[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales }`
   )
   const defaultLocale = config?.defaultLocale || config?.supportedLocales?.[0] || 'en'
-  const locales = config?.supportedLocales?.length ? [...new Set([defaultLocale, ...config.supportedLocales])] : [defaultLocale]
-  const status = await getSiteStatus(ctx, projectId).catch(() => null)
-  return { defaultLocale, locales, url: status?.url ?? null }
-}
-
-const notInstalled = (e: unknown) => e instanceof AccessError && e.code === 'unavailable' && /not installed/.test(e.message)
-
-export async function loadAccessDashboard(ctx: TenantAuthorizationContext, projectId: string, locale: string): Promise<AccessDashboardData> {
-  const grant = authorizeAccessManagement(ctx, projectId, 'read')
-  const site = await readSite(ctx, projectId)
-  const scoped = tenantScopedSanityClient(ctx, projectId)
-  const pagesP = listAccessPages((q, p) => scoped.fetch(q, p), { locale, defaultLocale: site.defaultLocale })
-  pagesP.catch(() => undefined) // awaited below; this only keeps an early rejection from being "unhandled"
+  const pagesP = scoped.fetch<Array<{ access?: unknown }>>(PROTECTED_PAGES_QUERY)
+  pagesP.catch(() => undefined) // awaited below; keeps an early rejection from being "unhandled"
   try {
-    const { groups, passwords, documents, summary } = await withSiteAccessStore('dashboard Access screen (read)', async (store) => {
-      const [groups, passwords, documents] = await Promise.all([listGroups(store, grant), listSharedPasswords(store, grant), listDocuments(store, grant)])
+    const { groups, passwords, summary, documents } = await withSiteAccessStore('dashboard Access screen (read)', async (store) => {
+      const [groups, passwords, documents] = await Promise.all([
+        listGroups(store, grant),
+        listSharedPasswords(store, grant),
+        store.listDocuments(projectId).catch(() => []),
+      ])
       const env = accessEnvironment()
       const summary = env ? await getSignedInSummary(store, grant, env).catch(() => null) : null
-      return { groups, passwords, documents, summary }
+      return { groups, passwords, summary, documents }
     })
-    const pages = await pagesP
+    const pages = (await pagesP.catch(() => [])) ?? []
     const now = Date.now()
+    const pageCount = (groupId: string) =>
+      pages.filter((p) => {
+        const policy = parseAccessPolicy(p.access)
+        return policy.visibility === 'restricted' && policy.groupIds.some((g) => g.toLowerCase() === groupId.toLowerCase())
+      }).length
+    const docCount = (groupId: string) =>
+      documents.filter((d) => !d.archivedAt && d.visibility === 'groups' && d.groupIds.some((g) => g.toLowerCase() === groupId.toLowerCase())).length
     return {
       notReady: false,
-      site,
       groups: groups.map((g) => ({
         id: g.id,
-        name: pickName(g.name, site.defaultLocale, locale),
+        name: pickName(g.name, defaultLocale, locale),
         archived: Boolean(g.archivedAt),
         passwords: passwords
           .filter((p) => p.groupIds.includes(g.id))
@@ -115,28 +94,17 @@ export async function loadAccessDashboard(ctx: TenantAuthorizationContext, proje
             changedAt: p.rotatedAt ?? p.createdAt,
           })),
         signedIn: summary ? summary.byGroup[g.id] ?? 0 : null,
+        opens: { pages: pageCount(g.id), documents: docCount(g.id) },
       })),
-      documents: documents.map((d) => ({
-        id: d.id,
-        title: pickName(d.title, site.defaultLocale, locale),
-        archived: Boolean(d.archivedAt),
-        groupIds: d.groupIds,
-        files: d.files.map((f) => ({ locale: f.locale, sizeBytes: f.sizeBytes, filename: f.originalFilename, uploadedAt: f.uploadedAt })),
-        link: documentLink(site.url, site.defaultLocale, d.id),
-      })),
-      pages,
       signedInTotal: summary ? summary.total : null,
       limits: {
-        fileBytesMax: ACCESS_LIMITS.fileBytesMax,
         passwordMinLength: ACCESS_LIMITS.passwordMinLength,
         passwordMaxLength: ACCESS_LIMITS.passwordMaxLength,
         nameMax: ACCESS_LIMITS.groupNameMax,
       },
     }
   } catch (e) {
-    if (notInstalled(e)) {
-      return { notReady: true, site }
-    }
+    if (notInstalled(e)) return { notReady: true }
     throw e
   }
 }

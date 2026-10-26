@@ -1,17 +1,17 @@
-/** ADR-040 B2.4 — the pure parts of protected file delivery. */
+/** ADR-040 B2.4 / R9 — the pure parts of document delivery (protected and public). */
 import { describe, it, expect, vi } from 'vitest'
 import { decideDocument, decideRange, deliveryLocales, denyResponse, etagOf, fileResponse, isNavigation } from '../delivery'
 import type { DeliverableFile, SiteAccessStore } from '../store'
 import { createFakeFiles, pdfBytes } from './fake-files'
-import { downloadFilename, inspectPdf, sanitizeFilename } from '../pdf'
+import { downloadFilename, inspectDocumentFile, inspectPdf, sanitizeFilename } from '../pdf'
 import { createHash } from 'crypto'
 
 const P = '0a000000-0000-4000-8000-00000000000a'
 const D = '0d000000-0000-4000-8000-00000000000d'
 const G = '06000000-0000-4000-8000-000000000006'
 const file = (over: Partial<DeliverableFile> = {}): DeliverableFile => ({
-  archived: false, title: { en: 'Timetable 2026', it: 'Orario 2026' }, groupIds: [G], locale: 'en',
-  storagePath: `${P}/11111111-1111-4111-8111-111111111111.pdf`, sizeBytes: 1000, sha256: 'a'.repeat(64), ...over,
+  archived: false, visibility: 'groups', title: { en: 'Timetable 2026', it: 'Orario 2026' }, groupIds: [G], locale: 'en',
+  storagePath: `${P}/11111111-1111-4111-8111-111111111111.pdf`, sizeBytes: 1000, sha256: 'a'.repeat(64), mimeType: 'application/pdf', ...over,
 })
 
 describe('decideRange', () => {
@@ -43,19 +43,17 @@ describe('decideDocument — deny by default', () => {
     documentForDelivery: vi.fn(async () => { if (f instanceof Error) throw f; return f }),
   }) as unknown as SiteAccessStore & { documentForDelivery: ReturnType<typeof vi.fn> }
   const visitor = (groups: string[] | null) => vi.fn(async () => (groups ? { sessionId: 's', groupIds: new Set(groups) } : null))
-  const run = (o: { f?: DeliverableFile | null | Error; groups?: string[] | null; token?: string | null; id?: string; module?: boolean | Error }) => {
+  const run = (o: { f?: DeliverableFile | null | Error; groups?: string[] | null; token?: string | null; id?: string; module?: boolean | Error; access?: boolean }) => {
     const s = store(o.f === undefined ? file() : o.f)
     const r = decideDocument(
       { projectId: P, documentId: o.id ?? D, locales: ['en'], token: o.token === undefined ? 't' : o.token },
-      { store: s, environment: 'production', resolveVisitor: visitor(o.groups === undefined ? [G] : o.groups), moduleEnabled: async () => { if (o.module instanceof Error) throw o.module; return o.module ?? true } }
+      { store: s, environment: 'production', resolveVisitor: visitor(o.groups === undefined ? [G] : o.groups), modules: async () => { if (o.module instanceof Error) throw o.module; return { documents: o.module ?? true, access: o.access ?? true } } }
     )
     return { r, s }
   }
   it('granted with a matching live group', async () => expect((await run({}).r).kind).toBe('file'))
-  it('no cookie: denied without reading anything', async () => {
-    const { r, s } = run({ token: null })
-    expect(await r).toEqual({ kind: 'deny' })
-    expect(s.documentForDelivery).not.toHaveBeenCalled()
+  it('a group document without a cookie: denied', async () => {
+    expect(await run({ token: null }).r).toEqual({ kind: 'deny' })
   })
   it.each([
     ['unknown / other project', { f: null }],
@@ -63,11 +61,21 @@ describe('decideDocument — deny by default', () => {
     ['no live group (nobody)', { f: file({ groupIds: [] }) }],
     ['session without the group', { groups: ['99999999-9999-4999-8999-999999999999'] }],
     ['session expired / revoked / rotated / other environment', { groups: null }],
-    ['module switched off', { module: false }],
+    ['Documents module switched off', { module: false }],
+    ['a group document while Access is off', { access: false }],
+    ['a public document while Documents is off', { f: file({ visibility: 'everyone', groupIds: [] }), module: false }],
+    ['an archived public document', { f: file({ visibility: 'everyone', groupIds: [], archived: true }), groups: null, token: null }],
+    ['a file type that is not allowed', { f: file({ mimeType: 'image/svg+xml' as never }) }],
     ['module state unreadable', { module: new Error('sanity down') }],
     ['store failure', { f: new Error('db down') }],
     ['a path outside the project (defence in depth)', { f: file({ storagePath: `0b000000-0000-4000-8000-00000000000b/x.pdf` }) }],
   ])('%s → deny', async (_n, o) => expect(await run(o as never).r).toEqual({ kind: 'deny' }))
+  it('a public document opens for anyone — no cookie, no group, Access off', async () => {
+    const pub = file({ visibility: 'everyone', groupIds: [] })
+    for (const o of [{ token: null }, { groups: null }, { groups: ['99999999-9999-4999-8999-999999999999'] }, { access: false, token: null }]) {
+      expect((await run({ f: pub, ...o }).r).kind).toBe('file')
+    }
+  })
   it('a malformed id is denied without a document lookup', async () => {
     const { r, s } = run({ id: '../../etc/passwd' })
     expect(await r).toEqual({ kind: 'deny' })
@@ -160,6 +168,24 @@ describe('fileResponse', () => {
     expect(files.signed).toEqual([{ path: f.storagePath, seconds: 60, downloadName: 'Orario 2026.pdf' }])
     expect(r.headers.get('referrer-policy')).toBe('no-referrer')
   })
+  it('a public document: indexable, cacheable only in the visitor’s browser, never on a shared cache', async () => {
+    const { files, req } = setup()
+    const f = file({ sizeBytes: 4096, visibility: 'everyone', groupIds: [] })
+    const r = await fileResponse(req(), f, files, files.fetch)
+    expect(r.status).toBe(200)
+    expect(r.headers.get('cache-control')).toBe('private, max-age=300')
+    expect(r.headers.get('x-robots-tag')).toBeNull()
+    const d = await fileResponse(req({}, { download: true }), f, files, files.fetch)
+    expect(d.headers.get('cache-control')).toBe('private, no-store')
+  })
+  it('an image: its own type and extension', async () => {
+    const files = createFakeFiles()
+    const f = file({ sizeBytes: 4096, mimeType: 'image/png', storagePath: `${P}/22222222-2222-4222-8222-222222222222.png` })
+    files.objects.set(f.storagePath, pdfBytes(4096))
+    const r = await fileResponse({ method: 'HEAD', headers: new Headers(), download: false, locale: 'en' }, f, files, files.fetch)
+    expect(r.headers.get('content-type')).toBe('image/png')
+    expect(r.headers.get('content-disposition')).toContain('Timetable 2026.png')
+  })
   it('a signed link longer than 60 s cannot be made', async () => {
     const { files, f } = setup()
     await expect(files.signedUrl(f.storagePath, 61)).rejects.toThrow()
@@ -188,5 +214,35 @@ describe('PDF checks', () => {
     expect(sanitizeFilename('')).toBeNull()
     expect(downloadFilename('Plan: "A/B" <2026>')).toBe('Plan AB 2026.pdf')
     expect(downloadFilename(null)).toBe('document.pdf')
+  })
+})
+
+describe('file checks for every allowed type (R9)', () => {
+  const sha = (b: Uint8Array) => createHash('sha256').update(b).digest('hex')
+  const fill = (head: number[], tail: number[], n = 256) => { const b = new Uint8Array(n); b.set(head); b.set(tail, n - tail.length); return b }
+  const jpeg = fill([0xff, 0xd8, 0xff, 0xe0], [0xff, 0xd9])
+  const png = fill([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], [0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82])
+  const webp = (() => { const b = new Uint8Array(256); b.set([0x52, 0x49, 0x46, 0x46]); const n = 256 - 8; b.set([n & 255, (n >> 8) & 255, 0, 0], 4); b.set([0x57, 0x45, 0x42, 0x50], 8); return b })()
+  const check = (b: Uint8Array, mimeType: 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/webp') => inspectDocumentFile(b, { mimeType, declaredSize: b.length, declaredSha256: sha(b) })
+  it('accepts each type by its own signature', () => {
+    expect(check(pdfBytes(2048), 'application/pdf').ok).toBe(true)
+    expect(check(jpeg, 'image/jpeg').ok).toBe(true)
+    expect(check(png, 'image/png').ok).toBe(true)
+    expect(check(webp, 'image/webp').ok).toBe(true)
+  })
+  it('the declared type must match the bytes; truncated images are refused', () => {
+    expect(check(png, 'image/jpeg')).toEqual({ ok: false, problem: 'wrong_type' })
+    expect(check(jpeg, 'application/pdf')).toEqual({ ok: false, problem: 'wrong_type' })
+    const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')
+    expect(check(svg, 'image/png')).toEqual({ ok: false, problem: 'wrong_type' })
+    expect(check(webp.slice(0, 200), 'image/webp')).toEqual({ ok: false, problem: 'wrong_type' })
+    expect(check(png.slice(0, 100), 'image/png')).toEqual({ ok: false, problem: 'wrong_type' })
+  })
+  it('images are limited to 10 MB', () => {
+    const big = new Uint8Array(10 * 1024 * 1024 + 1)
+    expect(inspectDocumentFile(big, { mimeType: 'image/jpeg', declaredSize: big.length, declaredSha256: 'a'.repeat(64) })).toEqual({ ok: false, problem: 'too_large' })
+  })
+  it('download names carry the type\'s extension', () => {
+    expect(downloadFilename('Mappa', 'document', 'png')).toBe('Mappa.png')
   })
 })

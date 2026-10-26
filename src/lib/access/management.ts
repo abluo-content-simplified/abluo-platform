@@ -17,11 +17,8 @@ import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { ACCESS_LIMITS, ACCESS_PERMISSIONS, AccessError, isUuid } from './model'
 import { checkNewPassword, hashPassword, verifyPassword, type PasswordProblem } from './password'
-import type { CredentialRow, DocumentRow, GroupRow, LocalizedName, SessionSummary, SiteAccessStore } from './store'
+import type { CredentialRow, GroupRow, LocalizedName, SessionSummary, SiteAccessStore } from './store'
 import type { AccessEnvironment } from './environment'
-import type { SiteAccessFiles } from './file-storage'
-import { inspectPdf, sanitizeFilename, UPLOAD_TTL_SECONDS } from './pdf'
-import { LOCALE_CODES } from '@/lib/i18n/locales'
 
 declare const GRANT: unique symbol
 export type AccessManagementGrant = {
@@ -256,129 +253,5 @@ export async function setGroupPassword(
   return { signedOut: 0 }
 }
 
-// ── Protected documents (B2.4) ────────────────────────────────────────────────
-//
-// A document is a localized title + the groups that may open it + at most one
-// PDF per language. Uploads go straight from the browser to the PRIVATE bucket
-// (server actions are capped at 4 MB, files at 20 MB):
-//   1. beginDocumentUpload — the database reserves the upload and chooses the
-//      path ('<project>/<uuid>.pdf'); storage issues a one-time signed upload
-//      URL for exactly that path, no overwrite;
-//   2. the browser PUTs the file;
-//   3. finishDocumentUpload — the SERVER downloads the stored object and
-//      checks it (PDF signature and end marker, size ≤ 20 MB, size and sha256
-//      equal to what was declared). Only then does the document point at it;
-//      a failed check queues the object for removal.
-
-const SHA256_HEX = /^[0-9a-f]{64}$/
-
-export async function listDocuments(store: SiteAccessStore, grant: AccessManagementGrant): Promise<DocumentRow[]> {
-  requireRead(grant)
-  return store.listDocuments(grant.projectId)
-}
-
-export async function createDocument(store: SiteAccessStore, grant: AccessManagementGrant, input: { title: unknown; groupIds: unknown }): Promise<string> {
-  requireManage(grant)
-  const title = normalizeLocalizedName(input.title)
-  const groupIds = await liveGroupIds(store, grant.projectId, input.groupIds)
-  return store.createDocument(grant.projectId, { title, groupIds }, grant.actorUserId)
-}
-
-export async function renameDocument(store: SiteAccessStore, grant: AccessManagementGrant, documentId: unknown, title: unknown): Promise<void> {
-  requireManage(grant)
-  if (!isUuid(documentId)) throw new AccessError('invalid_input', 'document')
-  await store.updateDocument(grant.projectId, documentId, { title: normalizeLocalizedName(title) }, grant.actorUserId)
-}
-
-/** An empty list is allowed and means NOBODY can open the document. */
-export async function setDocumentGroups(store: SiteAccessStore, grant: AccessManagementGrant, documentId: unknown, groupIds: unknown): Promise<void> {
-  requireManage(grant)
-  if (!isUuid(documentId)) throw new AccessError('invalid_input', 'document')
-  await store.setDocumentGroups(grant.projectId, documentId, await liveGroupIds(store, grant.projectId, groupIds), grant.actorUserId)
-}
-
-/** Archived documents are refused to every visitor, exactly like unknown ones. Never deleted. */
-export async function setDocumentArchived(store: SiteAccessStore, grant: AccessManagementGrant, documentId: unknown, archived: boolean): Promise<void> {
-  requireManage(grant)
-  if (!isUuid(documentId)) throw new AccessError('invalid_input', 'document')
-  await store.setDocumentArchived(grant.projectId, documentId, archived === true, grant.actorUserId)
-}
-
-export type UploadTicket = { uploadId: string; signedUrl: string; token: string; expiresAt: string }
-
-export async function beginDocumentUpload(
-  store: SiteAccessStore,
-  files: SiteAccessFiles,
-  grant: AccessManagementGrant,
-  input: { documentId: unknown; locale: unknown; sizeBytes: unknown; sha256: unknown; filename?: unknown }
-): Promise<UploadTicket> {
-  requireManage(grant)
-  if (!isUuid(input.documentId)) throw new AccessError('invalid_input', 'document')
-  if (typeof input.locale !== 'string' || !(LOCALE_CODES as readonly string[]).includes(input.locale)) throw new AccessError('invalid_input', 'locale')
-  const size = input.sizeBytes
-  if (typeof size !== 'number' || !Number.isInteger(size) || size <= 0) throw new AccessError('invalid_input', 'size')
-  if (size > ACCESS_LIMITS.fileBytesMax) throw new AccessError('invalid_input', 'file_too_large')
-  const sha = typeof input.sha256 === 'string' ? input.sha256.toLowerCase() : ''
-  if (!SHA256_HEX.test(sha)) throw new AccessError('invalid_input', 'sha256')
-  const reservation = await store.beginUpload(grant.projectId, {
-    documentId: input.documentId, locale: input.locale, sizeBytes: size, sha256: sha,
-    filename: sanitizeFilename(input.filename), ttlSeconds: UPLOAD_TTL_SECONDS,
-  }, grant.actorUserId)
-  // The path comes from the database and is project-prefixed; re-check before
-  // asking storage to sign anything.
-  if (!reservation.storagePath.startsWith(`${grant.projectId}/`)) throw new AccessError('unavailable', 'upload path')
-  try {
-    const { signedUrl, token } = await files.createSignedUploadUrl(reservation.storagePath)
-    return { uploadId: reservation.uploadId, signedUrl, token, expiresAt: reservation.expiresAt }
-  } catch (e) {
-    await store.failUpload(grant.projectId, reservation.uploadId).catch(() => undefined)
-    throw e
-  }
-}
-
-export type FinishResult =
-  | { ok: true; replaced: boolean }
-  | { ok: false; problem: 'not_uploaded_yet' | 'not_a_pdf' | 'size_mismatch' | 'hash_mismatch' | 'too_large' }
-
-export async function finishDocumentUpload(
-  store: SiteAccessStore,
-  files: SiteAccessFiles,
-  grant: AccessManagementGrant,
-  uploadId: unknown
-): Promise<FinishResult> {
-  requireManage(grant)
-  if (!isUuid(uploadId)) throw new AccessError('invalid_input', 'upload')
-  const upload = await store.getUpload(grant.projectId, uploadId)
-  if (!upload || upload.status !== 'pending' || Date.parse(upload.expiresAt) <= Date.now()) throw new AccessError('not_found', 'upload_unavailable')
-  if (!upload.storagePath.startsWith(`${grant.projectId}/`)) throw new AccessError('unavailable', 'upload path')
-
-  let bytes: Uint8Array | null
-  try {
-    bytes = await files.download(upload.storagePath, ACCESS_LIMITS.fileBytesMax)
-  } catch (e) {
-    if (e instanceof AccessError && e.code === 'invalid_input') {
-      await store.failUpload(grant.projectId, uploadId)
-      return { ok: false, problem: 'too_large' }
-    }
-    throw e
-  }
-  if (bytes === null) return { ok: false, problem: 'not_uploaded_yet' } // the browser may still be sending; retry is allowed
-
-  const check = inspectPdf(bytes, { declaredSize: upload.declaredSize, declaredSha256: upload.declaredSha256 })
-  if (!check.ok) {
-    await store.failUpload(grant.projectId, uploadId)
-    return { ok: false, problem: check.problem }
-  }
-  const replaced = await store.finishUpload(grant.projectId, uploadId, { sizeBytes: check.sizeBytes, sha256: check.sha256 }, grant.actorUserId)
-  if (replaced) {
-    // Best effort now; the daily sweep removes it otherwise (it is in the trash queue).
-    try {
-      await files.remove([replaced])
-      await store.trashDone([replaced])
-    } catch {
-      /* the sweep retries */
-    }
-  }
-  return { ok: true, replaced: replaced !== null }
-}
-
+// Documents (who can open them, files, pages) moved to the Documents module:
+// see ./documents.ts (ADR-040 §15, R9).

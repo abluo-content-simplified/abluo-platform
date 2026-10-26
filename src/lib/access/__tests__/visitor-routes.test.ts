@@ -358,3 +358,45 @@ describe('sign-out and revocation', () => {
     expect(await resolveVisitor({ store, projectId: HOFF, environment: 'production', token: t })).toBeNull()
   })
 })
+
+// ── R9: the members bar's status check ──────────────────────────────────────
+
+describe('GET status (members bar, R9)', () => {
+  const statusRoute = () => import('@/app/[locale]/(website)/[tenant]/site-access/status/route')
+  async function status(o: { host?: string; tenant?: string; locale?: string; cookie?: string } = {}) {
+    const host = o.host ?? PREVIEW
+    const tenant = o.tenant ?? 'hoffmann'
+    const locale = o.locale ?? 'en'
+    const headers = new Headers({ host, 'x-forwarded-proto': 'https' })
+    if (o.cookie) headers.set('cookie', o.cookie)
+    const res = await (await statusRoute()).GET(new Request(`https://${host}/${locale}/${tenant}/site-access/status`, { headers }) as never, { params: Promise.resolve({ locale, tenant }) })
+    return { res, body: (await res.json()) as unknown }
+  }
+  it('signed in → { signedIn: true } and nothing else; never cached', async () => {
+    const t = tokenFrom(await unlock({ fields: pw('hoffmann-pass-1') }), HOFF_COOKIE)
+    const { res, body } = await status({ cookie: `${HOFF_COOKIE}=${t}` })
+    expect(body).toEqual({ signedIn: true })
+    expect(res.headers.get('cache-control')).toBe('private, no-store')
+  })
+  it('no cookie → false without touching the store', async () => {
+    storeThrows = true
+    expect((await status()).body).toEqual({ signedIn: false })
+  })
+  it('another project\'s session, a signed-out session, another environment or the store failing → false', async () => {
+    const tc = tokenFrom(await unlock({ tenant: 'cyce', fields: pw('cyce-pass-12345', '/en/cyce/x') }), CYCE_COOKIE)
+    expect((await status({ cookie: `${HOFF_COOKIE}=${tc}` })).body).toEqual({ signedIn: false })
+    const t = tokenFrom(await unlock({ fields: pw('hoffmann-pass-1') }), HOFF_COOKIE)
+    env = 'preview'
+    expect((await status({ cookie: `${HOFF_COOKIE}=${t}` })).body).toEqual({ signedIn: false })
+    env = 'production'
+    storeThrows = true
+    expect((await status({ cookie: `${HOFF_COOKIE}=${t}` })).body).toEqual({ signedIn: false })
+    storeThrows = false
+    await store.revokeSessions(HOFF, null, 'revoked_all', 'o')
+    expect((await status({ cookie: `${HOFF_COOKIE}=${t}` })).body).toEqual({ signedIn: false })
+  })
+  it('an unknown host or language → false', async () => {
+    expect((await status({ host: 'evil.example' })).body).toEqual({ signedIn: false })
+    expect((await status({ locale: 'xx' })).body).toEqual({ signedIn: false })
+  })
+})

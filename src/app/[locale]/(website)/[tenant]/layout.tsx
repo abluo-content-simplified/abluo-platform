@@ -20,6 +20,10 @@ import { headingVars, fluidHeadingSize, isTypographyLegacyTenant } from '@/lib/d
 import { footerThemeVars } from '@/lib/design-system/footer-tokens'
 import { Footer } from '@/components/site/Footer'
 import { NavClient } from '@/components/site/Nav/NavClient'
+import { MembersStatusBar } from '@/components/site/MembersStatusBar'
+import { ACCESS_MODULE_ID } from '@/lib/access/model'
+import { ACCESS_FORM_FIELDS, ACCESS_ROUTE_SEGMENT, accessFormActions } from '@/lib/access/request'
+import { getAccessMessages } from '@/lib/i18n/access-messages'
 import { Masthead } from '@/components/site/Masthead'
 import { SiteRail } from '@/components/site/SiteRail'
 import { HeaderAppearanceWrapper } from '@/components/HeaderAppearanceWrapper'
@@ -943,6 +947,16 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
             }
           />
         </>
+      )}
+      {/* ADR-040 §15 (R9) — "Members area · Sign out" on every page while this
+          browser is signed in (Access installed only; asked client-side). */}
+      {getEnabledModuleIds(modules)?.includes(ACCESS_MODULE_ID) && (
+        <MembersStatusBar
+          statusUrl={`${siteBase === '/' ? '' : siteBase}/${ACCESS_ROUTE_SEGMENT}/status`}
+          signOutAction={accessFormActions(siteBase).signOut}
+          returnField={ACCESS_FORM_FIELDS.returnTo}
+          labels={{ membersArea: getAccessMessages(locale).membersArea, signOut: getAccessMessages(locale).signOut }}
+        />
       )}
       <main>{children}</main>
       {!draftPreview && <TrackingScripts data={integrations} placement="bodyEnd" grants={consent.grants} />}

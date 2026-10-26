@@ -1,6 +1,6 @@
 # ADR-040 — Site Access (restricted pages and protected files)
 
-**Status:** Accepted (2026-10-24 — architecture approved by Tom after the Stage A audit; B1, B2.0 and B2.1 implemented; B2.2 pending approval)
+**Status:** Accepted (amended 2026-10-26 — §15 R9; 2026-10-24 — architecture approved by Tom after the Stage A audit; B1, B2.0 and B2.1 implemented; B2.2 pending approval)
 **Date:** 2026-10-24
 **Owner:** Tom
 **Supersedes:** ADR-024 (Members area module, Proposed 2026-09-30, never implemented)
@@ -218,6 +218,37 @@ Phase 1 stores no personal data beyond salted IP hashes and an optional coarse d
 - Translations written by Claude still await review: the dashboard in Italian and German, and the website in Italian, German, French, Spanish, Portuguese and Dutch. These are release requirements, tracked in `claude/platform-backlog.md` → REL-ACCESS.
 
 **Rollback:** `supabase/verify/rollback-050-053.sql` is complete and guarded (proof: `hardening-rollback-050-053.verify.mjs`). The runbook is `supabase/APPLY-site-access-050-053.md`.
+
+## 15. Amendment R9 — Documents module, Download section, protected pages (2026-10-26)
+
+**Status:** Accepted by Tom 2026-10-26 ("go"). Design record: project doc `claude/site-access-r9-design-2026-10-26.md` (v3, with the decisions log). This section is the binding summary; where it conflicts with §8–§10 above, this section wins.
+
+**Why.** In the B2.6 Stage 2 live test on TMZ the B2.5 document flow (upload → tick groups → copy link → paste into a page in Studio) was judged unusable, the dashboard duplicated page management, and sign-out was hard to find. The security foundation (§3–§7, §10 delivery) passed the same test and is kept unchanged.
+
+**1. Two modules.**
+- `documents` (shown as **Documents**): the document library. Any project may install it. Owns documents, files, languages, note, category, tags and **placements** (on which pages a document shows). Permissions `documents.document.read` / `documents.document.manage` — Owner and Site admin by default, grantable to Editors as extras.
+- `members` (shown as **Access**): groups, shared passwords, sessions and protected pages, as before. When installed, a document may be limited to groups. Groups and passwords stay `members.access.*`; an Editor can never manage them, and support staff never manage them (unchanged, `SUPPORT_NEVER_WRITES`).
+- The data stays in the existing `site_access_*` tables (one storage model, one delivery route); only the module split, names and permissions change.
+
+**2. Documents.** Title (localized), **available languages** (one, several or all of the site's languages) with either **one file shared by all selected languages** or one file per language, **short note** (localized, shown to visitors), **who can open it** (`everyone`, or one or more groups — OR semantics), one optional category and up to 20 tags (Categories & Tags, "Documents" tab: `taxonomyTerm` records of module `documents`; the document stores their **keys**, checked against the vocabulary on every save; a term a document uses — archived ones included — cannot be deleted: the taxonomy service counts Supabase usage through the manifest's `externalUsage: 'documents'`; permission `documents.taxonomy.write`, Owner by default), and **Show on** (pages). A new month's material is a new document; "Replace file" only corrects a document and keeps its placements and link. No versioning.
+
+**3. Placements, not links.** A document shows on a page only when the client places it there (`site_access_document_placements`: document ↔ published Sanity page id, ordered). The dashboard offers only pages that have a Download section **and fit**: `everyone` documents → any such page; group documents → protected pages open to at least one of the document's groups. Copy link remains as a secondary action.
+
+**4. Download section** (`downloadSection`, platform presentation, CLAUDE.md principle 7): title, intro, optional image, sort (client order / newest / A–Z), optional category chips. **No document picker** — it lists the placements of its page. One per page (v1).
+
+**5. Rules, enforced on the server at every display and every file request.**
+1. A public page lists and serves only `everyone` documents. A group document is never listed, titled or served on a public page.
+2. On a protected page the page gate protects everything; the section lists the placed documents of the groups this visitor has unlocked, plus `everyone` documents.
+3. A visitor holding several passwords sees the union.
+4. A page that changes later (made public, other groups, section removed, deleted) simply stops showing documents that no longer fit — nothing leaks. Studio warns before publishing such a change.
+5. Home and legal pages (`pageType` `legal`) are never protectable — refused by Studio rules and by the server.
+6. `everyone` documents may be indexed; group documents are `noindex` and never in the sitemap.
+
+**6. Where things are managed.** Page protection lives in Studio only (Content → Access → Protected pages / New protected page — the same `page` type). The dashboard Access screen loses its page editor; the Documents screen shows a **read-only** Pages recap (with per-page document order). Sign-out is shown in the site header on every page while a visitor is signed in; protected pages default to **Locked** in the menu.
+
+**7. File types.** R9: PDF, JPEG, PNG, WebP (view or download), checked by content against an allowlist with per-type limits. Office files and SVG are backlog DOCS-1, download-only.
+
+**8. Migration 054** (additive, safe before or after the code): document visibility / note / category / tags, files shareable by several languages, image types, placements, the `documents.*` grantable extras and new service-role functions. The B2.5 functions stay until the B2.5 code is gone.
 
 ## Consequences
 

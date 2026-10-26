@@ -46,6 +46,18 @@ export interface AccessMessages {
   /** Label of the strip shown on a members page the visitor may see. */
   membersArea: string
   signOut: string
+  // ── Download section (Documents module, ADR-040 §15) ──────────────────────
+  /** Opens the document in the browser. */
+  view: string
+  download: string
+  /** The first category filter: every document. */
+  allCategories: string
+  /** Accessible name of the Download section's category filter. */
+  categoryFilterLabel: string
+  /** The file is in another language than the page; `{language}` is the language's own name. */
+  inLanguage: string
+  /** Other languages a document exists in; `{languages}` is a list. */
+  alsoIn: string
 }
 
 const MESSAGES: Record<string, AccessMessages> = {
@@ -71,6 +83,12 @@ const MESSAGES: Record<string, AccessMessages> = {
     signedOutBrowser: 'You’ve been signed out in this browser.',
     membersArea: 'Members area',
     signOut: 'Sign out',
+    view: 'View',
+    download: 'Download',
+    allCategories: 'All',
+    categoryFilterLabel: 'Filter by category',
+    inLanguage: 'In {language}',
+    alsoIn: 'Also in {languages}',
   },
   it: {
     restrictedHeading: 'Riservato ai membri',
@@ -94,6 +112,12 @@ const MESSAGES: Record<string, AccessMessages> = {
     signedOutBrowser: 'Sei uscito da questo browser.',
     membersArea: 'Area membri',
     signOut: 'Esci',
+    view: 'Apri',
+    download: 'Scarica',
+    allCategories: 'Tutti',
+    categoryFilterLabel: 'Filtra per categoria',
+    inLanguage: 'In {language}',
+    alsoIn: 'Disponibile anche in {languages}',
   },
   de: {
     restrictedHeading: 'Nur für Mitglieder',
@@ -117,6 +141,12 @@ const MESSAGES: Record<string, AccessMessages> = {
     signedOutBrowser: 'Du wurdest in diesem Browser abgemeldet.',
     membersArea: 'Mitgliederbereich',
     signOut: 'Abmelden',
+    view: 'Ansehen',
+    download: 'Herunterladen',
+    allCategories: 'Alle',
+    categoryFilterLabel: 'Nach Kategorie filtern',
+    inLanguage: 'Auf {language}',
+    alsoIn: 'Auch auf {languages}',
   },
   fr: {
     restrictedHeading: 'Réservé aux membres',
@@ -140,6 +170,12 @@ const MESSAGES: Record<string, AccessMessages> = {
     signedOutBrowser: 'Vous êtes déconnecté dans ce navigateur.',
     membersArea: 'Espace membres',
     signOut: 'Se déconnecter',
+    view: 'Ouvrir',
+    download: 'Télécharger',
+    allCategories: 'Tous',
+    categoryFilterLabel: 'Filtrer par catégorie',
+    inLanguage: 'En {language}',
+    alsoIn: 'Aussi en {languages}',
   },
   es: {
     restrictedHeading: 'Solo para miembros',
@@ -163,6 +199,12 @@ const MESSAGES: Record<string, AccessMessages> = {
     signedOutBrowser: 'Has cerrado la sesión en este navegador.',
     membersArea: 'Área de miembros',
     signOut: 'Cerrar sesión',
+    view: 'Ver',
+    download: 'Descargar',
+    allCategories: 'Todos',
+    categoryFilterLabel: 'Filtrar por categoría',
+    inLanguage: 'En {language}',
+    alsoIn: 'También en {languages}',
   },
   pt: {
     restrictedHeading: 'Apenas para membros',
@@ -186,6 +228,12 @@ const MESSAGES: Record<string, AccessMessages> = {
     signedOutBrowser: 'Terminou a sessão neste navegador.',
     membersArea: 'Área de membros',
     signOut: 'Terminar sessão',
+    view: 'Ver',
+    download: 'Transferir',
+    allCategories: 'Todos',
+    categoryFilterLabel: 'Filtrar por categoria',
+    inLanguage: 'Em {language}',
+    alsoIn: 'Também em {languages}',
   },
   nl: {
     restrictedHeading: 'Alleen voor leden',
@@ -209,6 +257,12 @@ const MESSAGES: Record<string, AccessMessages> = {
     signedOutBrowser: 'Je bent uitgelogd in deze browser.',
     membersArea: 'Ledengedeelte',
     signOut: 'Uitloggen',
+    view: 'Bekijken',
+    download: 'Downloaden',
+    allCategories: 'Alle',
+    categoryFilterLabel: 'Filteren op categorie',
+    inLanguage: 'In het {language}',
+    alsoIn: 'Ook in het {languages}',
   },
 }
 

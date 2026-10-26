@@ -1,19 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { Button } from '@/components/app/ui/Button'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { EmptyState } from '@/components/app/ui/EmptyState'
-import { FactRow } from '@/components/app/ui/FactRow'
 import { Field } from '@/components/app/ui/Field'
 import { Notice } from '@/components/app/ui/Notice'
 import { Panel } from '@/components/app/ui/Panel'
 import { RadioList } from '@/components/app/ui/RadioList'
 import { TextInput } from '@/components/app/ui/TextInput'
-import { LocalDate, Pill } from '@/components/app/ui/list/cells'
+import { ListToolbar } from '@/components/app/ui/ListToolbar'
+import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
+import { ListRow } from '@/components/app/ui/list/ListRow'
+import { CellPill, CellText, LocalDate, Pill } from '@/components/app/ui/list/cells'
 import {
   createAccessGroupAction,
   renameAccessGroupAction,
@@ -27,15 +29,16 @@ import type { AccessRunner } from './AccessScreen'
 type Limits = { passwordMinLength: number; passwordMaxLength: number; nameMax: number }
 
 /**
- * Groups (ADR-040 B2.5): who the members are, each with the password they
- * share. A group is created WITH its password, in one step; changing it later
- * signs out everyone who used the old one, and says so before and after.
- * Existing passwords are never shown — nobody knows them, not even Abluo.
+ * Groups (ADR-040 B2.5; a Records list since R9 §15 — ListToolbar + DataTable
+ * on computers + ListRow on phones): who the members are, each with the
+ * password they share. A group is created WITH its password, in one step;
+ * changing it later signs out everyone who used the old one, and says so
+ * before and after. Existing passwords are never shown — nobody knows them,
+ * not even Abluo.
  */
-export function GroupsTab({
+export function AccessGroupsBrowser({
   projectSlug,
   groups,
-  usage,
   canManage,
   limits,
   creating,
@@ -44,8 +47,6 @@ export function GroupsTab({
 }: {
   projectSlug: string
   groups: AccessGroupView[]
-  /** How many pages / documents each group opens. */
-  usage: Record<string, { pages: number; documents: number }>
   canManage: boolean
   limits: Limits
   creating: boolean
@@ -58,7 +59,48 @@ export function GroupsTab({
   const [archiving, setArchiving] = useState<AccessGroupView | null>(null)
   const [shared, setShared] = useState<{ group: string; password: string } | null>(null)
 
-  const sorted = [...groups].sort((a, b) => Number(a.archived) - Number(b.archived))
+  const [q, setQ] = useState('')
+  const [status, setStatus] = useState<'active' | 'archived' | 'all'>('active')
+  const sorted = [...groups].sort((a, b) => Number(a.archived) - Number(b.archived) || a.name.localeCompare(b.name))
+  const shown = useMemo(() => {
+    const needle = q.trim().toLowerCase()
+    return sorted.filter((g) => (status === 'all' || (status === 'archived') === g.archived) && (!needle || g.name.toLowerCase().includes(needle)))
+  }, [sorted, q, status])
+  const isDefault = !q && status === 'active'
+  const lastChangeOf = (g: AccessGroupView) => g.passwords.filter((p) => p.inUse).map((p) => p.changedAt).sort().at(-1) ?? null
+  const statusPill = (g: AccessGroupView) =>
+    g.archived ? <Pill tone="muted">{t('groups.archived')}</Pill> : g.passwords.some((p) => p.inUse) ? null : <Pill tone="highlight">{t('groups.noPassword')}</Pill>
+  const passwordText = (g: AccessGroupView) => {
+    const inUse = g.passwords.filter((p) => p.inUse)
+    if (inUse.length === 0) return <span className="text-muted-foreground">{t('groups.passwordNone')}</span>
+    return (
+      <>
+        {inUse.length > 1 ? `${t('groups.passwordCount', { count: inUse.length })} · ` : null}
+        {t('groups.passwordChanged')} <LocalDate iso={lastChangeOf(g)} />
+      </>
+    )
+  }
+  const columns: DataTableColumn<AccessGroupView>[] = [
+    {
+      key: 'name',
+      header: t('groups.columns.name'),
+      width: 'min-w-56',
+      render: (g) => <CellText primary={g.name} clamp={2} />,
+    },
+    { key: 'status', header: t('groups.columns.status'), width: 'w-40', render: (g) => <CellPill>{statusPill(g) ?? <Pill tone="success">{t('groups.active')}</Pill>}</CellPill> },
+    { key: 'password', header: t('groups.columns.password'), width: 'w-56', render: (g) => <span className="text-sm leading-6 text-foreground">{passwordText(g)}</span> },
+    { key: 'opens', header: t('groups.columns.opens'), width: 'w-56', render: (g) => <span className="text-sm leading-6 text-foreground">{t('groups.opensCount', { pages: g.opens.pages, documents: g.opens.documents })}</span> },
+    { key: 'signedIn', header: t('groups.columns.signedIn'), width: 'w-36', className: 'whitespace-nowrap', render: (g) => <span className="text-sm leading-6 text-foreground">{g.signedIn === null || g.archived ? '—' : t('visitors', { count: g.signedIn })}</span> },
+    {
+      key: 'menu',
+      header: <span className="sr-only">{t('groups.columns.actions')}</span>,
+      width: 'w-14',
+      render: (g) => {
+        const items = menuFor(g)
+        return items.length ? <CardMenu label={t('groups.actionsFor', { name: g.name })} items={items} /> : null
+      },
+    },
+  ]
 
   const menuFor = (g: AccessGroupView): CardMenuItem[] => {
     if (!canManage) return []
@@ -80,46 +122,58 @@ export function GroupsTab({
           action={canManage ? <Button variant="primary" onClick={() => onCreatingChange(true)}>{t('groups.new')}</Button> : undefined}
         />
       ) : (
-        <ul className="grid gap-4 md:grid-cols-2">
-          {sorted.map((g) => {
-            const items = menuFor(g)
-            const inUse = g.passwords.filter((p) => p.inUse)
-            const lastChange = inUse.map((p) => p.changedAt).sort().at(-1) ?? null
-            const u = usage[g.id] ?? { pages: 0, documents: 0 }
-            return (
-              <Panel as="li" key={g.id} className="flex flex-col gap-3 md:p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 flex-col gap-1.5">
-                    <h3 className="truncate text-[1.0625rem] leading-6 font-semibold text-foreground">{g.name}</h3>
-                    <span className="flex flex-wrap gap-1.5">
-                      {g.archived ? <Pill tone="muted">{t('groups.archived')}</Pill> : inUse.length === 0 ? <Pill tone="highlight">{t('groups.noPassword')}</Pill> : null}
-                    </span>
-                  </div>
-                  {items.length ? <CardMenu label={t('groups.actionsFor', { name: g.name })} items={items} /> : null}
-                </div>
-                <dl>
-                  <FactRow label={t('groups.password')}>
-                    {inUse.length === 0 ? (
-                      <span className="text-muted-foreground">{t('groups.passwordNone')}</span>
-                    ) : (
-                      <>
-                        {inUse.length > 1 ? `${t('groups.passwordCount', { count: inUse.length })} · ` : null}
-                        {t('groups.passwordChanged')} <LocalDate iso={lastChange} />
-                      </>
-                    )}
-                  </FactRow>
-                  <FactRow label={t('groups.opens')}>{t('groups.opensCount', { pages: u.pages, documents: u.documents })}</FactRow>
-                  {g.signedIn !== null && !g.archived ? <FactRow label={t('groups.signedIn')}>{t('visitors', { count: g.signedIn })}</FactRow> : null}
-                </dl>
-                {canManage && !g.archived && inUse.length === 0 ? (
-                  <div>
-                    <Button variant="secondary" onClick={() => setPasswordFor(g)}>{t('groups.setPassword')}</Button>
-                  </div>
-                ) : null}
-              </Panel>
-            )
-          })}
-        </ul>
+        <>
+          <ListToolbar
+            label={t('groups.filtersLabel')}
+            search={{ value: q, onChange: setQ, label: t('groups.searchLabel'), placeholder: t('groups.search') }}
+            filters={[
+              {
+                key: 'status',
+                label: t('groups.statusFilter'),
+                value: status,
+                options: [
+                  { value: 'active', label: t('groups.activeGroups') },
+                  { value: 'archived', label: t('groups.archivedGroups') },
+                  { value: 'all', label: t('groups.allGroups') },
+                ],
+                onChange: (v) => setStatus(v as 'active' | 'archived' | 'all'),
+              },
+            ]}
+            summary={t('groups.showing', { shown: shown.length, total: groups.length })}
+            clear={{ label: t('groups.clear'), onClear: () => { setQ(''); setStatus('active') }, visible: !isDefault }}
+            sheet={{ activeCount: status === 'active' ? 0 : 1, resultCount: shown.length, chips: status === 'active' ? [] : [{ id: 'status', label: status === 'archived' ? t('groups.archivedGroups') : t('groups.allGroups') }], onRemoveChip: () => setStatus('active') }}
+          />
+          {shown.length === 0 ? (
+            <Notice>{t('groups.noMatch')}</Notice>
+          ) : (
+            <>
+              <div className="hidden md:block">
+                <DataTable rows={shown} columns={columns} rowKey={(g) => g.id} label={t('groups.listLabel')} minWidth="min-w-[52rem]" />
+              </div>
+              <ul className="flex flex-col gap-3 md:hidden">
+                {shown.map((g) => {
+                  const items = menuFor(g)
+                  return (
+                    <ListRow
+                      key={g.id}
+                      onOpen={() => (canManage && !g.archived ? setPasswordFor(g) : undefined)}
+                      label={canManage && !g.archived ? t('groups.changePasswordFor', { name: g.name }) : undefined}
+                      menu={items.length ? { label: t('groups.actionsFor', { name: g.name }), items } : undefined}
+                    >
+                      <span className="text-[0.9375rem] leading-6 font-semibold break-words text-foreground">{g.name}</span>
+                      {statusPill(g) ? <span className="flex flex-wrap gap-1.5">{statusPill(g)}</span> : null}
+                      <span className="text-xs leading-5 text-muted-foreground">{passwordText(g)}</span>
+                      <span className="text-xs leading-5 text-muted-foreground">
+                        {t('groups.opensCount', { pages: g.opens.pages, documents: g.opens.documents })}
+                        {g.signedIn !== null && !g.archived ? ` · ${t('visitors', { count: g.signedIn })}` : ''}
+                      </span>
+                    </ListRow>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+        </>
       )}
 
       <NewGroupSheet

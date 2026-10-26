@@ -22,8 +22,9 @@ import { joinSlugSegments } from '@/lib/sanity/fields/nested-slug'
 import { loadCatalogueConfig, planCatalogueRoute } from '@/lib/modules/catalogue/website'
 import { CatalogueRoute, catalogueRouteMetadata } from '@/components/catalogue/CatalogueRoute'
 import { loadGatedPage } from '@/lib/access/page-gate.server'
+import { downloadAccessFromGate } from '@/lib/access/download-section.server'
 import { deniedPageMetadata, grantedPageMetadata } from '@/lib/access/page-metadata'
-import { MembersBar, RestrictedPage } from '@/components/site/RestrictedPage'
+import { RestrictedPage } from '@/components/site/RestrictedPage'
 import { ACCESS_FORM_FIELDS, accessFormActions, parseAccessNotice } from '@/lib/access/request'
 import { promptNotice, promptNoticeKind } from '@/lib/access/prompt'
 import { getAccessMessages } from '@/lib/i18n/access-messages'
@@ -308,7 +309,18 @@ export default async function WebsitePageRoute({ params, searchParams }: PagePro
   // contract depends on (unresolved fails open; resolved-empty gates).
   const enabledModuleIds = getEnabledModuleIds(moduleConfig)
 
-  await hydrateSections(page.sections, { fetchForTenant, projectSlug: String(tenantId), locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
+  await hydrateSections(page.sections, {
+    fetchForTenant, projectSlug: String(tenantId), locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig,
+    // ADR-040 §15 — a Download section lists, per visitor, the documents placed on this page.
+    downloads: {
+      projectSegment: String(tenantId),
+      pageId: page._id,
+      ...downloadAccessFromGate(gate),
+      locale,
+      defaultLocale,
+      siteBaseFor: (l) => siteBasePath(l, tenantId, hostScoped),
+    },
+  })
 
   // ADR-037 D7 — one FAQPage from every FAQ section this page renders (none
   // when the FAQ module is not installed: the sections do not render either).
@@ -343,9 +355,7 @@ export default async function WebsitePageRoute({ params, searchParams }: PagePro
         moduleConfig={moduleConfig}
         />
       ))}
-      {gate.kind === 'granted' && (
-        <MembersBar locale={locale} signOutAction={accessActions.signOut} returnTo={ownPath} fields={ACCESS_FORM_FIELDS} />
-      )}
+      {/* Sign-out: the layout's members bar (every page, ADR-040 §15). */}
     </SlugMapProvider>
   )
 }

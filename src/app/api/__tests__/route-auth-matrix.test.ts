@@ -198,6 +198,9 @@ const ADMIN_ONLY: Call[] = [
   { name: 'GET /api/sanity/projects', run: async () => (await import('@/app/api/sanity/projects/route')).GET(req('/api/sanity/projects?tenantId=t')) },
   { name: 'GET /api/sanity/tenant', run: async () => (await import('@/app/api/sanity/tenant/route')).GET(req('/api/sanity/tenant?id=t')) },
   { name: 'GET /api/sanity/tenants', run: async () => (await import('@/app/api/sanity/tenants/route')).GET(req('/api/sanity/tenants')) },
+  // ADR-040 §15 (R9): Studio's group picker and the "documents will be hidden" warning.
+  { name: 'GET /api/sanity/access-groups', run: async () => (await import('@/app/api/sanity/access-groups/route')).GET(req('/api/sanity/access-groups?projectSlug=tmz')) },
+  { name: 'GET /api/sanity/page-documents', run: async () => (await import('@/app/api/sanity/page-documents/route')).GET(req('/api/sanity/page-documents?projectSlug=tmz&pageId=p')) },
   { name: 'POST /api/translate', run: async () => (await import('@/app/api/translate/route')).POST(req('/api/translate', json({ projectSlug: 'b', text: 'x' }))) },
   { name: 'GET /api/translate/status', run: async () => (await import('@/app/api/translate/status/route')).GET(req('/api/translate/status?projectSlug=b')) },
   { name: 'POST /api/tenants/[tenantId]/invite', run: async () => (await import('@/app/api/tenants/[tenantId]/invite/route')).POST(req('/api/tenants/t/invite', json({ email: 'x@y.z' })), ctx({ tenantId: 't' })) },
@@ -948,6 +951,8 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   'sanity/projects': 'admin',
   'sanity/tenant': 'admin',
   'sanity/tenants': 'admin',
+  'sanity/access-groups': 'admin', // ADR-040 §15: Studio group picker (names only)
+  'sanity/page-documents': 'admin', // ADR-040 §15: Studio warning before a page change hides documents
   translate: 'admin',
   'translate/status': 'admin',
   'tenants/[tenantId]/invite': 'admin',
@@ -991,7 +996,7 @@ describe('API route inventory', () => {
     expect(found.sort()).toEqual(Object.keys(CLASSIFIED).sort())
     expect(Object.entries(CLASSIFIED).filter(([, c]) => c === 'admin').map(([k]) => k).sort()).toEqual(
       [
-        'sanity/document', 'sanity/projects', 'sanity/tenant', 'sanity/tenants',
+        'sanity/document', 'sanity/projects', 'sanity/tenant', 'sanity/tenants', 'sanity/access-groups', 'sanity/page-documents',
         'tenants/[tenantId]/invite', 'translate', 'translate/status',
       ].sort()
     )
@@ -1014,6 +1019,9 @@ const WEBSITE_ROUTES: Record<string, 'public-write (site access)' | 'public-read
   // B2.4: GET/HEAD only. Anonymous by nature; every request re-checks the
   // visitor; refusals are uniform (document-route.test.ts).
   '[tenant]/site-access/documents/[documentId]': 'public-read (site access)',
+  // R9: the members bar asks "is this browser signed in?" — GET only, answers
+  // { signedIn } and nothing else; no database call without the cookie.
+  '[tenant]/site-access/status': 'public-read (site access)',
 }
 
 describe('route handlers outside src/app/api', () => {
@@ -1043,6 +1051,9 @@ describe('route handlers outside src/app/api', () => {
     expect(Object.keys(doc).filter((k) => /^(POST|PUT|PATCH|DELETE|OPTIONS)$/.test(k))).toEqual([])
     expect(typeof doc.GET).toBe('function')
     expect(typeof doc.HEAD).toBe('function')
+    const status = (await import('@/app/[locale]/(website)/[tenant]/site-access/status/route')) as Record<string, unknown>
+    expect(Object.keys(status).filter((k) => /^(POST|PUT|PATCH|DELETE|OPTIONS)$/.test(k))).toEqual([])
+    expect(typeof status.GET).toBe('function')
   })
 })
 

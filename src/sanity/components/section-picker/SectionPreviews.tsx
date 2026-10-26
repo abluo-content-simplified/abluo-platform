@@ -314,6 +314,20 @@ export const SECTION_PREVIEWS: Record<string, () => ReactNode> = {
       ))}
     </>
   ),
+  downloadSection: () => (
+    <>
+      <Title />
+      {[28, 41, 54].map((y) => (
+        <g key={y}>
+          <rect x={10} y={y - 2} width={7} height={9} rx={1} fill="none" stroke="currentColor" strokeWidth={1} opacity={0.75} />
+          <rect x={22} y={y} width={40} height={3} rx={1} fill="currentColor" opacity={HEAD} />
+          <rect x={22} y={y + 5} width={26} height={1.5} rx={0.75} fill="currentColor" opacity={BODY} />
+          <path d={`M106 ${y - 1} V${y + 4} M103.5 ${y + 1.5} L106 ${y + 4} L108.5 ${y + 1.5}`} stroke="currentColor" strokeWidth={1.1} fill="none" />
+          <Rule x1={10} x2={110} y={y + 9.5} />
+        </g>
+      ))}
+    </>
+  ),
   catalogueListingSection: () => (
     <>
       <Title />

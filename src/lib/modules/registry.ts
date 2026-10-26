@@ -7,6 +7,7 @@ import { formsSchemaTypes } from './forms/schema'
 import { newsSchemaTypes } from './news/schema'
 import { gallerySchemaTypes } from './gallery/schema'
 import { faqSchemaTypes } from './faq/schema'
+import { documentsSchemaTypes } from './documents/schema'
 import { catalogueSchemaTypes } from './catalogue/schema'
 import { brandHubSchemaTypes } from './brand-hub/schema'
 import { SEGMENT_REGEX_SOURCE } from './catalogue/segment'
@@ -1514,12 +1515,29 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   {
     id: 'members',
     label: 'Access',
-    version: '1.0.0',
+    version: '1.1.0',
     status: 'released',
     category: 'engagement',
 
     platformContract: {
-      collections: [],
+      // ADR-040 §15 — Studio: Content → Access → Protected pages (the same
+      // `page` type, filtered), with "New protected page" (protection on).
+      collections: [
+        {
+          id: 'access-pages',
+          label: 'Access',
+          items: [
+            {
+              id: 'protected-pages',
+              label: 'Protected pages',
+              schemaType: 'page',
+              filter: `_type == "page" && projectSlug == $slug && access.visibility == "restricted"`,
+              ordering: [{ field: 'title.en', direction: 'asc' as const }],
+              initialValueTemplate: 'pageProtectedProjectOwned',
+            },
+          ],
+        },
+      ],
       sectionTypes: [],
       schemaTypes: [],
       schemaDefinitions: () => [],
@@ -1528,13 +1546,13 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         {
           id: 'members.access.read',
           label: 'See access settings',
-          description: 'See the access groups, the password names (never the passwords), the protected documents and how many visitors are signed in.',
+          description: 'See the access groups, the password names (never the passwords) and how many visitors are signed in.',
           defaultRoles: ['owner'],
         },
         {
           id: 'members.access.manage',
           label: 'Manage access',
-          description: 'Create, rename and archive groups; create, change and switch off passwords; choose who may open restricted pages and documents; sign visitors out.',
+          description: 'Create, rename and archive groups; create, change and switch off passwords; sign visitors out.',
           defaultRoles: ['owner'],
         },
       ],
@@ -1546,7 +1564,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
 
       placement: {
         surfaces: [],
-        note: 'Lets you restrict pages and documents to chosen groups of visitors, who unlock them with a password. Groups, passwords and documents are managed in the dashboard, under Access. Switching the module off keeps restricted content closed — it never makes it public — and deletes nothing.',
+        note: 'Lets you protect pages (in Studio, Content → Access) and documents (with the Documents module) for chosen groups of visitors, who unlock them with a password. Groups and passwords are managed in the dashboard, under Access. Switching the module off keeps protected content closed — it never makes it public — and deletes nothing.',
       },
     },
 
@@ -1563,7 +1581,87 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       primary: 'hybrid',
     },
 
-    changelog: 'V1.0.0 — ADR-040. Module registration and dashboard permissions (members.access.read / .manage). Restricted pages (B2.2), sign-in (B2.3), protected PDFs (B2.4) and the dashboard Access screen — groups with their passwords, documents, who can see each page, signed-in visitors (B2.5).',
+    changelog: 'V1.1.0 — ADR-040 §15 (R9): documents moved to the Documents module; page protection is set in Studio only; the dashboard Access screen manages groups, passwords and sign-outs. V1.0.0 — ADR-040. Restricted pages (B2.2), sign-in (B2.3), protected PDFs (B2.4), dashboard Access screen (B2.5).',
+  },
+
+  // ── Documents ──────────────────────────────────────────────────────────────
+  // ADR-040 §15 (R9). The document library: files (PDF, JPEG, PNG, WebP), each
+  // available in one, several or all of the site's languages, with a note, a
+  // category and tags, and the pages it shows on ("Show on"). A document is
+  // for everyone, or — when Access (`members`) is installed too — for one or
+  // more groups. Everything lives in Supabase (migrations 050/052/054); the
+  // Download section only presents it.
+  //
+  // Installing, disabling or removing the installation changes ONLY the
+  // Sanity record: nothing in Supabase is created or deleted, documents stop
+  // being served while it is off (never made public), and management is
+  // refused while it is off.
+  {
+    id: 'documents',
+    label: 'Documents',
+    version: '1.0.0',
+    status: 'released',
+    category: 'content',
+
+    platformContract: {
+      collections: [],
+      sectionTypes: ['downloadSection'],
+      schemaTypes: ['downloadSection'],
+      schemaDefinitions: () => documentsSchemaTypes,
+
+      permissions: [
+        {
+          id: 'documents.document.read',
+          label: 'See documents',
+          description: 'See the website\'s documents and on which pages they show.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'documents.document.manage',
+          label: 'Manage documents',
+          description: 'Add, change, place, reorder and archive documents. Choosing groups is possible; managing groups and passwords is not.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'documents.taxonomy.write',
+          label: 'Manage document categories and tags',
+          description: 'Create, rename, reorder and delete the categories and tags of documents.',
+          defaultRoles: ['owner'],
+        },
+      ],
+
+      // Deliberately empty (ADR-014): documents are operational data edited in
+      // the dashboard (Documents); the section's own settings are on the section.
+      configSchema: [],
+
+      placement: {
+        surfaces: [
+          { kind: 'sections', description: 'Download section — lists the documents the site placed on that page, per visitor.' },
+        ],
+        note: 'Documents are added in the dashboard, under Documents, and placed on pages that have a Download section. With Access installed too, a document can be limited to groups; it then shows only on protected pages.',
+      },
+    },
+
+    // ADR-040 §15 (R9.2): categories and tags of documents, kept in Categories & Tags.
+    // The documents (and so the keys) live in Supabase, not Sanity: usage is
+    // counted there (`externalUsage`), so a term a document uses is never deleted.
+    taxonomies: [
+      { kind: 'category', usedBy: [], externalUsage: 'documents' },
+      { kind: 'tag', usedBy: [], externalUsage: 'documents' },
+    ],
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [],
+      integratesWith: ['members'],
+    },
+
+    dataStore: {
+      primary: 'hybrid',
+    },
+
+    changelog: 'V1.0.0 — ADR-040 §15 (R9). Document library (public or group documents, languages, note, category, tags, images), placements on pages, Download section.',
   },
 
 ]

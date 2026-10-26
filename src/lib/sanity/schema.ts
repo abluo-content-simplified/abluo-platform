@@ -27,6 +27,7 @@ import { activeFormReferenceFilter } from '@/lib/sanity/form-reference-filter'
 import { POST_CTA_ACTIONS, validateCtaAction, type CtaEntryInput } from '@/lib/blog/post-cta'
 import { isReservedSlug } from '@/lib/platform/reserved-slugs'
 import { validatePageAccess, validatePageSlugNotReserved, ACCESS_GROUP_ID_RE } from '@/lib/access/page-schema-rules'
+import { AccessGroupsInput, pageAccessDocumentsWarning } from '@/lib/sanity/fields/AccessGroupsInput'
 
 // scopedRef and projectSlugField are imported from @/lib/sanity/fields/shared.
 // They live there so module schema files can import them without creating a
@@ -5559,17 +5560,22 @@ const pageType = defineType({
       title: 'Who can see this page',
       type: 'object',
       group: 'access',
-      // Hidden on the home page — unless a restricted value is already stored
-      // there, so the validation error stays visible and fixable.
+      // Hidden on the home page and on legal pages (they must stay public) —
+      // unless a restricted value is already stored there, so the validation
+      // error stays visible and fixable.
       hidden: ({ document, value }) =>
-        (document as { pageType?: string } | undefined)?.pageType === 'home'
+        ['home', 'legal'].includes(String((document as { pageType?: string } | undefined)?.pageType))
         && (value as { visibility?: string } | undefined)?.visibility !== 'restricted',
       description:
         'Members-only pages are hidden from search engines, the sitemap and llms.txt, and show only a "Members only" notice to everyone else. Images and files uploaded to Sanity stay public by link — never put confidential material in them.',
-      validation: (Rule) =>
+      validation: (Rule) => [
         Rule.custom((value, context) =>
           validatePageAccess(value as never, context.document as { pageType?: unknown; sections?: unknown } | undefined),
         ),
+        // ADR-040 §15 — warns before publishing a change that would hide
+        // documents the site placed on this page (Download section).
+        Rule.custom(pageAccessDocumentsWarning).warning(),
+      ],
       fields: [
         defineField({
           name: 'visibility',
@@ -5589,9 +5595,10 @@ const pageType = defineType({
           title: 'Access groups',
           type: 'array',
           of: [defineArrayMember({ type: 'string' })],
+          components: { input: AccessGroupsInput },
           hidden: ({ parent }: { parent?: { visibility?: string } }) => parent?.visibility !== 'restricted',
           description:
-            'Group ids from the Access module. A visitor in ANY of these groups can see the page (and pages below it only if they also pass those pages’ groups).',
+            'The groups (from the dashboard, Access) whose password opens this page. A visitor in ANY of them can see it (and pages below it only if they also pass those pages’ groups).',
           validation: (Rule) =>
             Rule.custom((groups) => {
               if (!Array.isArray(groups)) return true
@@ -5603,12 +5610,13 @@ const pageType = defineType({
           name: 'navigation',
           title: 'In menus',
           type: 'string',
-          initialValue: 'hidden',
+          // R9 — Locked by default, so visitors can find where to sign in.
+          initialValue: 'locked',
           hidden: ({ parent }: { parent?: { visibility?: string } }) => parent?.visibility !== 'restricted',
           options: {
             list: [
-              { title: 'Hide from menus', value: 'hidden' },
-              { title: 'Show with a lock', value: 'locked' },
+              { title: 'Show with a lock (everyone sees where to sign in)', value: 'locked' },
+              { title: 'Hide from menus (members see it once signed in)', value: 'hidden' },
             ],
             layout: 'radio',
           },
@@ -5720,6 +5728,20 @@ export const initialValueTemplates = [
     value: (params: any) => ({
       projectSlug: params?.projectSlug,
       sections: [],
+    }),
+  },
+  {
+    // Access module (ADR-040 §15) — Content → Access → New protected page: a
+    // normal page with protection already switched on (choose its groups).
+    id: 'pageProtectedProjectOwned',
+    title: 'Protected page',
+    schemaType: 'page',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+      pageType: 'services',
+      sections: [],
+      access: { visibility: 'restricted', groups: [], navigation: 'locked' },
     }),
   },
   {

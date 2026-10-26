@@ -1,5 +1,5 @@
 /**
- * ADR-040 B2.4 — ROUTE-LEVEL tests of protected document delivery. The REAL
+ * ADR-040 B2.4 / R9 — ROUTE-LEVEL tests of document delivery (protected and public). The REAL
  * route module is invoked with real Requests; only the I/O boundaries are
  * faked (store, private bucket + its HTTP endpoint, Sanity module config, the
  * environment). Hosts and projects come from the REAL generated route table.
@@ -39,6 +39,8 @@ let gHoff: string, gHoff2: string, gCyce: string, credHoff: string
 let docHoff: string, docCyce: string, docHoffNobody: string
 let token: string, tokenCyce: string
 
+const doc = (title: Record<string, string>, groupIds: string[], visibility: 'everyone' | 'groups' = 'groups') =>
+  ({ title, note: null, visibility, groupIds: visibility === 'everyone' ? [] : groupIds, categoryTermId: null, tagTermIds: [] })
 async function session(projectId: string, password: string) {
   const r = await unlockWithPassword({ store, projectId, environment: 'production', password, currentToken: null, ip: '203.0.113.1', ipSalt: 'route-test-salt-0123456789', forGroupIds: null })
   if (!r.ok) throw new Error('unlock failed')
@@ -48,7 +50,7 @@ async function upload(projectId: string, documentId: string, locale: string, siz
   const bytes = pdfBytes(size)
   const { createHash } = await import('crypto')
   const sha = createHash('sha256').update(bytes).digest('hex')
-  const r = await store.beginUpload(projectId, { documentId, locale, sizeBytes: size, sha256: sha, filename: null, ttlSeconds: 3600 }, 'owner')
+  const r = await store.beginUpload(projectId, { documentId, locales: [locale], mimeType: 'application/pdf', sizeBytes: size, sha256: sha, filename: null, ttlSeconds: 3600 }, 'owner')
   files.objects.set(r.storagePath, bytes)
   await store.finishUpload(projectId, r.uploadId, { sizeBytes: size, sha256: sha }, 'owner')
   return r.storagePath
@@ -59,14 +61,17 @@ beforeEach(async () => {
   files = createFakeFiles()
   vi.stubGlobal('fetch', files.fetch)
   env = 'production'
-  enabledModules = { hoffmann: ['members'], cyce: ['members'] }
+  enabledModules = { hoffmann: ['members', 'documents'], cyce: ['members', 'documents'] }
   const add = (p: string) => { const id = randomUUID(); store.groups.push({ id, projectId: p, name: { en: 'G' }, description: null, sortOrder: 0, archivedAt: null }); return id }
   gHoff = add(HOFF); gHoff2 = add(HOFF); gCyce = add(CYCE)
   credHoff = await store.createCredential(HOFF, { label: 'h', passwordHash: await hashPassword('hoffmann-pass-1'), groupIds: [gHoff], expiresAt: null }, 'o')
   await store.createCredential(CYCE, { label: 'c', passwordHash: await hashPassword('cyce-pass-12345'), groupIds: [gCyce], expiresAt: null }, 'o')
-  docHoff = await store.createDocument(HOFF, { title: { en: 'Timetable', it: 'Orario' }, groupIds: [gHoff] }, 'o')
-  docHoffNobody = await store.createDocument(HOFF, { title: { en: 'Staff' }, groupIds: [] }, 'o')
-  docCyce = await store.createDocument(CYCE, { title: { en: 'Cyce doc' }, groupIds: [gCyce] }, 'o')
+  docHoff = await store.createDocument(HOFF, doc({ en: 'Timetable', it: 'Orario' }, [gHoff]), 'o')
+  // "Nobody": a group document whose only group was archived later (054 refuses a group document with no group).
+  const gGone = add(HOFF)
+  docHoffNobody = await store.createDocument(HOFF, doc({ en: 'Staff' }, [gGone]), 'o')
+  store.groups.find((g) => g.id === gGone)!.archivedAt = new Date().toISOString()
+  docCyce = await store.createDocument(CYCE, doc({ en: 'Cyce doc' }, [gCyce]), 'o')
   await upload(HOFF, docHoff, 'it', 8192)
   await upload(HOFF, docHoffNobody, 'it', 1024)
   await upload(CYCE, docCyce, 'en', 1024)
@@ -106,12 +111,12 @@ describe('authorised viewing', () => {
     expect(r.headers.get('content-language')).toBe('it')
   })
   it('no file in the URL\'s language nor the default → the same refusal as unknown', async () => {
-    const enOnly = await store.createDocument(HOFF, { title: { en: 'EN only' }, groupIds: [gHoff] }, 'o')
+    const enOnly = await store.createDocument(HOFF, doc({ en: 'EN only' }, [gHoff]), 'o')
     await upload(HOFF, enOnly, 'en', 1024)
     expect((await get({ id: enOnly, locale: 'de', headers: { 'sec-fetch-mode': 'no-cors' } })).status).toBe(401)
   })
   it('a document whose PDF never finished uploading is never served — not even with the object already in storage', async () => {
-    const empty = await store.createDocument(HOFF, { title: { en: 'No PDF yet' }, groupIds: [gHoff] }, 'o')
+    const empty = await store.createDocument(HOFF, doc({ en: 'No PDF yet' }, [gHoff]), 'o')
     // no upload at all
     for (const d of ['navigate', 'no-cors'] as const) {
       const r = await get({ id: empty, locale: 'it', headers: { 'sec-fetch-mode': d } })
@@ -121,7 +126,7 @@ describe('authorised viewing', () => {
     // the browser PUT the bytes, but the server never finished (checked) the upload
     const bytes = pdfBytes(2048)
     const { createHash } = await import('crypto')
-    const r0 = await store.beginUpload(HOFF, { documentId: empty, locale: 'it', sizeBytes: 2048, sha256: createHash('sha256').update(bytes).digest('hex'), filename: null, ttlSeconds: 3600 }, 'o')
+    const r0 = await store.beginUpload(HOFF, { documentId: empty, locales: ['it'], mimeType: 'application/pdf', sizeBytes: 2048, sha256: createHash('sha256').update(bytes).digest('hex'), filename: null, ttlSeconds: 3600 }, 'o')
     files.objects.set(r0.storagePath, bytes)
     expect((await get({ id: empty, locale: 'it', headers: { 'sec-fetch-mode': 'no-cors' } })).status).toBe(401)
     expect((await get({ id: empty, locale: 'it', query: '?download=1', headers: { 'sec-fetch-mode': 'no-cors' } })).status).toBe(401)
@@ -156,10 +161,10 @@ describe('authorised viewing', () => {
 describe('refusals are indistinguishable', () => {
   const api = { 'sec-fetch-mode': 'no-cors' }
   it('unknown, another project\'s, archived, nobody, wrong group, malformed, no cookie: one response', async () => {
-    const archived = await store.createDocument(HOFF, { title: { en: 'Old' }, groupIds: [gHoff] }, 'o')
+    const archived = await store.createDocument(HOFF, doc({ en: 'Old' }, [gHoff]), 'o')
     await upload(HOFF, archived, 'it', 1024)
     await store.setDocumentArchived(HOFF, archived, true, 'o')
-    const otherGroup = await store.createDocument(HOFF, { title: { en: 'Teachers' }, groupIds: [gHoff2] }, 'o')
+    const otherGroup = await store.createDocument(HOFF, doc({ en: 'Teachers' }, [gHoff2]), 'o')
     await upload(HOFF, otherGroup, 'it', 1024)
     const cases = [
       await get({ id: randomUUID(), headers: api }),
@@ -224,10 +229,14 @@ describe('cross-tenant, sessions, credentials, module', () => {
     env = null
     expect((await get({ headers: api })).status).toBe(401)
   })
-  it('the Access module switched off (or unreadable) closes every document', async () => {
-    enabledModules.hoffmann = ['blog']
+  it('the Documents module switched off (or unreadable) closes every document', async () => {
+    enabledModules.hoffmann = ['blog', 'members']
     expect((await get({ headers: api })).status).toBe(401)
     enabledModules.hoffmann = null
+    expect((await get({ headers: api })).status).toBe(401)
+  })
+  it('the Access module switched off closes group documents', async () => {
+    enabledModules.hoffmann = ['documents']
     expect((await get({ headers: api })).status).toBe(401)
   })
   it('the store failing → refused, not served', async () => {
@@ -255,5 +264,41 @@ describe('range handling and storage failures (authorised)', () => {
       expect(r.status, mode).toBe(503)
       expect(r.headers.get('cache-control')).toBe('private, no-store')
     }
+  })
+})
+
+describe('public documents (R9: visibility everyone)', () => {
+  const api = { 'sec-fetch-mode': 'no-cors' }
+  let pub: string
+  beforeEach(async () => {
+    pub = await store.createDocument(HOFF, doc({ en: 'Price list', it: 'Listino' }, [], 'everyone'), 'o')
+    await upload(HOFF, pub, 'it', 2048)
+  })
+  it('open to anyone: no cookie, another project\'s cookie, Access switched off', async () => {
+    for (const r of [
+      await get({ id: pub, cookie: null }),
+      await get({ id: pub, cookie: `${sessionCookieName(CYCE, true)}=${tokenCyce}` }),
+    ]) {
+      expect(r.status).toBe(200)
+      expect(r.headers.get('content-type')).toBe('application/pdf')
+      expect(r.headers.get('cache-control')).toBe('private, max-age=300')
+      expect(r.headers.get('x-robots-tag')).toBeNull()
+    }
+    enabledModules.hoffmann = ['documents']
+    expect((await get({ id: pub, cookie: null })).status).toBe(200)
+  })
+  it('still closed when the Documents module is off, when archived, and from another project', async () => {
+    enabledModules.hoffmann = ['members']
+    expect((await get({ id: pub, cookie: null, headers: api })).status).toBe(401)
+    enabledModules.hoffmann = ['members', 'documents']
+    expect((await get({ id: pub, tenant: 'cyce', cookie: null, headers: api })).status).toBe(401)
+    await store.setDocumentArchived(HOFF, pub, true, 'o')
+    expect((await get({ id: pub, cookie: null, headers: api })).status).toBe(401)
+  })
+  it('download → a 60 s signed link, never cached', async () => {
+    const r = await get({ id: pub, cookie: null, query: '?download=1' })
+    expect(r.status).toBe(303)
+    expect(r.headers.get('cache-control')).toBe('private, no-store')
+    expect(files.signed.at(-1)).toMatchObject({ seconds: 60, downloadName: 'Listino.pdf' })
   })
 })

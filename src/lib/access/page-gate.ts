@@ -36,7 +36,12 @@ export type PageAccessFields = {
 
 export type PageGate =
   | { kind: 'open' }
-  | { kind: 'granted'; chain: AccessPolicy[] }
+  | {
+      kind: 'granted'
+      chain: AccessPolicy[]
+      /** The visitor's live groups on this project (lower-case) — a Download section lists only their documents. */
+      visitorGroupIds: string[]
+    }
   | {
       kind: 'denied'
       reason: Extract<AccessDecision, { allowed: false }>['reason'] | 'unknown_project' | 'inconsistent'
@@ -101,6 +106,6 @@ export async function decidePageGate(
     visitor = null
   }
   const decision = evaluateAccess({ chain, visitor, moduleEnabled })
-  if (decision.allowed) return { kind: 'granted', chain }
+  if (decision.allowed) return { kind: 'granted', chain, visitorGroupIds: visitor ? [...visitor.groupIds].map((g) => g.toLowerCase()).sort() : [] }
   return { kind: 'denied', reason: decision.reason, navigation, visitor: visitor ? 'other_groups' : token ? 'ended' : 'none' }
 }

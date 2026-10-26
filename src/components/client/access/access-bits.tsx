@@ -13,7 +13,7 @@ import { Field } from '@/components/app/ui/Field'
 import { FieldLabel } from '@/components/app/ui/FieldLabel'
 import { TextInput } from '@/components/app/ui/TextInput'
 import type { AccessGroupView } from '@/lib/access/dashboard'
-import type { UploadProblem } from './upload'
+
 
 export type AccessT = ReturnType<typeof useTranslations>
 
@@ -25,7 +25,7 @@ const KNOWN = new Set([
   'too_large', 'not_uploaded_yet', 'network',
 ])
 
-export function errorText(t: AccessT, code: UploadProblem | string, limits?: { passwordMinLength: number }): string {
+export function errorText(t: AccessT, code: string, limits?: { passwordMinLength: number }): string {
   if (!KNOWN.has(code)) return t('errors.failed')
   if (code === 'password_too_short') return t('errors.password_too_short', { min: limits?.passwordMinLength ?? 10 })
   return t(`errors.${code}` as 'errors.failed')
@@ -108,7 +108,7 @@ export function GroupChecklist({
   disabled,
 }: {
   legend: string
-  groups: AccessGroupView[]
+  groups: Array<Pick<AccessGroupView, 'id' | 'name' | 'archived'>>
   value: string[]
   onChange: (ids: string[]) => void
   disabled?: boolean
@@ -152,6 +152,6 @@ export function useFileSize() {
 }
 
 /** Group names for a list of ids, in the screen's order; archived groups are marked. */
-export function groupNames(groups: AccessGroupView[], ids: string[], archivedLabel: (name: string) => string): string[] {
+export function groupNames(groups: Array<Pick<AccessGroupView, 'id' | 'name' | 'archived'>>, ids: string[], archivedLabel: (name: string) => string): string[] {
   return groups.filter((g) => ids.includes(g.id)).map((g) => (g.archived ? archivedLabel(g.name) : g.name))
 }

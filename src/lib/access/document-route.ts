@@ -1,5 +1,5 @@
 /**
- * Site Access — the protected-document route, wired to the request (B2.4).
+ * Documents — the document file route, wired to the request (B2.4, R9).
  * Logic and policy live in ./delivery.ts; this file only reads the request
  * and the environment. Route-level tests: __tests__/document-route.test.ts.
  */
@@ -9,7 +9,8 @@ import { decideDocument, deliveryLocales, denyResponse, fileResponse } from './d
 import { ACCESS_NOTICE_PARAM, ACCESS_WAIT_PARAM, accessSiteBase, isSecureAccessRequest, isSupportedLocale, parseAccessNotice, readCookie, requestOrigin, resolveAccessRouteProject, signInPath } from './request'
 import { sessionCookieName } from './session-token'
 import { resolveVisitor } from './visitor'
-import { accessModuleEnabled } from './visitor-routes'
+import { projectEnabledModuleIds } from './visitor-routes'
+import { ACCESS_MODULE_ID, DOCUMENTS_MODULE_ID } from './model'
 
 type Params = { locale: string; tenant: string; documentId: string }
 
@@ -46,7 +47,10 @@ export async function handleDocument(request: Request, params: Params): Promise<
           store,
           environment,
           resolveVisitor: (t) => resolveVisitor({ store, projectId: project.projectId, environment, token: t }),
-          moduleEnabled: () => accessModuleEnabled(project, params.locale),
+          modules: async () => {
+            const enabled = await projectEnabledModuleIds(project, params.locale)
+            return { documents: Boolean(enabled?.includes(DOCUMENTS_MODULE_ID)), access: Boolean(enabled?.includes(ACCESS_MODULE_ID)) }
+          },
         }
       )
       if (decision.kind === 'deny') return denyResponse(h, signIn)

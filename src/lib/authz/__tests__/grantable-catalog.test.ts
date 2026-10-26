@@ -8,8 +8,8 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { GRANTABLE_MODULE_PERMISSIONS, PLATFORM_PERMISSIONS } from '../permissions'
 
-// 029 seeds the list; later migrations add to it (036: analytics.read, 046: support.tickets.read, 051: members.access.*).
-const SQL = ['029_roles_extras_invitations.sql', '036_analytics_snapshots.sql', '046_support_tickets.sql', '051_site_access_grantable.sql'].map((f) =>
+// 029 seeds the list; later migrations add to it (036: analytics.read, 046: support.tickets.read, 051: members.access.*, 054: documents.document.*).
+const SQL = ['029_roles_extras_invitations.sql', '036_analytics_snapshots.sql', '046_support_tickets.sql', '051_site_access_grantable.sql', '054_documents_module.sql'].map((f) =>
   readFileSync(join(process.cwd(), 'supabase/migrations', f), 'utf8'),
 )
 

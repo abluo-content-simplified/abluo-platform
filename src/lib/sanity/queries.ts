@@ -603,6 +603,10 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       source,
       showPrices,
       allergenPresentation,
+      // downloadSection (Documents module, ADR-040 §15). Its documents are NOT
+      // projected: they live in Supabase and are added by hydrateSections, per
+      // visitor, after the page gate. eyebrow/title/intro/image are shared keys.
+      documentSort,
       // ─── Platform sections added with the icon primitive ──────────────────
       // Every key below is NEW to this flat projection and resolves to null on
       // every section type that does not declare it. Fields these sections
@@ -2008,6 +2012,10 @@ export const homePageQuery = /* groq */ `
       source,
       showPrices,
       allergenPresentation,
+      // downloadSection (Documents module, ADR-040 §15). Its documents are NOT
+      // projected: they live in Supabase and are added by hydrateSections, per
+      // visitor, after the page gate. eyebrow/title/intro/image are shared keys.
+      documentSort,
       "emptyStateHeading": ${loc('emptyStateHeading')},
       "emptyStateBody": ${loc('emptyStateBody')}
     }

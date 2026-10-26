@@ -540,3 +540,50 @@ describe('Posts categories (blog, routable)', () => {
     expect(g.terms()).toHaveLength(0)
   })
 })
+
+describe('documents (ADR-040 §15, R9.2) — usage held outside Sanity', () => {
+  const docGrant = (o: Partial<ProjectGrant> = {}) => ctxOf(grant({ permissions: ['documents.document.read', 'documents.taxonomy.write'], enabledModuleIds: ['documents'], ...o }))
+  const docTerm = (key: string, kind: 'category' | 'tag' = 'category'): Doc => term(key, { it: key }, { _id: `term.${SLUG}.documents.${kind}.${key}`, module: 'documents', kind })
+  const external = (byKey: Record<string, string[]>) =>
+    vi.fn(async () => new Map(Object.entries(byKey).map(([k, ids]) => [k, ids.map((id) => ({ id, type: 'document', name: { it: `Doc ${id}` } }))])))
+
+  it('lists with the documents\' usage and never runs a Sanity where-used query (none is declared)', async () => {
+    const f = fake([docTerm('prezzi'), docTerm('orari')])
+    const ext = external({ prezzi: ['d1', 'd2'] })
+    const list = await listTerms(docGrant(), 'project-a', 'documents', 'category', { ...f.deps, externalUsage: ext })
+    expect(Object.fromEntries(list.terms.map((x) => [x.key, x.usedBy]))).toEqual({ orari: 0, prezzi: 2 })
+    expect(ext).toHaveBeenCalledWith('project-a', 'documents', 'category')
+    expect(f.fetchCalls.some((c) => c.q.includes('select(') || c.q.includes('$key in'))).toBe(false)
+  })
+  it('a term a document uses cannot be deleted — and says which document', async () => {
+    const f = fake([docTerm('prezzi')])
+    try {
+      await deleteTerm(docGrant(), 'project-a', 'documents', 'category', 'prezzi', { ...f.deps, externalUsage: external({ prezzi: ['d1'] }) })
+      expect.unreachable()
+    } catch (e) {
+      expect((e as TaxonomyError).code).toBe('in_use')
+      expect((e as TaxonomyError).detail).toMatchObject({ count: 1, items: [{ id: 'd1', type: 'document', name: 'Doc d1' }] })
+    }
+    expect(f.terms()).toHaveLength(1)
+  })
+  it('fails closed: if the documents cannot be read, nothing is deleted', async () => {
+    const f = fake([docTerm('prezzi')])
+    const broken = vi.fn(async () => { throw new Error('supabase down') })
+    expect(await code(deleteTerm(docGrant(), 'project-a', 'documents', 'category', 'prezzi', { ...f.deps, externalUsage: broken }))).toBe('failed')
+    expect(f.terms()).toHaveLength(1)
+  })
+  it('an unused document tag is deleted; the list survives the documents store being down (count 0)', async () => {
+    const f = fake([docTerm('2027', 'tag')])
+    const broken = vi.fn(async () => { throw new Error('supabase down') })
+    expect((await listTerms(docGrant(), 'project-a', 'documents', 'tag', { ...f.deps, externalUsage: broken })).terms[0].usedBy).toBe(0)
+    await deleteTerm(docGrant(), 'project-a', 'documents', 'tag', '2027', { ...f.deps, externalUsage: external({}) })
+    expect(f.terms()).toHaveLength(0)
+  })
+  it('without the Documents module (or the permission) nothing is reached', async () => {
+    const f = fake([docTerm('prezzi')])
+    const ext = external({})
+    await expect(listTerms(docGrant({ enabledModuleIds: [] }), 'project-a', 'documents', 'category', { ...f.deps, externalUsage: ext })).rejects.toBeInstanceOf(TenantAuthorizationError)
+    await expect(deleteTerm(docGrant({ permissions: ['documents.document.read'] }), 'project-a', 'documents', 'category', 'prezzi', { ...f.deps, externalUsage: ext })).rejects.toBeInstanceOf(TenantAuthorizationError)
+    expect(ext).not.toHaveBeenCalled()
+  })
+})

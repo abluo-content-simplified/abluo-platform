@@ -1,22 +1,19 @@
 'use client'
 
-import { useCallback, useId, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/app/ui/Button'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { Notice } from '@/components/app/ui/Notice'
 import { PageHeader } from '@/components/app/ui/PageHeader'
-import { Tabs, tabPanelProps } from '@/components/app/ui/Tabs'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
 import { signOutEveryoneAction } from '@/app/[locale]/(client)/[tenant]/access/actions'
 import type { AccessActionError, AccessActionResult } from '@/lib/access/action-errors'
 import type { AccessDashboardData } from '@/lib/access/dashboard'
 import { errorText } from './access-bits'
-import { DocumentsTab } from './DocumentsTab'
-import { GroupsTab } from './GroupsTab'
-import { PagesTab } from './PagesTab'
+import { AccessGroupsBrowser } from './AccessGroupsBrowser'
 
 export type AccessRunner = {
   busy: boolean
@@ -27,15 +24,11 @@ export type AccessRunner = {
   fail: (message: string) => void
 }
 
-type TabId = 'groups' | 'documents' | 'pages'
-const TABS: TabId[] = ['groups', 'documents', 'pages']
-
 /**
- * Access (ADR-040 B2.5) — the tenant's one screen for members-only content:
- *
- *   Groups     who the members are, each with the password they share
- *   Documents  protected PDFs and who can open each
- *   Pages      who can see each page of the site
+ * Access (ADR-040 B2.5, trimmed in R9 §15) — the groups of visitors who may
+ * open protected pages and documents, each with the password they share, and
+ * who is signed in now. Which pages are protected is set in Studio; which
+ * documents a group opens, in Documents.
  *
  * Written for someone who has never configured security: everyday words,
  * one sheet per task, every consequence said before it happens (who gets
@@ -48,21 +41,17 @@ export function AccessScreen({
   data,
   canManage,
   supportVisit,
-  initialTab,
 }: {
   projectSlug: string
   data: AccessDashboardData
   canManage: boolean
   supportVisit: boolean
-  initialTab: string | null
 }) {
   const t = useTranslations('clientDashboard.access')
   const router = useRouter()
-  const idBase = useId()
   const { toast, show } = useUndo()
   const [busy, setBusy] = useState(false)
-  const [tab, setTab] = useState<TabId>(TABS.includes(initialTab as TabId) ? (initialTab as TabId) : 'groups')
-  const [creating, setCreating] = useState<TabId | null>(null)
+  const [creating, setCreating] = useState(false)
   const [confirmSignOut, setConfirmSignOut] = useState(false)
 
   const done = useCallback(
@@ -101,26 +90,6 @@ export function AccessScreen({
     [busy, done, fail, t]
   )
 
-  const changeTab = (next: string) => {
-    setTab(next as TabId)
-    try {
-      const url = new URL(window.location.href)
-      url.searchParams.set('tab', next)
-      window.history.replaceState(window.history.state, '', url)
-    } catch {
-      /* remembering the tab is a convenience */
-    }
-  }
-
-  const usage = useMemo(() => {
-    const u: Record<string, { pages: number; documents: number }> = {}
-    if (data.notReady) return u
-    for (const g of data.groups) u[g.id] = { pages: 0, documents: 0 }
-    for (const p of data.pages) if (p.visibility === 'restricted') for (const id of p.groupIds) if (u[id]) u[id].pages++
-    for (const d of data.documents) if (!d.archived) for (const id of d.groupIds) if (u[id]) u[id].documents++
-    return u
-  }, [data])
-
   const readOnlyNotice = supportVisit ? (
     <Notice tone="info">{t('supportReadOnly')}</Notice>
   ) : !canManage ? (
@@ -137,13 +106,7 @@ export function AccessScreen({
     )
   }
 
-  const liveGroups = data.groups.filter((g) => !g.archived)
-  const action =
-    canManage && tab === 'groups' ? (
-      <Button variant="primary" onClick={() => setCreating('groups')}>{t('groups.new')}</Button>
-    ) : canManage && tab === 'documents' ? (
-      <Button variant="primary" onClick={() => setCreating('documents')}>{t('documents.new')}</Button>
-    ) : null
+  const action = canManage ? <Button variant="primary" onClick={() => setCreating(true)}>{t('groups.new')}</Button> : null
 
   return (
     <div className="space-y-4">
@@ -165,47 +128,15 @@ export function AccessScreen({
         </Notice>
       ) : null}
 
-      <Tabs
-        label={t('tabsLabel')}
-        idBase={idBase}
-        value={tab}
-        onChange={changeTab}
-        items={[
-          { id: 'groups', label: t('tabs.groups'), count: liveGroups.length },
-          { id: 'documents', label: t('tabs.documents'), count: data.documents.filter((d) => !d.archived).length },
-          { id: 'pages', label: t('tabs.pages'), count: data.pages.filter((p) => p.visibility === 'restricted').length },
-        ]}
+      <AccessGroupsBrowser
+        projectSlug={projectSlug}
+        groups={data.groups}
+        canManage={canManage}
+        limits={data.limits}
+        creating={creating}
+        onCreatingChange={setCreating}
+        runner={runner}
       />
-
-      <div {...tabPanelProps(idBase, tab)}>
-        {tab === 'groups' ? (
-          <GroupsTab
-            projectSlug={projectSlug}
-            groups={data.groups}
-            usage={usage}
-            canManage={canManage}
-            limits={data.limits}
-            creating={creating === 'groups'}
-            onCreatingChange={(open) => setCreating(open ? 'groups' : null)}
-            runner={runner}
-          />
-        ) : tab === 'documents' ? (
-          <DocumentsTab
-            projectSlug={projectSlug}
-            documents={data.documents}
-            groups={data.groups}
-            site={data.site}
-            canManage={canManage}
-            maxBytes={data.limits.fileBytesMax}
-            creating={creating === 'documents'}
-            onCreatingChange={(open) => setCreating(open ? 'documents' : null)}
-            onShowGroups={() => changeTab('groups')}
-            runner={runner}
-          />
-        ) : (
-          <PagesTab projectSlug={projectSlug} pages={data.pages} groups={data.groups} canManage={canManage} onShowGroups={() => changeTab('groups')} runner={runner} />
-        )}
-      </div>
 
       {canManage ? (
         <ConfirmDialog

@@ -9,19 +9,20 @@ import { randomUUID } from 'crypto'
 import type { AccessEnvironment } from '../environment'
 import { AccessError, type RevokeReason } from '../model'
 import type { RateLimits } from '../rate-limit'
-import type { CredentialRow, DeliverableFile, DocumentRow, GroupRow, PendingUpload, ResolvedSession, SiteAccessStore } from '../store'
+import type { CredentialRow, DeliverableFile, DocumentMimeType, DocumentRow, DocumentVisibility, GroupRow, PageDocumentRow, PendingUpload, ResolvedSession, SiteAccessStore } from '../store'
 
 type Group = GroupRow & { projectId: string }
 type Cred = { id: string; projectId: string; label: string; version: number; hash: string; groupIds: string[]; expiresAt: string | null; disabledAt: string | null; rotatedAt: string | null; createdAt: string }
 type Session = { id: string; projectId: string; environment: AccessEnvironment; tokenHash: string; expiresAt: number; revokedAt: number | null; revokedReason: RevokeReason | null; grants: Map<string, number> }
 type Attempt = { id: number; projectId: string; ipHash: string; succeeded: boolean | null; at: number }
-type Doc = { id: string; projectId: string; title: Record<string, string>; sortOrder: number; archivedAt: string | null; groupIds: string[] }
-type DocFile = { documentId: string; projectId: string; locale: string; storagePath: string; sizeBytes: number; sha256: string; originalFilename: string | null; uploadedAt: string }
+type Doc = { id: string; projectId: string; title: Record<string, string>; note: Record<string, string> | null; visibility: DocumentVisibility; categoryTermId: string | null; tagTermIds: string[]; archivedAt: string | null; createdAt: string; updatedAt: string; groupIds: string[] }
+type Placement = { documentId: string; projectId: string; pageId: string; sortOrder: number }
+type DocFile = { documentId: string; projectId: string; locale: string; storagePath: string; mimeType: DocumentMimeType; sizeBytes: number; sha256: string; originalFilename: string | null; uploadedAt: string }
 type Upload = PendingUpload & { projectId: string; filename: string | null }
 
 export type FakeStore = SiteAccessStore & {
   groups: Group[]; creds: Cred[]; sessions: Session[]; attempts: Attempt[]; events: Array<{ projectId: string; action: string }>
-  docs: Doc[]; files: DocFile[]; uploads: Upload[]; trash: Array<{ storagePath: string; projectId: string; reason: string }>
+  docs: Doc[]; files: DocFile[]; uploads: Upload[]; placements: Placement[]; trash: Array<{ storagePath: string; projectId: string; reason: string }>
   calls: string[]
   failNext?: { method: string; error: Error }
 }
@@ -29,7 +30,7 @@ export type FakeStore = SiteAccessStore & {
 export function createFakeStore(now: () => number = Date.now): FakeStore {
   const s: FakeStore = {
     groups: [], creds: [], sessions: [], attempts: [], events: [], calls: [],
-    docs: [], files: [], uploads: [], trash: [],
+    docs: [], files: [], uploads: [], placements: [], trash: [],
   } as unknown as FakeStore
 
   const call = (m: string) => {
@@ -196,36 +197,81 @@ export function createFakeStore(now: () => number = Date.now): FakeStore {
       return disabled ? dropGrants(projectId, credentialId, 'credential_disabled') : 0
     },
 
-    // ── documents: mirrors migration 052 (proven in hardening-052.verify.mjs) ──
+    // ── documents: mirrors migrations 052 + 054 (proven in hardening-052/054) ──
     async listDocuments(projectId: string): Promise<DocumentRow[]> {
       call('listDocuments')
-      return s.docs.filter((d) => d.projectId === projectId).map((d) => ({
-        id: d.id, title: d.title, sortOrder: d.sortOrder, archivedAt: d.archivedAt, groupIds: [...d.groupIds].sort(),
-        files: s.files.filter((f) => f.documentId === d.id && f.projectId === projectId).map((f) => ({ locale: f.locale, sizeBytes: f.sizeBytes, sha256: f.sha256, originalFilename: f.originalFilename, uploadedAt: f.uploadedAt })),
+      return s.docs.filter((d) => d.projectId === projectId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((d) => ({
+        id: d.id, title: d.title, note: d.note, visibility: d.visibility, categoryTermId: d.categoryTermId, tagTermIds: [...d.tagTermIds],
+        archivedAt: d.archivedAt, createdAt: d.createdAt, groupIds: [...d.groupIds].sort(),
+        files: s.files.filter((f) => f.documentId === d.id && f.projectId === projectId)
+          .map((f) => ({ locale: f.locale, mimeType: f.mimeType, sizeBytes: f.sizeBytes, sha256: f.sha256, originalFilename: f.originalFilename, uploadedAt: f.uploadedAt }))
+          .sort((a, b) => a.locale.localeCompare(b.locale)),
+        pageIds: s.placements.filter((p) => p.documentId === d.id && p.projectId === projectId).map((p) => p.pageId).sort(),
+        pageOrder: Object.fromEntries(s.placements.filter((p) => p.documentId === d.id && p.projectId === projectId).map((p) => [p.pageId, p.sortOrder])),
       }))
     },
-    async createDocument(projectId: string, input: { title: Record<string, string>; groupIds: string[] }) {
+    async createDocument(projectId: string, input: { title: Record<string, string>; note: Record<string, string> | null; visibility: DocumentVisibility; groupIds: string[]; categoryTermId: string | null; tagTermIds: string[] }) {
       call('createDocument')
-      sameProjectGroups(projectId, input.groupIds)
+      if (input.visibility === 'everyone' && input.groupIds.length > 0) throw new AccessError('invalid_input', 'groups_with_everyone')
+      if (input.visibility === 'groups' && input.groupIds.length === 0) throw new AccessError('invalid_input', 'no_groups')
+      for (const g of input.groupIds) if (!liveGroup(projectId, g)) throw new AccessError('invalid_input', 'unknown_group')
       const id = randomUUID()
-      s.docs.push({ id, projectId, title: input.title, sortOrder: 0, archivedAt: null, groupIds: [...new Set(input.groupIds)] })
+      const at = new Date(now()).toISOString()
+      s.docs.push({ id, projectId, title: input.title, note: input.note, visibility: input.visibility, categoryTermId: input.categoryTermId, tagTermIds: [...input.tagTermIds], archivedAt: null, createdAt: at, updatedAt: at, groupIds: [...new Set(input.groupIds)] })
       s.events.push({ projectId, action: 'document_created' })
       return id
     },
-    async updateDocument(projectId: string, documentId: string, input: { title?: Record<string, string>; sortOrder?: number }) {
+    async updateDocument(projectId: string, documentId: string, input: { title: Record<string, string>; note: Record<string, string> | null; categoryTermId: string | null; tagTermIds: string[] }) {
       call('updateDocument')
       const d = s.docs.find((x) => x.id === documentId && x.projectId === projectId)
       if (!d) throw new AccessError('not_found')
-      if (input.title) d.title = input.title
-      if (input.sortOrder !== undefined) d.sortOrder = input.sortOrder
+      Object.assign(d, { title: input.title, note: input.note, categoryTermId: input.categoryTermId, tagTermIds: [...input.tagTermIds], updatedAt: new Date(now()).toISOString() })
     },
-    async setDocumentGroups(projectId: string, documentId: string, groupIds: string[]) {
-      call('setDocumentGroups')
+    async setDocumentAccess(projectId: string, documentId: string, input: { visibility: DocumentVisibility; groupIds: string[] }) {
+      call('setDocumentAccess')
+      if (input.visibility === 'everyone' && input.groupIds.length > 0) throw new AccessError('invalid_input', 'groups_with_everyone')
+      if (input.visibility === 'groups' && input.groupIds.length === 0) throw new AccessError('invalid_input', 'no_groups')
       const d = s.docs.find((x) => x.id === documentId && x.projectId === projectId)
       if (!d) throw new AccessError('not_found')
-      sameProjectGroups(projectId, groupIds)
-      d.groupIds = [...new Set(groupIds)]
-      s.events.push({ projectId, action: 'document_groups_changed' })
+      for (const g of input.groupIds) if (!liveGroup(projectId, g)) throw new AccessError('invalid_input', 'unknown_group')
+      d.visibility = input.visibility
+      d.groupIds = [...new Set(input.groupIds)]
+      s.events.push({ projectId, action: 'document_access_changed' })
+    },
+    async setDocumentPlacements(projectId: string, documentId: string, pageIds: string[]) {
+      call('setDocumentPlacements')
+      if (pageIds.length > 50 || !pageIds.every((p) => /^[A-Za-z0-9_-][A-Za-z0-9._-]{0,127}$/.test(p) && !p.startsWith('drafts.') && !p.startsWith('versions.'))) throw new AccessError('invalid_input', 'invalid_page')
+      const d = s.docs.find((x) => x.id === documentId && x.projectId === projectId && !x.archivedAt)
+      if (!d) throw new AccessError('not_found')
+      s.placements = s.placements.filter((p) => !(p.documentId === documentId && p.projectId === projectId && !pageIds.includes(p.pageId)))
+      for (const pageId of [...new Set(pageIds)]) {
+        if (s.placements.some((p) => p.documentId === documentId && p.pageId === pageId)) continue
+        const onPage = s.placements.filter((p) => p.projectId === projectId && p.pageId === pageId)
+        const sortOrder = onPage.length ? Math.max(...onPage.map((p) => p.sortOrder)) + 1 : 0
+        s.placements.push({ documentId, projectId, pageId, sortOrder })
+      }
+      s.events.push({ projectId, action: 'document_placements_changed' })
+    },
+    async reorderPageDocuments(projectId: string, pageId: string, documentIds: string[]) {
+      call('reorderPageDocuments')
+      const onPage = s.placements.filter((p) => p.projectId === projectId && p.pageId === pageId)
+      if (onPage.length !== documentIds.length || new Set(documentIds).size !== documentIds.length || !documentIds.every((d) => onPage.some((p) => p.documentId === d))) {
+        throw new AccessError('invalid_input', 'order_mismatch')
+      }
+      documentIds.forEach((d, i) => { onPage.find((p) => p.documentId === d)!.sortOrder = i })
+    },
+    async removeDocumentLanguages(projectId: string, documentId: string, locales: string[]) {
+      call('removeDocumentLanguages')
+      const d = s.docs.find((x) => x.id === documentId && x.projectId === projectId)
+      if (!d) throw new AccessError('not_found')
+      const mine = s.files.filter((f) => f.documentId === documentId && f.projectId === projectId)
+      if (!mine.some((f) => !locales.includes(f.locale))) throw new AccessError('invalid_input', 'last_language')
+      const gone = mine.filter((f) => locales.includes(f.locale))
+      s.files = s.files.filter((f) => !gone.includes(f))
+      for (const path of new Set(gone.map((f) => f.storagePath))) {
+        if (!s.files.some((f) => f.storagePath === path)) s.trash.push({ storagePath: path, projectId, reason: 'language_removed' })
+      }
+      return gone.length
     },
     async setDocumentArchived(projectId: string, documentId: string, archived: boolean) {
       call('setDocumentArchived')
@@ -233,16 +279,20 @@ export function createFakeStore(now: () => number = Date.now): FakeStore {
       if (!d) throw new AccessError('not_found')
       d.archivedAt = archived ? (d.archivedAt ?? new Date(now()).toISOString()) : null
     },
-    async beginUpload(projectId: string, i: { documentId: string; locale: string; sizeBytes: number; sha256: string; filename: string | null; ttlSeconds: number }) {
+    async beginUpload(projectId: string, i: { documentId: string; locales: string[]; mimeType: DocumentMimeType; sizeBytes: number; sha256: string; filename: string | null; ttlSeconds: number }) {
       call('beginUpload')
+      if (i.locales.length === 0 || new Set(i.locales).size !== i.locales.length || !i.locales.every((l) => /^[a-z]{2}(-[A-Z]{2})?$/.test(l))) throw new AccessError('invalid_input', 'invalid_locale')
+      const ext = ({ 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' } as Record<string, string>)[i.mimeType]
+      if (!ext) throw new AccessError('invalid_input', 'invalid_type')
+      if (i.sizeBytes <= 0 || i.sizeBytes > (i.mimeType === 'application/pdf' ? 20 : 10) * 1024 * 1024) throw new AccessError('invalid_input', 'too_large')
       const d = s.docs.find((x) => x.id === i.documentId && x.projectId === projectId && !x.archivedAt)
       if (!d) throw new AccessError('not_found')
-      if (i.sizeBytes <= 0 || i.sizeBytes > 20 * 1024 * 1024 || !/^[0-9a-f]{64}$/.test(i.sha256) || !/^[a-z]{2}(-[A-Z]{2})?$/.test(i.locale)) throw new AccessError('invalid_input', '23514')
+      if (!/^[0-9a-f]{64}$/.test(i.sha256)) throw new AccessError('invalid_input', '23514')
       if (s.uploads.filter((u) => u.projectId === projectId && u.status === 'pending' && Date.parse(u.expiresAt) > now()).length >= 20) throw new AccessError('limit_reached', 'too_many_uploads')
       const uploadId = randomUUID()
-      const storagePath = `${projectId}/${randomUUID()}.pdf`
+      const storagePath = `${projectId}/${randomUUID()}.${ext}`
       const expiresAt = new Date(now() + i.ttlSeconds * 1000).toISOString()
-      s.uploads.push({ uploadId, projectId, documentId: i.documentId, locale: i.locale, storagePath, declaredSize: i.sizeBytes, declaredSha256: i.sha256, status: 'pending', expiresAt, filename: i.filename })
+      s.uploads.push({ uploadId, projectId, documentId: i.documentId, locale: i.locales[0], locales: [...i.locales], mimeType: i.mimeType, storagePath, declaredSize: i.sizeBytes, declaredSha256: i.sha256, status: 'pending', expiresAt, filename: i.filename })
       return { uploadId, storagePath, expiresAt }
     },
     async getUpload(projectId: string, uploadId: string) {
@@ -251,7 +301,7 @@ export function createFakeStore(now: () => number = Date.now): FakeStore {
       if (!u) return null
       const { projectId: _p, filename: _f, ...rest } = u
       void _p; void _f
-      return { ...rest }
+      return { ...rest, locales: [...rest.locales] }
     },
     async finishUpload(projectId: string, uploadId: string, m: { sizeBytes: number; sha256: string }) {
       call('finishUpload')
@@ -260,14 +310,19 @@ export function createFakeStore(now: () => number = Date.now): FakeStore {
       if (m.sizeBytes !== u.declaredSize || m.sha256 !== u.declaredSha256) throw new AccessError('invalid_input', 'upload_mismatch')
       const d = s.docs.find((x) => x.id === u.documentId && x.projectId === projectId && !x.archivedAt)
       if (!d) throw new AccessError('not_found')
-      const existing = s.files.find((f) => f.documentId === u.documentId && f.projectId === projectId && f.locale === u.locale)
-      let old: string | null = null
-      const row = { documentId: u.documentId, projectId, locale: u.locale, storagePath: u.storagePath, sizeBytes: m.sizeBytes, sha256: m.sha256, originalFilename: u.filename, uploadedAt: new Date(now()).toISOString() }
-      if (existing) { old = existing.storagePath; Object.assign(existing, row); s.trash.push({ storagePath: old, projectId, reason: 'replaced' }) }
-      else s.files.push(row)
+      let firstOld: string | null = null
+      for (const locale of u.locales) {
+        const existing = s.files.find((f) => f.documentId === u.documentId && f.projectId === projectId && f.locale === locale)
+        const row = { documentId: u.documentId, projectId, locale, storagePath: u.storagePath, mimeType: u.mimeType, sizeBytes: m.sizeBytes, sha256: m.sha256, originalFilename: u.filename, uploadedAt: new Date(now()).toISOString() }
+        if (existing) {
+          if (locale === u.locale) firstOld = existing.storagePath
+          s.trash.push({ storagePath: existing.storagePath, projectId, reason: 'replaced' })
+          Object.assign(existing, row)
+        } else s.files.push(row)
+      }
       u.status = 'finished'
-      s.events.push({ projectId, action: old ? 'document_file_replaced' : 'document_file_uploaded' })
-      return old
+      s.events.push({ projectId, action: firstOld ? 'document_file_replaced' : 'document_file_uploaded' })
+      return firstOld
     },
     async failUpload(projectId: string, uploadId: string) {
       call('failUpload')
@@ -280,9 +335,28 @@ export function createFakeStore(now: () => number = Date.now): FakeStore {
       if (!d) return null
       for (const l of locales) {
         const f = s.files.find((x) => x.documentId === d.id && x.projectId === projectId && x.locale === l)
-        if (f) return { archived: d.archivedAt !== null, title: d.title, groupIds: d.groupIds.filter((g) => liveGroup(projectId, g)).sort(), locale: f.locale, storagePath: f.storagePath, sizeBytes: f.sizeBytes, sha256: f.sha256 }
+        if (f) return {
+          archived: d.archivedAt !== null, visibility: d.visibility, title: d.title,
+          groupIds: d.visibility === 'everyone' ? [] : d.groupIds.filter((g) => liveGroup(projectId, g)).sort(),
+          locale: f.locale, storagePath: f.storagePath, sizeBytes: f.sizeBytes, sha256: f.sha256, mimeType: f.mimeType,
+        }
       }
       return null
+    },
+    async pageDocuments(projectId: string, pageIds: string[]): Promise<PageDocumentRow[]> {
+      call('pageDocuments')
+      return s.placements
+        .filter((p) => p.projectId === projectId && pageIds.includes(p.pageId))
+        .map((p) => ({ p, d: s.docs.find((x) => x.id === p.documentId && x.projectId === projectId)! }))
+        .filter(({ d }) => d && !d.archivedAt && s.files.some((f) => f.documentId === d.id && f.projectId === projectId))
+        .sort((a, b) => a.p.pageId.localeCompare(b.p.pageId) || a.p.sortOrder - b.p.sortOrder || a.d.createdAt.localeCompare(b.d.createdAt))
+        .map(({ p, d }) => ({
+          pageId: p.pageId, sortOrder: p.sortOrder, documentId: d.id, visibility: d.visibility, title: d.title, note: d.note,
+          categoryTermId: d.categoryTermId, tagTermIds: [...d.tagTermIds], groupIds: d.groupIds.filter((g) => liveGroup(projectId, g)).sort(),
+          files: s.files.filter((f) => f.documentId === d.id && f.projectId === projectId).sort((a, b) => a.locale.localeCompare(b.locale))
+            .map((f) => ({ locale: f.locale, mimeType: f.mimeType, sizeBytes: f.sizeBytes, uploadedAt: f.uploadedAt })),
+          updatedAt: d.updatedAt,
+        }))
     },
     async expireUploads() {
       call('expireUploads')

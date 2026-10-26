@@ -53,11 +53,11 @@ describe('registration', () => {
     expect(manifest.status).toBe('released')
     expect(JSON.stringify(manifest).toLowerCase()).not.toMatch(/cyce|hoffmann|livener|martegani|nologo/)
   })
-  it('owns no Sanity types, sections or Studio collections yet, and no Sanity config (ADR-014: one surface — the dashboard)', () => {
+  it('owns no Sanity types or sections and no Sanity config; its one Studio collection is "Protected pages" (R9: page protection is set in Studio)', () => {
     const pc = manifest.platformContract
     expect(pc.schemaTypes).toEqual([])
     expect(pc.sectionTypes).toEqual([])
-    expect(pc.collections).toEqual([])
+    expect(pc.collections.map((c) => c.id)).toEqual(['access-pages'])
     expect(pc.configSchema).toEqual([])
     expect(pc.schemaDefinitions()).toEqual([])
     expect(pc.pageType).toBeUndefined()

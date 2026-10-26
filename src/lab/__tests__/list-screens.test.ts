@@ -60,6 +60,8 @@ const KIND: Record<string, [Kind, string]> = {
   'src/components/admin/tickets/AdminTicketsBrowser.tsx': ['records', 'admin support tickets: no pictures'],
   'src/components/admin/whats-new/WhatsNewAdmin.tsx': ['records', 'admin update notes'],
   'src/components/admin/users/UsersBrowser.tsx': ['records', 'admin users across Abluo: people, no pictures'],
+  'src/components/client/documents/DocumentsBrowser.tsx': ['records', 'documents (files) with who can open them and where they show; no pictures'],
+  'src/components/client/access/AccessGroupsBrowser.tsx': ['records', 'Access groups: name, password, who is signed in; no pictures'],
 }
 
 /** Declared, but not yet built exactly to their kind — may only shrink. */

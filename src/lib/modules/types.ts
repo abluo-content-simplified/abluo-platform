@@ -384,6 +384,13 @@ export type ModuleTaxonomyDef = {
   routable?: boolean
   /** Terms carry a badge colour. */
   color?: boolean
+  /**
+   * Content that is NOT in Sanity also holds these keys (ADR-040 §15: the
+   * Documents module's documents live in Supabase). The taxonomy service then
+   * counts and checks that store too, so a term in use there cannot be deleted.
+   * `usedBy` may be empty when this is the only place the keys are stored.
+   */
+  externalUsage?: 'documents'
 }
 
 // ── Module manifest ───────────────────────────────────────────────────────────

@@ -10,24 +10,17 @@ import { AccessScreen } from '@/components/client/access/AccessScreen'
 export const dynamic = 'force-dynamic'
 
 /**
- * Client dashboard — Access (ADR-040 B2.5): the groups of visitors who may
- * open members-only pages and protected documents, their passwords, the
- * documents themselves and who may see each page.
+ * Client dashboard — Access (ADR-040 B2.5, R9 §15): the groups of visitors who
+ * may open protected pages and documents, their passwords, and who is signed
+ * in. (Documents are under Documents; page protection is set in Studio.)
  *
  * `members.access.read` on THIS project, with the Access module installed;
  * anyone else — and every project without the module — gets a 404, like a
  * page that does not exist. Changing anything needs `members.access.manage`
  * and is re-checked by every action; a support visit is read-only.
  */
-export default async function AccessPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ tenant: string }>
-  searchParams: Promise<Record<string, string | string[] | undefined>>
-}) {
+export default async function AccessPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant: projectSlug } = await params
-  const tab = (await searchParams).tab
   const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=/${projectSlug}/access`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
@@ -49,7 +42,6 @@ export default async function AccessPage({
         data={data}
         canManage={grant.permissions.includes(ACCESS_MANAGE_PERMISSION) && !ctx.support}
         supportVisit={Boolean(ctx.support)}
-        initialTab={typeof tab === 'string' ? tab : null}
       />
     </PageShell>
   )

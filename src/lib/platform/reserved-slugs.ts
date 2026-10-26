@@ -76,7 +76,8 @@ export const RESERVED_SLUGS: readonly string[] = [
   'sites',
 
   // ── Client dashboard — tenant level (/<tenant>/…) ─────────────────────────
-  'access',    // Access — groups, passwords, protected documents (ADR-040 B2.5)
+  'access',    // Access — groups, passwords, sign-outs (ADR-040 B2.5)
+  'document-library', // Documents (ADR-040 §15)
   'agenda',
   'apps',
   'catalogue',

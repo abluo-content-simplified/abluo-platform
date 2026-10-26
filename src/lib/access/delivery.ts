@@ -9,11 +9,16 @@
  *   …?download=1
  *     → 303 to a signed storage URL of at most 60 seconds, as an attachment.
  *
+ * R9 (ADR-040 §15): a document is either for EVERYONE — served to anybody,
+ * indexable, no cookie needed — or for groups, served only to a visitor
+ * holding one of them (as B2.4). Images (JPEG, PNG, WebP) are served like PDFs.
+ *
  * Refusal is uniform: an unknown id, another project's id, an archived
- * document, a document whose groups the visitor lacks, a malformed id, the
- * module switched off, an expired / revoked session or none at all all get
- * THE SAME response — 303 to the sign-in page for a browser navigation, 401
- * otherwise. Nothing distinguishes "does not exist" from "not for you".
+ * document, a group document whose groups the visitor lacks, a malformed id,
+ * the Documents module (or, for group documents, Access) switched off, an
+ * expired / revoked session or none at all all get THE SAME response — 303 to
+ * the sign-in page for a browser navigation, 401 otherwise. Nothing
+ * distinguishes "does not exist" from "not for you".
  *
  * Language: the URL's language, then the site's default, then nothing.
  */
@@ -22,7 +27,7 @@ import type { AccessEnvironment } from './environment'
 import type { DeliverableFile, SiteAccessStore } from './store'
 import type { SiteAccessFiles } from './file-storage'
 import { isUuid } from './model'
-import { downloadFilename } from './pdf'
+import { DOCUMENT_FILE_TYPES, downloadFilename } from './pdf'
 
 // ── Range ────────────────────────────────────────────────────────────────────
 
@@ -62,7 +67,8 @@ export type DocumentDeps = {
   store: SiteAccessStore
   environment: AccessEnvironment | null
   resolveVisitor: (token: string) => Promise<VisitorGrants | null>
-  moduleEnabled: () => Promise<boolean>
+  /** Which of the two modules are enabled on the project (one Sanity read). Unreadable → both off. */
+  modules: () => Promise<{ documents: boolean; access: boolean }>
 }
 
 /** Pure decision over the injected reads. Any failure → deny. */
@@ -70,18 +76,18 @@ export async function decideDocument(
   input: { projectId: string; documentId: string; locales: string[]; token: string | null },
   deps: DocumentDeps
 ): Promise<DocumentDecision> {
-  // No cookie: nothing to check, and nothing about the id is looked at.
-  if (!input.token) return { kind: 'deny' }
   try {
-    if (!(await deps.moduleEnabled())) return { kind: 'deny' }
-    // Both reads always run (when there is a cookie), so a well-formed unknown
-    // id costs what a real one does.
-    const [visitor, file] = await Promise.all([
-      deps.resolveVisitor(input.token),
-      isUuid(input.documentId) ? deps.store.documentForDelivery(input.projectId, input.documentId.toLowerCase(), input.locales) : Promise.resolve(null),
+    if (!isUuid(input.documentId)) return { kind: 'deny' }
+    const [modules, file, visitor] = await Promise.all([
+      deps.modules(),
+      deps.store.documentForDelivery(input.projectId, input.documentId.toLowerCase(), input.locales),
+      input.token ? deps.resolveVisitor(input.token) : Promise.resolve(null),
     ])
-    if (!visitor || !file || file.archived) return { kind: 'deny' }
+    if (!modules.documents || !file || file.archived) return { kind: 'deny' }
     if (!file.storagePath.startsWith(`${input.projectId}/`)) return { kind: 'deny' }
+    if (!(file.mimeType in DOCUMENT_FILE_TYPES)) return { kind: 'deny' }
+    if (file.visibility === 'everyone') return { kind: 'file', file }
+    if (file.visibility !== 'groups' || !modules.access || !visitor) return { kind: 'deny' }
     // No live group → nobody (evaluateAccess), never "everyone".
     const policy: AccessPolicy = { visibility: 'restricted', groupIds: file.groupIds }
     const decision = evaluateAccess({ chain: [policy], visitor, moduleEnabled: true })
@@ -101,6 +107,13 @@ export function deliveryLocales(requested: string, siteDefault: string | null | 
 const PRIVATE = {
   'Cache-Control': 'private, no-store',
   'X-Robots-Tag': 'noindex, nofollow, noarchive',
+  'Referrer-Policy': 'no-referrer',
+  'X-Content-Type-Options': 'nosniff',
+}
+
+/** An `everyone` document: indexable, briefly cacheable in the browser (never on a shared cache). */
+const PUBLIC_FILE = {
+  'Cache-Control': 'private, max-age=300',
   'Referrer-Policy': 'no-referrer',
   'X-Content-Type-Options': 'nosniff',
 }
@@ -147,17 +160,20 @@ export async function fileResponse(
   files: SiteAccessFiles,
   fetchImpl: typeof fetch = fetch
 ): Promise<Response> {
-  const name = downloadFilename(titleFor(file, request.locale))
+  const type = DOCUMENT_FILE_TYPES[file.mimeType] ?? DOCUMENT_FILE_TYPES['application/pdf']
+  const name = downloadFilename(titleFor(file, request.locale), 'document', type.extension)
+  const base = file.visibility === 'everyone' ? PUBLIC_FILE : PRIVATE
 
   if (request.download) {
     const url = await files.signedUrl(file.storagePath, 60, name)
-    return new Response(null, { status: 303, headers: { ...PRIVATE, Location: url } })
+    // The redirect itself is never cached: the signed URL expires in 60 s.
+    return new Response(null, { status: 303, headers: { ...base, 'Cache-Control': 'private, no-store', Location: url } })
   }
 
   const etag = etagOf(file)
   const common = {
-    ...PRIVATE,
-    'Content-Type': 'application/pdf',
+    ...base,
+    'Content-Type': file.mimeType,
     'Content-Disposition': contentDisposition('inline', name),
     'Content-Language': file.locale,
     'Accept-Ranges': 'bytes',

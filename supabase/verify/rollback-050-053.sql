@@ -22,6 +22,9 @@ begin;
 
 do $$
 begin
+  if to_regclass('public.site_access_document_placements') is not null then
+    raise exception 'rollback-050-053: migration 054 is applied — run rollback-054.sql first';
+  end if;
   if to_regclass('public.site_access_groups') is null and to_regprocedure('public.site_access_session_summary(uuid, text)') is null
      and not exists (select 1 from public.grantable_permissions where id like 'members.access.%') then
     raise exception 'rollback-050-053: nothing to roll back';

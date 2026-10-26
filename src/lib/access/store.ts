@@ -49,26 +49,76 @@ export type CredentialRow = {
   groupIds: string[]
 }
 
-/** One protected document as the dashboard lists it (B2.5). */
+export type DocumentVisibility = 'everyone' | 'groups'
+
+/** The four file types a document may hold (migration 054; Office/SVG are backlog DOCS-1). */
+export type DocumentMimeType = 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/webp'
+
+export type DocumentFileRow = {
+  locale: string
+  mimeType: DocumentMimeType
+  sizeBytes: number
+  /** Two languages with the same sha256 share one stored file. */
+  sha256: string
+  originalFilename: string | null
+  uploadedAt: string
+}
+
+/** One document as the dashboard lists it (R9, migration 054). */
 export type DocumentRow = {
   id: string
   title: LocalizedName
-  sortOrder: number
+  note: LocalizedName | null
+  visibility: DocumentVisibility
+  categoryTermId: string | null
+  tagTermIds: string[]
   archivedAt: string | null
+  createdAt: string
+  /** LIVE groups only matter for access; all assigned groups are listed here. */
   groupIds: string[]
-  files: Array<{ locale: string; sizeBytes: number; sha256: string; originalFilename: string | null; uploadedAt: string }>
+  files: DocumentFileRow[]
+  /** Published Sanity page ids the document is placed on ("Show on"). */
+  pageIds: string[]
+  /** The document's position on each of those pages (0 = first). */
+  pageOrder: Record<string, number>
+}
+
+/** One document placed on a page, as a Download section needs it (no storage paths). */
+export type PageDocumentRow = {
+  pageId: string
+  sortOrder: number
+  documentId: string
+  visibility: DocumentVisibility
+  title: LocalizedName
+  note: LocalizedName | null
+  categoryTermId: string | null
+  tagTermIds: string[]
+  /** LIVE groups only. */
+  groupIds: string[]
+  files: Array<{ locale: string; mimeType: DocumentMimeType; sizeBytes: number; uploadedAt: string }>
+  updatedAt: string
 }
 
 /** What a file request needs: never more than this leaves the database. */
 export type DeliverableFile = {
   archived: boolean
+  visibility: DocumentVisibility
   title: LocalizedName
-  /** LIVE (non-archived) groups only. Empty = nobody. */
+  /** LIVE (non-archived) groups only; always empty for `everyone`. */
   groupIds: string[]
+  /** The file's REAL language (shown honestly when it differs from the page's). */
   locale: string
   storagePath: string
   sizeBytes: number
   sha256: string
+  mimeType: DocumentMimeType
+}
+
+export type DocumentInput = {
+  title: LocalizedName
+  note: LocalizedName | null
+  categoryTermId: string | null
+  tagTermIds: string[]
 }
 
 /** How many visitors are signed in now (migration 053): per live group, and in total (each session once). */
@@ -79,7 +129,11 @@ export type UploadReservation = { uploadId: string; storagePath: string; expires
 export type PendingUpload = {
   uploadId: string
   documentId: string
+  /** The first language (B2.5 uploads have only this one). */
   locale: string
+  /** Every language this upload is for. */
+  locales: string[]
+  mimeType: DocumentMimeType
   storagePath: string
   declaredSize: number
   declaredSha256: string
@@ -120,19 +174,29 @@ export interface SiteAccessStore {
   setCredentialGroups(projectId: string, credentialId: string, groupIds: string[], actorUserId: string): Promise<void>
   rotateCredential(projectId: string, credentialId: string, passwordHash: string, actorUserId: string): Promise<number>
   setCredentialDisabled(projectId: string, credentialId: string, disabled: boolean, actorUserId: string): Promise<number>
-  // documents (migration 052)
+  // documents (migrations 052 + 054)
   listDocuments(projectId: string): Promise<DocumentRow[]>
-  createDocument(projectId: string, input: { title: LocalizedName; groupIds: string[] }, actorUserId: string): Promise<string>
-  updateDocument(projectId: string, documentId: string, input: { title?: LocalizedName; sortOrder?: number }, actorUserId: string): Promise<void>
-  setDocumentGroups(projectId: string, documentId: string, groupIds: string[], actorUserId: string): Promise<void>
+  createDocument(projectId: string, input: DocumentInput & { visibility: DocumentVisibility; groupIds: string[] }, actorUserId: string): Promise<string>
+  /** Full replace of title, note, category and tags. */
+  updateDocument(projectId: string, documentId: string, input: DocumentInput, actorUserId: string): Promise<void>
+  /** Everyone XOR one or more live groups, set together. */
+  setDocumentAccess(projectId: string, documentId: string, input: { visibility: DocumentVisibility; groupIds: string[] }, actorUserId: string): Promise<void>
+  /** The full set of pages ("Show on"). Kept pages keep their position; new ones append. */
+  setDocumentPlacements(projectId: string, documentId: string, pageIds: string[], actorUserId: string): Promise<void>
+  /** Exactly the documents placed on the page, in the new order. */
+  reorderPageDocuments(projectId: string, pageId: string, documentIds: string[], actorUserId: string): Promise<void>
+  /** Never the last language. Returns how many language files were removed. */
+  removeDocumentLanguages(projectId: string, documentId: string, locales: string[], actorUserId: string): Promise<number>
   setDocumentArchived(projectId: string, documentId: string, archived: boolean, actorUserId: string): Promise<void>
-  beginUpload(projectId: string, input: { documentId: string; locale: string; sizeBytes: number; sha256: string; filename: string | null; ttlSeconds: number }, actorUserId: string): Promise<UploadReservation>
+  beginUpload(projectId: string, input: { documentId: string; locales: string[]; mimeType: DocumentMimeType; sizeBytes: number; sha256: string; filename: string | null; ttlSeconds: number }, actorUserId: string): Promise<UploadReservation>
   getUpload(projectId: string, uploadId: string): Promise<PendingUpload | null>
-  /** Returns the storage path the new file replaced (queued for removal), or null. */
+  /** Returns the storage path the first language's new file replaced (queued for removal), or null. */
   finishUpload(projectId: string, uploadId: string, measured: { sizeBytes: number; sha256: string }, actorUserId: string): Promise<string | null>
   failUpload(projectId: string, uploadId: string): Promise<void>
   /** First of `locales` with a file; null for unknown / other project / no file. */
   documentForDelivery(projectId: string, documentId: string, locales: string[]): Promise<DeliverableFile | null>
+  /** Live documents with a file, placed on these pages, in page order. */
+  pageDocuments(projectId: string, pageIds: string[]): Promise<PageDocumentRow[]>
   // sweep (cron)
   expireUploads(limit: number): Promise<number>
   trashBatch(limit: number): Promise<Array<{ storagePath: string; projectId: string }>>
@@ -300,33 +364,63 @@ export function createSupabaseSiteAccessStore(db: SupabaseClient): SiteAccessSto
       return check(await db.rpc('site_access_set_credential_disabled', { p_project_id: projectId, p_credential_id: credentialId, p_disabled: disabled, p_actor: actor })) as number
     },
 
-    // ── documents (052) ───────────────────────────────────────────────────────
+    // ── documents (052 + 054) ─────────────────────────────────────────────────
     async listDocuments(projectId) {
       const docs = check(await db.from('site_access_documents')
-        .select('id, title, sort_order, archived_at')
-        .eq('project_id', projectId).order('sort_order').order('created_at')) as Array<{ id: string; title: LocalizedName; sort_order: number; archived_at: string | null }>
-      const groups = check(await db.from('site_access_document_groups')
-        .select('document_id, group_id').eq('project_id', projectId)) as Array<{ document_id: string; group_id: string }>
-      const files = check(await db.from('site_access_document_files')
-        .select('document_id, locale, size_bytes, sha256, original_filename, uploaded_at').eq('project_id', projectId)) as
-        Array<{ document_id: string; locale: string; size_bytes: number; sha256: string; original_filename: string | null; uploaded_at: string }>
+        .select('id, title, note, visibility, category_term_id, tag_term_ids, archived_at, created_at')
+        .eq('project_id', projectId).order('created_at', { ascending: false })) as Array<{
+          id: string; title: LocalizedName; note: LocalizedName | null; visibility: DocumentVisibility; category_term_id: string | null
+          tag_term_ids: string[] | null; archived_at: string | null; created_at: string }>
+      const [groups, files, placements] = await Promise.all([
+        db.from('site_access_document_groups').select('document_id, group_id').eq('project_id', projectId),
+        db.from('site_access_document_files').select('document_id, locale, mime_type, size_bytes, sha256, original_filename, uploaded_at').eq('project_id', projectId),
+        db.from('site_access_document_placements').select('document_id, page_id, sort_order').eq('project_id', projectId),
+      ])
+      const g = check(groups) as Array<{ document_id: string; group_id: string }>
+      const f = check(files) as Array<{ document_id: string; locale: string; mime_type: DocumentMimeType; size_bytes: number; sha256: string; original_filename: string | null; uploaded_at: string }>
+      const p = check(placements) as Array<{ document_id: string; page_id: string; sort_order: number }>
       return docs.map((d) => ({
-        id: d.id, title: d.title, sortOrder: d.sort_order, archivedAt: d.archived_at,
-        groupIds: groups.filter((g) => g.document_id === d.id).map((g) => g.group_id).sort(),
-        files: files.filter((f) => f.document_id === d.id).map((f) => ({ locale: f.locale, sizeBytes: f.size_bytes, sha256: f.sha256, originalFilename: f.original_filename, uploadedAt: f.uploaded_at })),
+        id: d.id, title: d.title, note: d.note ?? null, visibility: d.visibility, categoryTermId: d.category_term_id,
+        tagTermIds: d.tag_term_ids ?? [], archivedAt: d.archived_at, createdAt: d.created_at,
+        groupIds: g.filter((x) => x.document_id === d.id).map((x) => x.group_id).sort(),
+        files: f.filter((x) => x.document_id === d.id)
+          .map((x) => ({ locale: x.locale, mimeType: x.mime_type, sizeBytes: x.size_bytes, sha256: x.sha256, originalFilename: x.original_filename, uploadedAt: x.uploaded_at }))
+          .sort((a, b) => a.locale.localeCompare(b.locale)),
+        pageIds: p.filter((x) => x.document_id === d.id).map((x) => x.page_id).sort(),
+        pageOrder: Object.fromEntries(p.filter((x) => x.document_id === d.id).map((x) => [x.page_id, x.sort_order])),
       }))
     },
 
     async createDocument(projectId, input, actor) {
-      return check(await db.rpc('site_access_create_document', { p_project_id: projectId, p_title: input.title, p_group_ids: input.groupIds, p_actor: actor })) as string
+      return check(await db.rpc('site_access_create_document_v2', {
+        p_project_id: projectId, p_title: input.title, p_note: input.note, p_visibility: input.visibility, p_group_ids: input.groupIds,
+        p_category_term_id: input.categoryTermId, p_tag_term_ids: input.tagTermIds, p_actor: actor,
+      })) as string
     },
 
     async updateDocument(projectId, documentId, input, actor) {
-      check(await db.rpc('site_access_update_document', { p_project_id: projectId, p_document_id: documentId, p_title: input.title ?? null, p_sort_order: input.sortOrder ?? null, p_actor: actor }))
+      check(await db.rpc('site_access_update_document_v2', {
+        p_project_id: projectId, p_document_id: documentId, p_title: input.title, p_note: input.note,
+        p_category_term_id: input.categoryTermId, p_tag_term_ids: input.tagTermIds, p_actor: actor,
+      }))
     },
 
-    async setDocumentGroups(projectId, documentId, groupIds, actor) {
-      check(await db.rpc('site_access_set_document_groups', { p_project_id: projectId, p_document_id: documentId, p_group_ids: groupIds, p_actor: actor }))
+    async setDocumentAccess(projectId, documentId, input, actor) {
+      check(await db.rpc('site_access_set_document_access', {
+        p_project_id: projectId, p_document_id: documentId, p_visibility: input.visibility, p_group_ids: input.groupIds, p_actor: actor,
+      }))
+    },
+
+    async setDocumentPlacements(projectId, documentId, pageIds, actor) {
+      check(await db.rpc('site_access_set_document_placements', { p_project_id: projectId, p_document_id: documentId, p_page_ids: pageIds, p_actor: actor }))
+    },
+
+    async reorderPageDocuments(projectId, pageId, documentIds, actor) {
+      check(await db.rpc('site_access_reorder_page_documents', { p_project_id: projectId, p_page_id: pageId, p_document_ids: documentIds, p_actor: actor }))
+    },
+
+    async removeDocumentLanguages(projectId, documentId, locales, actor) {
+      return check(await db.rpc('site_access_remove_document_languages', { p_project_id: projectId, p_document_id: documentId, p_locales: locales, p_actor: actor })) as number
     },
 
     async setDocumentArchived(projectId, documentId, archived, actor) {
@@ -334,8 +428,8 @@ export function createSupabaseSiteAccessStore(db: SupabaseClient): SiteAccessSto
     },
 
     async beginUpload(projectId, i, actor) {
-      const rows = check(await db.rpc('site_access_begin_upload', {
-        p_project_id: projectId, p_document_id: i.documentId, p_locale: i.locale, p_size: i.sizeBytes,
+      const rows = check(await db.rpc('site_access_begin_upload_v2', {
+        p_project_id: projectId, p_document_id: i.documentId, p_locales: i.locales, p_mime: i.mimeType, p_size: i.sizeBytes,
         p_sha256: i.sha256, p_filename: i.filename, p_actor: actor, p_ttl_seconds: i.ttlSeconds,
       })) as Array<{ upload_id: string; storage_path: string; expires_at: string }> | null
       const r = rows?.[0]
@@ -345,10 +439,13 @@ export function createSupabaseSiteAccessStore(db: SupabaseClient): SiteAccessSto
 
     async getUpload(projectId, uploadId) {
       const rows = check(await db.from('site_access_uploads')
-        .select('id, document_id, locale, storage_path, declared_size, declared_sha256, status, expires_at')
-        .eq('project_id', projectId).eq('id', uploadId)) as Array<{ id: string; document_id: string; locale: string; storage_path: string; declared_size: number; declared_sha256: string; status: PendingUpload['status']; expires_at: string }>
+        .select('id, document_id, locale, locales, mime_type, storage_path, declared_size, declared_sha256, status, expires_at')
+        .eq('project_id', projectId).eq('id', uploadId)) as Array<{ id: string; document_id: string; locale: string; locales: string[] | null; mime_type: DocumentMimeType; storage_path: string; declared_size: number; declared_sha256: string; status: PendingUpload['status']; expires_at: string }>
       const r = rows[0]
-      return r ? { uploadId: r.id, documentId: r.document_id, locale: r.locale, storagePath: r.storage_path, declaredSize: r.declared_size, declaredSha256: r.declared_sha256, status: r.status, expiresAt: r.expires_at } : null
+      return r ? {
+        uploadId: r.id, documentId: r.document_id, locale: r.locale, locales: r.locales?.length ? r.locales : [r.locale], mimeType: r.mime_type,
+        storagePath: r.storage_path, declaredSize: r.declared_size, declaredSha256: r.declared_sha256, status: r.status, expiresAt: r.expires_at,
+      } : null
     },
 
     async finishUpload(projectId, uploadId, measured, actor) {
@@ -360,10 +457,25 @@ export function createSupabaseSiteAccessStore(db: SupabaseClient): SiteAccessSto
     },
 
     async documentForDelivery(projectId, documentId, locales) {
-      const rows = check(await db.rpc('site_access_document_for_delivery', { p_project_id: projectId, p_document_id: documentId, p_locales: locales })) as
-        Array<{ archived: boolean; title: LocalizedName; group_ids: string[]; locale: string; storage_path: string; size_bytes: number; sha256: string }> | null
+      const rows = check(await db.rpc('site_access_document_for_delivery_v2', { p_project_id: projectId, p_document_id: documentId, p_locales: locales })) as
+        Array<{ archived: boolean; visibility: DocumentVisibility; title: LocalizedName; group_ids: string[]; locale: string; storage_path: string; size_bytes: number; sha256: string; mime_type: DocumentMimeType }> | null
       const r = rows?.[0]
-      return r ? { archived: r.archived, title: r.title, groupIds: r.group_ids ?? [], locale: r.locale, storagePath: r.storage_path, sizeBytes: r.size_bytes, sha256: r.sha256 } : null
+      return r ? {
+        archived: r.archived, visibility: r.visibility, title: r.title, groupIds: r.group_ids ?? [], locale: r.locale,
+        storagePath: r.storage_path, sizeBytes: r.size_bytes, sha256: r.sha256, mimeType: r.mime_type,
+      } : null
+    },
+
+    async pageDocuments(projectId, pageIds) {
+      if (pageIds.length === 0) return []
+      const rows = check(await db.rpc('site_access_page_documents', { p_project_id: projectId, p_page_ids: pageIds })) as Array<{
+        page_id: string; sort_order: number; document_id: string; visibility: DocumentVisibility; title: LocalizedName; note: LocalizedName | null
+        category_term_id: string | null; tag_term_ids: string[] | null; group_ids: string[] | null
+        files: Array<{ locale: string; mimeType: DocumentMimeType; sizeBytes: number; uploadedAt: string }> | null; updated_at: string }> | null
+      return (rows ?? []).map((r) => ({
+        pageId: r.page_id, sortOrder: r.sort_order, documentId: r.document_id, visibility: r.visibility, title: r.title, note: r.note ?? null,
+        categoryTermId: r.category_term_id, tagTermIds: r.tag_term_ids ?? [], groupIds: r.group_ids ?? [], files: r.files ?? [], updatedAt: r.updated_at,
+      }))
     },
 
     async expireUploads(limit) {

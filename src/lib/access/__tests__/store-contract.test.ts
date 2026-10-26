@@ -1,5 +1,5 @@
 /**
- * Contract between the Supabase store and migration 050: every RPC the store
+ * Contract between the Supabase store and migrations 050–054: every RPC the store
  * calls exists in the migration with exactly the parameter names it sends,
  * every table query filters on project_id, no select ever asks for a hash
  * outside the candidate function, and the visitor plane never imports the
@@ -14,10 +14,11 @@ const ROOT = resolve(__dirname, '../../../..')
 const SQL = readFileSync(join(ROOT, 'supabase/migrations/050_site_access.sql'), 'utf8')
   + readFileSync(join(ROOT, 'supabase/migrations/052_site_access_documents.sql'), 'utf8')
   + readFileSync(join(ROOT, 'supabase/migrations/053_site_access_session_summary.sql'), 'utf8')
+  + readFileSync(join(ROOT, 'supabase/migrations/054_documents_module.sql'), 'utf8')
 
 function sqlParams(fn: string): string[] {
-  const m = SQL.match(new RegExp(`create function public\\.${fn}\\(([\\s\\S]*?)\\)\\s*returns`, 'm'))
-  if (!m) throw new Error(`function ${fn} not in migrations 050/052/053`)
+  const m = SQL.match(new RegExp(`create (?:or replace )?function public\\.${fn}\\(([\\s\\S]*?)\\)\\s*returns`, 'm'))
+  if (!m) throw new Error(`function ${fn} not in migrations 050–054`)
   return m[1].split(',').map((p) => p.trim().split(/\s+/)[0]).filter(Boolean)
 }
 
@@ -69,18 +70,26 @@ describe('store ↔ migration 050', () => {
     await s.setCredentialGroups(P, P, [], 'a')
     await s.rotateCredential(P, P, 'scrypt$', 'a')
     await s.setCredentialDisabled(P, P, true, 'a')
-    // 052 — documents
-    await s.createDocument(P, { title: { en: 't' }, groupIds: [] }, 'a')
-    await s.updateDocument(P, P, { title: { en: 't' } }, 'a')
-    await s.setDocumentGroups(P, P, [], 'a')
+    // 052 / 054 — documents
+    const input = { title: { en: 't' }, note: null, categoryTermId: null, tagTermIds: [] }
+    await s.createDocument(P, { ...input, visibility: 'everyone', groupIds: [] }, 'a')
+    await s.updateDocument(P, P, input, 'a')
+    await s.setDocumentAccess(P, P, { visibility: 'groups', groupIds: [P] }, 'a')
+    await s.setDocumentPlacements(P, P, ['page-1'], 'a')
+    await s.reorderPageDocuments(P, 'page-1', [P], 'a')
+    await s.removeDocumentLanguages(P, P, ['it'], 'a')
     await s.setDocumentArchived(P, P, true, 'a')
     await s.finishUpload(P, P, { sizeBytes: 1, sha256: 'a'.repeat(64) }, 'a')
     await s.failUpload(P, P)
     await s.documentForDelivery(P, P, ['en'])
+    await s.pageDocuments(P, ['page-1'])
     // 053 — signed-in summary
     await s.sessionSummary(P, 'production')
     const rpcs = calls.filter((c) => c.kind === 'rpc')
-    expect(rpcs).toHaveLength(18)
+    expect(rpcs).toHaveLength(22)
+    // R9: the v2 functions, never the 052 ones they replace
+    expect(rpcs.map((c) => c.name)).not.toContain('site_access_create_document')
+    expect(rpcs.map((c) => c.name)).not.toContain('site_access_document_for_delivery')
     for (const c of rpcs) {
       expect(Object.keys(c.args!).sort(), c.name).toEqual([...sqlParams(c.name)].sort())
       if ('p_environment' in c.args!) expect(c.args!.p_environment, c.name).toBe('production')
@@ -88,16 +97,16 @@ describe('store ↔ migration 050', () => {
     }
   })
 
-  it('052: begin upload and the sweep RPCs match the migration (the sweep alone is cross-project)', async () => {
+  it('052/054: begin upload (v2) and the sweep RPCs match the migration (the sweep alone is cross-project)', async () => {
     const { client, calls } = recordingClient([{ upload_id: 'u', storage_path: 'p/x.pdf', expires_at: 'e' }])
     const s = createSupabaseSiteAccessStore(client as never)
     const P = '00000000-0000-4000-8000-000000000000'
-    await s.beginUpload(P, { documentId: P, locale: 'en', sizeBytes: 1, sha256: 'a'.repeat(64), filename: null, ttlSeconds: 3600 }, 'a')
+    await s.beginUpload(P, { documentId: P, locales: ['en', 'it'], mimeType: 'image/png', sizeBytes: 1, sha256: 'a'.repeat(64), filename: null, ttlSeconds: 3600 }, 'a')
     await s.expireUploads(10)
     await s.trashBatch(10)
     await s.trashDone([])
     const rpcs = calls.filter((c) => c.kind === 'rpc')
-    expect(rpcs.map((c) => c.name)).toEqual(['site_access_begin_upload', 'site_access_expire_uploads', 'site_access_trash_batch', 'site_access_trash_done'])
+    expect(rpcs.map((c) => c.name)).toEqual(['site_access_begin_upload_v2', 'site_access_expire_uploads', 'site_access_trash_batch', 'site_access_trash_done'])
     for (const c of rpcs) expect(Object.keys(c.args!).sort(), c.name).toEqual([...sqlParams(c.name)].sort())
     expect(rpcs[0].args!.p_project_id).toBe(P)
   })

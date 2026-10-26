@@ -2259,6 +2259,43 @@ export interface CatalogueListingSection {
   catalogue?: import('@/lib/modules/catalogue/website').CatalogueListingData | null
 }
 
+/** One document as a Download section shows it (hydrated per visitor; never a storage path). */
+export interface DownloadSectionDocument {
+  id: string
+  title: string
+  note: string | null
+  /** Locked to groups (shown with a small lock on protected pages). */
+  members: boolean
+  /** The file served for this visitor's language: its REAL language, type and size. */
+  file: { locale: string; mimeType: string; sizeBytes: number }
+  /** Other languages available (each opens through the same route with that language). */
+  otherLocales: string[]
+  /** The document route for this file (view) — append ?download=1 to download. */
+  href: string
+  updatedAt: string
+  /** Category (Categories & Tags, module `documents`) in the page's language, or null. */
+  category: { key: string; label: string } | null
+  /** Tag labels in the page's language, in the vocabulary's order. */
+  tags: string[]
+}
+
+/** Documents module (ADR-040 §15) — lists the documents the client placed on this page. */
+export interface DownloadSection {
+  _type: 'downloadSection'
+  _key: string
+  background?: FAQSection['background']
+  anchorId?: string
+  eyebrow?: string
+  title?: string
+  headlineAccent?: FAQSection['headlineAccent']
+  intro?: string
+  image?: unknown
+  /** 'manual' (the client's order, default) | 'newest' | 'az'. */
+  documentSort?: 'manual' | 'newest' | 'az' | null
+  /** Set by hydrateSections after the page gate; undefined = not hydrated (renders nothing). */
+  documents?: DownloadSectionDocument[]
+}
+
 export type PageSection =
   | HeroSection
   | HeroLiveCaptureSection
@@ -2289,6 +2326,7 @@ export type PageSection =
   | CtaBannerSection
   | LocationsSection
   | CatalogueListingSection
+  | DownloadSection
 
 export interface WebsiteHomePage {
   tenantSlug: string
