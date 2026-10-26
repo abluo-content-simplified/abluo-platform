@@ -958,6 +958,7 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   'cron/analytics': 'machine',
   'cron/media-sweep': 'machine', // CRON_SECRET bearer (ADR-035 slice 2)
   'cron/support-tickets-sweep': 'machine', // CRON_SECRET bearer (ADR-039 D13)
+  'cron/site-access-sweep': 'machine', // CRON_SECRET bearer (ADR-040 B2.4)
   'webhooks/form-events': 'machine',
   // ADR-031: partner apps authenticate with client id + secret (src/lib/connections; own suites).
   'oauth/token': 'machine',
@@ -996,3 +997,52 @@ describe('API route inventory', () => {
     )
   })
 })
+
+/**
+ * Route handlers OUTSIDE src/app/api (ADR-040 B2.3). The website's visitor
+ * routes are the only ones: anonymous by nature (a visitor proves a shared
+ * password), so they are public writes with their own guards — strict
+ * same-origin POST, project resolved from the WEBSITE ADDRESS (host + path
+ * segment, never the body), same-site relative return paths, environment-bound
+ * sessions and the atomic rate limit. Their route-level suite is
+ * src/lib/access/__tests__/visitor-routes.test.ts (cross-tenant, shared
+ * preview host, CSRF, cookie attributes, revocation).
+ */
+const WEBSITE_ROUTES: Record<string, 'public-write (site access)' | 'public-read (site access)'> = {
+  '[tenant]/site-access/unlock': 'public-write (site access)',
+  '[tenant]/site-access/sign-out': 'public-write (site access)',
+  // B2.4: GET/HEAD only. Anonymous by nature; every request re-checks the
+  // visitor; refusals are uniform (document-route.test.ts).
+  '[tenant]/site-access/documents/[documentId]': 'public-read (site access)',
+}
+
+describe('route handlers outside src/app/api', () => {
+  it('every route.ts under src/app/[locale] (website + dashboards) is a classified website route', () => {
+    const appDir = resolve(__dirname, '../..')
+    const websiteDir = join(appDir, '[locale]', '(website)')
+    const found: string[] = []
+    const walk = (d: string) => {
+      for (const n of readdirSync(d)) {
+        const p = join(d, n)
+        if (statSync(p).isDirectory()) {
+          if (n !== '__tests__' && n !== 'api' && n !== 'node_modules') walk(p)
+        } else if (n === 'route.ts' && d.startsWith(join(appDir, '[locale]'))) found.push(relative(websiteDir, d))
+      }
+    }
+    walk(appDir)
+    expect(found.sort()).toEqual(Object.keys(WEBSITE_ROUTES).sort())
+  })
+  it('writes export POST only; the document route exports GET/HEAD only — all through the shared, tested handlers', async () => {
+    const unlock = await import('@/app/[locale]/(website)/[tenant]/site-access/unlock/route')
+    const signOut = await import('@/app/[locale]/(website)/[tenant]/site-access/sign-out/route')
+    for (const mod of [unlock, signOut] as Array<Record<string, unknown>>) {
+      expect(Object.keys(mod).filter((k) => /^(GET|HEAD|PUT|PATCH|DELETE|OPTIONS)$/.test(k))).toEqual([])
+      expect(typeof mod.POST).toBe('function')
+    }
+    const doc = (await import('@/app/[locale]/(website)/[tenant]/site-access/documents/[documentId]/route')) as Record<string, unknown>
+    expect(Object.keys(doc).filter((k) => /^(POST|PUT|PATCH|DELETE|OPTIONS)$/.test(k))).toEqual([])
+    expect(typeof doc.GET).toBe('function')
+    expect(typeof doc.HEAD).toBe('function')
+  })
+})
+

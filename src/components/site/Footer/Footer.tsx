@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { tenantClient } from '@/lib/sanity/client'
 import { websiteSiteConfigQuery } from '@/lib/sanity/queries'
 import type { WebsiteSiteConfig, SupportedLocale } from '@/lib/sanity/types'
-import { resolveNavLink, resolveNavLinks, toPublicNavLink } from '@/lib/sanity/nav-links'
+import { isRenderableNavLink, resolveNavLink, resolveNavLinks, toPublicNavLink } from '@/lib/sanity/nav-links'
+import { NavLinkText } from '@/components/site/NavLinkText'
 import { siteBasePath } from '@/lib/sanity/href'
 import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { imageUrl } from '@/lib/sanity/image'
@@ -112,7 +113,7 @@ export async function Footer({
   // Credit link ("Built by …") beside the copyright. Runs through the shared
   // nav-link resolver, so an external URL, a page reference and a `mailto:`
   // href all behave exactly as they do in the header.
-  const credit = config.footerCredit
+  const credit = config.footerCredit && isRenderableNavLink(config.footerCredit)
     ? toPublicNavLink(resolveNavLink(config.footerCredit, locale, tenantId), tenantId, hostScoped)
     : null
 
@@ -252,7 +253,7 @@ export async function Footer({
                           className="text-sm hover:text-[var(--color-footer-text)]"
                           style={{ fontFamily: 'var(--font-body)', color: 'var(--color-footer-text-muted)' }}
                         >
-                          {link.label}
+                          <NavLinkText link={link} />
                         </Link>
                       </li>
                     ))}
@@ -374,7 +375,7 @@ export async function Footer({
                       className="text-sm font-medium hover:text-[var(--color-footer-text)]"
                       style={{ color: 'var(--color-footer-text-muted)' }}
                     >
-                      {link.label}
+                      <NavLinkText link={link} />
                     </Link>
                   </li>
                 ))}

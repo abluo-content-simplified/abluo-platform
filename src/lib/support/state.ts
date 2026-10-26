@@ -146,8 +146,21 @@ export function decisionTransition(
  */
 export type SupportPurpose = 'render' | 'mutation'
 
-/** Never writable in support mode, even with the client's approval: people, money, modules. */
-export const SUPPORT_NEVER_WRITES: readonly string[] = ['users.invite', 'users.manage', 'modules.manage', 'billing.manage']
+/**
+ * Never writable in support mode, even with the client's approval: people,
+ * money, modules — and the tenant's Access shared passwords (Tom, 2026-10-24:
+ * support may never create, change, rotate or otherwise manage them; ADR-040
+ * §8). `members.access.read` stays available, so support can still see which
+ * groups exist and which pages they protect. Exceptional credential help
+ * would need its own explicitly authorized, audited mechanism — not this flag.
+ */
+export const SUPPORT_NEVER_WRITES: readonly string[] = [
+  'users.invite',
+  'users.manage',
+  'modules.manage',
+  'billing.manage',
+  'members.access.manage',
+]
 
 /** A permission that changes data. Only `*.read` permissions are reads (ADR-028 §2 vocabulary). */
 export function isWritePermission(id: string): boolean {

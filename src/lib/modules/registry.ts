@@ -1492,6 +1492,80 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     changelog: 'V1.0.0 — ADR-036. Overview, colour, typography, shape & spacing, layout, logo & assets and motion pages generated from the design system; written guidance and do/don’t examples per page.',
   },
 
+  // ── Access (Site Access) ───────────────────────────────────────────────────
+  // ADR-040. Restricted pages and protected files for chosen audiences (groups),
+  // opened with shared passwords in Phase 1. Module id `members` keeps the
+  // permission prefix ADR-028 reserved; people see "Access".
+  //
+  // Everything the module owns lives in Supabase (migration 050): groups,
+  // passwords, visitor sessions, protected documents. Installing, disabling or
+  // removing the installation here changes ONLY the Sanity installation record:
+  //   • nothing in Supabase is created or deleted by it — no cleanup runs;
+  //   • restricted resources stay CLOSED while the module is off
+  //     (evaluateAccess → 'module_unavailable'), never public;
+  //   • management is refused while it is off (assertModuleAction checks the
+  //     installation first), and visitor passwords stop working.
+  // Destructive cleanup of a project's access data is a separate, explicitly
+  // authorised operation that does not exist yet.
+  //
+  // Dashboard permissions only. A visitor who knows a shared password never
+  // holds any of these: visitors have no Supabase Auth user and no
+  // TenantAuthorizationContext (src/lib/access/management.ts).
+  {
+    id: 'members',
+    label: 'Access',
+    version: '1.0.0',
+    status: 'released',
+    category: 'engagement',
+
+    platformContract: {
+      collections: [],
+      sectionTypes: [],
+      schemaTypes: [],
+      schemaDefinitions: () => [],
+
+      permissions: [
+        {
+          id: 'members.access.read',
+          label: 'See access settings',
+          description: 'See the access groups, the password names (never the passwords), the protected documents and how many visitors are signed in.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'members.access.manage',
+          label: 'Manage access',
+          description: 'Create, rename and archive groups; create, change and switch off passwords; choose who may open restricted pages and documents; sign visitors out.',
+          defaultRoles: ['owner'],
+        },
+      ],
+
+      // Deliberately empty (ADR-014 + ADR-040 §8): everything configurable here
+      // is operational data in Supabase, edited in the tenant dashboard's
+      // Access screens, never a Sanity field.
+      configSchema: [],
+
+      placement: {
+        surfaces: [],
+        note: 'Lets you restrict pages and documents to chosen groups of visitors, who unlock them with a password. Groups, passwords and documents are managed in the dashboard, under Access. Switching the module off keeps restricted content closed — it never makes it public — and deletes nothing.',
+      },
+    },
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [],
+      integratesWith: [],
+    },
+
+    dataStore: {
+      // Groups, passwords, sessions and documents in Supabase (migration 050);
+      // only the page `access` field (B2.2) will live in Sanity.
+      primary: 'hybrid',
+    },
+
+    changelog: 'V1.0.0 — ADR-040. Module registration and dashboard permissions (members.access.read / .manage). Restricted pages (B2.2), sign-in (B2.3), protected PDFs (B2.4) and the dashboard Access screen — groups with their passwords, documents, who can see each page, signed-in visitors (B2.5).',
+  },
+
 ]
 
 // ── Build-time validation ─────────────────────────────────────────────────────

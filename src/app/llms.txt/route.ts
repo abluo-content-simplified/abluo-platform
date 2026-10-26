@@ -1,3 +1,4 @@
+import { closedPaths, isListable } from '@/lib/access/listing'
 import { headers } from 'next/headers'
 import { isProduction } from '@/lib/deployment'
 import { isStagingHost } from '@/lib/seo/indexability'
@@ -8,6 +9,7 @@ import {
   LLMS_CATALOGUE_ITEMS_QUERY,
   LLMS_CATALOGUE_SEGMENT_QUERY,
   LLMS_NEWS_QUERY,
+  LLMS_PAGES_QUERY,
   LLMS_POSTS_QUERY,
   catalogueLinesFor,
   entryLinesFor,
@@ -58,6 +60,8 @@ interface ProjectRow {
 
 interface PageRow {
   pageType?: string
+  /** ADR-040 — the page's own access rule; titles/descriptions are absent when not open. */
+  open?: boolean | null
   /** Full per-locale maps — resolved in JS so one read serves every language. */
   titles?: Record<string, string | undefined>
   slugs?: Record<string, { current?: string } | undefined>
@@ -135,12 +139,8 @@ export async function GET(): Promise<Response> {
     // would be six more round trips for data already in these documents.
     const [pages, news, posts, catalogueCollections, catalogueItems, catalogueSegment] = await Promise.all([
       sanityClient.fetch<PageRow[]>(
-        `*[_type == "page" && projectSlug == $projectSlug && !(noindex == true)] | order(pageType asc) {
-          pageType,
-          "titles": title,
-          "slugs": slug,
-          "descriptions": seoDescription
-        }`,
+        // ADR-040 — a closed page's title and description are never read.
+        LLMS_PAGES_QUERY,
         { projectSlug: project.projectSlug }
       ),
       sanityClient.fetch<EntryRow[]>(LLMS_NEWS_QUERY, { projectSlug: project.projectSlug }),
@@ -171,7 +171,10 @@ export async function GET(): Promise<Response> {
     /** One `## …` block of page links for a single language. */
     const sectionFor = (loc: string): string[] => {
       const out: string[] = []
+      // ADR-040 — restricted pages, and pages under them, are never listed.
+      const closed = closedPaths(pages.map((p) => ({ open: p.open, slug: p.slugs })), loc)
       for (const page of pages) {
+        if (!isListable({ open: page.open, slug: page.slugs }, loc, closed)) continue
         const isHome = page.pageType === 'home'
         const slug = page.slugs?.[loc]?.current
         // A page with no slug in this language does not exist in it.

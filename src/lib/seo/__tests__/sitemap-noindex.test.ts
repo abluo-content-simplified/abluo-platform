@@ -14,10 +14,11 @@ const PROJECTS = [
   { projectSlug: 'abluo', customDomain: 'abluo.app', supportedLocales: ['en', 'it'], defaultLocale: 'en' },
 ]
 
+// `open` is what SITEMAP_PAGES_QUERY projects (ADR-040): every page here is public.
 const PAGES = [
-  { projectSlug: 'abluo', slug: { en: { current: 'pricing' }, it: { current: 'prezzi' } } },
-  { projectSlug: 'abluo', slug: { en: { current: 'staging-home' }, it: { current: 'staging-home' } }, noindex: true },
-  { projectSlug: 'abluo', slug: { en: { current: 'about' } }, noindex: false },
+  { projectSlug: 'abluo', open: true, slug: { en: { current: 'pricing' }, it: { current: 'prezzi' } } },
+  { projectSlug: 'abluo', open: true, slug: { en: { current: 'staging-home' }, it: { current: 'staging-home' } }, noindex: true },
+  { projectSlug: 'abluo', open: true, slug: { en: { current: 'about' } }, noindex: false },
 ]
 
 const NOINDEX_CLAUSE = '!(noindex == true)'

@@ -9,6 +9,19 @@
 import { canonicalUrl } from '@/lib/seo/canonical'
 import { publicFilterFor } from '@/lib/lifecycle/public-types'
 import { visibilityFilter } from '@/lib/modules/catalogue/visibility'
+import { pageIsOpen } from '@/lib/access/groq'
+
+/**
+ * Pages for llms.txt. ADR-040 — a closed page's title and description are
+ * never read: only `open` and its slugs come back, and the route then drops it
+ * (and everything under its path) with isListable().
+ */
+export const LLMS_PAGES_QUERY = /* groq */ `*[_type == "page" && projectSlug == $projectSlug && !(noindex == true)] | order(pageType asc) {
+  pageType,
+  "slugs": slug,
+  "open": ${pageIsOpen()},
+  ${pageIsOpen()} => { "titles": title, "descriptions": seoDescription }
+}`
 
 /** A published blog post or news item — per-locale maps, like PageRow. */
 export interface EntryRow {

@@ -1,6 +1,6 @@
 # ADR-024 — Members area as a module (protected documents)
 
-**Status:** Proposed
+**Status:** Superseded by [ADR-040 — Site Access](./ADR-040-site-access.md) (2026-10-24). Never implemented. Kept for its reasoning; ADR-040 §2 lists what carried over and what changed.
 **Date:** 2026-09-30
 **Owner:** Tom
 **Relates:** ADR-014 (one configuration surface), ADR-015 / ADR-017 (actor, `TenantAuthorizationContext`, `assertModuleAction`, per-project membership), ADR-018 (forms — rate-limit store pattern, `tokens.ts` hashing), ADR-019 (Resend is wired — needed only for personal access later), ADR-020 (modules first-class, module config), ADR-021 (consent — the members cookie is strictly necessary), ADR-022 / ADR-023 (module shape precedents), tenant isolation audit + `docs/engineering/sanity-private-dataset.md` (the Sanity dataset is PUBLIC), Multilingual-first principle (CLAUDE.md)

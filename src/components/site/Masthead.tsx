@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { ResolvedNavLink } from '@/lib/sanity/types'
+import { NavLinkText } from '@/components/site/NavLinkText'
 
 // ── Masthead header ───────────────────────────────────────────────────────────
 //
@@ -37,7 +38,7 @@ export function Masthead({ href, logoSrc, logoAlt, navLinks = [] }: MastheadProp
                     className="text-sm hover:opacity-70"
                     style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
                   >
-                    {link.label}
+                    <NavLinkText link={link} />
                   </Link>
                 </li>
               ))}

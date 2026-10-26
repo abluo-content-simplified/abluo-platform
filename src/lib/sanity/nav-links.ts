@@ -3,6 +3,8 @@ import { isPassThroughHref, toPublicPath } from './href'
 import { NEWS_ROUTE_SEGMENT } from './cta'
 import { LOCALE_CODES } from '@/lib/i18n/locales'
 import { catalogueNavPath } from '@/lib/modules/catalogue/nav-target'
+import { parseAccessPolicy, parseNavigationMode } from '@/lib/access/policy'
+import { getAccessMessages } from '@/lib/i18n/access-messages'
 
 /**
  * Locale codes recognised as a URL prefix when no project locale list is given.
@@ -53,6 +55,21 @@ export function moduleNavSegment(link: NavLink): string | null {
 }
 
 /**
+ * ADR-040 — how a link to a restricted page appears in the menu: 'hidden'
+ * (default, for every visitor) or 'locked' (shown with a lock). Public targets
+ * and non-page links are 'public'. Fail-closed: a malformed access object is
+ * restricted, and an unset menu mode is hidden.
+ */
+export function navAccessMode(link: NavLink): 'public' | 'hidden' | 'locked' {
+  if (link.linkType !== 'internal') return 'public'
+  const ownOpen = !link.pageAccess || parseAccessPolicy(link.pageAccess).visibility === 'public'
+  if (ownOpen && link.pageUnderClosed !== true) return 'public'
+  // Restricted only through a parent: the child's own menu mode is not set, so
+  // it takes the default — hidden.
+  return ownOpen ? 'hidden' : parseNavigationMode(link.pageAccess)
+}
+
+/**
  * Resolve a single navigation link to its final href
  * Handles both internal page selection and external URLs
  *
@@ -84,7 +101,7 @@ export function resolveNavLink(
         label: link.label,
         href: `/${locale}/${tenantId}/${cataloguePath}`,
         external: false,
-        children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
+        children: renderableChildren(link)?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
       }
     }
 
@@ -94,7 +111,8 @@ export function resolveNavLink(
         label: link.label,
         href: `/${locale}/${tenantId}/${link.pageSlug}`,
         external: false,
-        children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
+        ...(navAccessMode(link) === 'locked' ? { lockedLabel: getAccessMessages(locale).lockedLinkLabel } : {}),
+        children: renderableChildren(link)?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
       }
     }
 
@@ -105,7 +123,7 @@ export function resolveNavLink(
       label: link.label,
       href,
       external: false,
-      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
+      children: renderableChildren(link)?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
     }
   }
 
@@ -121,7 +139,7 @@ export function resolveNavLink(
       label: link.label,
       href: link.anchorId ? `/${locale}/${tenantId}#${link.anchorId}` : '#',
       external: false,
-      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
+      children: renderableChildren(link)?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
     }
   }
 
@@ -133,7 +151,7 @@ export function resolveNavLink(
       label: link.label,
       href: segment ? `/${locale}/${tenantId}/${segment}` : '#',
       external: false,
-      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
+      children: renderableChildren(link)?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
     }
   }
 
@@ -142,7 +160,7 @@ export function resolveNavLink(
       label: link.label,
       href: link.externalUrl,
       external: link.openInNewTab ?? false,
-      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
+      children: renderableChildren(link)?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
     }
   }
 
@@ -183,7 +201,7 @@ export function resolveNavLink(
       label: link.label,
       href,
       external: link.external ?? false,
-      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
+      children: renderableChildren(link)?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
     }
   }
 
@@ -192,7 +210,7 @@ export function resolveNavLink(
     label: link.label,
     href: '#',
     external: false,
-    children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
+    children: renderableChildren(link)?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
   }
 }
 
@@ -208,10 +226,17 @@ export function resolveNavLink(
  */
 export function isRenderableNavLink(link: NavLink): boolean {
   if (link.linkType === 'cookieSettings') return false
+  // ADR-040 — a restricted page is left out of the menu unless set to "shown with a lock".
+  if (navAccessMode(link) === 'hidden') return false
   // A module link whose module is not installed / enabled has no page: hide it.
   if (link.linkType === 'module' && !moduleNavSegment(link)) return false
   if (link.linkType === 'internal' && link.hasPageRef && !link.pageSlug && !catalogueNavPath(link.catalogueTarget)) return false
   return true
+}
+
+/** Children that may render — the same rule as top-level links (ADR-021, ADR-040). */
+function renderableChildren(link: NavLink): NavLink[] | undefined {
+  return link.children?.filter(isRenderableNavLink)
 }
 
 /**

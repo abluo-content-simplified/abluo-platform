@@ -76,6 +76,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'sites',
 
   // ── Client dashboard — tenant level (/<tenant>/…) ─────────────────────────
+  'access',    // Access — groups, passwords, protected documents (ADR-040 B2.5)
   'agenda',
   'apps',
   'catalogue',
@@ -95,6 +96,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'live',
   'news',
   'preview',
+  'site-access', // Site Access unlock / sign-out routes (ADR-040 B2.3)
   // Well-known file stems and the admin wizard route (/projects/new)
   'sitemap',
   'robots',

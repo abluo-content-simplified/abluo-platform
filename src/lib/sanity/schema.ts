@@ -26,6 +26,7 @@ import { buildIntegrationSchemaTypes, buildIntegrationConfigsField } from '@/lib
 import { activeFormReferenceFilter } from '@/lib/sanity/form-reference-filter'
 import { POST_CTA_ACTIONS, validateCtaAction, type CtaEntryInput } from '@/lib/blog/post-cta'
 import { isReservedSlug } from '@/lib/platform/reserved-slugs'
+import { validatePageAccess, validatePageSlugNotReserved, ACCESS_GROUP_ID_RE } from '@/lib/access/page-schema-rules'
 
 // scopedRef and projectSlugField are imported from @/lib/sanity/fields/shared.
 // They live there so module schema files can import them without creating a
@@ -5435,6 +5436,7 @@ const pageType = defineType({
     { name: 'content', title: 'Content', default: true },
     { name: 'seo', title: 'SEO' },
     { name: 'redirects', title: 'Redirects' },
+    { name: 'access', title: 'Access' },
   ],
   fields: [
     projectSlugField,
@@ -5477,7 +5479,7 @@ const pageType = defineType({
       title: 'URL Slug',
       type: 'localizedSlug',
       description: 'The URL path per language, e.g. "about" (EN) / "chi-siamo" (IT)',
-      validation: (Rule) => Rule.required(),
+      validation: (Rule) => [Rule.required(), Rule.custom((value) => validatePageSlugNotReserved(value))],
     }),
     defineField({
       name: 'redirectFrom',
@@ -5545,6 +5547,73 @@ const pageType = defineType({
       initialValue: false,
       description:
         'Emits noindex for this page. For thank-you pages, campaign duplicates and anything that should be reachable by link but never listed in search. Links on the page are still followed.',
+    }),
+
+    // ── Access (ADR-040) ─────────────────────────────────────────────────────
+    // Who may see this page. Absent or "public" = everyone; anything else is
+    // members-only and DENIED unless the visitor's session holds one of the
+    // groups (and every ancestor page's groups). A malformed value is read as
+    // "nobody" by the website, never as public. Rules: page-schema-rules.ts.
+    defineField({
+      name: 'access',
+      title: 'Who can see this page',
+      type: 'object',
+      group: 'access',
+      // Hidden on the home page — unless a restricted value is already stored
+      // there, so the validation error stays visible and fixable.
+      hidden: ({ document, value }) =>
+        (document as { pageType?: string } | undefined)?.pageType === 'home'
+        && (value as { visibility?: string } | undefined)?.visibility !== 'restricted',
+      description:
+        'Members-only pages are hidden from search engines, the sitemap and llms.txt, and show only a "Members only" notice to everyone else. Images and files uploaded to Sanity stay public by link — never put confidential material in them.',
+      validation: (Rule) =>
+        Rule.custom((value, context) =>
+          validatePageAccess(value as never, context.document as { pageType?: unknown; sections?: unknown } | undefined),
+        ),
+      fields: [
+        defineField({
+          name: 'visibility',
+          title: 'Visibility',
+          type: 'string',
+          initialValue: 'public',
+          options: {
+            list: [
+              { title: 'Everyone', value: 'public' },
+              { title: 'Members only', value: 'restricted' },
+            ],
+            layout: 'radio',
+          },
+        }),
+        defineField({
+          name: 'groups',
+          title: 'Access groups',
+          type: 'array',
+          of: [defineArrayMember({ type: 'string' })],
+          hidden: ({ parent }: { parent?: { visibility?: string } }) => parent?.visibility !== 'restricted',
+          description:
+            'Group ids from the Access module. A visitor in ANY of these groups can see the page (and pages below it only if they also pass those pages’ groups).',
+          validation: (Rule) =>
+            Rule.custom((groups) => {
+              if (!Array.isArray(groups)) return true
+              return groups.every((g) => typeof g === 'string' && ACCESS_GROUP_ID_RE.test(g))
+                || 'Each access group must be a group id from the dashboard.'
+            }),
+        }),
+        defineField({
+          name: 'navigation',
+          title: 'In menus',
+          type: 'string',
+          initialValue: 'hidden',
+          hidden: ({ parent }: { parent?: { visibility?: string } }) => parent?.visibility !== 'restricted',
+          options: {
+            list: [
+              { title: 'Hide from menus', value: 'hidden' },
+              { title: 'Show with a lock', value: 'locked' },
+            ],
+            layout: 'radio',
+          },
+        }),
+      ],
     }),
   ],
   preview: {

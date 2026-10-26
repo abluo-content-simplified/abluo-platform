@@ -190,6 +190,10 @@ export interface NavLink {
   pageSlug?: string
   /** True when a page reference is set — with no pageSlug it points at an unpublished page. */
   hasPageRef?: boolean
+  /** ADR-040 — the target page's access rule and menu mode; null/absent = public. */
+  pageAccess?: { visibility?: string | null; navigation?: string | null } | null
+  /** ADR-040 — true when the target page sits under a closed page (it is restricted too). */
+  pageUnderClosed?: boolean | null
   /**
    * ADR-033 Amendment G — set by GROQ when pageRef points at a public catalogue
    * landing page, collection or item of this project; null otherwise.
@@ -209,6 +213,11 @@ export interface ResolvedNavLink {
   label: string
   href: string
   external: boolean
+  /**
+   * ADR-040 — set (to the localized "Members only") when the link leads to a
+   * restricted page shown in the menu with a lock. Absent for every other link.
+   */
+  lockedLabel?: string
   children?: ResolvedNavLink[]
 }
 
@@ -2309,6 +2318,14 @@ export interface WebsitePage {
   ogImage?: SanityImage
   /** Emit noindex for this page only. Links are still followed. */
   noindex?: boolean
+  /**
+   * ADR-040 — the page's access policy, the policies of closed pages above its
+   * path, and whether the query withheld the content (title, SEO, sections are
+   * then ABSENT). Read through src/lib/access/page-gate.ts only.
+   */
+  access?: { visibility?: string; groups?: string[]; navigation?: string } | null
+  ancestorAccess?: Array<{ access?: { visibility?: string; groups?: string[] } | null }> | null
+  contentWithheld?: boolean | null
 }
 
 // ─── Live Page ────────────────────────────────────────────────────────────────

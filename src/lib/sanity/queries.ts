@@ -29,6 +29,7 @@
  * - Components receive plain strings — unaware of localization internals.
  */
 
+import { onlyWhenReadable, pageIsOpen, PAGE_ACCESS_PROJECTION } from '@/lib/access/groq'
 import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
 import { publicFilterFor, publicFilterForAnyType } from '@/lib/lifecycle/public-types'
 import { visibilityFilter } from '@/lib/modules/catalogue/visibility'
@@ -150,6 +151,13 @@ export const NAV_LINK_FIELDS = /* groq */ `
   "label": ${loc('label')},
   linkType,
   "pageSlug": select(pageRef->_type == "page" => coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current)),
+  // ADR-040 — the target page's access rule and menu mode (never its content).
+  // nav-links.ts hides a restricted target unless it is set to "shown with a lock".
+  "pageAccess": select(pageRef->_type == "page" => pageRef->access{ visibility, navigation }),
+  // …and whether it sits UNDER a closed page (a child of a members page is a
+  // members page, D1): such a link is hidden like any restricted target.
+  "pageUnderClosed": select(pageRef->_type == "page" => count(*[_type == "page" && projectSlug == $projectSlug && !${pageIsOpen()}
+    && string::startsWith(coalesce(^.pageRef->slug[$locale].current, ^.pageRef->slug[$defaultLocale].current, ""), coalesce(slug[$locale].current, slug[$defaultLocale].current, "@@none@@") + "/")]) > 0),
   "hasPageRef": defined(pageRef),
   internalPage,
   externalUrl,
@@ -2030,16 +2038,24 @@ export const pageHomeQuery = /* groq */ `
   }
 `
 
+// ADR-040 §9 — the page's TITLE, SEO, background and sections are returned
+// only when the page is open along its path (no restricted page at or above
+// it), or when the route has ALREADY authorised the visitor and binds
+// `$unlocked: true`. Binds $ancestorPaths (slugAncestorPaths(slug)) and
+// $unlocked. Outside the conditional: only what routing needs (id, type, slug
+// map, redirects) and the access policies themselves — never content.
 export const pageBySlugQuery = /* groq */ `
   *[_type == "page" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
     _id,
     pageType,
-    "title": ${loc('title')},
     "slugMap": slug,
     "redirectFrom": redirectFrom,
-    backgroundPattern,
-    ${PAGE_SEO_PROJECTION},
-    ${PAGE_SECTIONS_PROJECTION}
+    ${PAGE_ACCESS_PROJECTION},
+    ${onlyWhenReadable(`
+      "title": ${loc('title')},
+      backgroundPattern,
+      ${PAGE_SEO_PROJECTION},
+      ${PAGE_SECTIONS_PROJECTION}`)}
   }
 `
 

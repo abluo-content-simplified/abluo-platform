@@ -51,6 +51,8 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   'galleries',
   // ADR-037 D9: the FAQ Sets library (`/{project}/faq-sets`, `/{project}/faq-sets/{id}`).
   'faq-sets',
+  // ADR-040 B2.5: Access — groups, passwords, protected documents (`/{project}/access`).
+  'access',
   'agenda',
   'media',
   'people',

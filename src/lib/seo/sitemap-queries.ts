@@ -10,6 +10,7 @@
  * so they filter `defined(projectSlug)` rather than one $projectSlug.
  */
 
+import { pageIsOpen } from '@/lib/access/groq'
 import { publicFilterFor } from '@/lib/lifecycle/public-types'
 import { visibilityFilter } from '@/lib/modules/catalogue/visibility'
 
@@ -24,7 +25,10 @@ const GALLERY_SECTION_IMAGES = /* groq */ `array::compact(array::unique(
 // The home page is emitted as the bare locale URL, so it is not listed here.
 // A `noindex` page is excluded too (a robots noindex meta plus a sitemap entry
 // would contradict each other) — the same filter llms.txt applies.
-export const SITEMAP_PAGES_QUERY = /* groq */ `*[_type == "page" && defined(projectSlug) && coalesce(pageType, "") != "home" && !(noindex == true)] { projectSlug, slug, "images": ${GALLERY_SECTION_IMAGES} }`
+// ADR-040 — `open` is the page's own access rule (pageIsOpen); sitemap.ts
+// drops closed pages AND every page under a closed page's path
+// (src/lib/access/listing.ts). A closed page's images are never projected.
+export const SITEMAP_PAGES_QUERY = /* groq */ `*[_type == "page" && defined(projectSlug) && coalesce(pageType, "") != "home" && !(noindex == true)] { projectSlug, slug, "open": ${pageIsOpen()}, "images": select(${pageIsOpen()} => ${GALLERY_SECTION_IMAGES}) }`
 
 // ADR-031 — unlisted events are reachable by link only and carry a robots
 // noindex; listing them here would contradict that.

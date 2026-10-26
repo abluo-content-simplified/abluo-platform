@@ -53,7 +53,8 @@ describe('the home page is not reachable at its own slug', () => {
 })
 
 describe('llms.txt lists every published language', () => {
-  const src = read(LLMS_ROUTE)
+  // The page query lives in src/lib/seo/llms.ts since ADR-040 (LLMS_PAGES_QUERY).
+  const src = read(LLMS_ROUTE) + read('src/lib/seo/llms.ts')
 
   it('reads the whole localized objects rather than one locale projection', () => {
     // The old query resolved title/slug/description for $locale only, so six

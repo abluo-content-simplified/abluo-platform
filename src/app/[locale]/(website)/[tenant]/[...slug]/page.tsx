@@ -1,10 +1,10 @@
 import { tenantClient } from '@/lib/sanity/client'
-import { pageBySlugQuery, pageByOldSlugQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, projectModuleConfigQuery } from '@/lib/sanity/queries'
+import { pageByOldSlugQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, projectModuleConfigQuery } from '@/lib/sanity/queries'
 import { getEnabledModuleIds, type ProjectModuleConfig } from '@/lib/modules/config'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
-import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
+import type { WebsiteSiteConfig, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
 import { collectSectionFaqItems, faqJsonLdLinks } from '@/lib/faq/collect'
@@ -21,6 +21,12 @@ import { siteBasePath } from '@/lib/sanity/href'
 import { joinSlugSegments } from '@/lib/sanity/fields/nested-slug'
 import { loadCatalogueConfig, planCatalogueRoute } from '@/lib/modules/catalogue/website'
 import { CatalogueRoute, catalogueRouteMetadata } from '@/components/catalogue/CatalogueRoute'
+import { loadGatedPage } from '@/lib/access/page-gate.server'
+import { deniedPageMetadata, grantedPageMetadata } from '@/lib/access/page-metadata'
+import { MembersBar, RestrictedPage } from '@/components/site/RestrictedPage'
+import { ACCESS_FORM_FIELDS, accessFormActions, parseAccessNotice } from '@/lib/access/request'
+import { promptNotice, promptNoticeKind } from '@/lib/access/prompt'
+import { getAccessMessages } from '@/lib/i18n/access-messages'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,6 +61,8 @@ export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{ tenant: string; locale: string; slug: string[] }>
+  /** Only `?access=…&wait=…` (ADR-040 B2.3) is read, and only on a closed page. */
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -68,10 +76,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const [page, config, catalogueConfig] = await Promise.all([
-    fetchForTenant<WebsitePage>(pageBySlugQuery, { locale, defaultLocale, slug }),
+  const [config, catalogueConfig, moduleConfig] = await Promise.all([
     fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
     loadCatalogueConfig(fetchForTenant, { locale, defaultLocale }),
+    fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale }),
   ])
 
   // ── Catalogue dispatch (ADR-033 C2) — the same decision the page makes ──────
@@ -89,7 +97,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     })
   }
 
+  // ADR-040 — the page is read through the gate: a restricted page arrives
+  // WITHOUT title, SEO or sections unless this visitor is authorised.
+  const { page, gate } = await loadGatedPage(String(tenantId), locale, defaultLocale, slug, getEnabledModuleIds(moduleConfig))
   if (!page) return {}
+  if (gate?.kind === 'denied') return deniedPageMetadata({ locale, siteName: config?.siteName ?? String(tenantId) })
 
   const origin = canonicalOrigin(config?.customDomain)
 
@@ -133,7 +145,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     (page.ogImage?.asset ? ogImageUrl(page.ogImage as never) : undefined) ??
     (config?.openGraphImage?.asset ? ogImageUrl(config.openGraphImage as never) : undefined)
 
-  return {
+  const metadata: Metadata = {
     title: pageTitle,
     description: pageDescription ?? undefined,
     alternates: seoAlternates(origin, canonical, languages, {
@@ -153,13 +165,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       ...(pageOgImage ? { images: [{ url: pageOgImage, width: 1200, height: 630 }] } : {}),
     },
   }
+  // A restricted page a member may see is still never indexable.
+  return gate?.kind === 'granted' ? grantedPageMetadata(metadata) : metadata
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 // SectionRenderer is imported from src/components/sections/SectionRenderer.tsx
 // (ADR-016 Phase 0) — shared with the home route, not duplicated here.
 
-export default async function WebsitePageRoute({ params }: PageProps) {
+export default async function WebsitePageRoute({ params, searchParams }: PageProps) {
   const { tenant: rawTenantId, locale, slug: slugSegments } = await params
   const slug = joinSlugSegments(slugSegments)
   // Trust boundary: the `[tenant]` segment is a URL project segment —
@@ -172,8 +186,7 @@ export default async function WebsitePageRoute({ params }: PageProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const [page, siteConfig, designSystem, moduleConfig, catalogueConfig] = await Promise.all([
-    fetchForTenant<WebsitePage>(pageBySlugQuery, { locale, defaultLocale, slug }),
+  const [siteConfig, designSystem, moduleConfig, catalogueConfig] = await Promise.all([
     fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
     (async () => {
       const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
@@ -208,6 +221,12 @@ export default async function WebsitePageRoute({ params }: PageProps) {
       />
     )
   }
+
+  // ── Read the page through the access gate (ADR-040 §9) ─────────────────────
+  // BEFORE anything else touches it: a restricted page comes back with routing
+  // data and its policy only — no title, SEO or sections — unless this
+  // visitor holds a matching group; only then is the content read.
+  const { page, gate } = await loadGatedPage(String(tenantId), locale, defaultLocale, slug, getEnabledModuleIds(moduleConfig))
 
   // ── Redirect check ──────────────────────────────────────────────────────────
   // If no page was found by the current slug, check if this is an old slug
@@ -246,16 +265,9 @@ export default async function WebsitePageRoute({ params }: PageProps) {
     permanentRedirect(canonicalUrl(homeOrigin, locale as SupportedLocale) ?? `${siteBase}`)
   }
 
-  // ── Hydrate blogListingSection posts server-side ────────────────────────────
-  // ADR-020 — one query now serves both section gating and module config.
-  // getEnabledModuleIds preserves the null-vs-[] distinction the gating
-  // contract depends on (unresolved fails open; resolved-empty gates).
-  const enabledModuleIds = getEnabledModuleIds(moduleConfig)
-
-  await hydrateSections(page.sections, { fetchForTenant, projectSlug: String(tenantId), locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
-
   // ── Slug map — passed to the language switcher via context ──────────────────
-  // Maps each locale to its current slug for this page.
+  // Maps each locale to its current slug for this page. Built before the gate
+  // so the language switcher still works on the members-only placeholder.
   const slugMap: Partial<Record<SupportedLocale, string>> = {}
   if (page.slugMap) {
     for (const [loc, slugObj] of Object.entries(page.slugMap)) {
@@ -264,6 +276,39 @@ export default async function WebsitePageRoute({ params }: PageProps) {
       }
     }
   }
+
+  // ── Closed for this visitor: the generic placeholder, nothing of the page ──
+  // No sections, no JSON-LD, no hydration. Same output whatever the reason.
+  // The visitor's own path on this site — where the forms send them back.
+  const ownPath = `${siteBase}/${slug}`
+  const accessActions = accessFormActions(siteBase)
+
+  if (!gate || gate.kind === 'denied') {
+    const { notice: fromRoute, waitMinutes } = parseAccessNotice(searchParams ? await searchParams : undefined)
+    const denied = gate?.kind === 'denied' ? gate : null
+    const notice = promptNotice(promptNoticeKind(fromRoute, denied), getAccessMessages(locale), waitMinutes)
+    return (
+      <SlugMapProvider slugMap={slugMap}>
+        <RestrictedPage
+          locale={locale}
+          homeHref={siteBase || '/'}
+          actions={accessActions}
+          returnTo={ownPath}
+          fields={ACCESS_FORM_FIELDS}
+          notice={notice ? { tone: notice.tone, text: notice.text, invalid: notice.invalid } : null}
+          signedIn={denied?.visitor === 'other_groups'}
+        />
+      </SlugMapProvider>
+    )
+  }
+
+  // ── Hydrate blogListingSection posts server-side ────────────────────────────
+  // ADR-020 — one query now serves both section gating and module config.
+  // getEnabledModuleIds preserves the null-vs-[] distinction the gating
+  // contract depends on (unresolved fails open; resolved-empty gates).
+  const enabledModuleIds = getEnabledModuleIds(moduleConfig)
+
+  await hydrateSections(page.sections, { fetchForTenant, projectSlug: String(tenantId), locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
 
   // ADR-037 D7 — one FAQPage from every FAQ section this page renders (none
   // when the FAQ module is not installed: the sections do not render either).
@@ -298,6 +343,9 @@ export default async function WebsitePageRoute({ params }: PageProps) {
         moduleConfig={moduleConfig}
         />
       ))}
+      {gate.kind === 'granted' && (
+        <MembersBar locale={locale} signOutAction={accessActions.signOut} returnTo={ownPath} fields={ACCESS_FORM_FIELDS} />
+      )}
     </SlugMapProvider>
   )
 }

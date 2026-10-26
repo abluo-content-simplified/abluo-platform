@@ -227,7 +227,15 @@ describe('ADR-032 D3 — public delivery paths carry the visibility rule', () =>
     // Remove the one permitted page-only dereference, then nothing may remain.
     const pageOnly = 'select(pageRef->_type == "page" => coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current))'
     expect(f).toContain(pageOnly)
-    expect(f.split(pageOnly).join(' ')).not.toMatch(/pageRef->/)
+    // ADR-040 — the target page's access rule and whether it sits under a
+    // closed page; both behind the same `_type == "page"` guard.
+    const accessOnly = 'select(pageRef->_type == "page" => pageRef->access{ visibility, navigation })'
+    expect(f).toContain(accessOnly)
+    const uc = f.slice(f.indexOf('"pageUnderClosed": ') + '"pageUnderClosed": '.length, f.indexOf(',\n  "hasPageRef"'))
+    expect(uc.startsWith('select(pageRef->_type == "page" => count(*[_type == "page" && projectSlug == $projectSlug')).toBe(true)
+    expect(uc.endsWith(']) > 0)')).toBe(true)
+    expect(uc.replace(/\^\.pageRef->slug\[\$(locale|defaultLocale)\]\.current/g, '').replace('select(pageRef->_type == "page"', '')).not.toMatch(/pageRef->/)
+    expect(f.split(pageOnly).join(' ').split(accessOnly).join(' ').split(uc).join(' ')).not.toMatch(/pageRef->/)
     expect(f).toContain('^.pageRef._ref == _id && projectSlug == $projectSlug')
     // Every navigation link surface in the site config uses the one fragment.
     expect(queries.websiteSiteConfigQuery.split(f).length - 1).toBe(5)

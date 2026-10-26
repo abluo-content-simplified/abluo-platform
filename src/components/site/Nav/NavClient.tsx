@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from '@/i18n/navigation'
 import { Menu, X } from 'lucide-react'
 import type { ResolvedNavLink, SupportedLocale } from '@/lib/sanity/types'
+import { NavLinkText } from '@/components/site/NavLinkText'
 import { LanguageSwitcher } from '@/components/SiteControls/LanguageSwitcher'
 import { ThemeSwitcher } from '@/components/SiteControls/ThemeSwitcher'
 import { getThemeSwitcherMessages } from '@/lib/i18n/theme-switcher-messages'
@@ -186,7 +187,7 @@ export function NavClient({
               className="rounded-[var(--radius-btn)] px-4 py-3 text-base font-medium transition-colors"
               style={{ color: 'var(--color-text-primary)', opacity: 0.95 }}
             >
-              {link.label}
+              <NavLinkText link={link} />
             </Link>
           ))}
         </div>
@@ -322,7 +323,7 @@ export function NavClient({
                           opacity: isActive ? 1 : 0.72,
                         }}
                       >
-                        {link.label}
+                        <NavLinkText link={link} />
                       </Link>
                     </li>
                   )

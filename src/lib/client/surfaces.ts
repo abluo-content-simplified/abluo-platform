@@ -108,6 +108,8 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   { kind: 'nav', id: 'people', segment: 'people', group: 'content', requires: { anyPermission: ['users.invite', 'users.manage'] } },
   // ADR-037 D9: the FAQ Sets library (list + editor).
   { kind: 'nav', id: 'faq', segment: 'faq-sets', group: 'content', requires: { module: 'faq', permission: 'faq.set.read' } },
+  // ADR-040 B2.5 — groups, passwords, protected documents and who can see each page.
+  { kind: 'nav', id: 'members', segment: 'access', group: 'content', requires: { module: 'members', permission: 'members.access.read' } },
   // ADR-033 Amendment J: Categories & Tags, one manager for every module that declares a taxonomy.
   // Shown when the person may manage terms (`<module>.taxonomy.write`) or at least read them
   // (the module's read permission; viewers list read-only) in one of those modules, or the internal

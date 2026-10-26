@@ -66,7 +66,9 @@ const nextConfig: NextConfig = {
         // Without this, a 404 on /[slug] gets cached before middleware runs.
         source: '/(.*)',
         headers: [
-          { key: 'Cache-Control', value: 'no-store' },
+          // `private` (ADR-040, Tom 2026-10-24): members-only responses vary
+          // by visitor; no shared cache may keep any response, ever.
+          { key: 'Cache-Control', value: 'private, no-store' },
         ],
       },
       {

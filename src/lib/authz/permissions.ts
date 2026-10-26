@@ -188,6 +188,10 @@ export const PLATFORM_PERMISSIONS: readonly PlatformPermissionDef[] = [
 export const GRANTABLE_MODULE_PERMISSIONS: Readonly<Record<string, { requires?: string }>> = {
   'forms.submission.read': {},
   'forms.submission.update': { requires: 'forms.submission.read' },
+  // ADR-040 — an Owner or Site admin may let an Editor see / manage Access.
+  // Honoured only while the Access module is enabled (resolve.ts step 3).
+  'members.access.read': {},
+  'members.access.manage': { requires: 'members.access.read' },
 }
 
 const BY_ID = new Map(PLATFORM_PERMISSIONS.map((p) => [p.id, p]))

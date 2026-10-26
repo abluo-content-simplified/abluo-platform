@@ -29,10 +29,11 @@ const PROJECTS = [
   { projectSlug: 'abluo', customDomain: 'abluo.app', supportedLocales: ['en'], defaultLocale: 'en' },
 ]
 
+// `open` is what SITEMAP_PAGES_QUERY projects (ADR-040): every page here is public.
 const PAGES = [
-  { projectSlug: 'nologo', slug: { en: { current: 'restaurant-booking-system' }, it: { current: 'sistema-prenotazioni-ristorante' } } },
-  { projectSlug: 'livener', slug: { en: { current: 'investors' } } },
-  { projectSlug: 'studiomartegani', slug: { it: { current: 'la-nostra-storia' } } },
+  { projectSlug: 'nologo', open: true, slug: { en: { current: 'restaurant-booking-system' }, it: { current: 'sistema-prenotazioni-ristorante' } } },
+  { projectSlug: 'livener', open: true, slug: { en: { current: 'investors' } } },
+  { projectSlug: 'studiomartegani', open: true, slug: { it: { current: 'la-nostra-storia' } } },
 ]
 
 let requestHost = HOST

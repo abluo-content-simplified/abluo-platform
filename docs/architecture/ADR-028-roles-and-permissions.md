@@ -3,7 +3,7 @@
 - **Status:** Accepted (2026-10-07, Tom). Model agreed in conversation on 2026-10-05.
 - **Owner:** Tom
 - **Amends:** ADR-017 Decision 1 (role values) and Decision 7 (invitation flow). Everything else in ADR-015 / ADR-017 stands: per-request resolution from the database, `TenantAuthorizationContext`, the Sanity chokepoint, `assertModuleAction`, module-installed-before-permission ordering, the phased RLS rollout.
-- **Related:** ADR-011 (module permissions, `MODULE_PERMISSION_MAP`), ADR-018 (forms — contact requests are form submissions), ADR-019 (Resend is wired), ADR-024 (members area — uses the `members.*` permission prefix), ADR-025 (client content editor).
+- **Related:** ADR-011 (module permissions, `MODULE_PERMISSION_MAP`), ADR-018 (forms — contact requests are form submissions), ADR-019 (Resend is wired), ADR-024 → ADR-040 (Site Access — uses the `members.*` permission prefix), ADR-025 (client content editor).
 
 ## Context
 
@@ -63,7 +63,7 @@ What Tom requires:
 | `blog.post.delete` (published) | project | no | Owner, Project Admin | — |
 
   The exact list is settled in the implementation slice; the rules above are what is frozen.
-- **Vocabulary.** Verbs are `read`, `write`, `update`, `delete`, `manage`, `invite`, `use`, `access` with fixed meanings: `read` = see; `write` = create and edit; `update` = change state of existing records (e.g. a lead's status); `delete` = remove; `manage` = configure or administer (includes changing/removing other people for `users.manage`, adding modules for `modules.manage`); `invite` = add people at or below your own level; `use` = invoke a tool; `access` = enter a surface (`support.access`). A test enforces it. `users.invite` = add people **at or below your own level**; `users.manage` = also change or remove existing people. No synonyms. The `members.*` prefix belongs to the Members area module (ADR-024) and is never used for platform user management.
+- **Vocabulary.** Verbs are `read`, `write`, `update`, `delete`, `manage`, `invite`, `use`, `access` with fixed meanings: `read` = see; `write` = create and edit; `update` = change state of existing records (e.g. a lead's status); `delete` = remove; `manage` = configure or administer (includes changing/removing other people for `users.manage`, adding modules for `modules.manage`); `invite` = add people at or below your own level; `use` = invoke a tool; `access` = enter a surface (`support.access`). A test enforces it. `users.invite` = add people **at or below your own level**; `users.manage` = also change or remove existing people. No synonyms. The `members.*` prefix belongs to the Site Access module (ADR-040, which superseded ADR-024; module id `members`, shown to people as "Access") and is never used for platform user management.
 - **One resolver.** `getTenantAuthorizationContext()` remains the single place permissions are resolved. Every check goes through `can(ctx, permissionId, scope)` / `assertModuleAction()`. **No code compares role names**; the raw checks listed in Context are replaced. A test fails the build if `role ===` / `role !==` / `.role ==` appears outside the resolver and the role registry.
 - **Super Admin goes through the same function.** `can()` answers yes for `abluo_admin` on **platform-scope** permissions (`tenants.manage`, `support.access`). It does **not** implicitly grant tenant or project permissions: reaching a client's data takes a membership or a support session (§8), so it is always an explicit, logged event. (Refined during implementation, 2026-10-07.)
 

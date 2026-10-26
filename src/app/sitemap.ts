@@ -1,3 +1,4 @@
+import { closedPaths, isListable } from '@/lib/access/listing'
 import type { MetadataRoute } from 'next'
 import { headers } from 'next/headers'
 import { isProduction } from '@/lib/deployment'
@@ -50,6 +51,8 @@ interface TenantSitemapData {
 
 interface PageSitemapData {
   projectSlug: string
+  /** ADR-040 — the page's own access rule; anything but true is closed. */
+  open?: boolean | null
   slug: Record<string, { current: string } | undefined>
   /** Gallery photo URLs shown on the page (ADR-022 §7) — the image sitemap. */
   images?: string[] | null
@@ -260,10 +263,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
       // Per-page entries — only for locales that have a slug set.
       const projectPages = pagesByProject.get(projectSlug) ?? []
+      // ADR-040 — restricted pages, and pages under them, are never listed.
+      const closedByLocale = new Map(locales.map((l) => [l, closedPaths(projectPages, l)]))
       for (const page of projectPages) {
         for (const locale of locales) {
           const slugObj = page.slug?.[locale]
-          if (slugObj?.current) {
+          if (slugObj?.current && isListable(page, locale, closedByLocale.get(locale) ?? new Set())) {
             entries.push({
               url: canonicalUrl(tenantBase, locale, slugObj.current)!,
               lastModified: new Date(),
