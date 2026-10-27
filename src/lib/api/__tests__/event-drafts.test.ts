@@ -20,6 +20,8 @@ import {
   patchEventDraft,
   publishEventDraft,
   setEventCover,
+  setEventCoverFocal,
+  parseEventFocal,
   sortEvents,
 } from '../event-drafts'
 import { TenantAuthorizationError } from '../tenant-scoped-sanity'
@@ -113,7 +115,15 @@ function fake(opts: { docs?: Docs; commitError?: unknown; slugRows?: unknown[]; 
     if (q.includes('_type == "event"')) {
       return Object.values(docs)
         .filter((d) => d._type === 'event' && d.projectSlug === p.projectSlug)
-        .map((d) => ({ _id: d._id, _updatedAt: '2026-10-01T00:00:00Z', title: d.title, location: d.location, startDate: d.startDate, endDate: d.endDate, status: d.status, categories: d.categories }))
+        .map((d) => {
+          // Mirrors LIST_QUERY's place projection: the venue's name only when it is THIS project's venue.
+          const place = d.place as { kind?: string; locationKey?: string; venue?: { _ref?: string } } | undefined
+          return {
+            _id: d._id, _updatedAt: '2026-10-01T00:00:00Z', title: d.title, location: d.location, startDate: d.startDate, endDate: d.endDate, status: d.status, categories: d.categories,
+            attendanceMode: d.attendanceMode,
+            place: place ? { kind: place.kind, locationKey: place.locationKey, venueName: place.venue?._ref === 'venue-1' ? { en: 'Royal Society' } : null } : undefined,
+          }
+        })
     }
     if (q.includes('*[_id == $ref]')) return null
     throw new Error(`unexpected query ${q}`)
@@ -388,6 +398,102 @@ describe('cover', () => {
     expect(r.rev).toBe('d2')
     const set = f.patchOps.find(([op]) => op === 'set')![1] as { heroImage: Record<string, unknown> }
     expect(set.heroImage).toMatchObject({ _type: 'localizedImage', asset: { _ref: 'image-abc-10x10-jpg' }, alt: { en: 'Stand' }, hotspot: { x: 0.4, y: 0.5 } })
+  })
+})
+
+describe('list — "Where" shows the picked place (ADR-031)', () => {
+  const listed = async (extra: Record<string, unknown>) => {
+    const docs = baseDocs()
+    Object.assign(docs[E], extra)
+    const f = fake({ docs })
+    const [viaList] = await listEvents(ctx(grant()), 'project-a', f.deps)
+    const [viaScreen] = (await listEventsWithCategories(ctx(grant()), 'project-a', f.deps)).events
+    expect(viaScreen.location).toBe(viaList.location)
+    return viaList.location
+  }
+
+  it("a picked site location shows the location's name, in the site's default language", async () => {
+    expect(await listed({ place: { kind: 'location', locationKey: 'cervia' }, location: { en: 'Old text' } })).toBe('Cervia')
+  })
+
+  it("a saved venue shows the venue's name", async () => {
+    expect(await listed({ place: { kind: 'venue', venue: { _type: 'reference', _ref: 'venue-1' } } })).toBe('Royal Society')
+  })
+
+  it('no place, or a location key that no longer exists, falls back to the free-text "Where"', async () => {
+    expect(await listed({ location: { en: 'Palacongressi' } })).toBe('Palacongressi')
+    expect(await listed({ place: { kind: 'location', locationKey: 'gone' }, location: { en: 'Palacongressi' } })).toBe('Palacongressi')
+    expect(await listed({})).toBe('')
+  })
+
+  it('an online-only event keeps what it showed before (the free-text "Where")', async () => {
+    expect(await listed({ attendanceMode: 'online', place: { kind: 'location', locationKey: 'cervia' }, location: { en: 'Zoom' } })).toBe('Zoom')
+  })
+})
+
+describe('cover focus point — this event only, never the Media Library', () => {
+  const withCover = (hotspot?: Record<string, unknown>) =>
+    withDraft({ heroImage: { _type: 'localizedImage', asset: { _type: 'reference', _ref: 'image-abc-10x10-jpg' }, ...(hotspot && { hotspot }) } })
+
+  it("writes the point to the event draft's heroImage.hotspot, and nothing else", async () => {
+    const f = fake({ docs: withCover({ _type: 'sanity.imageHotspot', x: 0.5, y: 0.5, width: 0.6, height: 0.4 }) })
+    const r = await setEventCoverFocal(ctx(grant()), 'project-a', { id: E, rev: 'd1', focal: { x: 0.123456, y: 0.9 } }, f.deps)
+    expect(r.rev).toBe('d2')
+    expect(f.client.patch).toHaveBeenCalledTimes(1)
+    expect(f.client.patch).toHaveBeenCalledWith(`drafts.${E}`)
+    expect(f.patchOps).toEqual([
+      ['ifRevisionId', 'd1'],
+      ['set', { 'heroImage.hotspot': { _type: 'sanity.imageHotspot', x: 0.1235, y: 0.9, width: 0.6, height: 0.4 } }],
+    ])
+    // No Media Library write of any kind.
+    expect(f.writes).toEqual([['patch', `drafts.${E}`]])
+    expect(f.client.create).not.toHaveBeenCalled()
+    expect(f.client.transaction).not.toHaveBeenCalled()
+  })
+
+  it('a first point gets the default hotspot size', async () => {
+    const f = fake({ docs: withCover() })
+    await setEventCoverFocal(ctx(grant()), 'project-a', { id: E, rev: 'd1', focal: { x: 0.2, y: 0.3 } }, f.deps)
+    expect(f.patchOps).toContainEqual(['set', { 'heroImage.hotspot': { _type: 'sanity.imageHotspot', x: 0.2, y: 0.3, width: 0.3, height: 0.3 } }])
+  })
+
+  it('refuses before writing: bad point, stale revision, no photo, no draft, a viewer', async () => {
+    for (const focal of [null, { x: 2, y: 0 }, { x: -0.1, y: 0.5 }, { x: '0.5', y: 0.5 }, [0.5, 0.5], { x: Number.NaN, y: 0 }]) {
+      const f = fake({ docs: withCover() })
+      await expect(setEventCoverFocal(ctx(grant()), 'project-a', { id: E, rev: 'd1', focal }, f.deps)).rejects.toMatchObject({ code: 'invalid_value' })
+      expect(f.writes).toEqual([])
+    }
+    const stale = fake({ docs: withCover() })
+    await expect(setEventCoverFocal(ctx(grant()), 'project-a', { id: E, rev: 'old', focal: { x: 0.5, y: 0.5 } }, stale.deps)).rejects.toMatchObject({ code: 'conflict' })
+    const noPhoto = fake({ docs: withDraft() })
+    await expect(setEventCoverFocal(ctx(grant()), 'project-a', { id: E, rev: 'd1', focal: { x: 0.5, y: 0.5 } }, noPhoto.deps)).rejects.toMatchObject({ code: 'not_found' })
+    const noDraft = fake()
+    await expect(setEventCoverFocal(ctx(grant()), 'project-a', { id: E, rev: 'd1', focal: { x: 0.5, y: 0.5 } }, noDraft.deps)).rejects.toThrow()
+    const viewerCall = fake({ docs: withCover() })
+    await expect(setEventCoverFocal(ctx(viewer()), 'project-a', { id: E, rev: 'd1', focal: { x: 0.5, y: 0.5 } }, viewerCall.deps)).rejects.toThrow(TenantAuthorizationError)
+    for (const f of [stale, noPhoto, noDraft, viewerCall]) expect(f.writes).toEqual([])
+  })
+
+  it("the editor starts from the event's own point, else the photo's library point", async () => {
+    const ownPoint = fake({ docs: withCover({ x: 0.1, y: 0.2 }) })
+    const base = ownPoint.client.fetch.getMockImplementation()!
+    ownPoint.client.fetch.mockImplementation(async (q: string, p: Record<string, unknown> = {}) =>
+      q.includes('image.asset._ref == $ref') ? { _id: 'm1', url: 'https://cdn.sanity.io/images/x/y/abc.jpg', altText: { en: 'Stand' }, hotspot: { x: 0.8, y: 0.8 } } : base(q, p)
+    )
+    expect((await getEvent(ctx(grant()), 'project-a', E, ownPoint.deps)).cover?.focal).toEqual({ x: 0.1, y: 0.2 })
+
+    const libraryPoint = fake({ docs: withCover() })
+    const base2 = libraryPoint.client.fetch.getMockImplementation()!
+    libraryPoint.client.fetch.mockImplementation(async (q: string, p: Record<string, unknown> = {}) =>
+      q.includes('image.asset._ref == $ref') ? { _id: 'm1', url: 'https://cdn.sanity.io/images/x/y/abc.jpg', altText: { en: 'Stand' }, hotspot: { x: 0.8, y: 0.7 } } : base2(q, p)
+    )
+    const cover = (await getEvent(ctx(grant()), 'project-a', E, libraryPoint.deps)).cover
+    expect(cover?.focal).toEqual({ x: 0.8, y: 0.7 })
+  })
+
+  it('parseEventFocal rounds to 4 decimals', () => {
+    expect(parseEventFocal({ x: 0, y: 1 })).toEqual({ x: 0, y: 1 })
+    expect(parseEventFocal({ x: 0.33333333, y: 0.66666666 })).toEqual({ x: 0.3333, y: 0.6667 })
   })
 })
 

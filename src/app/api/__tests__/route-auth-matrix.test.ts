@@ -790,6 +790,7 @@ describe('event server actions — same refusals as galleries', () => {
       await a.createEventAction({ projectSlug, title: 'x', startDate: '2026-11-01T10:00:00.000Z' }),
       await a.patchEventDraftAction({ projectSlug, id, rev: 'r', set: { 'title.it': 'x' } }),
       await a.setEventCoverAction({ projectSlug, id, rev: 'r', assetId: 'm1' }),
+      await a.setEventCoverFocalAction({ projectSlug, id, rev: 'r', focal: { x: 0.2, y: 0.3 } }),
       await a.publishEventDraftAction({ projectSlug, id, rev: 'r' }),
       await a.discardEventDraftAction({ projectSlug, id, rev: 'r' }),
     ]

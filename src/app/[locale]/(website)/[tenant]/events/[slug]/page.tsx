@@ -25,6 +25,7 @@ import { imageUrl, imageSrcSet, ogImageUrl } from '@/lib/sanity/image'
 import { SlideUp } from '@/components/animation'
 import { SlugMapProvider, type SlugMap } from '@/components/SlugMapContext'
 import { EventCard } from '@/components/events/EventCard'
+import { focalObjectPosition } from '@/lib/gallery/focal'
 import { BackButton } from '@/components/events/BackButton'
 import { EventHostsLine, EventPriceList, EventRegisterButton } from '@/components/events/EventEngagement'
 import { validPriceOptions } from '@/lib/modules/events/engagement'
@@ -42,6 +43,7 @@ import {
   eventTimeZone,
   formatAddressLine,
   resolveEventPlace,
+  withEventPlaceNames,
   type EventSiteContext,
 } from '@/lib/modules/events/structured'
 interface PageProps {
@@ -177,9 +179,12 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
   }
 
   // Related events — filter by resolved slug string.
-  const relatedEvents = (allEvents ?? [])
-    .filter(e => e.slug?.current !== slug)
-    .slice(0, 3)
+  const relatedEvents = withEventPlaceNames(
+    (allEvents ?? [])
+      .filter(e => e.slug?.current !== slug)
+      .slice(0, 3),
+    siteContext?.locations,
+  )
 
   const msg = getEventMessages(locale)
 
@@ -251,7 +256,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                   srcSet={heroSrcSet}
                   alt={event.heroImage?.alt ?? event.title}
                   className="w-full h-auto object-cover"
-                  style={{ maxHeight: '500px', objectFit: 'cover' }}
+                  style={{ maxHeight: '500px', objectFit: 'cover', objectPosition: focalObjectPosition(event.heroImage) }}
                 />
               </div>
             </SlideUp>

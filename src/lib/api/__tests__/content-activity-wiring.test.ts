@@ -139,7 +139,7 @@ const NOT_LIFECYCLE: Record<string, string[]> = {
   'src/lib/api/post-lifecycle.ts': ['openPostForEdit', 'discardPostChanges', 'setPostCategories', 'setPostFeatured'],
   'src/lib/api/post-publish.ts': [],
   'src/lib/api/post-drafts.ts': ['patchPostDraft'],
-  'src/lib/api/event-drafts.ts': ['openEventForEdit', 'patchEventDraft', 'setEventCover'],
+  'src/lib/api/event-drafts.ts': ['openEventForEdit', 'patchEventDraft', 'setEventCover', 'setEventCoverFocal'],
   'src/lib/api/gallery-drafts.ts': ['openGalleryForEdit', 'rebuildItems', 'patchGalleryDraft', 'discardGalleryDraft', 'batchGalleries'],
 }
 

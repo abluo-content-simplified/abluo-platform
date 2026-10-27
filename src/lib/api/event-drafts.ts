@@ -44,6 +44,8 @@ import { readsInOrder } from '@/lib/api/parallel-reads'
 import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
 import { lifecycleAction, snapshotOf as publishedSnapshotOf } from '@/lib/lifecycle/transition'
 import { coverThumbUrl } from '@/lib/api/post-drafts'
+import { eventPlaceName } from '@/lib/modules/events/structured'
+import type { EventAttendanceMode, SiteLocation } from '@/lib/sanity/types'
 import { slugFromTitle, uniqueSlug } from '@/lib/api/post-publish'
 import { EVENT_VOCABULARY_QUERY, eventCategoryOptions, type EventCategoryOption, type RawEventVocabulary } from '@/lib/modules/events/categories'
 
@@ -252,6 +254,7 @@ export type EventListItem = {
   id: string
   /** In the site's default language (the draft's when there is one). */
   title: string
+  /** Where: the picked site location's or saved venue's name, else the free-text "Where" (default language). */
   location: string
   startDate: string | null
   endDate: string | null
@@ -265,7 +268,8 @@ export type EventListItem = {
 }
 
 const LIST_QUERY = /* groq */ `*[_type == "event" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{
-    _id, _updatedAt, title, location, startDate, endDate, status, categories,
+    _id, _updatedAt, title, location, startDate, endDate, status, categories, attendanceMode,
+    "place": place{ kind, locationKey, "venueName": select(venue->projectSlug == $projectSlug => venue->name) },
     "coverUrl": heroImage.asset->url, "coverHotspot": heroImage.hotspot
   }`
 
@@ -274,6 +278,8 @@ type ListRow = {
   _updatedAt?: string
   title?: unknown
   location?: unknown
+  attendanceMode?: unknown
+  place?: { kind?: unknown; locationKey?: unknown; venueName?: unknown } | null
   startDate?: string | null
   endDate?: string | null
   status?: string | null
@@ -287,8 +293,8 @@ export async function listEvents(ctx: TenantAuthorizationContext, projectId: str
   const grant = grantFor(ctx, projectId, EVENT_READ_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   const site = await readSite(client, grant.projectSlug)
-  const rows = await readListRows(client, grant.projectSlug)
-  return listItemsOf(rows, site, (deps.now ?? (() => new Date()))())
+  const [rows, places] = await Promise.all([readListRows(client, grant.projectSlug), readPlaceOptions(client, grant.projectSlug, site.defaultLocale)])
+  return listItemsOf(rows, site, (deps.now ?? (() => new Date()))(), places.locations)
 }
 
 /** The Events list screen: the events, plus the categories they can carry (to label and filter them) and the site's default language. */
@@ -303,14 +309,41 @@ export async function listEventsWithCategories(ctx: TenantAuthorizationContext, 
   const grant = grantFor(ctx, projectId, EVENT_READ_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   const [site, rows, categoryOptions] = await Promise.all([readSite(client, grant.projectSlug), readListRows(client, grant.projectSlug), readCategoryOptions(client, grant.projectSlug)])
-  return { events: listItemsOf(rows, site, (deps.now ?? (() => new Date()))()), categoryOptions, defaultLocale: site.defaultLocale }
+  const places = await readPlaceOptions(client, grant.projectSlug, site.defaultLocale)
+  return { events: listItemsOf(rows, site, (deps.now ?? (() => new Date()))(), places.locations), categoryOptions, defaultLocale: site.defaultLocale }
 }
 
 async function readListRows(client: Client, projectSlug: string): Promise<ListRow[]> {
   return (await client.fetch<ListRow[] | null>(LIST_QUERY, { projectSlug }, { perspective: 'raw' })) ?? []
 }
 
-function listItemsOf(rows: readonly ListRow[], site: EventSite, now: Date): EventListItem[] {
+/**
+ * ADR-031 — "Where" for the list: the place resolved by the website's own rule
+ * (resolveEventPlace, via eventPlaceName), named in the site's default
+ * language; the free-text location when there is no place.
+ */
+function listLocationOf(row: ListRow, defaultLocale: string, locations: EventPlaceOptions['locations']): string {
+  const p = row.place
+  const kind = p?.kind === 'location' || p?.kind === 'venue' ? p.kind : undefined
+  const venueName = kind === 'venue' && p?.venueName != null ? pick(p.venueName, defaultLocale) : ''
+  const siteLocations: SiteLocation[] = locations.map((l) => ({ _key: l.key, key: l.key, name: l.name }))
+  return eventPlaceName(
+    {
+      attendanceMode: typeof row.attendanceMode === 'string' ? (row.attendanceMode as EventAttendanceMode) : undefined,
+      place: kind
+        ? {
+            kind,
+            locationKey: typeof p?.locationKey === 'string' ? p.locationKey : undefined,
+            venue: kind === 'venue' && p?.venueName != null ? { name: venueName || undefined } : null,
+          }
+        : null,
+      location: pick(row.location, defaultLocale) || undefined,
+    },
+    siteLocations,
+  ) ?? ''
+}
+
+function listItemsOf(rows: readonly ListRow[], site: EventSite, now: Date, locations: EventPlaceOptions['locations'] = []): EventListItem[] {
   const byId = new Map<string, { published?: ListRow; draft?: ListRow }>()
   for (const row of rows) {
     if (typeof row?._id !== 'string') continue
@@ -329,7 +362,7 @@ function listItemsOf(rows: readonly ListRow[], site: EventSite, now: Date): Even
     items.push({
       id,
       title: pick(row.title, site.defaultLocale),
-      location: pick(row.location, site.defaultLocale),
+      location: listLocationOf(row, site.defaultLocale, locations),
       startDate: typeof row.startDate === 'string' ? row.startDate : null,
       endDate: typeof row.endDate === 'string' ? row.endDate : null,
       timing: eventTiming(row, now),
@@ -359,7 +392,28 @@ export function sortEvents<T extends Pick<EventListItem, 'timing' | 'startDate' 
 
 // ── One event ─────────────────────────────────────────────────────────────────
 
-export type EventCover = { assetId: string; url: string; thumbUrl: string | null; alt: Record<string, string> }
+/**
+ * The event's cover. `focal` is the point the website keeps in view: the
+ * event's own (heroImage.hotspot) when set, else the Media Library photo's.
+ */
+export type EventCover = { assetId: string; url: string; thumbUrl: string | null; alt: Record<string, string>; focal: { x: number; y: number } | null }
+
+/** Hotspot ellipse size written with a focal point (Sanity requires one; same as post covers). */
+const COVER_HOTSPOT_SIZE = 0.3
+
+function focalOf(hotspot: unknown): { x: number; y: number } | null {
+  const h = hotspot as { x?: unknown; y?: unknown } | null | undefined
+  return h && typeof h.x === 'number' && typeof h.y === 'number' && Number.isFinite(h.x) && Number.isFinite(h.y) ? { x: h.x, y: h.y } : null
+}
+
+/** A focal point as sent by the editor: finite x and y in 0..1, rounded to 4 decimals; else invalid_value. */
+export function parseEventFocal(value: unknown): { x: number; y: number } {
+  const v = value as { x?: unknown; y?: unknown } | null
+  const ok = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1
+  if (!v || typeof v !== 'object' || Array.isArray(v) || !ok(v.x) || !ok(v.y)) throw new EventError('invalid_value', 'Focal point must be x and y between 0 and 1.')
+  const r = (n: number) => Math.round(n * 10000) / 10000
+  return { x: r(v.x), y: r(v.y) }
+}
 
 export type EventSnapshot = {
   id: string
@@ -498,11 +552,14 @@ async function readCover(client: Client, projectSlug: string, heroImage: unknown
   const url = row?.url ?? (await client.fetch<string | null>(`*[_id == $ref][0].url`, { ref }))
   if (!url) return null
   const own = localized((heroImage as { alt?: unknown }).alt)
+  // The event's own point first (it is what the website shows), else the library's.
+  const focal = focalOf((heroImage as { hotspot?: unknown }).hotspot) ?? focalOf(row?.hotspot)
   return {
     assetId: row?._id ?? ref,
     url,
-    thumbUrl: coverThumbUrl(url, row?.hotspot ?? (heroImage as { hotspot?: { x?: number; y?: number } }).hotspot ?? null, 480),
+    thumbUrl: coverThumbUrl(url, focal, 480),
     alt: Object.keys(own).length ? own : localized(row?.altText),
+    focal,
   }
 }
 
@@ -778,8 +835,45 @@ export async function setEventCover(
   const r = (await commit(client, grant.projectSlug, () => client.patch(`drafts.${input.id}`).ifRevisionId(input.rev).set({ heroImage }).commit(DRAFT_SAVE))) as { _rev?: string } | undefined
   return {
     rev: r?._rev ?? '',
-    cover: { assetId: input.assetId!, url: asset.url ?? '', thumbUrl: coverThumbUrl(asset.url, asset.hotspot as { x?: number; y?: number } | null, 480), alt },
+    cover: { assetId: input.assetId!, url: asset.url ?? '', thumbUrl: coverThumbUrl(asset.url, asset.hotspot as { x?: number; y?: number } | null, 480), alt, focal: focalOf(asset.hotspot) },
   }
+}
+
+/**
+ * Moves the cover's focal point — the part of the photo the website keeps in
+ * view when it crops the cover. Stored on THIS event's cover only
+ * (heroImage.hotspot): it is never written back to the Media Library (Tom,
+ * 2026-10-22 — a point chosen where a photo is used belongs to that use), so
+ * one event can't move the crop of every post, gallery or item using the photo.
+ */
+export async function setEventCoverFocal(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { id: string; rev: string; focal: unknown },
+  deps: EventDeps = {}
+): Promise<{ rev: string; cover: EventCover | null }> {
+  const grant = grantFor(ctx, projectId, EVENT_WRITE_PERMISSION)
+  const client = deps.client ?? sanityWriteClient
+  if (!isEventId(input?.id)) notFound()
+  if (typeof input.rev !== 'string' || !input.rev) throw new EventError('conflict', 'Missing revision.')
+  const focal = parseEventFocal(input.focal)
+
+  const { draft } = await readPair(client, input.id, grant.projectSlug)
+  if (!draft) notFound()
+  if (draft._rev !== input.rev) throw new EventError('conflict', 'This event was edited elsewhere.')
+  const hero = draft.heroImage as { asset?: { _ref?: unknown }; hotspot?: { width?: unknown; height?: unknown } } | undefined
+  if (typeof hero?.asset?._ref !== 'string' || !hero.asset._ref.startsWith('image-')) throw new EventError('not_found', 'This event has no photo.')
+
+  const hotspot = {
+    _type: 'sanity.imageHotspot',
+    x: focal.x,
+    y: focal.y,
+    width: typeof hero.hotspot?.width === 'number' ? hero.hotspot.width : COVER_HOTSPOT_SIZE,
+    height: typeof hero.hotspot?.height === 'number' ? hero.hotspot.height : COVER_HOTSPOT_SIZE,
+  }
+  const r = (await commit(client, grant.projectSlug, () => client.patch(`drafts.${input.id}`).ifRevisionId(input.rev).set({ 'heroImage.hotspot': hotspot }).commit(DRAFT_SAVE))) as { _rev?: string } | undefined
+  const cover = await readCover(client, grant.projectSlug, { ...(draft.heroImage as object), hotspot })
+  return { rev: r?._rev ?? '', cover }
 }
 
 // ── Publish / discard ─────────────────────────────────────────────────────────

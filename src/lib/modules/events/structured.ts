@@ -100,6 +100,41 @@ export function resolveEventPlace(
   return null
 }
 
+/**
+ * The place name an event card or list shows: the picked site location's name
+ * (already localized by GROQ) or the saved venue's name, via resolveEventPlace.
+ * Falls back to the free-text `location` when the event has no place (events
+ * from before ADR-031, online-only events, a removed location key).
+ */
+export function eventPlaceName(
+  event: Pick<Event, 'place' | 'attendanceMode' | 'location'>,
+  siteLocations: SiteLocation[] | null | undefined,
+): string | undefined {
+  return resolveEventPlace(event, siteLocations)?.name || event.location || undefined
+}
+
+/**
+ * Cards and lists render `event.location`; this sets it to the resolved place
+ * name (eventPlaceName) so every card shows where a dashboard-made event
+ * happens without each component resolving places itself.
+ */
+export function withEventPlaceNames<T extends Pick<Event, 'place' | 'attendanceMode' | 'location'>>(
+  events: T[],
+  siteLocations: SiteLocation[] | null | undefined,
+): T[] {
+  return events.map((event) => withEventPlaceName(event, siteLocations))
+}
+
+/** As withEventPlaceNames, for one event (null passes through). */
+export function withEventPlaceName<T extends Pick<Event, 'place' | 'attendanceMode' | 'location'>>(
+  event: T,
+  siteLocations: SiteLocation[] | null | undefined,
+): T {
+  if (!event) return event
+  const name = eventPlaceName(event, siteLocations)
+  return name === event.location ? event : { ...event, location: name }
+}
+
 /** The zone the event is shown in: venue → website → undefined (server zone). */
 export function eventTimeZone(place: ResolvedEventPlace | null, site: EventSiteContext | null | undefined): string | undefined {
   return resolveTimeZone(place?.timeZone, site?.timeZone)

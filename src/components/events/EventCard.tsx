@@ -5,6 +5,7 @@ import { useHostScoped } from '@/components/SiteLinkScope'
 import { siteBasePath } from '@/lib/sanity/href'
 import { SlideUp } from '@/components/animation'
 import { imageUrl } from '@/lib/sanity/image'
+import { focalObjectPosition } from '@/lib/gallery/focal'
 import type { Event } from '@/lib/sanity/types'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { EventCardExtras } from '@/components/events/EventEngagement'
@@ -125,6 +126,7 @@ export function EventCard({
               src={heroSrc}
               alt={event.heroImage?.alt ?? event.title ?? ''}
               className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
+              style={{ objectPosition: focalObjectPosition(event.heroImage) }}
               loading="lazy"
             />
           ) : (

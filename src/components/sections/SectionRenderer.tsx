@@ -38,6 +38,7 @@ import { CtaBannerSection } from '@/components/sections/CtaBannerSection'
 import { LocationsSection } from '@/components/sections/LocationsSection'
 import { SECTION_MAP, isSectionTypeAvailable } from '@/lib/modules/sections'
 import type { ProjectModuleConfig } from '@/lib/modules/config'
+import { withEventPlaceName, withEventPlaceNames, type EventSiteContext } from '@/lib/modules/events/structured'
 import { EVENT_VOCABULARY_PUBLIC_QUERY, resolveEventCategories, type RawEventVocabulary } from '@/lib/modules/events/categories'
 import { resolveCategoriesFor, categoryKeysOf, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
 import type {
@@ -74,6 +75,7 @@ import {
   eventsListingEventsOldestQuery,
   eventsListingManualEventsQuery,
   currentLiveEventQuery,
+  eventSiteContextQuery,
 } from '@/lib/sanity/queries'
 import type { CatalogueListingSection as CatalogueListingSectionType } from '@/lib/sanity/types'
 import type { CatalogueConfigDTO } from '@/lib/modules/catalogue/dto'
@@ -305,6 +307,15 @@ export async function hydrateSections(
   let catalogueConfig: Promise<CatalogueConfigDTO | null> | undefined
   const getCatalogueConfig = () =>
     (catalogueConfig ??= loadCatalogueConfig(ctx.fetchForTenant, { locale: ctx.locale, defaultLocale: ctx.defaultLocale }))
+  // ADR-031 — the website's own locations, read once per page and only when an
+  // events section is present, so event cards show the picked place's name. A
+  // failed read leaves the free-text location, as before.
+  let siteLocations: Promise<EventSiteContext['locations']> | undefined
+  const getSiteLocations = () =>
+    (siteLocations ??= ctx
+      .fetchForTenant<EventSiteContext | null>(eventSiteContextQuery, { locale: ctx.locale, defaultLocale: ctx.defaultLocale })
+      .then((site) => site?.locations ?? null)
+      .catch(() => null))
   await Promise.all(
     sections.map(async (section) => {
       if (!isSectionTypeAvailable(section._type, ctx.enabledModuleIds)) return
@@ -354,7 +365,8 @@ export async function hydrateSections(
       if (section._type === 'eventsListingSection') {
         const els = section as EventsListingSectionType
         const fetched = await fetchEventsListingEvents(els, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale, ctx.moduleConfig)
-        const events = ctx.projectSlug ? await withSchedules(ctx.projectSlug, fetched) : fetched
+        const scheduled = ctx.projectSlug ? await withSchedules(ctx.projectSlug, fetched) : fetched
+        const events = withEventPlaceNames(scheduled ?? [], await getSiteLocations())
         // Slice to maxItems — we fetched one extra to detect overflow for View All
         // ADR-033 Amendment J (dual-read) — category labels/colours from the term
         // records, else the module's old config list. A failed read shows no chips.
@@ -373,7 +385,8 @@ export async function hydrateSections(
           locale: ctx.locale,
           defaultLocale: ctx.defaultLocale,
         })
-        lls.event = ctx.projectSlug ? await withSchedule(ctx.projectSlug, live) : live
+        const scheduled = ctx.projectSlug ? await withSchedule(ctx.projectSlug, live) : live
+        lls.event = scheduled ? withEventPlaceName(scheduled, await getSiteLocations()) : scheduled
         return
       }
     })

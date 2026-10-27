@@ -20,6 +20,7 @@ import {
   patchEventDraft,
   publishEventDraft,
   setEventCover,
+  setEventCoverFocal,
   type EventCover,
   type EventErrorCode,
   type EventSnapshot,
@@ -60,6 +61,11 @@ export async function patchEventDraftAction(input: { projectSlug: string; id: st
 
 export async function setEventCoverAction(input: { projectSlug: string; id: string; rev: string; assetId?: string; remove?: true }): Promise<Result<{ rev: string; cover: EventCover | null }>> {
   return run(input?.projectSlug, (ctx, pid) => setEventCover(ctx, pid, { id: input.id, rev: input.rev, assetId: input.assetId, remove: input.remove }))
+}
+
+/** Moves the cover's focal point, on this event only (never the Media Library photo). */
+export async function setEventCoverFocalAction(input: { projectSlug: string; id: string; rev: string; focal: { x: number; y: number } }): Promise<Result<{ rev: string; cover: EventCover | null }>> {
+  return run(input?.projectSlug, (ctx, pid) => setEventCoverFocal(ctx, pid, { id: input.id, rev: input.rev, focal: input.focal }))
 }
 
 export async function publishEventDraftAction(input: { projectSlug: string; id: string; rev: string }): Promise<Result<{ id: string }>> {

@@ -360,7 +360,27 @@
           "change": "Change photo",
           "remove": "Remove",
           "saved": "Photo updated.",
-          "removed": "Photo removed."
+          "removed": "Photo removed.",
+          "adjust": "Adjust focus point",
+          "done": "Done",
+          "focal": {
+            "title": "Focus point",
+            "helper": "Tap or drag to the most important part of the photo. Every crop of this event's photo keeps it in view.",
+            "scope": "This point applies to this event only. The photo in your Media library is not changed.",
+            "keys": "Use the arrow keys to move it; hold Shift for bigger steps.",
+            "label": "Focus point of the event photo",
+            "valueText": "{x}% from the left, {y}% from the top",
+            "previews": "How it will be cropped",
+            "preview": {
+              "wide": "Event page",
+              "card": "Event card",
+              "square": "Square",
+              "tall": "Phone"
+            },
+            "saving": "Saving…",
+            "saved": "Saved",
+            "failed": "Couldn't save. Move the point again to retry."
+          }
         },
         "words": {
           "title": "About the event",

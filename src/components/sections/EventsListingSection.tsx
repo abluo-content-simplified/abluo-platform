@@ -12,6 +12,7 @@ import { SlideUp } from '@/components/animation'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { SectionEmptyState } from '@/components/sections/shared/SectionEmptyState'
 import { imageUrl } from '@/lib/sanity/image'
+import { focalObjectPosition } from '@/lib/gallery/focal'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
@@ -99,6 +100,7 @@ function EventListingCard({ event, href, locale, tenantId, priority = false }: {
             src={coverSrc}
             alt={event.heroImage?.alt ?? event.title ?? ''}
             className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
+            style={{ objectPosition: focalObjectPosition(event.heroImage) }}
             loading={priority ? 'eager' : 'lazy'}
           />
         ) : (
@@ -157,6 +159,7 @@ function EventListingCardLarge({ event, href, locale, tenantId }: { event: Event
             src={coverSrc}
             alt={event.heroImage?.alt ?? event.title ?? ''}
             className={`absolute inset-0 h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
+            style={{ objectPosition: focalObjectPosition(event.heroImage) }}
             loading="eager"
           />
         ) : (
@@ -214,6 +217,7 @@ function EventListingCardMini({ event, href, locale }: { event: Event; href: str
             src={coverSrc}
             alt={event.heroImage?.alt ?? event.title ?? ''}
             className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
+            style={{ objectPosition: focalObjectPosition(event.heroImage) }}
             loading="lazy"
           />
         ) : (

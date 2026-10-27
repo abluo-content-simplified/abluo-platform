@@ -360,7 +360,27 @@
           "change": "Foto ändern",
           "remove": "Entfernen",
           "saved": "Foto aktualisiert.",
-          "removed": "Foto entfernt."
+          "removed": "Foto entfernt.",
+          "adjust": "Fokuspunkt anpassen",
+          "done": "Fertig",
+          "focal": {
+            "title": "Fokuspunkt",
+            "helper": "Tippen oder ziehen Sie auf den wichtigsten Teil des Fotos. Jeder Zuschnitt des Fotos dieser Veranstaltung behält ihn im Bild.",
+            "scope": "Dieser Punkt gilt nur für diese Veranstaltung. Das Foto in Ihrer Medienbibliothek bleibt unverändert.",
+            "keys": "Mit den Pfeiltasten verschieben; mit gedrückter Umschalttaste in größeren Schritten.",
+            "label": "Fokuspunkt des Veranstaltungsfotos",
+            "valueText": "{x} % von links, {y} % von oben",
+            "previews": "So wird zugeschnitten",
+            "preview": {
+              "wide": "Veranstaltungsseite",
+              "card": "Veranstaltungskarte",
+              "square": "Quadrat",
+              "tall": "Telefon"
+            },
+            "saving": "Wird gespeichert…",
+            "saved": "Gespeichert",
+            "failed": "Speichern fehlgeschlagen. Verschieben Sie den Punkt erneut, um es nochmal zu versuchen."
+          }
         },
         "words": {
           "title": "Zur Veranstaltung",

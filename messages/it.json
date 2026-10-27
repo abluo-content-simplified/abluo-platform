@@ -360,7 +360,27 @@
           "change": "Cambia foto",
           "remove": "Rimuovi",
           "saved": "Foto aggiornata.",
-          "removed": "Foto rimossa."
+          "removed": "Foto rimossa.",
+          "adjust": "Regola il punto focale",
+          "done": "Fatto",
+          "focal": {
+            "title": "Punto focale",
+            "helper": "Tocca o trascina sulla parte più importante della foto. Ogni ritaglio della foto di questo evento la terrà in vista.",
+            "scope": "Questo punto vale solo per questo evento. La foto nella tua libreria Media non cambia.",
+            "keys": "Usa i tasti freccia per spostarlo; tieni premuto Maiusc per passi più grandi.",
+            "label": "Punto focale della foto dell'evento",
+            "valueText": "{x}% da sinistra, {y}% dall'alto",
+            "previews": "Come verrà ritagliata",
+            "preview": {
+              "wide": "Pagina dell'evento",
+              "card": "Scheda dell'evento",
+              "square": "Quadrata",
+              "tall": "Telefono"
+            },
+            "saving": "Salvataggio…",
+            "saved": "Salvato",
+            "failed": "Salvataggio non riuscito. Sposta di nuovo il punto per riprovare."
+          }
         },
         "words": {
           "title": "Sull'evento",

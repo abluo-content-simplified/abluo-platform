@@ -10,10 +10,12 @@ import {
   patchEventDraftAction,
   publishEventDraftAction,
   setEventCoverAction,
+  setEventCoverFocalAction,
 } from '@/app/[locale]/(client)/[tenant]/agenda/actions'
 import type { EventCover, EventSnapshot } from '@/lib/api/event-drafts'
 import { languageName } from '@/components/client/create/StepHeading'
 import { MediaLibraryPicker } from '@/components/client/media/MediaLibraryPicker'
+import { FocalPointPicker, type FocalPoint } from '@/components/app/ui/FocalPointPicker'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { PageHeader } from '@/components/app/ui/PageHeader'
@@ -118,6 +120,13 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
   const [hasDraft, setHasDraft] = useState(initial.hasDraft)
   const [isPublished, setIsPublished] = useState(initial.isPublished)
   const [cover, setCover] = useState<EventCover | null>(initial.cover)
+  // The cover's focus point — this event's own (heroImage.hotspot), never the
+  // Media Library photo's (Tom, 2026-10-22). Saved when the dot is let go.
+  const [focal, setFocal] = useState<FocalPoint | null>(initial.cover?.focal ?? null)
+  const [adjusting, setAdjusting] = useState(false)
+  const [focalStatus, setFocalStatus] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
+  const focalRef = useRef<FocalPoint | null>(initial.cover?.focal ?? null)
+  const focalDirty = useRef(false)
   const [locale, setLocale] = useState(d)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [busy, setBusy] = useState(false)
@@ -182,14 +191,46 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
     }
   }, [values, savedValues, canWrite, flush, site.locales])
 
+  /** Saves a moved focus point (after any pending text save, one save at a time). */
+  const saveFocal = useCallback(() => {
+    if (!focalDirty.current || !focalRef.current) return
+    focalDirty.current = false
+    void flush()
+    setFocalStatus('saving')
+    chain.current = chain.current.then(async () => {
+      const point = focalRef.current
+      if (!point) return
+      try {
+        const rev = await draftRev()
+        const r = await setEventCoverFocalAction({ projectSlug, id, rev, focal: point })
+        if (!r.ok) throw new Error(r.error)
+        revRef.current = r.rev
+        if (r.cover) setCover(r.cover)
+        setFocalStatus(focalDirty.current ? 'saving' : 'saved')
+      } catch {
+        // Retried with the next move.
+        focalDirty.current = true
+        setFocalStatus('failed')
+      }
+    })
+  }, [flush, draftRev, projectSlug, id])
+
+  const changeFocal = (point: FocalPoint) => {
+    focalRef.current = point
+    focalDirty.current = true
+    setFocal(point)
+  }
+
   // Save before leaving the page.
   useEffect(() => {
     const onHide = () => {
-      if (document.visibilityState === 'hidden') void flush()
+      if (document.visibilityState !== 'hidden') return
+      saveFocal()
+      void flush()
     }
     document.addEventListener('visibilitychange', onHide)
     return () => document.removeEventListener('visibilitychange', onHide)
-  }, [flush])
+  }, [flush, saveFocal])
 
   const setText = (field: TextField, value: string) =>
     setValues((v) => ({ ...v, texts: { ...v.texts, [field]: { ...v.texts[field], [locale]: value } } }))
@@ -205,6 +246,12 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
       if (!r.ok) throw new Error(r.error)
       revRef.current = r.rev
       setCover(r.cover)
+      // A new photo starts from its Media Library focus point; none without a photo.
+      focalRef.current = r.cover?.focal ?? null
+      focalDirty.current = false
+      setFocal(focalRef.current)
+      setFocalStatus('idle')
+      if (!r.cover) setAdjusting(false)
       show({ message: assetId ? t('photo.saved') : t('photo.removed'), tone: 'status' })
     } catch {
       show({ message: te('failed'), tone: 'error' }, 7000)
@@ -316,6 +363,11 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
                 {EVENT_ICONS.photo}
                 {cover ? t('photo.change') : t('photo.choose')}
               </Button>
+              {cover?.url ? (
+                <Button disabled={busy} aria-expanded={adjusting} onClick={() => (adjusting ? (saveFocal(), setAdjusting(false)) : setAdjusting(true))}>
+                  {adjusting ? t('photo.done') : t('photo.adjust')}
+                </Button>
+              ) : null}
               {cover ? (
                 <Button disabled={busy} onClick={() => void chooseCover(null)}>
                   {t('photo.remove')}
@@ -325,6 +377,35 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
           ) : null}
         </div>
         <p className="text-sm leading-5 text-muted-foreground">{t('photo.helper')}</p>
+        {canWrite && adjusting && cover?.url ? (
+          <div className="space-y-2 rounded-2xl border border-border p-4">
+            <FocalPointPicker
+              url={cover.url}
+              alt={cover.alt[d] ?? ''}
+              point={focal}
+              onChange={changeFocal}
+              onCommit={saveFocal}
+              compact
+              status={focalStatus === 'idle' ? '' : t(`photo.focal.${focalStatus}`)}
+              statusError={focalStatus === 'failed'}
+              labels={{
+                title: t('photo.focal.title'),
+                helper: t('photo.focal.helper'),
+                keys: t('photo.focal.keys'),
+                label: t('photo.focal.label'),
+                valueText: (x: number, y: number) => t('photo.focal.valueText', { x, y }),
+                previews: t('photo.focal.previews'),
+                preview: {
+                  wide: t('photo.focal.preview.wide'),
+                  card: t('photo.focal.preview.card'),
+                  square: t('photo.focal.preview.square'),
+                  tall: t('photo.focal.preview.tall'),
+                },
+              }}
+            />
+            <p className="text-sm leading-5 text-muted-foreground">{t('photo.focal.scope')}</p>
+          </div>
+        ) : null}
       </section>
 
       {/* Words, per language */}
