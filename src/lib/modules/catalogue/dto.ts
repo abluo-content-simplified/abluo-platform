@@ -231,6 +231,8 @@ export type CatalogueItemDTO = {
   visibility: CatalogueVisibility
   /** null when the item has no page of its own (hasPage false, AC 13). */
   page: CataloguePageRefDTO | null
+  /** Editorial highlight; present (true) only when set. Read only by a listing that highlights featured items. */
+  featured?: true
 }
 
 /** An item on its own page. */

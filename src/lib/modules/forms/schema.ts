@@ -304,6 +304,13 @@ const formDefinitionType = defineType({
       description: 'Small uppercase label shown above the title (e.g. “Request Early Access”). Optional; appears in the overlay header and above inline forms.',
     }),
     defineField({
+      name: 'intro',
+      title: 'Intro',
+      type: 'localizedText',
+      group: 'presentation',
+      description: 'Optional short paragraph shown under the title, above the fields — in the overlay and above inline forms. Leave empty and the form renders exactly as before.',
+    }),
+    defineField({
       name: 'fullWidthButton',
       title: 'Full-width Submit Button',
       type: 'boolean',

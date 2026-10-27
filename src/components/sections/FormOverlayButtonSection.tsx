@@ -20,7 +20,7 @@ import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { FormOverlayWrapper } from '@/components/forms/FormOverlayWrapper'
 import { FormOverlayTrigger } from '@/components/forms/FormOverlayTrigger'
-import { overlayButtonClass, overlayButtonAlignClass, overlayButtonWidthClass } from '@/lib/forms/overlay-button'
+import { overlayButtonClass, overlayButtonAlignClass, overlayButtonTextAlignClass, overlayButtonWidthClass } from '@/lib/forms/overlay-button'
 import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 
 interface Props {
@@ -52,8 +52,37 @@ export function FormOverlayButtonSection({ section, surface, designSystem, local
   const fullWidth = section.buttonFullWidth === true
   const buttonClass = `${overlayButtonClass(section.buttonStyle)} ${overlayButtonWidthClass(fullWidth)}`.trim()
 
+  const hasLeadIn = !!(section.eyebrow || section.title || section.body)
+
   return (
     <section id={section.anchorId} className="px-6 py-16 md:px-16 lg:px-24" style={surfaceStyles}>
+      {hasLeadIn && (
+        <div className={`mx-auto mb-8 w-full max-w-2xl ${overlayButtonTextAlignClass(section.buttonAlign)}`}>
+          {section.eyebrow && (
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">{section.eyebrow}</p>
+          )}
+          {section.title && (
+            <h2
+              className="[--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
+              style={{
+                color: 'var(--color-text-primary)',
+                fontFamily: 'var(--font-heading)',
+                fontSize: 'var(--font-size-h2, var(--fs-h2))',
+                fontWeight: 'var(--font-weight-h2, 600)',
+                lineHeight: 'var(--line-height-h2, 1.375)',
+                letterSpacing: 'var(--letter-spacing-h2, -0.025em)',
+              }}
+            >
+              {section.title}
+            </h2>
+          )}
+          {section.body && (
+            <p className="mt-3 whitespace-pre-line text-base leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
+              {section.body}
+            </p>
+          )}
+        </div>
+      )}
       <div className={`mx-auto flex w-full max-w-2xl ${overlayButtonAlignClass(section.buttonAlign)}`}>
         <FormOverlayWrapper
           tenantSlug={tenantSlug}

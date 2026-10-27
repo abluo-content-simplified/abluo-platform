@@ -24,6 +24,7 @@ import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import { itemHasAmazonLink } from '@/lib/modules/catalogue/amazon-delivery'
 import { collectionFilterCategories, isFilterValue, itemsUseCards } from '@/lib/modules/catalogue/website'
 import { CatalogueItemCard } from './CatalogueItemCard'
+import { FeaturedBadge } from './FeaturedBadge'
 import { shelvesOf, type ReadingStatus } from '@/lib/modules/catalogue/reading-status'
 import { CatalogueCategoryFilter } from './CatalogueCategoryFilter'
 
@@ -38,6 +39,10 @@ export type CatalogueDisplay = {
   siteHosts?: readonly string[]
   /** The tenant's shop order for buy links (Settings). Absent = stored order. */
   shopOrder?: readonly AffiliateShopId[]
+  /** The listing highlights featured items (catalogueListingSection.highlightFeatured). Absent = never. */
+  highlightFeatured?: boolean
+  /** Label on a featured item; null/absent = a star only. */
+  featuredLabel?: string | null
 }
 
 export interface CatalogueCollectionViewProps {
@@ -202,13 +207,16 @@ export function CatalogueItemRow({
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-4">
-          {href ? (
-            <Link href={href} className="underline-offset-4 hover:underline">
-              {name}
-            </Link>
-          ) : (
-            name
-          )}
+          <div className="min-w-0">
+            {display.highlightFeatured && item.featured && <FeaturedBadge label={display.featuredLabel} className="mb-1" />}
+            {href ? (
+              <Link href={href} className="underline-offset-4 hover:underline">
+                {name}
+              </Link>
+            ) : (
+              name
+            )}
+          </div>
           {display.showPrices && !itemHasAmazonLink(item) && <OfferList offers={item.offers} m={messages} className="shrink-0" />}
         </div>
         <Byline byline={item.byline} />

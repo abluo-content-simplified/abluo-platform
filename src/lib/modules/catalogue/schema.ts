@@ -718,6 +718,17 @@ export const catalogueItem = defineType({
       group: 'page',
       initialValue: false,
     }),
+    // Featured — an editorial highlight. Read only by a Catalogue Section that
+    // opts in ("Highlight featured items"); every other listing ignores it, so
+    // flagging an item changes nothing until a section asks for it.
+    defineField({
+      name: 'featured',
+      title: 'Featured',
+      type: 'boolean',
+      group: 'content',
+      initialValue: false,
+      description: 'Shown first and highlighted in Catalogue Sections that highlight featured items (e.g. a home page selection).',
+    }),
     defineField({
       name: 'slug',
       title: 'Slug',
@@ -1004,6 +1015,36 @@ export const catalogueListingSection = defineType({
       description: 'Shown when the collection has no items yet. Leave empty to hide the section instead.',
     }),
     defineField({ name: 'emptyStateBody', title: 'Empty state text', type: 'localizedText' }),
+    // A short selection (e.g. three books on the home page). `maxItems` and
+    // `viewAllLabel` are the same keys the blog / news / events listings use,
+    // so the page projection already reads them. Unset = everything, no link.
+    defineField({
+      name: 'maxItems',
+      title: 'Show at most',
+      type: 'number',
+      description: 'Leave empty to show every item. With a number, the first items in reading order are shown (featured items first when highlighted).',
+      validation: (Rule) => Rule.integer().min(1).max(200),
+    }),
+    defineField({
+      name: 'highlightFeatured',
+      title: 'Highlight featured items',
+      type: 'boolean',
+      initialValue: false,
+      description: 'Featured items come first and carry a label.',
+    }),
+    defineField({
+      name: 'featuredLabel',
+      title: 'Featured label',
+      type: 'localizedString',
+      description: 'Shown on featured items, e.g. "Featured". Leave empty for a star only.',
+      hidden: ({ parent }) => !(parent as { highlightFeatured?: boolean } | undefined)?.highlightFeatured,
+    }),
+    defineField({
+      name: 'viewAllLabel',
+      title: 'Link to the catalogue page',
+      type: 'localizedString',
+      description: 'Optional link under the items to the catalogue page, e.g. "See all books". Leave empty for no link.',
+    }),
   ],
   preview: {
     select: { title: 'title.en', eyebrow: 'eyebrow.en', collection: 'collection.name.en' },

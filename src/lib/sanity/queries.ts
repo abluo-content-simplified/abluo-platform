@@ -218,6 +218,7 @@ formType,
 version,
 "title": ${loc('title')},
 "eyebrow": ${loc('eyebrow')},
+"intro": ${loc('intro')},
 fullWidthButton,
 reviewStep,
 tenantSlug,
@@ -603,6 +604,9 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       source,
       showPrices,
       allergenPresentation,
+      // maxItems + viewAllLabel are the shared listing keys projected above.
+      highlightFeatured,
+      "featuredLabel": ${loc('featuredLabel')},
       // downloadSection (Documents module, ADR-040 §15). Its documents are NOT
       // projected: they live in Supabase and are added by hydrateSections, per
       // visitor, after the page gate. eyebrow/title/intro/image are shared keys.
@@ -2012,6 +2016,10 @@ export const homePageQuery = /* groq */ `
       source,
       showPrices,
       allergenPresentation,
+      maxItems,
+      "viewAllLabel": ${loc('viewAllLabel')},
+      highlightFeatured,
+      "featuredLabel": ${loc('featuredLabel')},
       // downloadSection (Documents module, ADR-040 §15). Its documents are NOT
       // projected: they live in Supabase and are added by hydrateSections, per
       // visitor, after the page gate. eyebrow/title/intro/image are shared keys.
@@ -2412,6 +2420,7 @@ const CATALOGUE_ITEM_FIELDS = /* groq */ `
   itemProfile,
   visibility,
   hasPage,
+  featured,
   "name": ${loc('name')},
   // ADR-033 Amendment F — a short line under the name; links with a label per locale.
   "byline": ${loc('byline')},

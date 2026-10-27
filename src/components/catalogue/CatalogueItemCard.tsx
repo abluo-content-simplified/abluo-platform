@@ -25,6 +25,7 @@ import { itemHasAmazonLink } from '@/lib/modules/catalogue/amazon-delivery'
 import { CardBuyLink, OfferList, OptionsSummary, TagChips } from './CatalogueItemParts'
 import type { CatalogueWebsiteMessages } from './messages'
 import type { CatalogueDisplay } from './CatalogueCollectionView'
+import { FeaturedBadge } from './FeaturedBadge'
 
 export function CatalogueItemCard({
   item,
@@ -44,6 +45,7 @@ export function CatalogueItemCard({
   const src = image ? imageUrl(image.image as unknown as ResolvedImage, 600) : undefined
   const secondary = itemSecondaryLine({ itemProfile: item.itemProfile, byline: item.byline, author: item.bookDetails?.author, year: item.bookDetails?.year })
   const hasBuy = item.links.some((l) => l.kind === 'buy')
+  const featured = display.highlightFeatured === true && item.featured === true
   const title = href ? (
     // The stretched link: its ::after covers the whole card (the card is `relative`).
     <Link href={href} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none" data-card-link="">
@@ -58,6 +60,7 @@ export function CatalogueItemCard({
       style={{ ['--tw-ring-color' as string]: 'var(--color-text-primary)', ['--tw-ring-offset-color' as string]: 'var(--color-background)' }}
       data-item={item.publicId ?? undefined}
       data-item-card=""
+      data-featured={featured ? '' : undefined}
     >
       {portrait ? (
         // Book covers keep their own proportions: no frame colour, no cropping, sitting on the bottom-left of a
@@ -86,6 +89,7 @@ export function CatalogueItemCard({
         </div>
       )}
       <div className="mt-4 flex flex-1 flex-col">
+        {featured && <FeaturedBadge label={display.featuredLabel} className="mb-2 self-start" />}
         <div className="flex items-start justify-between gap-3">
           {createElement(
             `h${headingLevel}`,

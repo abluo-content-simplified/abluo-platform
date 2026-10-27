@@ -3233,6 +3233,12 @@ const formOverlayButtonSectionType = defineType({
   description: 'A button that opens a form in an overlay (ADR-018 slice 7).',
   fields: [
     anchorIdField(),
+    // Optional lead-in above the button (e.g. "Want to recommend a book?").
+    // Reuses the shared eyebrow / title / body keys every page projection
+    // already reads; a section without them renders exactly as before.
+    defineField({ name: 'eyebrow', title: 'Eyebrow (optional)', type: 'localizedString' }),
+    defineField({ name: 'title', title: 'Heading (optional)', type: 'localizedString' }),
+    defineField({ name: 'body', title: 'Text (optional)', type: 'localizedText', description: 'One or two short sentences above the button.' }),
     defineField({
       name: 'background',
       title: 'Background Surface',

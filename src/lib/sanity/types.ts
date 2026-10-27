@@ -1651,6 +1651,8 @@ export interface RenderableFormDefinition {
   title?: string
   /** Localized eyebrow label shown above the title (ADR-018 slice 7). */
   eyebrow?: string
+  /** Optional localized paragraph under the title, above the fields. Absent on every form authored before it existed. */
+  intro?: string
   /** When false, the submit/continue button is auto-width; defaults to full-width. */
   fullWidthButton?: boolean
   /** When true, a multi-step form shows an end-of-form review/recap screen (ADR-018 slice 7e). */
@@ -1694,6 +1696,10 @@ export interface FormOverlayButtonSection {
   buttonAlign?: 'left' | 'center' | 'right'
   /** When true, the trigger button spans the section's full content width. */
   buttonFullWidth?: boolean
+  /** Optional lead-in above the button — locale-resolved by GROQ (shared keys). */
+  eyebrow?: string | null
+  title?: string | null
+  body?: string | null
 }
 
 export interface StatementSection {
@@ -2248,6 +2254,14 @@ export interface CatalogueListingSection {
   showPrices?: 'default' | 'show' | 'hide' | null
   /** ADR-033 D-3. Unset = 'compact'. Food allergens are always shown; this picks how. */
   allergenPresentation?: 'compact' | 'expanded' | null
+  /** Show at most this many items (reading order, featured first when highlighted). Unset = all. */
+  maxItems?: number | null
+  /** Locale-resolved by GROQ. Link to the catalogue landing page; unset = no link. */
+  viewAllLabel?: string | null
+  /** Featured items first, with a label. Unset = off: `featured` is ignored. */
+  highlightFeatured?: boolean | null
+  /** Locale-resolved by GROQ. Label on a featured item; unset = a star only. */
+  featuredLabel?: string | null
   /** Locale-resolved by GROQ */
   emptyStateHeading?: string
   /** Locale-resolved by GROQ */

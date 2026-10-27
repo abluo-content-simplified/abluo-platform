@@ -26,6 +26,19 @@ export function overlayButtonAlignClass(align?: OverlayButtonAlign | null): stri
   }
 }
 
+/** Text-align class for the optional lead-in above the button; follows the button. Defaults to centered. */
+export function overlayButtonTextAlignClass(align?: OverlayButtonAlign | null): string {
+  switch (align) {
+    case 'left':
+      return 'text-left'
+    case 'right':
+      return 'text-right'
+    case 'center':
+    default:
+      return 'text-center'
+  }
+}
+
 /** Width class for the trigger button. Full-width spans the section content width. */
 export function overlayButtonWidthClass(fullWidth?: boolean | null): string {
   return fullWidth ? 'w-full' : ''

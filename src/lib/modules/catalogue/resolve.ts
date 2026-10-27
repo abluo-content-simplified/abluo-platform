@@ -127,6 +127,8 @@ export type RawCatalogueItem = LifecycleFields & {
   itemProfile?: string | null
   visibility?: string | null
   hasPage?: boolean | null
+  /** Editorial highlight; only `true` counts. */
+  featured?: unknown
   name?: RawText
   /** F-1 — locale-resolved by GROQ, or a raw localized object. */
   byline?: RawText
@@ -575,6 +577,8 @@ export function resolveItem(row: RawCatalogueItem | null | undefined, ctx: Catal
     optionLists: optionListsOf(row.optionLists, ctx, can(itemProfileOf(row.itemProfile), 'foodInformation')),
     visibility: visibilityOf(row.visibility),
     page: pageRefOf(row.hasPage, row.slugMap, ctx.locale),
+    // Only when set, so every unflagged item resolves exactly as before.
+    ...(row.featured === true ? { featured: true as const } : {}),
   }
 }
 

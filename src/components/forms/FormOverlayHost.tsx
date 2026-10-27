@@ -54,6 +54,9 @@ export function FormOverlayHost() {
 
   return (
     <FormModal isOpen={isOpen} onClose={ctx.close} closeLabel={chrome.closeLabel} title={title} eyebrow={def?.eyebrow ?? null}>
+      {def?.intro ? (
+        <p className="mb-6 whitespace-pre-line text-sm leading-relaxed text-[var(--color-text-secondary)]">{def.intro}</p>
+      ) : null}
       {def ? (
         isMultiStepDefinition(def) ? (
           <MultiStepFormRenderer

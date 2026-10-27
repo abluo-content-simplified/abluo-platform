@@ -27,7 +27,8 @@ import { getCatalogueWebsiteMessages } from '@/components/catalogue/messages'
 import { AffiliateDisclosure } from '@/components/catalogue/CatalogueItemParts'
 import { affiliateDisclosureText, collectionHasAffiliateLink } from '@/lib/modules/catalogue/affiliate'
 import { collectionHasAmazonAffiliateLink } from '@/lib/modules/catalogue/amazon-delivery'
-import { catalogueItemHref, collectionHasItems, collectionUsesCards, listingAllergenPresentation, listingShowsPrices } from '@/lib/modules/catalogue/website'
+import Link from 'next/link'
+import { catalogueItemHref, catalogueLandingHref, collectionHasItems, collectionUsesCards, listingAllergenPresentation, listingShowsPrices, presentListing } from '@/lib/modules/catalogue/website'
 
 interface Props {
   section: CatalogueListingSectionType
@@ -40,7 +41,8 @@ interface Props {
 
 export function CatalogueListingSection({ section, surface, designSystem, locale, tenantSlug, hostScoped }: Props) {
   const data = section.catalogue
-  const collection = data?.collection
+  // Featured first / at most N — a presentation of the collection, never a rewrite of it.
+  const collection = data?.collection ? presentListing(data.collection, { highlightFeatured: section.highlightFeatured, maxItems: section.maxItems }) : null
   if (!data || !collection) return null
 
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
@@ -64,7 +66,10 @@ export function CatalogueListingSection({ section, surface, designSystem, locale
     allergens: listingAllergenPresentation(section.allergenPresentation),
     siteHosts: siteHostsForProject(tenantSlug),
     shopOrder: data.shopOrder,
+    highlightFeatured: section.highlightFeatured === true,
+    featuredLabel: section.featuredLabel ?? null,
   }
+  const viewAllHref = section.viewAllLabel ? catalogueLandingHref(siteBase, data.segment) : null
 
   const messages = getCatalogueWebsiteMessages(locale)
   // Amendment K — once per listing, only when it shows at least one affiliate link.
@@ -107,6 +112,19 @@ export function CatalogueListingSection({ section, surface, designSystem, locale
           itemHref={(item) => catalogueItemHref(item, siteBase, data.segment)}
           rootHeadingLevel={title ? 3 : 2}
         />
+        {viewAllHref && (
+          <p className="mt-10">
+            <Link
+              href={viewAllHref}
+              className="inline-flex items-center gap-2 text-sm font-semibold underline-offset-4 hover:underline"
+              style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-body)' }}
+              data-catalogue-view-all=""
+            >
+              {section.viewAllLabel}
+              <span aria-hidden="true">→</span>
+            </Link>
+          </p>
+        )}
         <AffiliateDisclosure text={disclosure} amazonStatement={collectionHasAmazonAffiliateLink(collection) ? messages.amazonStatement || null : null} className="mt-20 max-w-3xl text-sm leading-relaxed md:mt-28" />
       </div>
     </SectionContainer>

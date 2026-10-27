@@ -2,7 +2,7 @@
  * Form overlay button — ADR-018 slice 7b. Pure class-mapping helpers.
  */
 import { describe, it, expect } from 'vitest'
-import { overlayButtonAlignClass, overlayButtonClass, overlayButtonWidthClass } from '../overlay-button'
+import { overlayButtonAlignClass, overlayButtonClass, overlayButtonTextAlignClass, overlayButtonWidthClass } from '../overlay-button'
 
 describe('overlayButtonAlignClass', () => {
   it('maps left/right/center', () => {
@@ -13,6 +13,15 @@ describe('overlayButtonAlignClass', () => {
   it('defaults to centered for null/undefined', () => {
     expect(overlayButtonAlignClass(null)).toBe('justify-center')
     expect(overlayButtonAlignClass(undefined)).toBe('justify-center')
+  })
+})
+
+describe('overlayButtonTextAlignClass', () => {
+  it('follows the button alignment, centered by default', () => {
+    expect(overlayButtonTextAlignClass('left')).toBe('text-left')
+    expect(overlayButtonTextAlignClass('right')).toBe('text-right')
+    expect(overlayButtonTextAlignClass('center')).toBe('text-center')
+    expect(overlayButtonTextAlignClass(undefined)).toBe('text-center')
   })
 })
 

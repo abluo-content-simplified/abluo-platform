@@ -245,6 +245,54 @@ export function collectionHasItems(collection: CatalogueCollectionDTO | null | u
   return !!collection && walk(collection.sections)
 }
 
+// ── Listing presentation: featured first, at most N ──────────────────────────
+
+/** A positive whole number of items to show, or null for "all" (unset, 0, negative, junk). */
+export function listingMaxItems(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 1 ? Math.floor(value) : null
+}
+
+/**
+ * What a listing section shows of a resolved collection. Pure; the collection
+ * itself (order, nesting) is never rewritten in storage.
+ *
+ *   highlightFeatured  featured items move to the front of THEIR section,
+ *                      otherwise in the collection's own order (stable)
+ *   maxItems           the first N items in reading order are kept; a section
+ *                      reached after the budget is spent is dropped, a section
+ *                      heading with items before that keeps what it had
+ *
+ * Both off returns the collection unchanged (same object), so every section
+ * saved before these options existed renders exactly as before.
+ */
+export function presentListing(
+  collection: CatalogueCollectionDTO,
+  opts: { highlightFeatured?: unknown; maxItems?: unknown },
+): CatalogueCollectionDTO {
+  const featuredFirst = opts.highlightFeatured === true
+  const max = listingMaxItems(opts.maxItems)
+  if (!featuredFirst && max === null) return collection
+  let budget = max ?? Number.POSITIVE_INFINITY
+  type Section = CatalogueCollectionDTO['sections'][number]
+  const walk = (sections: readonly Section[]): Section[] => {
+    const out: Section[] = []
+    for (const s of sections) {
+      if (budget <= 0) break
+      const ordered = featuredFirst ? [...s.items.filter((i) => i.featured), ...s.items.filter((i) => !i.featured)] : s.items
+      const items = ordered.slice(0, budget)
+      budget -= items.length
+      out.push({ ...s, items, children: walk(s.children) })
+    }
+    return out
+  }
+  return { ...collection, sections: walk(collection.sections) }
+}
+
+/** Site-relative href of the catalogue landing page (`/{segment}`), or null without a public segment. */
+export function catalogueLandingHref(siteBase: string, segment: string | null): string | null {
+  return segment ? `${siteBase}/${segment}` : null
+}
+
 // ── Card grid and category filter (website listing) ──────────────────────────
 
 /** True when every one of these items is presented as a card (books, products, per the profile registry): the list becomes a grid. */

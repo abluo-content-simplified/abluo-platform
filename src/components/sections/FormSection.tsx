@@ -53,6 +53,9 @@ export function FormSection({ section, surface, designSystem, locale = 'en', ten
         {def.eyebrow && (
           <p className="text-[var(--color-primary)] text-[10px] font-bold uppercase tracking-[0.14em] mb-3">{def.eyebrow}</p>
         )}
+        {def.intro && (
+          <p className="mb-8 whitespace-pre-line text-base leading-relaxed text-[var(--color-text-secondary)]">{def.intro}</p>
+        )}
         {isMultiStep ? (
           <MultiStepFormRenderer
             definition={def}
