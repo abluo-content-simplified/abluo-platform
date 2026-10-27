@@ -341,6 +341,33 @@ const formDefinitionType = defineType({
         defineField({ name: 'requireConsent', title: 'Require Consent', type: 'boolean', initialValue: false, description: 'When on, the final step requires GDPR consent; consent is stored on the submission as a top-level flag, not a data field.' }),
         defineField({ name: 'consentText', title: 'Consent Text', type: 'localizedText', description: 'Short consent copy shown beside the checkbox.', hidden: ({ parent }: { parent?: { requireConsent?: boolean } }) => !parent?.requireConsent }),
         defineField({ name: 'policyUrl', title: 'Privacy Policy URL', type: 'string', description: 'Optional link to the privacy policy.' }),
+        // A short line above the submit button instead of (or as well as) the
+        // consent checkbox. The link text is marked with {braces}.
+        defineField({
+          name: 'notice',
+          title: 'Privacy Line (above the button)',
+          type: 'localizedString',
+          description: 'e.g. "By sending, you agree to our {privacy policy}." — the words in {braces} link to the Privacy Page below. Leave empty for no line.',
+        }),
+        defineField({
+          name: 'policyPage',
+          title: 'Privacy Page',
+          type: 'reference',
+          to: [{ type: 'page' }],
+          description: 'The page the privacy line links to, in the visitor’s language.',
+          options: {
+            disableNew: true,
+            // Legal pages of this form’s own client only.
+            filter: ({ document }: { document: Record<string, unknown> }) => {
+              const t = (document as { tenantSlug?: string } | undefined)?.tenantSlug
+              if (!t) return { filter: '_id == "@@no-tenant@@"' }
+              return {
+                filter: 'pageType == "legal" && projectSlug in *[_type == "project" && coalesce(tenantSlug, clientRef->tenantSlug) == $t].projectSlug',
+                params: { t },
+              }
+            },
+          },
+        }),
       ],
     }),
 

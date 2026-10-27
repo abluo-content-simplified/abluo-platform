@@ -245,6 +245,8 @@ steps[]{
 },
 "requireConsent": privacy.requireConsent,
 "consentText": ${loc('privacy.consentText')},
+"privacyNotice": ${loc('privacy.notice')},
+"privacyPageSlug": *[_type == "page" && _id == ^.privacy.policyPage._ref && projectSlug == $projectSlug][0]{ "s": coalesce(slug[$locale].current, slug[$defaultLocale].current) }.s,
 "successTitle": ${loc('success.title')},
 "successBody": ${loc('success.body')}
 `

@@ -1661,6 +1661,10 @@ export interface RenderableFormDefinition {
   steps: RenderableFormStep[]
   requireConsent?: boolean
   consentText?: string
+  /** Locale-resolved privacy line above the submit button; link text in {braces}. */
+  privacyNotice?: string | null
+  /** Slug (request locale) of the privacy page the line links to; null when unset or another project's page. */
+  privacyPageSlug?: string | null
   successTitle?: string
   successBody?: string
 }

@@ -18,6 +18,7 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { useFocusOnChange } from './useFocusOnChange'
+import { FormPrivacyNotice } from './FormPrivacyNotice'
 import { FormField, validateForm } from '@/components/fields'
 import type { RenderableFormDefinition } from '@/lib/sanity/types'
 import {
@@ -196,6 +197,8 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
             />
           </div>
         ))}
+
+      <FormPrivacyNotice text={definition.privacyNotice} pageSlug={definition.privacyPageSlug} locale={locale} urlSegment={tenantSlug} />
 
       {/* Honeypot — hidden from humans, caught by spam.ts as `company_website`. */}
       <input

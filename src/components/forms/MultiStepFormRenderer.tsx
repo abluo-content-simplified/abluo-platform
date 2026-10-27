@@ -40,6 +40,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { FormPrivacyNotice } from './FormPrivacyNotice'
 import { useFocusOnChange } from './useFocusOnChange'
 import { FormField, validateForm } from '@/components/fields'
 import type { RenderableFormDefinition, RenderableFormField } from '@/lib/sanity/types'
@@ -557,6 +558,9 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
             ))}
         </>
       )}
+
+      {/* Privacy line — on the step that sends (the final one). */}
+      {finalStep && <FormPrivacyNotice text={def.privacyNotice} pageSlug={def.privacyPageSlug} locale={locale} urlSegment={tenantSlug} />}
 
       {/* Honeypot — hidden from humans, caught by spam.ts as `company_website`. */}
       <input
