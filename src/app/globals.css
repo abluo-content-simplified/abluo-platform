@@ -234,6 +234,22 @@
     hyphens: auto;
   }
 
+  /* ─── Line balance: no lonely words ─────────────────────────────────────────
+     Tom 2026-10-27: a heading that ends on one word ("… concentration? / Yoga!")
+     or a paragraph whose last line is a single word reads as a mistake.
+     `balance` spreads a heading's words evenly over its lines; `pretty` keeps
+     the last line of running text from holding a single word. Both are
+     inherited, so spans inside a heading (accent words, per-line spans) follow.
+     Browsers without support wrap as before — nothing else changes. Balance is
+     limited to headings because it is costly on long text and would narrow
+     paragraphs; pretty only adjusts the last few lines. */
+  :where(h1, h2, h3, h4, h5, h6, summary) {
+    text-wrap: balance;
+  }
+  :where(p, li, dd, blockquote, figcaption) {
+    text-wrap: pretty;
+  }
+
   /* The dashboard and admin are not public pages, they are chrome: a hyphen
      inside a submission value or a table cell reads as data corruption. They
      also keep `break-word` rather than `anywhere`, because `anywhere` changes
