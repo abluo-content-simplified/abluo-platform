@@ -279,6 +279,25 @@ export function createFakeStore(now: () => number = Date.now): FakeStore {
       if (!d) throw new AccessError('not_found')
       d.archivedAt = archived ? (d.archivedAt ?? new Date(now()).toISOString()) : null
     },
+    async deleteDocuments(projectId: string, documentIds: string[]) {
+      call('deleteDocuments')
+      const ids = [...new Set(documentIds)]
+      if (ids.length === 0 || ids.length > 100) throw new AccessError('invalid_input', 'invalid_documents')
+      const docs = ids.map((id) => s.docs.find((d) => d.id === id && d.projectId === projectId))
+      if (docs.some((d) => !d)) throw new AccessError('not_found')
+      if (docs.some((d) => !d!.archivedAt)) throw new AccessError('invalid_input', 'not_archived')
+      const paths = new Set([
+        ...s.files.filter((f) => ids.includes(f.documentId)).map((f) => f.storagePath),
+        ...s.uploads.filter((u) => ids.includes(u.documentId)).map((u) => u.storagePath),
+      ])
+      s.docs = s.docs.filter((d) => !ids.includes(d.id))
+      s.files = s.files.filter((f) => !ids.includes(f.documentId))
+      s.uploads = s.uploads.filter((u) => !ids.includes(u.documentId))
+      s.placements = s.placements.filter((p) => !ids.includes(p.documentId))
+      for (const path of paths) if (!s.files.some((f) => f.storagePath === path) && !s.trash.some((t) => t.storagePath === path)) s.trash.push({ storagePath: path, projectId, reason: 'document_deleted' })
+      for (let i = 0; i < ids.length; i++) s.events.push({ projectId, action: 'document_deleted' })
+      return ids.length
+    },
     async beginUpload(projectId: string, i: { documentId: string; locales: string[]; mimeType: DocumentMimeType; sizeBytes: number; sha256: string; filename: string | null; ttlSeconds: number }) {
       call('beginUpload')
       if (i.locales.length === 0 || new Set(i.locales).size !== i.locales.length || !i.locales.every((l) => /^[a-z]{2}(-[A-Z]{2})?$/.test(l))) throw new AccessError('invalid_input', 'invalid_locale')

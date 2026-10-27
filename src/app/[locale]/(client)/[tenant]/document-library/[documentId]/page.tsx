@@ -3,7 +3,7 @@ import { getLocale } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
-import { DOCUMENTS_MANAGE_PERMISSION, DOCUMENTS_READ_PERMISSION, loadDocumentsDashboard } from '@/lib/access/documents-dashboard'
+import { DOCUMENTS_DELETE_PERMISSION, DOCUMENTS_MANAGE_PERMISSION, DOCUMENTS_READ_PERMISSION, loadDocumentsDashboard } from '@/lib/access/documents-dashboard'
 import { DOCUMENTS_MODULE_ID } from '@/lib/access/model'
 import { PageShell } from '@/components/app/ui/PageShell'
 import { DocumentEditor } from '@/components/client/documents/DocumentEditor'
@@ -34,7 +34,7 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
 
   return (
     <PageShell>
-      <DocumentEditor projectSlug={projectSlug} data={data} document={document} canManage={canManage} supportVisit={Boolean(ctx.support)} />
+      <DocumentEditor projectSlug={projectSlug} data={data} document={document} canManage={canManage} canDelete={grant.permissions.includes(DOCUMENTS_DELETE_PERMISSION) && !ctx.support} supportVisit={Boolean(ctx.support)} />
     </PageShell>
   )
 }

@@ -91,6 +91,11 @@ describe('the Documents list', () => {
     expect(html).toContain('/genitori')
     expect(html).toContain('No documents on this page yet.') // consiglio
   })
+  it('rows can be selected (checkboxes) by people who may manage; readers get none', () => {
+    expect(list()).toContain('aria-label="Select all documents"')
+    expect(list()).toContain('aria-label="Select Listino"')
+    expect(list({ canManage: false })).not.toContain('Select Listino')
+  })
   it('readers and support visits: read-only, saying why; nothing to add', () => {
     expect(list({ canManage: false })).toContain('needs the Manage documents permission')
     const sup = list({ canManage: false, supportVisit: true })

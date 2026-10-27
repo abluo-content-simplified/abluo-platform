@@ -23,6 +23,7 @@ import {
   createDocumentAction,
   removeDocumentLanguagesAction,
   setDocumentAccessAction,
+  deleteDocumentsAction,
   setDocumentArchivedAction,
   updateDocumentAction,
 } from '@/app/[locale]/(client)/[tenant]/document-library/actions'
@@ -54,12 +55,15 @@ export function DocumentEditor({
   data,
   document,
   canManage,
+  canDelete = false,
   supportVisit = false,
 }: {
   projectSlug: string
   data: Ready
   document: DocumentView | null
   canManage: boolean
+  /** May delete an archived document for good (Owner; the server re-checks). */
+  canDelete?: boolean
   supportVisit?: boolean
 }) {
   const t = useTranslations('clientDashboard.documents')
@@ -89,6 +93,8 @@ export function DocumentEditor({
   const [saved, setSaved] = useState<string | null>(null)
   const [createdId, setCreatedId] = useState<string | null>(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const fileFor = useRef<string | null>(null)
 
@@ -204,6 +210,23 @@ export function DocumentEditor({
     }
   }
 
+  async function deleteForGood() {
+    if (!document) return
+    setBusy(true)
+    setDeleteError(null)
+    try {
+      const r = await deleteDocumentsAction({ projectSlug, documentIds: [document.id] })
+      if (!r.ok) return setDeleteError(documentErrorText(t, r.error))
+      setDeleteOpen(false)
+      router.replace(`/${projectSlug}/document-library`)
+      router.refresh()
+    } catch {
+      setDeleteError(t('errors.failed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const menu: CardMenuItem[] = []
   if (document?.link) {
     menu.push({
@@ -218,6 +241,10 @@ export function DocumentEditor({
     menu.push(document.archived
       ? { key: 'restore', label: t('restore'), onSelect: () => void setArchived(false) }
       : { key: 'archive', label: t('archive'), onSelect: () => setArchiveOpen(true), destructive: true, separated: menu.length > 0 })
+  }
+  // Delete for good: archived documents only (archive first), Owners only.
+  if (document?.archived && canDelete) {
+    menu.push({ key: 'delete', label: t('bulk.delete'), onSelect: () => { setDeleteError(null); setDeleteOpen(true) }, destructive: true, separated: true })
   }
 
   const fileRow = (target: string, chosen: File | null, current: DocumentView['files'][number] | undefined) => (
@@ -413,6 +440,18 @@ export function DocumentEditor({
           busy={busy}
           onConfirm={() => void setArchived(true)}
           onCancel={() => setArchiveOpen(false)}
+        />
+      ) : null}
+      {document?.archived && canDelete ? (
+        <ConfirmDialog
+          open={deleteOpen}
+          title={t('deleteConfirm.titleOne', { title: document.title })}
+          body={t('deleteConfirm.body', { count: 1 })}
+          confirmLabel={t('bulk.delete')}
+          busy={busy}
+          error={deleteError}
+          onConfirm={() => void deleteForGood()}
+          onCancel={() => setDeleteOpen(false)}
         />
       ) : null}
     </div>

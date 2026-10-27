@@ -116,7 +116,7 @@ describe('buildModulePermissions()', () => {
 // ── MODULE_PERMISSION_MAP ─────────────────────────────────────────────────────
 
 describe('MODULE_PERMISSION_MAP', () => {
-  it('contains exactly 41 permissions — guards against accidental registry removals', () => {
+  it('contains exactly 42 permissions — guards against accidental registry removals', () => {
     // ADR-016 Phase B added events.taxonomy.write (event categories) — was 6.
     // ADR-017 slice 6 added blog.post.read (client dashboard read path) — was 8.
     // ADR-018 slice 2 added the forms module's 5 permissions — was 13.
@@ -129,8 +129,9 @@ describe('MODULE_PERMISSION_MAP', () => {
     // ADR-037 added the FAQ module's 3 (faq.set.read / write / delete) — 36.
     // ADR-040 added the Access module's 2 (members.access.read / manage) — 38.
     // ADR-040 §15 (R9) added the Documents module's 2 (documents.document.read / manage) — 40.
-    // R9.2 added documents.taxonomy.write (document categories and tags) — now 41.
-    expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(41)
+    // R9.2 added documents.taxonomy.write (document categories and tags) — 41.
+    // R9.3 added documents.document.delete (Owner deletes archived documents for good) — now 42.
+    expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(42)
   })
 
   it('has the same shape as buildModulePermissions()', () => {

@@ -32,6 +32,7 @@ export type AccessActionError =
   | 'page_without_section'
   | 'groups_unavailable'
   | 'term_unknown'
+  | 'not_archived'
   | 'invalid'
   | 'failed'
 
@@ -60,6 +61,7 @@ export function toAccessActionError(error: unknown): AccessActionError {
       if (error.message === 'page_without_section' || error.message === 'invalid_page') return 'page_without_section'
       if (error.message === 'groups_unavailable') return 'groups_unavailable'
       if (error.message === 'unknown_term') return 'term_unknown'
+      if (error.message === 'not_archived') return 'not_archived'
       return 'invalid'
     }
   }

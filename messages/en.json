@@ -3064,12 +3064,30 @@
         "invalid": "Something in that wasn’t accepted. Please check and try again.",
         "chooseFile": "Choose a file.",
         "chooseFileFor": "Choose the file in {language}.",
-        "term_unknown": "That category or tag no longer exists. Refresh and try again."
+        "term_unknown": "That category or tag no longer exists. Refresh and try again.",
+        "not_archived": "Only archived documents can be deleted for good. Archive them first."
       },
       "supportReadOnly": "You are visiting as Abluo support. You can look around, but documents are changed only by the site’s own team.",
       "categoryFilter": "Category",
       "allCategories": "All categories",
-      "noCategory": "No category"
+      "noCategory": "No category",
+      "select": "Select {title}",
+      "selectAll": "Select all documents",
+      "bulk": {
+        "label": "Selected documents",
+        "selected": "{count, plural, one {# selected} other {# selected}}",
+        "archived": "{count, plural, one {# document archived.} other {# documents archived.}}",
+        "restored": "{count, plural, one {# document restored. Choose its pages again.} other {# documents restored. Choose their pages again.}}",
+        "deleted": "{count, plural, one {# document deleted for good.} other {# documents deleted for good.}}",
+        "delete": "Delete for good",
+        "clear": "Clear",
+        "deleteNeedsArchive": "Only archived documents can be deleted for good. Archive them first."
+      },
+      "deleteConfirm": {
+        "titleOne": "Delete “{title}” for good?",
+        "titleMany": "Delete {count} documents for good?",
+        "body": "{count, plural, one {The document and its files are deleted permanently. This can’t be undone.} other {The documents and their files are deleted permanently. This can’t be undone.}}"
+      }
     }
   },
   "app": {

@@ -3064,12 +3064,30 @@
         "invalid": "Qualcosa non è stato accettato. Controlla e riprova.",
         "chooseFile": "Scegli un file.",
         "chooseFileFor": "Scegli il file in {language}.",
-        "term_unknown": "Quella categoria o quel tag non esiste più. Aggiorna e riprova."
+        "term_unknown": "Quella categoria o quel tag non esiste più. Aggiorna e riprova.",
+        "not_archived": "Solo i documenti archiviati si possono eliminare definitivamente. Archiviali prima."
       },
       "supportReadOnly": "Stai visitando come supporto Abluo. Puoi dare un’occhiata, ma i documenti li modifica solo il team del sito.",
       "categoryFilter": "Categoria",
       "allCategories": "Tutte le categorie",
-      "noCategory": "Senza categoria"
+      "noCategory": "Senza categoria",
+      "select": "Seleziona {title}",
+      "selectAll": "Seleziona tutti i documenti",
+      "bulk": {
+        "label": "Documenti selezionati",
+        "selected": "{count, plural, one {# selezionato} other {# selezionati}}",
+        "archived": "{count, plural, one {# documento archiviato.} other {# documenti archiviati.}}",
+        "restored": "{count, plural, one {# documento ripristinato. Scegli di nuovo le sue pagine.} other {# documenti ripristinati. Scegli di nuovo le loro pagine.}}",
+        "deleted": "{count, plural, one {# documento eliminato definitivamente.} other {# documenti eliminati definitivamente.}}",
+        "delete": "Elimina definitivamente",
+        "clear": "Annulla",
+        "deleteNeedsArchive": "Solo i documenti archiviati si possono eliminare definitivamente. Archiviali prima."
+      },
+      "deleteConfirm": {
+        "titleOne": "Eliminare definitivamente “{title}”?",
+        "titleMany": "Eliminare definitivamente {count} documenti?",
+        "body": "{count, plural, one {Il documento e i suoi file vengono eliminati per sempre. Non si può annullare.} other {I documenti e i loro file vengono eliminati per sempre. Non si può annullare.}}"
+      }
     }
   },
   "app": {

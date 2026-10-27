@@ -3064,12 +3064,30 @@
         "invalid": "Etwas daran wurde nicht akzeptiert. Bitte prüfen und erneut versuchen.",
         "chooseFile": "Wählen Sie eine Datei.",
         "chooseFileFor": "Wählen Sie die Datei auf {language}.",
-        "term_unknown": "Diese Kategorie oder dieses Tag gibt es nicht mehr. Laden Sie neu und versuchen Sie es erneut."
+        "term_unknown": "Diese Kategorie oder dieses Tag gibt es nicht mehr. Laden Sie neu und versuchen Sie es erneut.",
+        "not_archived": "Nur archivierte Dokumente können endgültig gelöscht werden. Archivieren Sie sie zuerst."
       },
       "supportReadOnly": "Sie sind als Abluo-Support hier. Sie können sich umsehen, aber Dokumente ändert nur das Team der Website.",
       "categoryFilter": "Kategorie",
       "allCategories": "Alle Kategorien",
-      "noCategory": "Ohne Kategorie"
+      "noCategory": "Ohne Kategorie",
+      "select": "{title} auswählen",
+      "selectAll": "Alle Dokumente auswählen",
+      "bulk": {
+        "label": "Ausgewählte Dokumente",
+        "selected": "{count, plural, one {# ausgewählt} other {# ausgewählt}}",
+        "archived": "{count, plural, one {# Dokument archiviert.} other {# Dokumente archiviert.}}",
+        "restored": "{count, plural, one {# Dokument wiederhergestellt. Wählen Sie seine Seiten erneut.} other {# Dokumente wiederhergestellt. Wählen Sie ihre Seiten erneut.}}",
+        "deleted": "{count, plural, one {# Dokument endgültig gelöscht.} other {# Dokumente endgültig gelöscht.}}",
+        "delete": "Endgültig löschen",
+        "clear": "Aufheben",
+        "deleteNeedsArchive": "Nur archivierte Dokumente können endgültig gelöscht werden. Archivieren Sie sie zuerst."
+      },
+      "deleteConfirm": {
+        "titleOne": "„{title}“ endgültig löschen?",
+        "titleMany": "{count} Dokumente endgültig löschen?",
+        "body": "{count, plural, one {Das Dokument und seine Dateien werden dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.} other {Die Dokumente und ihre Dateien werden dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.}}"
+      }
     }
   },
   "app": {

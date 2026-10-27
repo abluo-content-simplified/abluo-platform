@@ -1623,6 +1623,12 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           defaultRoles: ['owner'],
         },
         {
+          id: 'documents.document.delete',
+          label: 'Delete documents for good',
+          description: 'Delete archived documents and their files permanently. Owners only.',
+          defaultRoles: ['owner'],
+        },
+        {
           id: 'documents.taxonomy.write',
           label: 'Manage document categories and tags',
           description: 'Create, rename, reorder and delete the categories and tags of documents.',

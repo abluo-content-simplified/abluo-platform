@@ -32,6 +32,8 @@ import {
   reorderPageDocuments,
   setDocumentAccessAndPlacements,
   setDocumentArchivedState,
+  setDocumentsArchivedState,
+  deleteDocumentsForGood,
   updateDocumentDetails,
   listDocumentsForDashboard,
   type DocumentsGrant,
@@ -57,13 +59,13 @@ async function readSite(ctx: TenantAuthorizationContext, projectId: string): Pro
   return { defaultLocale, locales: c?.supportedLocales?.length ? [...new Set([defaultLocale, ...c.supportedLocales])] : [defaultLocale] }
 }
 
-async function run<T extends object>(input: { projectSlug?: unknown }, reason: string, fn: (c: Ctx) => Promise<T>): Promise<AccessActionResult<T>> {
+async function run<T extends object>(input: { projectSlug?: unknown }, reason: string, fn: (c: Ctx) => Promise<T>, level: 'manage' | 'delete' = 'manage'): Promise<AccessActionResult<T>> {
   const access = await resolveProjectAction(input?.projectSlug)
   if (!access.ok) return { ok: false, error: access.error }
   // Deny by default (Tom, R9): what Abluo support may change in Documents is decided later.
   if (access.ctx.support) return { ok: false, error: 'support_mode' }
   try {
-    const grant = authorizeDocumentsManagement(access.ctx, access.grant.projectId, 'manage')
+    const grant = authorizeDocumentsManagement(access.ctx, access.grant.projectId, level)
     const site = await readSite(access.ctx, access.grant.projectId)
     const scoped = tenantScopedSanityClient(access.ctx, access.grant.projectId)
     let pages: Promise<DownloadPage[]> | null = null
@@ -136,6 +138,20 @@ export async function setDocumentArchivedAction(input: { projectSlug: string; do
     await setDocumentArchivedState(store, grant, input.documentId, input.archived === true)
     return {}
   })
+}
+
+/** Archive or restore the documents selected in the list. */
+export async function setDocumentsArchivedAction(input: { projectSlug: string; documentIds: string[]; archived: boolean }) {
+  return run(input, input.archived ? 'archive documents' : 'restore documents', async ({ store, grant }) => ({
+    changed: await setDocumentsArchivedState(store, grant, input.documentIds, input.archived === true),
+  }))
+}
+
+/** Delete archived documents for good (Owner: `documents.document.delete`). */
+export async function deleteDocumentsAction(input: { projectSlug: string; documentIds: string[] }) {
+  return run(input, 'delete documents for good', async ({ store, grant }) => ({
+    deleted: await deleteDocumentsForGood(store, grant, input.documentIds),
+  }), 'delete')
 }
 
 export async function removeDocumentLanguagesAction(input: { projectSlug: string; documentId: string; locales: string[] }) {

@@ -12,6 +12,7 @@ import { AccessError } from '../model'
 import {
   beginDocumentFileUpload, createDocumentWithPlacements, finishDocumentFileUpload, listDocumentsForDashboard, removeDocumentFromPage,
   removeDocumentLanguages, reorderPageDocuments, setDocumentAccessAndPlacements, setDocumentArchivedState, updateDocumentDetails,
+  setDocumentsArchivedState, deleteDocumentsForGood,
   type DocumentsGrant,
 } from '../documents'
 import type { DownloadPage } from '../download-pages'
@@ -288,5 +289,39 @@ describe('categories and tags (R9.2)', () => {
     const docs = await listDocumentsForDashboard(store, grant(A, 'read'))
     expect(documentTermUsage(docs, 'category').get('prezzi')?.map((x) => x.id)).toEqual([id])
     expect([...documentTermUsage(docs, 'tag').keys()].sort()).toEqual(['2027', 'listino'])
+  })
+})
+
+describe('several at once, and deleting for good (R9.3)', () => {
+  const del = (projectId = A) => Object.freeze({ projectId, actorUserId: randomUUID(), level: 'delete', groupsAvailable: true }) as unknown as DocumentsGrant
+  it('archive and restore several documents; each leaves its pages', async () => {
+    const two = await createDocumentWithPlacements(store, grant(A), { title: { en: 'Second' }, visibility: 'groups', groupIds: [gA], pageIds: ['members'] }, pages)
+    expect(await setDocumentsArchivedState(store, grant(A), [doc, two, doc], true)).toBe(2)
+    expect((await row())?.archivedAt).not.toBeNull()
+    expect((await row(two))?.pageIds).toEqual([])
+    expect(await setDocumentsArchivedState(store, grant(A), [doc, two], false)).toBe(2)
+    expect((await row())?.archivedAt).toBeNull()
+  })
+  it('only archived documents are deleted, all or none; files go to the sweep', async () => {
+    const { t, path } = await uploadVia(pdfBytes(2048))
+    await finishDocumentFileUpload(store, files, grant(A), t.uploadId)
+    const live = await createDocumentWithPlacements(store, grant(A), { title: { en: 'Live' }, visibility: 'everyone' }, pages)
+    await setDocumentArchivedState(store, grant(A), doc, true)
+    await expect(deleteDocumentsForGood(store, del(), [doc, live])).rejects.toThrow(/not_archived/)
+    expect(await row()).toBeDefined()
+    expect(await deleteDocumentsForGood(store, del(), [doc])).toBe(1)
+    expect(await row()).toBeUndefined()
+    expect(store.trash.map((x) => x.storagePath)).toContain(path)
+    await sweepSiteAccessFiles(store, files)
+    expect(files.objects.has(path)).toBe(false)
+    expect(await row(live)).toBeDefined()
+  })
+  it('a manage grant cannot delete; another project cannot delete; batches are capped', async () => {
+    await setDocumentArchivedState(store, grant(A), doc, true)
+    await expect(deleteDocumentsForGood(store, grant(A), [doc])).rejects.toThrow(AccessError)
+    await expect(deleteDocumentsForGood(store, del(B), [doc])).rejects.toThrow(AccessError)
+    await expect(deleteDocumentsForGood(store, del(), [])).rejects.toThrow(AccessError)
+    await expect(deleteDocumentsForGood(store, del(), Array.from({ length: 101 }, () => randomUUID()))).rejects.toThrow(AccessError)
+    expect(await row()).toBeDefined()
   })
 })

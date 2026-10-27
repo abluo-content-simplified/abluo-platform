@@ -35,6 +35,8 @@ vi.mock('@/lib/sanity/client', async (orig) => ({
 import {
   beginDocumentUploadAction,
   createDocumentAction,
+  deleteDocumentsAction,
+  setDocumentsArchivedAction,
   finishDocumentUploadAction,
   removeDocumentFromPageAction,
   setDocumentAccessAction,
@@ -156,5 +158,31 @@ describe('uploads', () => {
     expect(await beginDocumentUploadAction({ ...base, mimeType: 'image/svg+xml' })).toEqual({ ok: false, error: 'file_type' })
     expect(await beginDocumentUploadAction({ ...base, mimeType: 'image/png', sizeBytes: 10 * 1024 * 1024 + 1 })).toEqual({ ok: false, error: 'file_too_large' })
     expect(h.files.uploadsSigned).toHaveLength(0)
+  })
+})
+
+describe('several at once, and deleting for good (R9.3)', () => {
+  it('an Owner archives several, then deletes them for good; not-archived ones are refused', async () => {
+    const a = ((await create()) as { documentId: string }).documentId
+    const b = ((await create({ title: 'Orario' })) as { documentId: string }).documentId
+    expect(await deleteDocumentsAction({ projectSlug: 'site-a', documentIds: [a, b] })).toEqual({ ok: false, error: 'not_archived' })
+    expect(await setDocumentsArchivedAction({ projectSlug: 'site-a', documentIds: [a, b], archived: true })).toEqual({ ok: true, changed: 2 })
+    expect(await deleteDocumentsAction({ projectSlug: 'site-a', documentIds: [a, b] })).toEqual({ ok: true, deleted: 2 })
+    expect(h.store.docs).toHaveLength(0)
+  })
+  it('an Editor with "manage documents" may archive but never delete; support never; another project never', async () => {
+    const a = ((await create()) as { documentId: string }).documentId
+    await setDocumentsArchivedAction({ projectSlug: 'site-a', documentIds: [a], archived: true })
+    const editor = grant(P_A, 'editor')
+    editor.permissions = [...editor.permissions, 'documents.document.read', 'documents.document.manage']
+    as(editor)
+    expect(await setDocumentsArchivedAction({ projectSlug: 'site-a', documentIds: [a], archived: false })).toMatchObject({ ok: true })
+    await setDocumentsArchivedAction({ projectSlug: 'site-a', documentIds: [a], archived: true })
+    expect(await deleteDocumentsAction({ projectSlug: 'site-a', documentIds: [a] })).toEqual({ ok: false, error: 'forbidden' })
+    as(grant(P_A, 'owner'), { support: { mode: 'live_edit' } as never })
+    expect(await deleteDocumentsAction({ projectSlug: 'site-a', documentIds: [a] })).toEqual({ ok: false, error: 'support_mode' })
+    as(grant(P_B, 'owner'))
+    expect((await deleteDocumentsAction({ projectSlug: 'site-b', documentIds: [a] })).ok).toBe(false)
+    expect(h.store.docs).toHaveLength(1)
   })
 })

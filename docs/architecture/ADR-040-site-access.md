@@ -257,3 +257,6 @@ Phase 1 stores no personal data beyond salted IP hashes and an optional coarse d
 - A Supabase outage locks restricted content (accepted: deny by default).
 - New env var: `ACCESS_IP_SALT` (required for password attempts). Vercel's own `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_COMMIT_REF` decide the session environment.
 - Shared passwords leak by nature; rotation and "sign out everyone" are the remedy until Phase 2.
+
+**10. Delete for good (R9.3, 2026-10-27, migration 055).** Tom: the site's Owner may delete documents, so old material (last year's calendars) need not be kept forever. Following the content-lifecycle standard, only **archived** documents can be deleted (archive first; an archived document is already off every page and refused to every visitor). Permission `documents.document.delete` — Owner only, not grantable as an extra, never support. The Documents list has row selection (shared DataTable / ListRow selection + SelectionBar): Archive, Restore and, for Owners, Delete for good, confirmed by a dialog naming what goes; the same action is in an archived document's menu. Up to 100 at once, all or none. Files, groups, placements and uploads go with the document; stored objects are queued for the daily sweep. One `document_deleted` audit event per document, without a title.
+

@@ -30,7 +30,7 @@ declare const GRANT: unique symbol
 export type DocumentsGrant = {
   readonly projectId: string
   readonly actorUserId: string
-  readonly level: 'read' | 'manage'
+  readonly level: 'read' | 'manage' | 'delete'
   /** Access (`members`) is installed on the project: documents may be limited to groups. */
   readonly groupsAvailable: boolean
   readonly [GRANT]: true
@@ -40,10 +40,10 @@ export type DocumentsGrant = {
 export function authorizeDocumentsManagement(
   ctx: TenantAuthorizationContext,
   projectId: string,
-  level: 'read' | 'manage',
+  level: 'read' | 'manage' | 'delete',
   deps: { permissionOwnerMap?: Record<string, string> } = {}
 ): DocumentsGrant {
-  assertModuleAction(ctx, projectId, level === 'manage' ? DOCUMENTS_PERMISSIONS.manage : DOCUMENTS_PERMISSIONS.read, deps)
+  assertModuleAction(ctx, projectId, DOCUMENTS_PERMISSIONS[level], deps)
   const project = ctx.projects.find((p) => p.projectId === projectId)
   const groupsAvailable = Boolean(project?.enabledModuleIds.includes(ACCESS_MODULE_ID))
   return Object.freeze({ projectId, actorUserId: ctx.userId, level, groupsAvailable }) as DocumentsGrant
@@ -51,6 +51,9 @@ export function authorizeDocumentsManagement(
 
 function requireManage(grant: DocumentsGrant): void {
   if (grant?.level !== 'manage' || !isUuid(grant.projectId)) throw new AccessError('invalid_input', 'manage grant required')
+}
+function requireDelete(grant: DocumentsGrant): void {
+  if (grant?.level !== 'delete' || !isUuid(grant.projectId)) throw new AccessError('invalid_input', 'delete grant required')
 }
 function requireRead(grant: DocumentsGrant): void {
   if ((grant?.level !== 'read' && grant?.level !== 'manage') || !isUuid(grant.projectId)) throw new AccessError('invalid_input', 'grant required')
@@ -255,6 +258,29 @@ export async function setDocumentArchivedState(store: SiteAccessStore, grant: Do
   const id = requireDocumentId(documentId)
   if (archived === true) await store.setDocumentPlacements(grant.projectId, id, [], grant.actorUserId).catch(() => undefined)
   await store.setDocumentArchived(grant.projectId, id, archived === true, grant.actorUserId)
+}
+
+/** Archive or restore several documents (the list's selection). Each one is checked like a single change. */
+export async function setDocumentsArchivedState(store: SiteAccessStore, grant: DocumentsGrant, documentIds: unknown, archived: boolean): Promise<number> {
+  requireManage(grant)
+  const ids = requireDocumentIds(documentIds)
+  for (const id of ids) await setDocumentArchivedState(store, grant, id, archived)
+  return ids.length
+}
+
+/**
+ * Deletes documents for good (R9.3, migration 055). Only ARCHIVED documents —
+ * archive first, then delete (content-lifecycle standard). All or none. The
+ * stored files are removed from private storage by the daily sweep.
+ */
+export async function deleteDocumentsForGood(store: SiteAccessStore, grant: DocumentsGrant, documentIds: unknown): Promise<number> {
+  requireDelete(grant)
+  return store.deleteDocuments(grant.projectId, requireDocumentIds(documentIds), grant.actorUserId)
+}
+
+function requireDocumentIds(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length > ACCESS_LIMITS.documentsPerBatch) throw new AccessError('invalid_input', 'documents')
+  return [...new Set(value.map(requireDocumentId))]
 }
 
 /** Never the last language (archive the document instead). */

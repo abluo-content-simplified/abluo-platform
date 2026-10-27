@@ -15,6 +15,7 @@ const SQL = readFileSync(join(ROOT, 'supabase/migrations/050_site_access.sql'), 
   + readFileSync(join(ROOT, 'supabase/migrations/052_site_access_documents.sql'), 'utf8')
   + readFileSync(join(ROOT, 'supabase/migrations/053_site_access_session_summary.sql'), 'utf8')
   + readFileSync(join(ROOT, 'supabase/migrations/054_documents_module.sql'), 'utf8')
+  + readFileSync(join(ROOT, 'supabase/migrations/055_documents_delete.sql'), 'utf8')
 
 function sqlParams(fn: string): string[] {
   const m = SQL.match(new RegExp(`create (?:or replace )?function public\\.${fn}\\(([\\s\\S]*?)\\)\\s*returns`, 'm'))
@@ -79,6 +80,7 @@ describe('store ↔ migration 050', () => {
     await s.reorderPageDocuments(P, 'page-1', [P], 'a')
     await s.removeDocumentLanguages(P, P, ['it'], 'a')
     await s.setDocumentArchived(P, P, true, 'a')
+    await s.deleteDocuments(P, [P], 'a') // 055
     await s.finishUpload(P, P, { sizeBytes: 1, sha256: 'a'.repeat(64) }, 'a')
     await s.failUpload(P, P)
     await s.documentForDelivery(P, P, ['en'])
@@ -86,7 +88,7 @@ describe('store ↔ migration 050', () => {
     // 053 — signed-in summary
     await s.sessionSummary(P, 'production')
     const rpcs = calls.filter((c) => c.kind === 'rpc')
-    expect(rpcs).toHaveLength(22)
+    expect(rpcs).toHaveLength(23)
     // R9: the v2 functions, never the 052 ones they replace
     expect(rpcs.map((c) => c.name)).not.toContain('site_access_create_document')
     expect(rpcs.map((c) => c.name)).not.toContain('site_access_document_for_delivery')

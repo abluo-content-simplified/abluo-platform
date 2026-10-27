@@ -188,6 +188,8 @@ export interface SiteAccessStore {
   /** Never the last language. Returns how many language files were removed. */
   removeDocumentLanguages(projectId: string, documentId: string, locales: string[], actorUserId: string): Promise<number>
   setDocumentArchived(projectId: string, documentId: string, archived: boolean, actorUserId: string): Promise<void>
+  /** Deletes ARCHIVED documents of this project for good (all or none, ≤ 100); their objects go to the sweep. Migration 055. */
+  deleteDocuments(projectId: string, documentIds: string[], actorUserId: string): Promise<number>
   beginUpload(projectId: string, input: { documentId: string; locales: string[]; mimeType: DocumentMimeType; sizeBytes: number; sha256: string; filename: string | null; ttlSeconds: number }, actorUserId: string): Promise<UploadReservation>
   getUpload(projectId: string, uploadId: string): Promise<PendingUpload | null>
   /** Returns the storage path the first language's new file replaced (queued for removal), or null. */
@@ -425,6 +427,10 @@ export function createSupabaseSiteAccessStore(db: SupabaseClient): SiteAccessSto
 
     async setDocumentArchived(projectId, documentId, archived, actor) {
       check(await db.rpc('site_access_set_document_archived', { p_project_id: projectId, p_document_id: documentId, p_archived: archived, p_actor: actor }))
+    },
+
+    async deleteDocuments(projectId, documentIds, actor) {
+      return check(await db.rpc('site_access_delete_documents', { p_project_id: projectId, p_document_ids: documentIds, p_actor: actor })) as number
     },
 
     async beginUpload(projectId, i, actor) {

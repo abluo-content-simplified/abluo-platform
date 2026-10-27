@@ -3,7 +3,11 @@
 import { useCallback, useId, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
+import { BarButton } from '@/components/app/ui/BarButton'
 import { ButtonLink } from '@/components/app/ui/Button'
+import { isShiftChange } from '@/components/app/ui/Checkbox'
+import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
+import { idRange, SelectionBar } from '@/components/app/ui/SelectionBar'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import type { FilterChip } from '@/components/app/ui/FilterSheet'
 import { ListToolbar } from '@/components/app/ui/ListToolbar'
@@ -16,6 +20,8 @@ import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTa
 import { ListRow } from '@/components/app/ui/list/ListRow'
 import { CellChips, CellPill, CellText, LocalDate, Pill } from '@/components/app/ui/list/cells'
 import type { DocumentsDashboardData, DocumentView } from '@/lib/access/documents-dashboard'
+import { deleteDocumentsAction, setDocumentsArchivedAction } from '@/app/[locale]/(client)/[tenant]/document-library/actions'
+import { documentErrorText } from './document-bits'
 import { useLanguageName } from '@/components/client/access/access-bits'
 import { DocumentPagesRecap } from './DocumentPagesRecap'
 
@@ -29,17 +35,35 @@ type Status = 'active' | 'archived' | 'all'
  * languages and the pages it shows on. Opening one edits it; "Add document"
  * is the primary action. The Pages tab is a read-only recap of the pages that
  * can show documents, where the order on each page is set.
+ *
+ * Selection (R9.3): rows can be selected (checkbox, shift-click for a range);
+ * the shared SelectionBar offers Archive, Restore and — for Owners, archived
+ * documents only — Delete for good, confirmed by a dialog naming what goes.
  */
+const svg = (d: string) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d={d} />
+  </svg>
+)
+const ICONS = {
+  archive: svg('M3 4h18v4H3zM5 8v12h14V8M10 12h4'),
+  restore: svg('M3 12a9 9 0 1 0 3-6.7M3 4v5h5'),
+  trash: svg('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),
+  x: svg('M6 6l12 12M18 6L6 18'),
+}
 export function DocumentsBrowser({
   projectSlug,
   data,
   canManage,
+  canDelete = false,
   supportVisit = false,
   initialTab,
 }: {
   projectSlug: string
   data: DocumentsDashboardData
   canManage: boolean
+  /** May delete archived documents for good (Owner; the server re-checks). */
+  canDelete?: boolean
   supportVisit?: boolean
   initialTab: 'documents' | 'pages'
 }) {
@@ -94,7 +118,7 @@ export function DocumentsBrowser({
       />
       <div {...tabPanelProps(idBase, tab)}>
         {tab === 'documents' ? (
-          <DocumentsList projectSlug={projectSlug} data={data} canManage={canManage} />
+          <DocumentsList projectSlug={projectSlug} data={data} canManage={canManage} canDelete={canDelete} onDone={done} onFail={fail} />
         ) : (
           <DocumentPagesRecap projectSlug={projectSlug} data={data} canManage={canManage} onDone={done} onFail={fail} />
         )}
@@ -104,7 +128,21 @@ export function DocumentsBrowser({
   )
 }
 
-function DocumentsList({ projectSlug, data, canManage }: { projectSlug: string; data: Ready; canManage: boolean }) {
+function DocumentsList({
+  projectSlug,
+  data,
+  canManage,
+  canDelete,
+  onDone,
+  onFail,
+}: {
+  projectSlug: string
+  data: Ready
+  canManage: boolean
+  canDelete: boolean
+  onDone: (message: string) => void
+  onFail: (message: string) => void
+}) {
   const t = useTranslations('clientDashboard.documents')
   const locale = useLocale()
   const lang = useLanguageName()
@@ -134,6 +172,70 @@ function DocumentsList({ projectSlug, data, canManage }: { projectSlug: string; 
       && (!needle || `${d.title} ${Object.values(d.note ?? {}).join(' ')} ${categoryOf(d) ?? ''} ${tagsOf(d).join(' ')}`.toLowerCase().includes(needle))
   }
   const shown = data.documents.filter((d) => matches(d))
+
+  // ── Selection ──────────────────────────────────────────────────────────────
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [lastPicked, setLastPicked] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<DocumentView[] | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const selectedDocs = shown.filter((d) => selected.has(d.id))
+  const allState: 'none' | 'some' | 'all' = selectedDocs.length === 0 ? 'none' : selectedDocs.length === shown.length ? 'all' : 'some'
+  const toggle = (id: string, checked: boolean, shift: boolean) => {
+    const order = shown.map((d) => d.id)
+    setSelected((s) => {
+      const n = new Set(s)
+      for (const x of shift && lastPicked && lastPicked !== id ? idRange(order, lastPicked, id) : [id]) {
+        if (checked) n.add(x)
+        else n.delete(x)
+      }
+      return n
+    })
+    setLastPicked(id)
+  }
+  const toggleAll = (checked: boolean) => {
+    setSelected(checked ? new Set(shown.map((d) => d.id)) : new Set())
+    setLastPicked(null)
+  }
+  const clearSelection = () => {
+    setSelected(new Set())
+    setLastPicked(null)
+  }
+  const toArchive = selectedDocs.filter((d) => !d.archived)
+  const toRestore = selectedDocs.filter((d) => d.archived)
+  // Delete for good: only archived documents (archive first), only Owners.
+  const deletable = canDelete && selectedDocs.length > 0 && toArchive.length === 0
+
+  async function setArchived(docs: DocumentView[], archived: boolean) {
+    if (busy || docs.length === 0) return
+    setBusy(true)
+    try {
+      const r = await setDocumentsArchivedAction({ projectSlug, documentIds: docs.map((d) => d.id), archived })
+      if (!r.ok) return onFail(documentErrorText(t, r.error))
+      clearSelection()
+      onDone(t(archived ? 'bulk.archived' : 'bulk.restored', { count: r.changed }))
+    } catch {
+      onFail(t('errors.failed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function deleteForGood(docs: DocumentView[]) {
+    if (busy) return
+    setBusy(true)
+    setDeleteError(null)
+    try {
+      const r = await deleteDocumentsAction({ projectSlug, documentIds: docs.map((d) => d.id) })
+      if (!r.ok) return setDeleteError(documentErrorText(t, r.error))
+      setConfirmDelete(null)
+      clearSelection()
+      onDone(t('bulk.deleted', { count: r.deleted }))
+    } catch {
+      setDeleteError(t('errors.failed'))
+    } finally {
+      setBusy(false)
+    }
+  }
   const isDefault = !q && who === 'all' && status === 'active' && category === 'all'
   const hrefOf = (d: DocumentView) => `/${projectSlug}/document-library/${d.id}`
 
@@ -228,11 +330,24 @@ function DocumentsList({ projectSlug, data, canManage }: { projectSlug: string; 
       ) : (
         <>
           <div className="hidden md:block">
-            <DataTable rows={shown} columns={columns} rowKey={(d) => d.id} rowHref={hrefOf} label={t('title')} minWidth="min-w-[56rem]" />
+            <DataTable
+              rows={shown}
+              columns={columns}
+              rowKey={(d) => d.id}
+              rowHref={hrefOf}
+              label={t('title')}
+              minWidth="min-w-[56rem]"
+              selection={canManage ? { selected, onToggle: toggle, allState, onToggleAll: toggleAll, rowLabel: (d) => t('select', { title: d.title }), allLabel: t('selectAll') } : undefined}
+            />
           </div>
           <ul className="flex flex-col gap-3 md:hidden">
             {shown.map((d) => (
-              <ListRow key={d.id} href={hrefOf(d)} label={t('open', { title: d.title })}>
+              <ListRow
+                key={d.id}
+                href={hrefOf(d)}
+                label={t('open', { title: d.title })}
+                select={canManage ? { checked: selected.has(d.id), label: t('select', { title: d.title }), onChange: (checked, e) => toggle(d.id, checked, isShiftChange(e)) } : undefined}
+              >
                 <span className="text-[0.9375rem] leading-6 font-semibold break-words text-foreground">{d.title}</span>
                 <span className="flex flex-wrap items-start gap-1.5">
                   {whoLabel(d).map((w) => <Pill key={w} tone={d.visibility === 'everyone' ? 'muted' : 'outline'}>{w}</Pill>)}
@@ -244,6 +359,37 @@ function DocumentsList({ projectSlug, data, canManage }: { projectSlug: string; 
           </ul>
         </>
       )}
+
+      {selectedDocs.length > 0 ? (
+        <SelectionBar label={t('bulk.label')} count={t('bulk.selected', { count: selectedDocs.length })}>
+          {toArchive.length > 0 ? (
+            <BarButton disabled={busy} onPress={() => void setArchived(toArchive, true)} icon={ICONS.archive}>{t('archive')}</BarButton>
+          ) : null}
+          {toRestore.length > 0 ? (
+            <BarButton disabled={busy} onPress={() => void setArchived(toRestore, false)} icon={ICONS.restore}>{t('restore')}</BarButton>
+          ) : null}
+          {canDelete ? (
+            <BarButton disabled={busy || !deletable} onPress={() => { setDeleteError(null); setConfirmDelete(selectedDocs) }} icon={ICONS.trash} destructive>
+              {t('bulk.delete')}
+            </BarButton>
+          ) : null}
+          <BarButton onPress={clearSelection} icon={ICONS.x}>{t('bulk.clear')}</BarButton>
+        </SelectionBar>
+      ) : null}
+      {canDelete && selectedDocs.length > 0 && !deletable ? <p className="text-sm text-muted-foreground" aria-live="polite">{t('bulk.deleteNeedsArchive')}</p> : null}
+
+      {confirmDelete ? (
+        <ConfirmDialog
+          open
+          title={confirmDelete.length === 1 ? t('deleteConfirm.titleOne', { title: confirmDelete[0].title }) : t('deleteConfirm.titleMany', { count: confirmDelete.length })}
+          body={t('deleteConfirm.body', { count: confirmDelete.length })}
+          confirmLabel={t('bulk.delete')}
+          busy={busy}
+          error={deleteError}
+          onConfirm={() => void deleteForGood(confirmDelete)}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      ) : null}
     </div>
   )
 }

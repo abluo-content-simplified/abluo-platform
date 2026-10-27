@@ -3,7 +3,7 @@ import { getLocale } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
-import { DOCUMENTS_MANAGE_PERMISSION, DOCUMENTS_READ_PERMISSION, loadDocumentsDashboard } from '@/lib/access/documents-dashboard'
+import { DOCUMENTS_DELETE_PERMISSION, DOCUMENTS_MANAGE_PERMISSION, DOCUMENTS_READ_PERMISSION, loadDocumentsDashboard } from '@/lib/access/documents-dashboard'
 import { DOCUMENTS_MODULE_ID } from '@/lib/access/model'
 import { PageShell } from '@/components/app/ui/PageShell'
 import { DocumentsBrowser } from '@/components/client/documents/DocumentsBrowser'
@@ -47,6 +47,7 @@ export default async function DocumentsPage({
         projectSlug={projectSlug}
         data={data}
         canManage={grant.permissions.includes(DOCUMENTS_MANAGE_PERMISSION) && !ctx.support}
+        canDelete={grant.permissions.includes(DOCUMENTS_DELETE_PERMISSION) && !ctx.support}
         supportVisit={Boolean(ctx.support)}
         initialTab={tab === 'pages' ? 'pages' : 'documents'}
       />

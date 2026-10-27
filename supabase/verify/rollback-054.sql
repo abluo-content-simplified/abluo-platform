@@ -19,6 +19,9 @@ begin
   if to_regclass('public.site_access_document_placements') is null then
     raise exception 'rollback-054: 054 is not applied';
   end if;
+  if to_regprocedure('public.site_access_delete_documents(uuid, uuid[], uuid)') is not null then
+    raise exception 'rollback-054: 055 is applied — run rollback-055.sql first';
+  end if;
   if exists (select 1 from public.site_access_documents
               where visibility <> 'groups' or note is not null or category_term_id is not null or cardinality(tag_term_ids) > 0)
      or exists (select 1 from public.site_access_document_placements)

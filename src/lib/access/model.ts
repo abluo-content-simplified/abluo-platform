@@ -38,6 +38,8 @@ export const DOCUMENTS_PERMISSIONS = {
   read: 'documents.document.read',
   /** Add, change, place and archive documents — never groups or passwords. */
   manage: 'documents.document.manage',
+  /** Delete ARCHIVED documents for good (R9.3). Owner only; never an extra, never support. */
+  delete: 'documents.document.delete',
 } as const
 
 export const ACCESS_LIMITS = {
@@ -58,6 +60,8 @@ export const ACCESS_LIMITS = {
   documentTitleMax: 120,
   tagsPerDocument: 20,
   pagesPerDocument: 50,
+  /** Documents changed or deleted in one go from the list (055 refuses more than 100). */
+  documentsPerBatch: 100,
   /** Signed storage URLs are bearer links: usable WITHOUT a session until they expire. */
   signedUrlSeconds: 60,
 } as const

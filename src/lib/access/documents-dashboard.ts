@@ -145,3 +145,4 @@ export async function loadDocumentsDashboard(ctx: TenantAuthorizationContext, pr
 
 export const DOCUMENTS_READ_PERMISSION = DOCUMENTS_PERMISSIONS.read
 export const DOCUMENTS_MANAGE_PERMISSION = DOCUMENTS_PERMISSIONS.manage
+export const DOCUMENTS_DELETE_PERMISSION = DOCUMENTS_PERMISSIONS.delete
