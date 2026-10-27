@@ -70,4 +70,14 @@ describe('renderNewSubmissionEmail', () => {
     expect(out.html).not.toContain('<script>alert(1)</script>')
     expect(out.html).toContain('&lt;script&gt;')
   })
+
+  it('shows a checkbox answer as Yes / No, both ways', () => {
+    const out = renderNewSubmissionEmail({
+      formId: 'book-recommendation', topic: 'book-recommendation', locale: 'en', submissionId: 's',
+      submissionData: { book_title: 'Dune', credit_by_name: true, newsletter: false }, source: {},
+    })
+    expect(out.text).toContain('credit_by_name: Yes')
+    expect(out.text).toContain('newsletter: No')
+    expect(out.text).not.toMatch(/: (true|false)\b/)
+  })
 })

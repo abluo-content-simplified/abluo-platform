@@ -30,8 +30,15 @@ function esc(v: unknown): string {
     .replace(/"/g, '&quot;')
 }
 
+/** One submitted value as text. A checkbox (boolean) reads Yes / No, never "true" / "false". */
+export function formatSubmissionValue(v: unknown): string {
+  if (typeof v === 'boolean') return v ? 'Yes' : 'No'
+  if (Array.isArray(v)) return v.join(', ')
+  return String(v ?? '')
+}
+
 function flatten(data: Record<string, unknown>): Array<[string, string]> {
-  return Object.entries(data ?? {}).map(([k, v]) => [k, Array.isArray(v) ? v.join(', ') : String(v ?? '')])
+  return Object.entries(data ?? {}).map(([k, v]) => [k, formatSubmissionValue(v)])
 }
 
 export interface NewSubmissionEmailInput {
