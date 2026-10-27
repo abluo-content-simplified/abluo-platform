@@ -6,6 +6,7 @@ import { useRouter } from '@/i18n/navigation'
 import { BarButton } from '@/components/app/ui/BarButton'
 import { ButtonLink } from '@/components/app/ui/Button'
 import { isShiftChange } from '@/components/app/ui/Checkbox'
+import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { idRange, SelectionBar } from '@/components/app/ui/SelectionBar'
 import { EmptyState } from '@/components/app/ui/EmptyState'
@@ -36,7 +37,9 @@ type Status = 'active' | 'archived' | 'all'
  * is the primary action. The Pages tab is a read-only recap of the pages that
  * can show documents, where the order on each page is set.
  *
- * Selection (R9.3): rows can be selected (checkbox, shift-click for a range);
+ * Every row has a menu (Open, Copy link, Archive / Restore and, for Owners and
+ * archived documents, Delete for good), so one document never needs the
+ * selection. Selection (R9.3): rows can be selected (checkbox, shift-click for a range);
  * the shared SelectionBar offers Archive, Restore and — for Owners, archived
  * documents only — Delete for good, confirmed by a dialog naming what goes.
  */
@@ -179,6 +182,7 @@ function DocumentsList({
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<DocumentView[] | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [confirmArchive, setConfirmArchive] = useState<DocumentView | null>(null)
   const selectedDocs = shown.filter((d) => selected.has(d.id))
   const allState: 'none' | 'some' | 'all' = selectedDocs.length === 0 ? 'none' : selectedDocs.length === shown.length ? 'all' : 'some'
   const toggle = (id: string, checked: boolean, shift: boolean) => {
@@ -220,6 +224,29 @@ function DocumentsList({
       setBusy(false)
     }
   }
+  const menuFor = (d: DocumentView): CardMenuItem[] => {
+    const items: CardMenuItem[] = [{ key: 'open', label: t('openDocument'), href: hrefOf(d), onSelect: () => undefined }]
+    if (d.link && !d.archived) {
+      items.push({
+        key: 'copy',
+        label: t('copyLink'),
+        onSelect: () => {
+          void navigator.clipboard?.writeText(d.link!).then(() => onDone(t('linkCopied'))).catch(() => onFail(t('errors.failed')))
+        },
+      })
+    }
+    if (canManage) {
+      items.push(d.archived
+        ? { key: 'restore', label: t('restore'), onSelect: () => void setArchived([d], false) }
+        : { key: 'archive', label: t('archive'), onSelect: () => setConfirmArchive(d), destructive: true, separated: true })
+    }
+    // Delete for good: archived documents only (archive first), Owners only.
+    if (canDelete && d.archived) {
+      items.push({ key: 'delete', label: t('bulk.delete'), onSelect: () => { setDeleteError(null); setConfirmDelete([d]) }, destructive: true, separated: true })
+    }
+    return items
+  }
+
   async function deleteForGood(docs: DocumentView[]) {
     if (busy) return
     setBusy(true)
@@ -262,6 +289,7 @@ function DocumentsList({
     { key: 'languages', header: t('columns.languages'), width: 'w-44', render: (d) => <CellChips items={languages(d)} max={3} empty={t('none')} /> },
     { key: 'pages', header: t('columns.pages'), width: 'w-56', render: (d) => (pagesOf(d).length ? <CellChips items={pagesOf(d)} max={2} /> : <CellPill>{statusPill(d) ?? <Pill tone="outline">{t('notShown')}</Pill>}</CellPill>) },
     { key: 'added', header: t('columns.added'), width: 'w-32', className: 'whitespace-nowrap', render: (d) => <LocalDate iso={d.createdAt} className="text-sm leading-6 text-muted-foreground" /> },
+    { key: 'menu', header: <span className="sr-only">{t('columns.actions')}</span>, width: 'w-14', render: (d) => <CardMenu variant="cell" label={t('menuFor', { title: d.title })} items={menuFor(d)} /> },
   ]
 
   if (data.documents.length === 0) {
@@ -347,6 +375,7 @@ function DocumentsList({
                 href={hrefOf(d)}
                 label={t('open', { title: d.title })}
                 select={canManage ? { checked: selected.has(d.id), label: t('select', { title: d.title }), onChange: (checked, e) => toggle(d.id, checked, isShiftChange(e)) } : undefined}
+                menu={{ label: t('menuFor', { title: d.title }), items: menuFor(d) }}
               >
                 <span className="text-[0.9375rem] leading-6 font-semibold break-words text-foreground">{d.title}</span>
                 <span className="flex flex-wrap items-start gap-1.5">
@@ -378,6 +407,17 @@ function DocumentsList({
       ) : null}
       {canDelete && selectedDocs.length > 0 && !deletable ? <p className="text-sm text-muted-foreground" aria-live="polite">{t('bulk.deleteNeedsArchive')}</p> : null}
 
+      {confirmArchive ? (
+        <ConfirmDialog
+          open
+          title={t('archiveConfirm.title', { title: confirmArchive.title })}
+          body={t('archiveConfirm.body')}
+          confirmLabel={t('archive')}
+          busy={busy}
+          onConfirm={() => { const d = confirmArchive; setConfirmArchive(null); void setArchived([d], true) }}
+          onCancel={() => setConfirmArchive(null)}
+        />
+      ) : null}
       {confirmDelete ? (
         <ConfirmDialog
           open

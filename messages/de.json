@@ -2939,7 +2939,8 @@
         "languages": "Sprachen",
         "pages": "Angezeigt auf",
         "added": "Hinzugefügt",
-        "category": "Kategorie"
+        "category": "Kategorie",
+        "actions": "Aktionen"
       },
       "filtersLabel": "Dokumente filtern",
       "searchLabel": "Dokumente suchen",
@@ -3087,7 +3088,8 @@
         "titleOne": "„{title}“ endgültig löschen?",
         "titleMany": "{count} Dokumente endgültig löschen?",
         "body": "{count, plural, one {Das Dokument und seine Dateien werden dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.} other {Die Dokumente und ihre Dateien werden dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.}}"
-      }
+      },
+      "removeChosen": "{name} entfernen"
     }
   },
   "app": {

@@ -91,6 +91,11 @@ describe('the Documents list', () => {
     expect(html).toContain('/genitori')
     expect(html).toContain('No documents on this page yet.') // consiglio
   })
+  it('every row has its own menu, also with a single document and for readers', () => {
+    expect(list()).toContain('aria-label="Actions for Listino"')
+    expect(list({ data: { ...data, documents: [data.documents[0]] } })).toContain('aria-label="Actions for Listino"')
+    expect(list({ canManage: false })).toContain('aria-label="Actions for Listino"')
+  })
   it('rows can be selected (checkboxes) by people who may manage; readers get none', () => {
     expect(list()).toContain('aria-label="Select all documents"')
     expect(list()).toContain('aria-label="Select Listino"')

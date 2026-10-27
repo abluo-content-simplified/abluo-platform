@@ -70,7 +70,7 @@ export function AccessPrompt({ action, returnTo, fields, labels, notice }: Acces
         <p
           id={noticeId}
           role={isError ? 'alert' : 'status'}
-          className="m-0 rounded-[var(--form-border-radius)] px-4 py-3 text-sm leading-relaxed"
+          className="m-0 rounded-[var(--form-border-radius)] px-4 py-3 text-sm leading-relaxed text-pretty"
           style={{
             color: isError ? 'var(--form-error-color)' : 'var(--color-text-secondary)',
             border: `1px solid ${isError ? 'var(--form-input-error-border)' : 'var(--color-border)'}`,

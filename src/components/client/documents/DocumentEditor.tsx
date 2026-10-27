@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { BackLink } from '@/components/app/ui/BackLink'
-import { Button, ButtonLink } from '@/components/app/ui/Button'
+import { Button, ButtonLink, IconButton } from '@/components/app/ui/Button'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { CheckboxCard } from '@/components/app/ui/CheckboxCard'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
@@ -247,12 +247,26 @@ export function DocumentEditor({
     menu.push({ key: 'delete', label: t('bulk.delete'), onSelect: () => { setDeleteError(null); setDeleteOpen(true) }, destructive: true, separated: true })
   }
 
+  // A file chosen but not saved yet can be taken away (✕); "Replace file" only
+  // when the document already HAS a file in that language.
+  const unchoose = (target: string) => {
+    if (target === '*') setSharedFile(null)
+    else setEachFile((m) => ({ ...m, [target]: null }))
+  }
   const fileRow = (target: string, chosen: File | null, current: DocumentView['files'][number] | undefined) => (
     <Panel tone="muted" padding="md" className="flex flex-wrap items-center justify-between gap-2">
       <span className="min-w-0 text-[0.9375rem] break-words text-foreground">
         {chosen ? `${chosen.name} · ${size(chosen.size)}` : current ? t('currentFile', { name: current.originalFilename ?? t('file'), size: size(current.sizeBytes) }) : t('noFileChosen')}
       </span>
-      {!readOnly ? <Button variant="quiet" disabled={busy} onClick={() => pick(target)}>{chosen || current ? t('replaceFile') : t('chooseFile')}</Button> : null}
+      {readOnly ? null : chosen ? (
+        <IconButton aria-label={t('removeChosen', { name: chosen.name })} disabled={busy} onClick={() => unchoose(target)}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </IconButton>
+      ) : (
+        <Button variant="quiet" disabled={busy} onClick={() => pick(target)}>{current ? t('replaceFile') : t('chooseFile')}</Button>
+      )}
     </Panel>
   )
 

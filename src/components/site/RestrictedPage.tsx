@@ -34,7 +34,7 @@ export function RestrictedPage({ locale, homeHref, actions, returnTo, fields, no
     <SectionContainer>
       <div className="mx-auto flex min-h-[40vh] max-w-[640px] flex-col items-center justify-center py-8 text-center" data-access="restricted">
         <h1
-          className="[--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
+          className="text-balance [--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
           style={{
             color: 'var(--color-text-primary)',
             fontFamily: 'var(--font-heading)',
@@ -46,8 +46,10 @@ export function RestrictedPage({ locale, homeHref, actions, returnTo, fields, no
         >
           {m.restrictedHeading}
         </h1>
+        {/* Each sentence on its own line, balanced, so a line never ends with one short word left over. */}
         <p className="mt-4 text-base leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
-          {m.restrictedBody} {m.promptIntro}
+          <span className="block text-balance">{m.restrictedBody}</span>
+          <span className="block text-balance">{m.promptIntro}</span>
         </p>
 
         <AccessPrompt

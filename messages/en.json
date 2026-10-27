@@ -2939,7 +2939,8 @@
         "languages": "Languages",
         "pages": "Shown on",
         "added": "Added",
-        "category": "Category"
+        "category": "Category",
+        "actions": "Actions"
       },
       "filtersLabel": "Filter documents",
       "searchLabel": "Search documents",
@@ -3087,7 +3088,8 @@
         "titleOne": "Delete “{title}” for good?",
         "titleMany": "Delete {count} documents for good?",
         "body": "{count, plural, one {The document and its files are deleted permanently. This can’t be undone.} other {The documents and their files are deleted permanently. This can’t be undone.}}"
-      }
+      },
+      "removeChosen": "Remove {name}"
     }
   },
   "app": {

@@ -2939,7 +2939,8 @@
         "languages": "Lingue",
         "pages": "Mostrato su",
         "added": "Aggiunto",
-        "category": "Categoria"
+        "category": "Categoria",
+        "actions": "Azioni"
       },
       "filtersLabel": "Filtra i documenti",
       "searchLabel": "Cerca documenti",
@@ -3087,7 +3088,8 @@
         "titleOne": "Eliminare definitivamente “{title}”?",
         "titleMany": "Eliminare definitivamente {count} documenti?",
         "body": "{count, plural, one {Il documento e i suoi file vengono eliminati per sempre. Non si può annullare.} other {I documenti e i loro file vengono eliminati per sempre. Non si può annullare.}}"
-      }
+      },
+      "removeChosen": "Togli {name}"
     }
   },
   "app": {
