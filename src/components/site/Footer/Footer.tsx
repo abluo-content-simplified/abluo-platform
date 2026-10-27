@@ -13,6 +13,7 @@ import { FooterLanguageSwitcher } from './FooterClient'
 import { CookieSettingsLink } from '@/components/consent/CookieSettingsLink'
 import { EarlyAccessFooterCta } from '@/components/forms/EarlyAccessFooterCta'
 import type { UrlProjectSegment } from '@/lib/tenancy/ids'
+import { multiline } from '@/lib/multiline-text'
 
 interface FooterProps {
   /** The `[tenant]` URL segment. Not a tenant slug — see `@/lib/tenancy/ids`. */
@@ -305,7 +306,7 @@ export async function Footer({
             )}
             <div className="flex flex-col gap-1 sm:items-end">
               {config.address && (
-                <p className="text-xs" style={{ color: 'var(--color-footer-text-muted)' }}>
+                <p className={multiline('text-xs')} style={{ color: 'var(--color-footer-text-muted)' }}>
                   {config.address}
                 </p>
               )}
@@ -405,7 +406,7 @@ export async function Footer({
                 </p>
               )}
               {config.legalAddress && (
-                <p className="mt-1 text-xs" style={{ color: 'var(--color-footer-text-muted)' }}>
+                <p className={multiline('mt-1 text-xs')} style={{ color: 'var(--color-footer-text-muted)' }}>
                   {config.legalAddress}
                 </p>
               )}

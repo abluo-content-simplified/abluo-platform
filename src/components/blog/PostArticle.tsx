@@ -13,6 +13,7 @@ import { focalObjectPosition } from '@/lib/gallery/focal'
 import { FaqPlacement } from '@/components/faq/FaqPlacement'
 import { placementFaqGroups } from '@/lib/faq/items'
 import { getFaqMessages } from '@/lib/i18n/faq-messages'
+import { multiline } from '@/lib/multiline-text'
 
 /**
  * The blog post article — everything between the site header and footer on a
@@ -171,7 +172,7 @@ export function PostArticle({
         {post.excerpt && (
           <SlideUp delay={0.18} duration={0.5}>
             <p
-              className="text-lg font-medium leading-relaxed mb-8"
+              className={multiline('text-lg font-medium leading-relaxed mb-8')}
               style={{ color: 'var(--color-text-secondary)' }}
             >
               {post.excerpt}

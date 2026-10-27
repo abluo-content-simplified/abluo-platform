@@ -27,6 +27,7 @@ import { CatalogueItemCard } from './CatalogueItemCard'
 import { FeaturedBadge } from './FeaturedBadge'
 import { shelvesOf, type ReadingStatus } from '@/lib/modules/catalogue/reading-status'
 import { CatalogueCategoryFilter } from './CatalogueCategoryFilter'
+import { multiline } from '@/lib/multiline-text'
 
 export type CatalogueDisplay = {
   showPrices: boolean
@@ -221,7 +222,7 @@ export function CatalogueItemRow({
         </div>
         <Byline byline={item.byline} />
         {item.description && (
-          <p className="mt-1 text-base leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
+          <p className={multiline('mt-1 text-base leading-relaxed')} style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
             {item.description}
           </p>
         )}

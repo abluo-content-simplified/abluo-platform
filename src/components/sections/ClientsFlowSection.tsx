@@ -6,6 +6,7 @@ import { SectionContainer } from '@/components/layout/SectionContainer'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { renderHeadline } from '@/lib/headline-accent'
+import { multiline } from '@/lib/multiline-text'
 
 interface Props {
   section: ClientsFlowSection
@@ -93,7 +94,7 @@ export function ClientsFlowSection({ section, surface, designSystem }: Props) {
           )}
           {intro && (
             <p
-              className="mt-6"
+              className={multiline('mt-6')}
               style={{
                 fontFamily: hasAccentFace ? 'var(--font-accent)' : 'var(--font-body)',
                 fontStyle: hasAccentFace ? 'italic' : 'normal',

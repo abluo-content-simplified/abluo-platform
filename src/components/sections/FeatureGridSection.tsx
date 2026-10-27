@@ -11,6 +11,7 @@ import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import { FeatureCardCta } from '@/components/sections/FeatureCardCta'
 import { FeatureCardTitleLink } from '@/components/sections/FeatureCardTitleLink'
+import { multiline } from '@/lib/multiline-text'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 //
@@ -170,7 +171,7 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
             <div>
               {intro && (
                 <p
-                  className="text-base leading-relaxed"
+                  className={multiline('text-base leading-relaxed')}
                   style={{
                     color: 'var(--color-text-secondary)',
                     fontFamily: 'var(--font-body)',
@@ -358,7 +359,7 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
                 {/* Description */}
                 {feature.description && (
                   <p
-                    className="relative z-[1] text-[0.9375rem] leading-relaxed"
+                    className={multiline('relative z-[1] text-[0.9375rem] leading-relaxed')}
                     style={{
                       color: 'var(--color-text-secondary)',
                       fontFamily: 'var(--font-body)',

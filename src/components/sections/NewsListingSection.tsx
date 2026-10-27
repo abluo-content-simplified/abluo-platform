@@ -10,6 +10,7 @@ import { SectionEmptyState } from '@/components/sections/shared/SectionEmptyStat
 import { getNewsModuleMessages, formatNewsDate } from '@/lib/i18n/news-module-messages'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { multiline, previewLines } from '@/lib/multiline-text'
 
 // ─── News Listing Section (ADR-020) ───────────────────────────────────────────
 //
@@ -147,10 +148,10 @@ function ArticleCard({
         </Heading>
         {article.excerpt && (
           <p
-            className="mb-4 line-clamp-3 flex-1 text-sm leading-relaxed"
+            className={multiline('mb-4 line-clamp-3 flex-1 text-sm leading-relaxed')}
             style={{ color: 'var(--color-text-secondary)' }}
           >
-            {article.excerpt}
+            {previewLines(article.excerpt)}
           </p>
         )}
         <div className="mt-auto pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
@@ -212,10 +213,10 @@ function ArticleCardLarge({
         </Heading>
         {article.excerpt && (
           <p
-            className="mb-6 line-clamp-3 flex-1 text-base leading-relaxed"
+            className={multiline('mb-6 line-clamp-3 flex-1 text-base leading-relaxed')}
             style={{ color: 'var(--color-text-secondary)' }}
           >
-            {article.excerpt}
+            {previewLines(article.excerpt)}
           </p>
         )}
         <div className="mt-auto pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
@@ -480,7 +481,7 @@ export function NewsListingSection({
           )}
           {subtitle && (
             <p
-              className="mt-3 max-w-2xl text-base leading-relaxed"
+              className={multiline('mt-3 max-w-2xl text-base leading-relaxed')}
               style={{ color: 'var(--color-text-secondary)' }}
             >
               {subtitle}

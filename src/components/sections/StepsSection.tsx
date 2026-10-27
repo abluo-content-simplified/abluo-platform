@@ -43,6 +43,7 @@ import { Icon } from '@/components/icons'
 import { resolveEasing } from '@/lib/motion/easing'
 import { renderHeadline } from '@/lib/headline-accent'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { multiline } from '@/lib/multiline-text'
 
 // ─── Pure helpers (unit-tested) ───────────────────────────────────────────────
 
@@ -196,7 +197,7 @@ export function StepsSection({ section, surface, designSystem }: Props) {
           )}
           {intro && (
             <p
-              className="mt-5 text-base leading-relaxed"
+              className={multiline('mt-5 text-base leading-relaxed')}
               style={{
                 color: 'var(--color-text-secondary)',
                 fontFamily: 'var(--font-body)',
@@ -300,7 +301,7 @@ export function StepsSection({ section, surface, designSystem }: Props) {
 
                   {step.description && (
                     <p
-                      className="mb-7 text-[0.9375rem] leading-relaxed"
+                      className={multiline('mb-7 text-[0.9375rem] leading-relaxed')}
                       style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}
                     >
                       {step.description}

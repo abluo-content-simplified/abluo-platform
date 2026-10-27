@@ -57,6 +57,7 @@ import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import { visitorCountry } from '@/lib/affiliate/visitor-country'
 import { AffiliateDisclosure, AllergensAndDietary, BuyLinks, Byline, ItemLinks, ItemTags, OfferList, optionAllergenText } from './CatalogueItemParts'
 import { getCatalogueWebsiteMessages, optionRuleText, fillMessage } from './messages'
+import { multiline } from '@/lib/multiline-text'
 
 type FetchForTenant = ReturnType<typeof tenantClient>['fetchForTenant']
 
@@ -297,7 +298,7 @@ function CatalogueCollectionPageView({
         <SlideUp duration={duration} ease={ease} className="mb-12">
           <h1 style={H1_STYLE}>{collection.name}</h1>
           {collection.description && (
-            <p className="mt-4 text-lg leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
+            <p className={multiline('mt-4 text-lg leading-relaxed')} style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
               {collection.description}
             </p>
           )}
@@ -380,7 +381,7 @@ function CatalogueItemPageView({
                 )}
               </div>
               {item.description && (
-                <p className="mt-4 text-lg leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
+                <p className={multiline('mt-4 text-lg leading-relaxed')} style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
                   {item.description}
                 </p>
               )}
@@ -436,7 +437,7 @@ function CatalogueItemPageView({
                 )}
               </div>
               {item.description && (
-                <p className="mt-4 text-lg leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
+                <p className={multiline('mt-4 text-lg leading-relaxed')} style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
                   {item.description}
                 </p>
               )}

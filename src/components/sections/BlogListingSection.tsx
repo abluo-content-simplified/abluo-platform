@@ -11,6 +11,7 @@ import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { getBlogModuleMessages, formatBlogDate } from '@/lib/i18n/blog-module-messages'
 import { focalObjectPosition } from '@/lib/gallery/focal'
+import { multiline, previewLines } from '@/lib/multiline-text'
 
 // Dates and the reading-time suffix are localized — see
 // @/lib/i18n/blog-module-messages. They used to be hardcoded to 'en' and
@@ -124,10 +125,10 @@ function PostCard({ post, href, locale, priority = false }: { post: Post; href: 
         </h3>
         {post.excerpt && (
           <p
-            className="text-sm leading-relaxed line-clamp-3 flex-1 mb-4"
+            className={multiline('text-sm leading-relaxed line-clamp-3 flex-1 mb-4')}
             style={{ color: 'var(--color-text-secondary)' }}
           >
-            {post.excerpt}
+            {previewLines(post.excerpt)}
           </p>
         )}
         <div className="mt-auto pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
@@ -180,10 +181,10 @@ function PostCardLarge({ post, href, locale }: { post: Post; href: string; local
         </h3>
         {post.excerpt && (
           <p
-            className="text-base leading-relaxed line-clamp-3 flex-1 mb-6"
+            className={multiline('text-base leading-relaxed line-clamp-3 flex-1 mb-6')}
             style={{ color: 'var(--color-text-secondary)' }}
           >
-            {post.excerpt}
+            {previewLines(post.excerpt)}
           </p>
         )}
         <div className="mt-auto pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
@@ -471,7 +472,7 @@ export function BlogListingSection({ section, surface, designSystem, locale, ten
             )}
             {subtitle && (
               <p
-                className="mt-3 text-base leading-relaxed max-w-2xl"
+                className={multiline('mt-3 text-base leading-relaxed max-w-2xl')}
                 style={{ color: 'var(--color-text-secondary)' }}
               >
                 {subtitle}

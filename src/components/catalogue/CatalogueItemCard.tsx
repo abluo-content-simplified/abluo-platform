@@ -26,6 +26,7 @@ import { CardBuyLink, OfferList, OptionsSummary, TagChips } from './CatalogueIte
 import type { CatalogueWebsiteMessages } from './messages'
 import type { CatalogueDisplay } from './CatalogueCollectionView'
 import { FeaturedBadge } from './FeaturedBadge'
+import { multiline, previewLines } from '@/lib/multiline-text'
 
 export function CatalogueItemCard({
   item,
@@ -107,8 +108,8 @@ export function CatalogueItemCard({
           </p>
         )}
         {item.description && (
-          <p className="mt-2 line-clamp-3 text-base leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
-            {item.description}
+          <p className={multiline('mt-2 line-clamp-3 text-base leading-relaxed')} style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
+            {previewLines(item.description)}
           </p>
         )}
         {/* Choices such as size or colour, as on the row (products). */}

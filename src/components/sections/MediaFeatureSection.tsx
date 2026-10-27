@@ -50,6 +50,7 @@ import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { resolveEasing } from '@/lib/motion/easing'
 import { renderHeadline } from '@/lib/headline-accent'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { multiline } from '@/lib/multiline-text'
 
 // ─── Default media styles ─────────────────────────────────────────────────────
 // Mirrors MediaContentSection: fallback definitions used when the Design System
@@ -414,7 +415,7 @@ function FeatureRowItem({
         )}
         {feature.description && (
           <p
-            className="mt-1.5 text-sm leading-relaxed"
+            className={multiline('mt-1.5 text-sm leading-relaxed')}
             style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}
           >
             {feature.description}
@@ -853,7 +854,7 @@ export function MediaFeatureSection({ section, surface, designSystem }: Props) {
       )}
       {intro && (
         <p
-          className="mt-6 max-w-2xl text-base leading-relaxed"
+          className={multiline('mt-6 max-w-2xl text-base leading-relaxed')}
           style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}
         >
           {intro}

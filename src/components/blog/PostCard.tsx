@@ -12,6 +12,7 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { formatBlogDate } from '@/lib/i18n/blog-module-messages'
 import { focalObjectPosition } from '@/lib/gallery/focal'
+import { multiline, previewLines } from '@/lib/multiline-text'
 
 interface PostCardProps {
   post: Post
@@ -89,10 +90,10 @@ export function PostCard({
 
           {post.excerpt && (
             <p
-              className="text-xs leading-relaxed line-clamp-2 flex-1 mb-3"
+              className={multiline('text-xs leading-relaxed line-clamp-2 flex-1 mb-3')}
               style={{ color: 'var(--color-text-secondary)' }}
             >
-              {post.excerpt}
+              {previewLines(post.excerpt)}
             </p>
           )}
 

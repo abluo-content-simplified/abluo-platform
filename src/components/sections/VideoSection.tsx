@@ -8,6 +8,7 @@ import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { ConsentEmbed } from '@/components/consent/ConsentEmbed'
 import { DIRECT_VIDEO_FILE_RE, embedVendorName, videoSectionVendor } from '@/lib/consent/embeds'
+import { multiline } from '@/lib/multiline-text'
 
 // Cloudflare Stream account/customer code for iframe embed URLs. Reuses the
 // exact value already established in HeroSection.tsx for the same Stream
@@ -173,7 +174,7 @@ export function VideoSection({ section, surface, designSystem, locale = 'en' }: 
         {caption && (
           <SlideUp duration={duration} ease={ease} delay={0.15}>
             <p
-              className="mt-4 text-sm leading-relaxed"
+              className={multiline('mt-4 text-sm leading-relaxed')}
               style={{ color: 'var(--color-text-secondary)' }}
             >
               {caption}

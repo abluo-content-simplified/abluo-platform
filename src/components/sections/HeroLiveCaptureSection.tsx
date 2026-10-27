@@ -21,6 +21,7 @@ import { useEarlyAccessSafe } from '@/components/forms/EarlyAccessContext'
 import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { resolveEasing } from '@/lib/motion/easing'
+import { multiline } from '@/lib/multiline-text'
 
 interface Props {
   section: HeroLiveCaptureSectionType
@@ -587,7 +588,7 @@ export function HeroLiveCaptureSection({ section, surface, designSystem }: Props
             {subtitle && (
               <SlideUp duration={duration} ease={ease} delay={d3} className="mb-10">
                 <p
-                  className="max-w-md text-lg leading-relaxed"
+                  className={multiline('max-w-md text-lg leading-relaxed')}
                   style={{ color: 'var(--color-text-secondary)' }}
                 >
                   {subtitle}

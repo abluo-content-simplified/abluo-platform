@@ -46,6 +46,7 @@ import {
   withEventPlaceNames,
   type EventSiteContext,
 } from '@/lib/modules/events/structured'
+import { multiline } from '@/lib/multiline-text'
 interface PageProps {
   params: Promise<{ tenant: string; locale: string; slug: string }>
   searchParams?: Promise<{ from?: string }>
@@ -308,7 +309,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
           {/* ── Short description ────────────────────────────────── */}
           {event.shortDescription && (
             <SlideUp delay={0.2} duration={0.5}>
-              <p className="text-lg font-medium mb-8" style={{ color: 'var(--color-text-primary)' }}>
+              <p className={multiline('text-lg font-medium mb-8')} style={{ color: 'var(--color-text-primary)' }}>
                 {event.shortDescription}
               </p>
             </SlideUp>

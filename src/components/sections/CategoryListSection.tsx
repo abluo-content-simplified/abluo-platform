@@ -36,6 +36,7 @@ import { Icon } from '@/components/icons'
 import { resolveEasing } from '@/lib/motion/easing'
 import { renderHeadline } from '@/lib/headline-accent'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { multiline } from '@/lib/multiline-text'
 
 // ─── Pure helpers (unit-tested) ──────────────────────────────────────────────
 
@@ -135,7 +136,7 @@ export function CategoryListSection({ section, surface, designSystem }: Props) {
             <SlideUp duration={duration} ease={ease} delay={0.1} className="max-w-full">
               {intro && (
                 <p
-                  className="text-base leading-relaxed"
+                  className={multiline('text-base leading-relaxed')}
                   style={{
                     color: 'var(--color-text-secondary)',
                     fontFamily: 'var(--font-body)',
@@ -282,7 +283,7 @@ export function CategoryListSection({ section, surface, designSystem }: Props) {
                 )}
                 {callout?.description && (
                   <p
-                    className="mt-1 text-sm leading-relaxed"
+                    className={multiline('mt-1 text-sm leading-relaxed')}
                     style={{
                       color: 'var(--color-text-secondary)',
                       fontFamily: 'var(--font-body)',

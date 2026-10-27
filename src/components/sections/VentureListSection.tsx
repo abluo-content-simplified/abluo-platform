@@ -6,6 +6,7 @@ import { SectionContainer } from '@/components/layout/SectionContainer'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { renderHeadline } from '@/lib/headline-accent'
+import { multiline } from '@/lib/multiline-text'
 
 interface Props {
   section: VentureListSection
@@ -122,7 +123,7 @@ export function VentureListSection({ section, surface, designSystem }: Props) {
           )}
           {intro && (
             <p
-              className="mt-6"
+              className={multiline('mt-6')}
               style={{
                 ...accentVoice,
                 fontWeight: 300,
@@ -177,7 +178,7 @@ export function VentureListSection({ section, surface, designSystem }: Props) {
                     )}
                     {v.tagline && (
                       <p
-                        className="mt-4 text-lg leading-relaxed"
+                        className={multiline('mt-4 text-lg leading-relaxed')}
                         style={{
                           ...accentVoice,
                           fontWeight: 300,
@@ -190,7 +191,7 @@ export function VentureListSection({ section, surface, designSystem }: Props) {
                     )}
                     {v.body && (
                       <p
-                        className="mt-4 text-base"
+                        className={multiline('mt-4 text-base')}
                         style={{
                           color: 'var(--color-text-muted)',
                           lineHeight: 1.85,

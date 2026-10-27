@@ -8,6 +8,7 @@ import { renderHeadline } from '@/lib/headline-accent'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { FaqPlacement } from '@/components/faq/FaqPlacement'
 import { sectionFaqGroups } from '@/lib/faq/collect'
+import { multiline } from '@/lib/multiline-text'
 
 // ── FAQ section (FAQ module, ADR-037 D5) ──────────────────────────────────────
 // Presentation only. The questions come from the FAQ sets the section
@@ -56,7 +57,7 @@ export function FAQSection({ section, surface, designSystem, siteBase = '' }: Pr
             </h2>
           )}
           {subtitle && (
-            <p className="mb-12 text-base leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+            <p className={multiline('mb-12 text-base leading-relaxed')} style={{ color: 'var(--color-text-secondary)' }}>
               {subtitle}
             </p>
           )}

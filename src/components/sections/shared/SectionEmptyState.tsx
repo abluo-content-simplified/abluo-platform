@@ -13,6 +13,7 @@
 // section.
 
 import { FadeIn } from '@/components/animation'
+import { multiline } from '@/lib/multiline-text'
 
 interface SectionEmptyStateProps {
   /** Required — the caller only renders this component when heading is set. */
@@ -40,7 +41,7 @@ export function SectionEmptyState({ heading, body, duration, ease }: SectionEmpt
           {heading}
         </p>
         {body && (
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+          <p className={multiline('text-sm')} style={{ color: 'var(--color-text-muted)' }}>
             {body}
           </p>
         )}

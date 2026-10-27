@@ -9,6 +9,7 @@ import type { ResolvedImage } from '@/lib/sanity/types'
 import { resolveEasing } from '@/lib/motion/easing'
 import { renderHeadline } from '@/lib/headline-accent'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { multiline } from '@/lib/multiline-text'
 
 interface Props {
   section: StatementSection
@@ -57,7 +58,7 @@ export function StatementSection({ section, surface, designSystem }: Props) {
       )}
       {description && (
         <p
-          className={`mt-7 text-lg leading-relaxed${isCenter ? ' mx-auto' : ''}`}
+          className={multiline(`mt-7 text-lg leading-relaxed${isCenter ? ' mx-auto' : ''}`)}
           style={{
             color: 'var(--color-text-secondary)',
             fontFamily: 'var(--font-body)',

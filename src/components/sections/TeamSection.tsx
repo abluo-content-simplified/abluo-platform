@@ -10,6 +10,7 @@ import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { getTeamSectionMessages } from '@/lib/i18n/team-section-messages'
+import { multiline } from '@/lib/multiline-text'
 
 interface Props {
   section: TeamSection
@@ -268,7 +269,7 @@ export function TeamSection({ section, surface, designSystem, locale }: Props) {
                   {/* Bio */}
                   {member.bio && (
                     <p
-                      className="text-sm leading-relaxed"
+                      className={multiline('text-sm leading-relaxed')}
                       style={{ color: 'var(--color-text-secondary)' }}
                     >
                       {member.bio}

@@ -47,6 +47,7 @@ import { siteBasePath } from '@/lib/sanity/href'
 import { canonicalOrigin, canonicalUrl, hreflangAlternates, seoAlternates } from '@/lib/seo/canonical'
 import { ogLocale } from '@/lib/seo/og-locale'
 import { ArticleJsonLd } from '@/components/JsonLd'
+import { multiline } from '@/lib/multiline-text'
 
 export const dynamic = 'force-dynamic'
 
@@ -289,7 +290,7 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
 
             {article.excerpt && (
               <p
-                className="mt-6 text-lg leading-relaxed"
+                className={multiline('mt-6 text-lg leading-relaxed')}
                 style={{ color: 'var(--color-text-secondary)' }}
               >
                 {article.excerpt}

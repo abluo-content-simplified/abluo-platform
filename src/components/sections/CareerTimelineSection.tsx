@@ -6,6 +6,7 @@ import { SectionContainer } from '@/components/layout/SectionContainer'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { renderHeadline } from '@/lib/headline-accent'
+import { multiline } from '@/lib/multiline-text'
 
 interface Props {
   section: CareerTimelineSection
@@ -72,7 +73,7 @@ export function CareerTimelineSection({ section, surface, designSystem }: Props)
           )}
           {intro && (
             <p
-              className="mt-6 text-base leading-relaxed"
+              className={multiline('mt-6 text-base leading-relaxed')}
               style={{ color: 'var(--color-text-secondary)', maxWidth: '52ch' }}
             >
               {intro}
@@ -133,7 +134,7 @@ export function CareerTimelineSection({ section, surface, designSystem }: Props)
                   )}
                   {row.note && (
                     <p
-                      className="text-base"
+                      className={multiline('text-base')}
                       style={{ color: 'var(--color-text-muted)', lineHeight: 1.75, maxWidth: '60ch' }}
                     >
                       {row.note}

@@ -6,6 +6,7 @@ import { SectionContainer } from '@/components/layout/SectionContainer'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { MetricsRow } from '@/components/sections/MetricsRow'
+import { multiline } from '@/lib/multiline-text'
 
 interface Props {
   section: MetricsSection
@@ -80,7 +81,7 @@ export function MetricsSection({ section, surface, designSystem }: Props) {
           )}
           {description && (
             <p
-              className="mt-5 text-base leading-relaxed"
+              className={multiline('mt-5 text-base leading-relaxed')}
               style={{
                 color: 'var(--color-text-secondary)',
                 fontFamily: 'var(--font-body)',
@@ -139,7 +140,7 @@ export function MetricsSection({ section, surface, designSystem }: Props) {
                     )}
                     {metric.description && (
                       <p
-                        className="text-xs leading-relaxed"
+                        className={multiline('text-xs leading-relaxed')}
                         style={{ color: 'var(--color-text-muted)' }}
                       >
                         {metric.description}

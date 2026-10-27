@@ -14,6 +14,7 @@ import { hasWhatsAppNumber } from '@/lib/forms/whatsapp'
 import { resolveWhatsAppConfig, type ProjectModuleConfig } from '@/lib/modules/config'
 import { resolveEasing } from '@/lib/motion/easing'
 import type { UrlProjectSegment } from '@/lib/tenancy/ids'
+import { multiline } from '@/lib/multiline-text'
 
 interface Props {
   section: ContactSection
@@ -174,7 +175,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig, mod
           )}
           {subtitle && (
             <p
-              className="mb-10 text-base leading-relaxed"
+              className={multiline('mb-10 text-base leading-relaxed')}
               style={{ color: 'var(--color-text-secondary)' }}
             >
               {subtitle}

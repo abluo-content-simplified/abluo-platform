@@ -20,6 +20,7 @@ import { EventCardExtras } from '@/components/events/EventEngagement'
 import { priceSummary } from '@/lib/modules/events/engagement'
 import { getEventMessages } from '@/lib/i18n/event-messages'
 import { EventLifecycleBadge } from '@/components/events/EventLifecycleBadge'
+import { multiline, previewLines } from '@/lib/multiline-text'
 
 // ─── Date formatting — locale-aware (mirrors EventCard/FeaturedEventBlock) ────
 
@@ -120,10 +121,10 @@ function EventListingCard({ event, href, locale, tenantId, priority = false }: {
         </h3>
         {event.shortDescription && (
           <p
-            className="text-sm leading-relaxed line-clamp-3 flex-1 mb-4"
+            className={multiline('text-sm leading-relaxed line-clamp-3 flex-1 mb-4')}
             style={{ color: 'var(--color-text-secondary)' }}
           >
-            {event.shortDescription}
+            {previewLines(event.shortDescription)}
           </p>
         )}
         <EventCardExtras event={event} locale={locale} tenantId={tenantId} className="mb-4" />
@@ -179,10 +180,10 @@ function EventListingCardLarge({ event, href, locale, tenantId }: { event: Event
         </h3>
         {event.shortDescription && (
           <p
-            className="text-base leading-relaxed line-clamp-3 flex-1 mb-6"
+            className={multiline('text-base leading-relaxed line-clamp-3 flex-1 mb-6')}
             style={{ color: 'var(--color-text-secondary)' }}
           >
-            {event.shortDescription}
+            {previewLines(event.shortDescription)}
           </p>
         )}
         <EventCardExtras event={event} locale={locale} tenantId={tenantId} size="base" className="mb-6" />
@@ -463,7 +464,7 @@ export function EventsListingSection({ section, surface, designSystem, locale, t
           )}
           {subtitle && (
             <p
-              className="mt-3 text-base leading-relaxed max-w-2xl"
+              className={multiline('mt-3 text-base leading-relaxed max-w-2xl')}
               style={{ color: 'var(--color-text-secondary)' }}
             >
               {subtitle}

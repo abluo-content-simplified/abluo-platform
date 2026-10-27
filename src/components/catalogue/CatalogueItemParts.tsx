@@ -21,6 +21,7 @@ import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import { shopById } from '@/lib/affiliate/shops'
 import { sortByShopOrder } from '@/lib/modules/catalogue/shop-delivery'
 import { fillMessage, optionRuleText, type CatalogueWebsiteMessages } from './messages'
+import { multiline } from '@/lib/multiline-text'
 
 /** F-1 — the short line under an item's name. Plain text, never parsed. */
 export function Byline({ byline, className }: { byline: string | null; className?: string }) {
@@ -353,7 +354,7 @@ function AllergenDeclarationText({ decl, m, compact }: { decl: Exclude<NonNullab
             {mayNone}
           </span>
         )}
-        {decl.note ? <span> · {decl.note}</span> : null}
+        {decl.note ? <span className={multiline()}> · {decl.note}</span> : null}
       </p>
     )
   }
@@ -371,7 +372,7 @@ function AllergenDeclarationText({ decl, m, compact }: { decl: Exclude<NonNullab
             {may}
           </>
         )}
-        {decl.note ? <span> · {decl.note}</span> : null}
+        {decl.note ? <span className={multiline()}> · {decl.note}</span> : null}
       </p>
     )
   }
@@ -387,7 +388,7 @@ function AllergenDeclarationText({ decl, m, compact }: { decl: Exclude<NonNullab
           <dd>{may}</dd>
         </div>
       )}
-      {decl.note ? <dd>{decl.note}</dd> : null}
+      {decl.note ? <dd className={multiline()}>{decl.note}</dd> : null}
     </dl>
   )
 }

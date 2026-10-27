@@ -1,6 +1,7 @@
 import type { BrandList, BrandStatement, BrandStatementKey } from '@/lib/modules/brand-hub/types'
 import type { BrandHubMessages } from '@/lib/i18n/brand-hub-messages'
 import { CARD_STYLE, HEADING_FONT, Section, StatementStatusPill, type HubPageProps } from './shared'
+import { multiline } from '@/lib/multiline-text'
 
 /**
  * Brand foundation (ADR-036 Amendment C). Not a flat grid: mission, vision and
@@ -60,7 +61,7 @@ function ListSection({ list, m, columns = 2, noteLabel }: { list: BrandList; m: 
               <h3 className="mb-1.5 text-lg font-semibold" style={HEADING_FONT}>{it.title}</h3>
               {it.text && <Paragraphs text={it.text} className="text-[0.9375rem]" />}
               {it.note && (
-                <p className="mt-3 text-sm" style={MUTED}>
+                <p className={multiline('mt-3 text-sm')} style={MUTED}>
                   {noteLabel && <span className="font-semibold">{noteLabel} </span>}
                   {it.note}
                 </p>

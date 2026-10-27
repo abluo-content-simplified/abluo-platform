@@ -10,6 +10,7 @@ import { getEventMessages } from '@/lib/i18n/event-messages'
 import { eventTiming, type EventTiming } from '@/lib/modules/events/timing'
 import type { Event, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import { resolveEasing } from '@/lib/motion/easing'
+import { multiline } from '@/lib/multiline-text'
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
@@ -150,7 +151,7 @@ export function FeaturedEventBlock({ event, designSystem, locale, tenantId }: Fe
       {/* ── Short description ───────────────────────────────────────── */}
       {event.shortDescription && (
         <SlideUp delay={0.25} ease={easeReveal} className="mt-6">
-          <p className="text-base leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+          <p className={multiline('text-base leading-relaxed')} style={{ color: 'var(--color-text-muted)' }}>
             {event.shortDescription}
           </p>
         </SlideUp>

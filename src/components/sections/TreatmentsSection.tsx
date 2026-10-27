@@ -5,6 +5,7 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { multiline } from '@/lib/multiline-text'
 
 interface Props {
   section: TreatmentsSection
@@ -43,7 +44,7 @@ export function TreatmentsSection({ section, surface, designSystem }: Props) {
           )}
           {intro && (
             <p
-              className="max-w-2xl text-base leading-relaxed"
+              className={multiline('max-w-2xl text-base leading-relaxed')}
               style={{ color: 'var(--color-text-secondary)' }}
             >
               {intro}
@@ -95,7 +96,7 @@ export function TreatmentsSection({ section, surface, designSystem }: Props) {
                   {/* Right: description */}
                   {treatment.description && (
                     <p
-                      className="text-sm leading-relaxed"
+                      className={multiline('text-sm leading-relaxed')}
                       style={{ color: 'var(--color-text-secondary)' }}
                     >
                       {treatment.description}

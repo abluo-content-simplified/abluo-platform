@@ -7,6 +7,7 @@ import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { GalleryPlacement } from '@/components/gallery/GalleryPlacement'
 import { galleriesOf } from '@/lib/gallery/compose'
+import { multiline } from '@/lib/multiline-text'
 
 interface Props {
   section: PhotoGallerySectionType
@@ -67,7 +68,7 @@ export function PhotoGallerySection({ section, surface, designSystem, locale }: 
           )}
           {description && (
             <p
-              className="mt-5 text-base leading-relaxed"
+              className={multiline('mt-5 text-base leading-relaxed')}
               style={{
                 color: 'var(--color-text-secondary)',
                 fontFamily: 'var(--font-body)',

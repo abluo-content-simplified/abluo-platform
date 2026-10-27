@@ -22,6 +22,7 @@ import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { resolveEasing } from '@/lib/motion/easing'
 import { renderHeadline, lastContentLineIndex, accentsLine } from '@/lib/headline-accent'
 import { focalObjectPosition } from '@/lib/gallery/focal'
+import { multiline } from '@/lib/multiline-text'
 
 const CLOUDFLARE_ACCOUNT = 'customer-aayaptcudal3r1fx'
 
@@ -576,7 +577,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
         {subheadline && (
           <SlideUp duration={duration} ease={ease} delay={d3} className={tagline ? 'mb-3' : 'mb-12'}>
             <p
-              className="max-w-xl text-lg leading-relaxed"
+              className={multiline('max-w-xl text-lg leading-relaxed')}
               style={{ color: textSecondary }}
             >
               {subheadline}

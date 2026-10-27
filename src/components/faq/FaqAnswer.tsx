@@ -2,6 +2,7 @@ import { PortableText } from '@portabletext/react'
 import { articlePortableTextComponents } from '@/components/portable-text/article-components'
 import { resolveBodyLinks } from '@/lib/links/link-target'
 import type { FaqAnswer as FaqAnswerValue } from '@/lib/faq/items'
+import { multiline } from '@/lib/multiline-text'
 
 // ── FaqAnswer (server) ────────────────────────────────────────────────────────
 // One answer. Restricted rich text (ADR-037 D12): paragraphs, lists, bold,
@@ -39,7 +40,7 @@ export interface FaqLinkOptions {
 }
 
 export function FaqAnswer({ answer, links }: { answer: FaqAnswerValue; links: FaqLinkOptions }) {
-  if (answer.kind === 'plain') return <p>{answer.text}</p>
+  if (answer.kind === 'plain') return <p className={multiline()}>{answer.text}</p>
   const value = resolveBodyLinks(answer.blocks, links) as Parameters<typeof PortableText>[0]['value']
   return <PortableText value={value} components={components} />
 }

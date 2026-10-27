@@ -29,6 +29,7 @@ import { affiliateDisclosureText, collectionHasAffiliateLink } from '@/lib/modul
 import { collectionHasAmazonAffiliateLink } from '@/lib/modules/catalogue/amazon-delivery'
 import Link from 'next/link'
 import { catalogueItemHref, catalogueLandingHref, collectionHasItems, collectionUsesCards, listingAllergenPresentation, listingShowsPrices, presentListing } from '@/lib/modules/catalogue/website'
+import { multiline } from '@/lib/multiline-text'
 
 interface Props {
   section: CatalogueListingSectionType
@@ -96,7 +97,7 @@ export function CatalogueListingSection({ section, surface, designSystem, locale
             </h2>
           )}
           {subtitle && (
-            <p className="mt-3 text-base leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
+            <p className={multiline('mt-3 text-base leading-relaxed')} style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
               {subtitle}
             </p>
           )}
