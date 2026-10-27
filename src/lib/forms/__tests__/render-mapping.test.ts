@@ -45,6 +45,11 @@ describe('toFieldConfig', () => {
     expect(url.validation).toEqual([{ type: 'url' }])
   })
 
+  it('puts a checkbox label beside the box, not again above it', () => {
+    const cb = toFieldConfig(field({ type: 'checkbox', label: 'Credit me by name' }))!
+    expect(cb).toMatchObject({ type: 'checkbox', label: 'Credit me by name', checkboxLabel: 'Credit me by name' })
+  })
+
   it('carries options through to choice fields', () => {
     const sel = toFieldConfig(field({ type: 'select', options: [{ value: 'a', label: 'A' }] }))!
     expect(sel).toMatchObject({ type: 'select', options: [{ value: 'a', label: 'A' }] })

@@ -87,7 +87,9 @@ export function toFieldConfig(field: RenderableFormField): FieldConfig | null {
     case 'radio-group':
       return { ...base, type: 'radio-group', options, display: field.display === 'cards' ? 'cards' : 'list' }
     case 'checkbox':
-      return { ...base, type: 'checkbox' }
+      // The label is the text beside the box (like the consent checkbox), not a
+      // second heading above it — CheckboxField hides the top label when they match.
+      return { ...base, type: 'checkbox', checkboxLabel: field.label }
     case 'checkbox-group':
       return { ...base, type: 'checkbox-group', options, display: field.display === 'chips' || field.display === 'cards' ? field.display : 'list' }
     case 'country-select':
