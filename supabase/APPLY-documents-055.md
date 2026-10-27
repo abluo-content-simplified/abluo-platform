@@ -1,6 +1,6 @@
 # Apply — migration 055, Documents: delete for good (ADR-040 §15.10, R9.3)
 
-**Status: NOT APPLIED. Prepared 2026-10-27. Applying needs Tom's explicit approval.**
+**Status: APPLIED 2026-10-27 by Tom (check: true · false · false).**
 Target: the shared Supabase project `xsdamzirepfqlutvqfbe`. Dev, preview and production all use it.
 
 ## What it adds
