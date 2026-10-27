@@ -3089,7 +3089,11 @@
         "titleMany": "{count} Dokumente endgültig löschen?",
         "body": "{count, plural, one {Das Dokument und seine Dateien werden dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.} other {Die Dokumente und ihre Dateien werden dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.}}"
       },
-      "removeChosen": "{name} entfernen"
+      "removeChosen": "{name} entfernen",
+      "languageOf": "Sprache für {field}",
+      "notTranslated": "noch nicht übersetzt",
+      "fallbackHint": "Optional. Bleibt es leer, sehen Besucher in dieser Sprache den Text auf {language}: „{text}“.",
+      "fallbackHintEmpty": "Optional. Bleibt es leer, sehen Besucher in dieser Sprache den Text auf {language}."
     }
   },
   "app": {

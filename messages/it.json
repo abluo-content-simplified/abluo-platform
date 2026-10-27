@@ -3089,7 +3089,11 @@
         "titleMany": "Eliminare definitivamente {count} documenti?",
         "body": "{count, plural, one {Il documento e i suoi file vengono eliminati per sempre. Non si può annullare.} other {I documenti e i loro file vengono eliminati per sempre. Non si può annullare.}}"
       },
-      "removeChosen": "Togli {name}"
+      "removeChosen": "Togli {name}",
+      "languageOf": "Lingua del campo {field}",
+      "notTranslated": "non ancora tradotto",
+      "fallbackHint": "Facoltativo. Se lo lasci vuoto, i visitatori in questa lingua vedono il testo in {language}: “{text}”.",
+      "fallbackHintEmpty": "Facoltativo. Se lo lasci vuoto, i visitatori in questa lingua vedono il testo in {language}."
     }
   },
   "app": {

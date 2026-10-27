@@ -131,6 +131,18 @@ describe('the Add / edit form', () => {
     expect(grp).toContain('Protected for other groups')
     expect(grp).toContain('It will appear on: Area genitori.')
   })
+  it('title and note have a tab per site language; the main one first, the text shown in it', () => {
+    const html = editor({ document: data.documents[0] })
+    expect(html).toContain('aria-label="Language of the Title"')
+    expect(html).toContain('aria-label="Language of the Short note"')
+    expect(html).toMatch(/Italian[\s\S]*English/)
+    expect(html).toContain('value="Listino"')
+    expect(html).toContain('Title · Italian')
+  })
+  it('a site with one language shows no language tabs', () => {
+    const one = { ...data, site: { ...data.site, locales: ['it'] } }
+    expect(editor({ data: one })).not.toContain('Language of the Title')
+  })
   it('category and tags: the document’s own are chosen; existing ones are offered', () => {
     const html = editor({ document: data.documents[0] })
     expect(html).toContain('Timetables')

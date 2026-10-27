@@ -15,6 +15,7 @@ import { PageHeader } from '@/components/app/ui/PageHeader'
 import { Panel } from '@/components/app/ui/Panel'
 import { ProgressBar } from '@/components/app/ui/ProgressBar'
 import { RadioList } from '@/components/app/ui/RadioList'
+import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
 import { TextInput } from '@/components/app/ui/TextInput'
 import { ToggleChips } from '@/components/app/ui/ToggleChips'
 import { Pill } from '@/components/app/ui/list/cells'
@@ -34,6 +35,86 @@ import { documentErrorText } from './document-bits'
 import { fileType, uploadDocumentFile, UPLOAD_TYPES } from './upload'
 
 type Ready = Extract<DocumentsDashboardData, { notReady: false }>
+type Texts = Record<string, string>
+
+/** Only the site's languages, trimmed; an empty value means "not written" (visitors get the main language). */
+function cleanTexts(texts: Texts, locales: readonly string[]): Texts {
+  const out: Texts = {}
+  for (const l of locales) {
+    const v = texts[l]?.trim()
+    if (v) out[l] = v
+  }
+  return out
+}
+const sameTexts = (a: Texts, b: Texts) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort())
+
+/**
+ * One text in every language of the site: language chips (the shared
+ * SegmentedControl, as in the Events editor) above one input. The main
+ * language is required; the others are optional — when empty, visitors see
+ * the main language, which is shown as the placeholder and in the hint.
+ */
+function LocalizedText({
+  label,
+  hint,
+  values,
+  onChange,
+  locales,
+  mainLocale,
+  maxLength,
+  disabled,
+}: {
+  label: string
+  hint: string
+  values: Texts
+  onChange: (next: Texts) => void
+  locales: readonly string[]
+  mainLocale: string
+  maxLength: number
+  disabled: boolean
+}) {
+  const t = useTranslations('clientDashboard.documents')
+  const lang = useLanguageName()
+  const [locale, setLocale] = useState(mainLocale)
+  const main = values[mainLocale]?.trim() ?? ''
+  const isMain = locale === mainLocale
+  return (
+    <div className="flex flex-col gap-2">
+      {locales.length > 1 ? (
+        <SegmentedControl
+          appearance="chips"
+          label={t('languageOf', { field: label })}
+          value={locale}
+          onChange={setLocale}
+          options={locales.map((l) => ({
+            value: l,
+            label: (
+              <>
+                {lang(l)}
+                {l !== mainLocale && !values[l]?.trim() ? <span className="sr-only"> · {t('notTranslated')}</span> : null}
+              </>
+            ),
+          }))}
+        />
+      ) : null}
+      <Field
+        label={locales.length > 1 ? `${label} · ${lang(locale)}` : label}
+        hint={isMain ? hint : main ? t('fallbackHint', { language: lang(mainLocale), text: main }) : t('fallbackHintEmpty', { language: lang(mainLocale) })}
+      >
+        {(p) => (
+          <TextInput
+            {...p}
+            value={values[locale] ?? ''}
+            maxLength={maxLength}
+            disabled={disabled}
+            placeholder={isMain ? undefined : main || undefined}
+            onChange={(e) => onChange({ ...values, [locale]: e.target.value })}
+          />
+        )}
+      </Field>
+    </div>
+  )
+}
 type FileMode = 'one' | 'each'
 
 const ACCEPT = 'application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png,image/webp,.webp'
@@ -76,8 +157,10 @@ export function DocumentEditor({
   const readOnly = !canManage || Boolean(document?.archived)
 
   const existingLocales = document?.files.map((f) => f.locale) ?? []
-  const [title, setTitle] = useState(document?.titles[d] ?? document?.title ?? '')
-  const [note, setNote] = useState(document?.note?.[d] ?? '')
+  // Title and note in every language of the site (ADR-040 §15: stored per language).
+  const [titles, setTitles] = useState<Texts>(() => ({ ...(document?.titles ?? {}) }))
+  const [notes, setNotes] = useState<Texts>(() => ({ ...(document?.note ?? {}) }))
+  const title = titles[d] ?? ''
   const [locales, setLocales] = useState<string[]>(isNew ? siteLocales : existingLocales.length ? existingLocales : [d])
   const [mode, setMode] = useState<FileMode>(isNew || !document || document.files.length <= 1 || document.sharedFile ? 'one' : 'each')
   const [sharedFile, setSharedFile] = useState<File | null>(null)
@@ -145,14 +228,15 @@ export function DocumentEditor({
       const liveChosen = visibility === 'groups' ? groupIds.filter((g) => liveGroups.some((x) => x.id === g)) : []
       let id = document?.id ?? createdId
       if (!id) {
-        const r = await createDocumentAction({ projectSlug, title: title.trim(), note: note.trim(), visibility, groupIds: liveChosen, pageIds: shownOn, categoryKey, tagKeys })
+        const r = await createDocumentAction({ projectSlug, titles: cleanTexts(titles, siteLocales), notes: cleanTexts(notes, siteLocales), visibility, groupIds: liveChosen, pageIds: shownOn, categoryKey, tagKeys })
         if (!r.ok) return setError(documentErrorText(t, r.error))
         id = r.documentId
         setCreatedId(id)
       } else {
         const termsChanged = categoryKey !== (document?.categoryKey ?? null) || tagKeys.join() !== (document?.tagKeys ?? []).join()
-        if (termsChanged || title.trim() !== (document?.titles[d] ?? '') || note.trim() !== (document?.note?.[d] ?? '')) {
-          const r = await updateDocumentAction({ projectSlug, documentId: id, title: title.trim(), note: note.trim(), categoryKey, tagKeys })
+        const textsChanged = !sameTexts(cleanTexts(titles, siteLocales), cleanTexts(document?.titles ?? {}, siteLocales)) || !sameTexts(cleanTexts(notes, siteLocales), cleanTexts(document?.note ?? {}, siteLocales))
+        if (termsChanged || textsChanged) {
+          const r = await updateDocumentAction({ projectSlug, documentId: id, titles: cleanTexts(titles, siteLocales), notes: cleanTexts(notes, siteLocales), categoryKey, tagKeys })
           if (!r.ok) return setError(documentErrorText(t, r.error))
         }
         const accessChanged = visibility !== document?.visibility || liveChosen.sort().join() !== [...(document?.groupIds ?? [])].sort().join() || shownOn.sort().join() !== [...(document?.pageIds ?? [])].sort().join()
@@ -290,9 +374,16 @@ export function DocumentEditor({
           onChange={(e) => { onPicked(e.target.files?.[0] ?? null); e.target.value = '' }}
         />
 
-        <Field label={t('fields.title')} hint={t('fields.titleHint')}>
-          {(p) => <TextInput {...p} value={title} maxLength={data.limits.titleMax} disabled={readOnly || busy} onChange={(e) => setTitle(e.target.value)} />}
-        </Field>
+        <LocalizedText
+          label={t('fields.title')}
+          hint={t('fields.titleHint')}
+          values={titles}
+          onChange={setTitles}
+          locales={siteLocales}
+          mainLocale={d}
+          maxLength={data.limits.titleMax}
+          disabled={readOnly || busy}
+        />
 
         {siteLocales.length > 1 ? (
           <fieldset className="flex flex-col gap-2">
@@ -346,9 +437,16 @@ export function DocumentEditor({
           <p className="text-sm text-muted-foreground">{t('fields.fileHint')}</p>
         </div>
 
-        <Field label={t('fields.note')} hint={t('fields.noteHint')}>
-          {(p) => <TextInput {...p} value={note} maxLength={data.limits.noteMax} disabled={readOnly || busy} onChange={(e) => setNote(e.target.value)} />}
-        </Field>
+        <LocalizedText
+          label={t('fields.note')}
+          hint={t('fields.noteHint')}
+          values={notes}
+          onChange={setNotes}
+          locales={siteLocales}
+          mainLocale={d}
+          maxLength={data.limits.noteMax}
+          disabled={readOnly || busy}
+        />
 
         {data.groupsAvailable ? (
           <div className="flex flex-col gap-3">

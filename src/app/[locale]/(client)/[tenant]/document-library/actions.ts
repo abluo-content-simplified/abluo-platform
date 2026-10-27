@@ -78,46 +78,72 @@ async function run<T extends object>(input: { projectSlug?: unknown }, reason: s
   }
 }
 
-const text = (v: unknown) => (typeof v === 'string' ? v : '')
-const localized = (current: Record<string, string> | null | undefined, locale: string, value: unknown) => {
+/**
+ * Title / note per language from the form: only the site's languages count;
+ * an empty value removes that language (visitors then see the main language).
+ * Languages the site no longer has are kept as they were (`current`).
+ * The main language's title is required.
+ */
+function mergeTexts(current: Record<string, string> | null | undefined, input: unknown, site: Site): Record<string, string> {
   const next = { ...(current ?? {}) }
-  const v = text(value).trim()
-  if (v) next[locale] = v
-  else delete next[locale]
+  const given = input && typeof input === 'object' && !Array.isArray(input) ? (input as Record<string, unknown>) : {}
+  for (const l of site.locales) {
+    const v = typeof given[l] === 'string' ? (given[l] as string).trim() : ''
+    if (v) next[l] = v
+    else delete next[l]
+  }
   return next
+}
+function requireMainTitle(titles: Record<string, string>, site: Site): void {
+  if (!titles[site.defaultLocale]) throw new AccessError('invalid_input', 'title')
 }
 
 export async function createDocumentAction(input: {
   projectSlug: string
-  title: string
-  note: string
+  /** Per language; the site's main language is required. */
+  titles: Record<string, string>
+  notes: Record<string, string>
   visibility: 'everyone' | 'groups'
   groupIds: string[]
   pageIds: string[]
   categoryKey?: string | null
   tagKeys?: string[]
 }) {
-  return run(input, 'create document', async ({ store, grant, site, pages, terms }) => ({
-    documentId: await createDocumentWithPlacements(store, grant, {
-      title: { [site.defaultLocale]: text(input.title) },
-      note: text(input.note).trim() ? { [site.defaultLocale]: text(input.note) } : null,
-      categoryTermId: input.categoryKey ?? null,
-      tagTermIds: input.tagKeys ?? [],
-      visibility: input.visibility,
-      groupIds: input.groupIds,
-      pageIds: input.pageIds,
-    }, await pages(), await terms()),
-  }))
+  return run(input, 'create document', async ({ store, grant, site, pages, terms }) => {
+    const title = mergeTexts(null, input.titles, site)
+    requireMainTitle(title, site)
+    const note = mergeTexts(null, input.notes, site)
+    return {
+      documentId: await createDocumentWithPlacements(store, grant, {
+        title,
+        note: Object.keys(note).length ? note : null,
+        categoryTermId: input.categoryKey ?? null,
+        tagTermIds: input.tagKeys ?? [],
+        visibility: input.visibility,
+        groupIds: input.groupIds,
+        pageIds: input.pageIds,
+      }, await pages(), await terms()),
+    }
+  })
 }
 
-/** Title and note in the site's default language (other languages keep theirs); category and tags when sent. */
-export async function updateDocumentAction(input: { projectSlug: string; documentId: string; title: string; note: string; categoryKey?: string | null; tagKeys?: string[] }) {
+/** Title and note in every language of the site (other stored languages are kept); category and tags when sent. */
+export async function updateDocumentAction(input: {
+  projectSlug: string
+  documentId: string
+  titles: Record<string, string>
+  notes: Record<string, string>
+  categoryKey?: string | null
+  tagKeys?: string[]
+}) {
   return run(input, 'update document', async ({ store, grant, site, terms }) => {
     const current = (await listDocumentsForDashboard(store, grant)).find((d) => d.id === input.documentId)
     if (!current) throw new AccessError('not_found')
-    const note = localized(current.note, site.defaultLocale, input.note)
+    const title = mergeTexts(current.title, input.titles, site)
+    requireMainTitle(title, site)
+    const note = mergeTexts(current.note, input.notes, site)
     await updateDocumentDetails(store, grant, input.documentId, {
-      title: localized(current.title, site.defaultLocale, input.title),
+      title,
       note: Object.keys(note).length ? note : null,
       categoryTermId: input.categoryKey === undefined ? current.categoryTermId : input.categoryKey,
       tagTermIds: input.tagKeys === undefined ? current.tagTermIds : input.tagKeys,

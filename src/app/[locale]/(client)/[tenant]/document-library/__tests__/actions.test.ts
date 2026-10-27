@@ -77,7 +77,7 @@ beforeEach(async () => {
 })
 
 const create = (over: Record<string, unknown> = {}) =>
-  createDocumentAction({ projectSlug: 'site-a', title: 'Listino', note: '', visibility: 'everyone', groupIds: [], pageIds: ['contatti'], ...over } as never)
+  createDocumentAction({ projectSlug: 'site-a', titles: { it: 'Listino' }, notes: {}, visibility: 'everyone', groupIds: [], pageIds: ['contatti'], ...over } as never)
 
 describe('who may act', () => {
   it('an Owner adds a public document shown on Contact; title stored in the site language', async () => {
@@ -131,7 +131,7 @@ describe('tenant isolation', () => {
   it('ids from another project are not found; groups from another project are refused', async () => {
     const r = (await create()) as { ok: true; documentId: string }
     as(grant(P_B, 'owner'))
-    expect((await updateDocumentAction({ projectSlug: 'site-b', documentId: r.documentId, title: 'stolen', note: '' })).ok).toBe(false)
+    expect((await updateDocumentAction({ projectSlug: 'site-b', documentId: r.documentId, titles: { it: 'stolen' }, notes: {} })).ok).toBe(false)
     expect((await setDocumentArchivedAction({ projectSlug: 'site-b', documentId: r.documentId, archived: true })).ok).toBe(false)
     expect((await create({ projectSlug: 'site-b', visibility: 'groups', groupIds: [gA], pageIds: [] })).ok).toBe(false)
     expect(h.store.docs[0]).toMatchObject({ title: { it: 'Listino' }, archivedAt: null })
@@ -164,7 +164,7 @@ describe('uploads', () => {
 describe('several at once, and deleting for good (R9.3)', () => {
   it('an Owner archives several, then deletes them for good; not-archived ones are refused', async () => {
     const a = ((await create()) as { documentId: string }).documentId
-    const b = ((await create({ title: 'Orario' })) as { documentId: string }).documentId
+    const b = ((await create({ titles: { it: 'Orario' } })) as { documentId: string }).documentId
     expect(await deleteDocumentsAction({ projectSlug: 'site-a', documentIds: [a, b] })).toEqual({ ok: false, error: 'not_archived' })
     expect(await setDocumentsArchivedAction({ projectSlug: 'site-a', documentIds: [a, b], archived: true })).toEqual({ ok: true, changed: 2 })
     expect(await deleteDocumentsAction({ projectSlug: 'site-a', documentIds: [a, b] })).toEqual({ ok: true, deleted: 2 })
@@ -184,5 +184,22 @@ describe('several at once, and deleting for good (R9.3)', () => {
     as(grant(P_B, 'owner'))
     expect((await deleteDocumentsAction({ projectSlug: 'site-b', documentIds: [a] })).ok).toBe(false)
     expect(h.store.docs).toHaveLength(1)
+  })
+})
+
+describe('title and note in every language of the site', () => {
+  it('each site language is stored; the main one is required; other languages are not accepted', async () => {
+    expect(await create({ titles: { en: 'Price list' } })).toEqual({ ok: false, error: 'title_needed' })
+    const r = (await create({ titles: { it: 'Listino', en: 'Price list', de: 'Preisliste' }, notes: { en: 'From March' } })) as { ok: true; documentId: string }
+    expect(r.ok).toBe(true)
+    expect(h.store.docs[0]).toMatchObject({ title: { it: 'Listino', en: 'Price list' }, note: { en: 'From March' } })
+    expect(h.store.docs[0].title).not.toHaveProperty('de') // not a language of this site
+  })
+  it('an update sets, changes and clears each language; the main title cannot be cleared', async () => {
+    const r = (await create({ titles: { it: 'Listino', en: 'Price list' } })) as { ok: true; documentId: string }
+    expect(await updateDocumentAction({ projectSlug: 'site-a', documentId: r.documentId, titles: { it: 'Listino 2027', en: '' }, notes: { it: 'Da marzo' } })).toEqual({ ok: true })
+    expect(h.store.docs[0]).toMatchObject({ title: { it: 'Listino 2027' }, note: { it: 'Da marzo' } })
+    expect(h.store.docs[0].title).not.toHaveProperty('en')
+    expect(await updateDocumentAction({ projectSlug: 'site-a', documentId: r.documentId, titles: { it: ' ', en: 'Price list' }, notes: {} })).toEqual({ ok: false, error: 'title_needed' })
   })
 })
