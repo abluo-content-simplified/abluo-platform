@@ -19,6 +19,59 @@ export function CheckboxField({ config, value, onChange, onBlur, error: external
   const isDisabled = disabled ?? config.disabled
   const isChecked = Boolean(value)
 
+  if (config.display === 'switch') {
+    // On/off toggle: text left, switch right, one row. A native checkbox with
+    // role="switch" underneath, so the value, keyboard (Space), focus, label
+    // click and validation are exactly the checkbox's. Colours are the website
+    // Design System tokens (same as the cookie banner's switch), so it follows
+    // the light and dark theme.
+    return (
+      <FieldWrapper id={config.id} label={config.label} helpText={config.helpText} required={config.required} error={error} width={config.width} hideLabel>
+        <label
+          htmlFor={config.id}
+          data-field-switch=""
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+            cursor: isDisabled ? 'not-allowed' : 'pointer',
+            opacity: isDisabled ? 0.5 : 1,
+            color: 'var(--form-input-text)',
+            lineHeight: 1.5,
+          }}
+        >
+          <span>{config.checkboxLabel ?? config.label}</span>
+          <input
+            id={config.id}
+            type="checkbox"
+            role="switch"
+            checked={isChecked}
+            onChange={(e) => { if (!isDisabled) onChange(e.target.checked) }}
+            onBlur={() => { handleBlur(); onBlur?.() }}
+            disabled={isDisabled}
+            aria-invalid={!!error}
+            className="peer sr-only"
+          />
+          <span
+            aria-hidden="true"
+            className="relative inline-block h-6 w-10 shrink-0 rounded-full transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2 motion-reduce:transition-none"
+            style={{
+              background: isChecked ? 'var(--color-primary)' : 'var(--form-check-border, var(--color-border))',
+              ['--tw-ring-color' as string]: 'var(--color-primary)',
+              ['--tw-ring-offset-color' as string]: 'var(--color-background)',
+            }}
+          >
+            <span
+              className="absolute top-0.5 h-5 w-5 rounded-full shadow-sm transition-all motion-reduce:transition-none"
+              style={{ left: isChecked ? '18px' : '2px', background: 'var(--color-background, #fff)' }}
+            />
+          </span>
+        </label>
+      </FieldWrapper>
+    )
+  }
+
   return (
     <FieldWrapper
       id={config.id}

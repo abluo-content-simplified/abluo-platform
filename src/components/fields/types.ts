@@ -183,6 +183,8 @@ export interface CheckboxFieldConfig extends BaseFieldConfig {
   type: 'checkbox'
   /** Label text rendered inline next to the checkbox itself (distinct from field label) */
   checkboxLabel?: string
+  /** 'switch' = an on/off toggle: label on the left, switch on the right, one row. Same boolean value. Default: a checkbox. */
+  display?: 'checkbox' | 'switch'
 }
 
 export interface CheckboxGroupFieldConfig extends BaseFieldConfig {
