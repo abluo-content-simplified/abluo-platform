@@ -490,12 +490,18 @@ const ctaType = defineType({
       title: 'URL',
       type: 'url',
       hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'externalUrl',
-      validation: (Rule) =>
+      description: 'A web address (https://…), an email (mailto:name@example.com) or a phone number (tel:+32…).',
+      // The `url` type only accepts http/https by default; email and phone links
+      // are legitimate CTA targets (e.g. "Email us"). safe-href.ts already
+      // treats mailto:/tel: as safe and opens them in the same tab.
+      validation: (Rule) => [
+        Rule.uri({ scheme: ['http', 'https', 'mailto', 'tel'] }),
         Rule.custom((url, context) => {
           const parent = context.parent as { actionType?: string }
           if (parent?.actionType === 'externalUrl' && !url) return 'URL is required'
           return true
         }),
+      ],
     }),
     defineField({
       name: 'openInNewTab',
