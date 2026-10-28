@@ -2048,6 +2048,23 @@
         "showing": "{shown} von {total} Personen",
         "clear": "Filter löschen",
         "noMatch": "Niemand passt zu diesen Filtern."
+      },
+      "makeOwner": "Zum Inhaber machen",
+      "made": "{name} ist jetzt Inhaber.",
+      "madeSteppedDown": "{name} ist jetzt Inhaber. Du bist jetzt Website-Admin auf allen Websites dieses Kunden.",
+      "makeOwnerConfirm": {
+        "title": "{name} zum Inhaber machen?",
+        "body": "{name} kann dann alle Websites dieses Kunden, seine Personen und das Konto verwalten. Inhaber lassen sich nicht auf einzelne Websites beschränken.",
+        "stepDown": "Zurücktreten: Website-Admin auf allen Websites dieses Kunden werden",
+        "stepDownHint": "Du behältst die volle Kontrolle über jede Website, aber nicht über die Personen oder das Konto.",
+        "confirm": "Zum Inhaber machen"
+      },
+      "ownerErrors": {
+        "not_member": "Diese Person gehört noch nicht zu diesem Kunden. Lade sie zuerst ein.",
+        "already_owner": "Diese Person ist bereits Inhaber.",
+        "not_owner": "Nur ein aktueller Inhaber kann zurücktreten.",
+        "last_owner": "Ein Kunde braucht immer mindestens einen Inhaber.",
+        "not_ready": "Das ist noch nicht verfügbar: Ein Datenbank-Update (056) fehlt noch. Es wurde nichts geändert."
       }
     },
     "analytics": {
@@ -4118,6 +4135,30 @@
           "already_owner": "Diese Person ist bereits Inhaber dieses Kunden.",
           "already_invited": "{email} hat bereits eine offene Einladung (läuft am {date} ab). Es wurde keine neue E-Mail verschickt.",
           "failed": "Die Einladung konnte nicht gesendet werden. Versuch es noch einmal."
+        },
+        "makeOwnerButton": "Zum Inhaber machen",
+        "makeOwnerTitle": "Ein bestehendes Mitglied zum Inhaber machen",
+        "makeOwnerPerson": "Person",
+        "makeOwnerPersonHint": "Es werden nur Personen angezeigt, die bereits Zugang zu diesem Kunden haben.",
+        "makeOwnerNoCandidates": "Noch niemand sonst hat Zugang zu diesem Kunden. Nutze stattdessen „Inhaber einladen“.",
+        "makeOwnerStepDown": "Aktueller Inhaber, der zum Website-Admin wird",
+        "makeOwnerStepDownNone": "Niemand tritt zurück",
+        "makeOwnerConfirm": "{name} wird Inhaber dieses Kunden.",
+        "makeOwnerConfirmStepDown": "{name} wird Inhaber. {owner} wird Website-Admin auf allen Websites dieses Kunden.",
+        "makeOwnerNote": "Beide Personen bekommen eine E-Mail (nur aus der Produktion).",
+        "makeOwnerSubmit": "Zum Inhaber machen",
+        "makeOwnerSaving": "Wird gespeichert…",
+        "makeOwnerDone": "{name} ist jetzt Inhaber.",
+        "makeOwnerErrors": {
+          "forbidden": "Nur ein Super Admin mit Zwei-Schritt-Bestätigung kann das tun.",
+          "not_found": "Projekt oder Kunde nicht gefunden.",
+          "invalid": "Wähle eine Person.",
+          "not_member": "Diese Person gehört nicht zu diesem Kunden.",
+          "already_owner": "Diese Person ist bereits Inhaber.",
+          "not_owner": "Diese Person ist kein Inhaber mehr.",
+          "last_owner": "Ein Kunde braucht immer mindestens einen Inhaber.",
+          "not_ready": "Das Datenbank-Update 056 ist noch nicht angewendet. Es wurde nichts geändert.",
+          "failed": "Das hat nicht geklappt. Versuch es noch einmal."
         }
       }
     },
@@ -5001,6 +5042,21 @@
       "subject": "Dein Zugang zu {place} ist wieder aktiv",
       "heading": "Willkommen zurück bei {place}",
       "body": "{by} hat dir den Zugang zu {place} als {role} zurückgegeben.",
+      "button": "Abluo öffnen",
+      "replyHint": "Fragen? Antworte auf diese E-Mail, um {by} zu erreichen."
+    },
+    "ownership": {
+      "newOwner": {
+        "subject": "Du bist jetzt Inhaber von {place}",
+        "heading": "Du bist jetzt Inhaber von {place}",
+        "body": "{by} hat dich zum Inhaber von {place} gemacht. Du kannst jetzt alle Websites, die Personen, die daran arbeiten, und das Konto verwalten."
+      },
+      "previousOwner": {
+        "subject": "{name} ist jetzt Inhaber von {place}",
+        "heading": "{name} ist jetzt Inhaber von {place}",
+        "body": "{by} hat {name} zum Inhaber von {place} gemacht.",
+        "steppedDown": "Du bist jetzt {role} auf allen Websites von {place}."
+      },
       "button": "Abluo öffnen",
       "replyHint": "Fragen? Antworte auf diese E-Mail, um {by} zu erreichen."
     }

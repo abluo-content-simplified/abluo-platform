@@ -60,6 +60,9 @@ export type AdminAuditAction =
   // "Invite Owner" on the admin project page: a Super Admin invites a client Owner.
   // `detail`: tenantId, locale, emailSent, sendAgain (or the error) — never the email.
   | 'owner.invite'
+  // "Make owner" (PLAT-2) on the admin project page: a Super Admin transfers ownership.
+  // `detail`: tenantId, newOwner / steppedDown (user ids), emailsSent (or the error) — never an email.
+  | 'owner.transfer'
 
 export const ADMIN_AUDIT_ACTION_PATTERN = /^[a-z][a-z0-9_.]{2,63}$/
 

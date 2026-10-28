@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 
 /**
  * A calm confirmation sheet for irreversible actions (discard / delete), on a
  * native modal <dialog>. Shared by the client dashboard and the admin
  * (moved from components/client/create, ADR-030). `cancelLabel` overrides the
- * shared "Cancel".
+ * shared "Cancel". `children` (optional) sits under the body — e.g. one
+ * option the confirmation depends on.
  */
 export function ConfirmDialog({
   open,
@@ -19,6 +20,7 @@ export function ConfirmDialog({
   error,
   onConfirm,
   onCancel,
+  children,
 }: {
   open: boolean
   title: string
@@ -29,6 +31,7 @@ export function ConfirmDialog({
   error?: string | null
   onConfirm: () => void
   onCancel: () => void
+  children?: ReactNode
 }) {
   const t = useTranslations('app.ui.confirm')
   const ref = useRef<HTMLDialogElement>(null)
@@ -50,6 +53,7 @@ export function ConfirmDialog({
         {title}
       </h2>
       <p className="mt-2 text-[0.9375rem] leading-6 text-muted-foreground">{body}</p>
+      {children ? <div className="mt-4">{children}</div> : null}
       <p role="alert" className="mt-2 min-h-5 text-sm text-destructive">
         {error}
       </p>

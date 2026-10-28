@@ -41,6 +41,7 @@ export function fakeAdmin(tables: Tables, users: Record<string, { id: string; em
       is: (k: string, v: unknown) => (filters.push((r) => (r[k] ?? null) === v), b),
       gt: (k: string, v: string) => (filters.push((r) => String(r[k]) > v), b),
       in: (k: string, v: unknown[]) => (filters.push((r) => v.includes(r[k])), b),
+      limit: () => b,
       insert: (p: Row) => ((op = 'insert'), (payload = p), b),
       update: (p: Row) => ((op = 'update'), (payload = p), b),
       delete: () => ((op = 'delete'), b),

@@ -2048,6 +2048,23 @@
         "showing": "{shown} di {total} persone",
         "clear": "Azzera filtri",
         "noMatch": "Nessuno corrisponde a questi filtri."
+      },
+      "makeOwner": "Rendi Titolare",
+      "made": "{name} è ora Titolare.",
+      "madeSteppedDown": "{name} è ora Titolare. Ora sei Amministratore del sito su tutti i siti di questo cliente.",
+      "makeOwnerConfirm": {
+        "title": "Rendere {name} Titolare?",
+        "body": "{name} potrà gestire tutti i siti di questo cliente, le sue persone e l’account. I Titolari non si possono limitare a singoli siti.",
+        "stepDown": "Passa ad Amministratore del sito su tutti i siti di questo cliente",
+        "stepDownHint": "Mantieni il pieno controllo di ogni sito, ma non delle persone né dell’account.",
+        "confirm": "Rendi Titolare"
+      },
+      "ownerErrors": {
+        "not_member": "Questa persona non fa ancora parte di questo cliente. Invitala prima.",
+        "already_owner": "Questa persona è già Titolare.",
+        "not_owner": "Solo un Titolare attuale può fare un passo indietro.",
+        "last_owner": "Un cliente deve sempre avere almeno un Titolare.",
+        "not_ready": "Non è ancora possibile rendere qualcuno Titolare: serve un aggiornamento del database (056). Non è stato modificato nulla."
       }
     },
     "analytics": {
@@ -4118,6 +4135,30 @@
           "already_owner": "Questa persona è già Proprietario di questo cliente.",
           "already_invited": "{email} ha già un invito aperto (scade il {date}). Nessuna nuova email è stata inviata.",
           "failed": "Impossibile inviare l’invito. Riprova."
+        },
+        "makeOwnerButton": "Rendi Titolare",
+        "makeOwnerTitle": "Rendi Titolare un membro esistente",
+        "makeOwnerPerson": "Persona",
+        "makeOwnerPersonHint": "Sono elencate solo le persone che hanno già accesso a questo cliente.",
+        "makeOwnerNoCandidates": "Nessun altro ha ancora accesso a questo cliente. Usa Invita Titolare.",
+        "makeOwnerStepDown": "Titolare attuale che passa ad Amministratore del sito",
+        "makeOwnerStepDownNone": "Nessuno",
+        "makeOwnerConfirm": "{name} diventa Titolare di questo cliente.",
+        "makeOwnerConfirmStepDown": "{name} diventa Titolare. {owner} diventa Amministratore del sito su tutti i siti di questo cliente.",
+        "makeOwnerNote": "Entrambe le persone ricevono un’email (solo dalla produzione).",
+        "makeOwnerSubmit": "Rendi Titolare",
+        "makeOwnerSaving": "Salvataggio…",
+        "makeOwnerDone": "{name} è ora Titolare.",
+        "makeOwnerErrors": {
+          "forbidden": "Solo un Super Admin con verifica in due passaggi può farlo.",
+          "not_found": "Progetto o cliente non trovato.",
+          "invalid": "Scegli una persona.",
+          "not_member": "Questa persona non fa parte di questo cliente.",
+          "already_owner": "Questa persona è già Titolare.",
+          "not_owner": "Quella persona non è più Titolare.",
+          "last_owner": "Un cliente deve sempre avere almeno un Titolare.",
+          "not_ready": "L’aggiornamento del database 056 non è ancora applicato. Non è stato modificato nulla.",
+          "failed": "Non ha funzionato. Riprova."
         }
       }
     },
@@ -5001,6 +5042,21 @@
       "subject": "Il tuo accesso a {place} è di nuovo attivo",
       "heading": "Bentornato su {place}",
       "body": "{by} ti ha ridato l’accesso a {place} come {role}.",
+      "button": "Apri Abluo",
+      "replyHint": "Domande? Rispondi a questa email per scrivere a {by}."
+    },
+    "ownership": {
+      "newOwner": {
+        "subject": "Ora sei Titolare di {place}",
+        "heading": "Ora sei Titolare di {place}",
+        "body": "{by} ti ha reso Titolare di {place}. Ora puoi gestire tutti i suoi siti, le persone che ci lavorano e l’account."
+      },
+      "previousOwner": {
+        "subject": "{name} è ora Titolare di {place}",
+        "heading": "{name} è ora Titolare di {place}",
+        "body": "{by} ha reso {name} Titolare di {place}.",
+        "steppedDown": "Ora sei {role} su tutti i siti di {place}."
+      },
       "button": "Apri Abluo",
       "replyHint": "Domande? Rispondi a questa email per scrivere a {by}."
     }

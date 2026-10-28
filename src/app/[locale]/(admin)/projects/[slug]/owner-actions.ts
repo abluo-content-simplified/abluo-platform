@@ -25,6 +25,7 @@ import { isUuid, ownerInviteOrigin } from '@/lib/admin/provisioning/model'
 import { createInvitation, normalizeEmail } from '@/lib/invitations/service'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { INTERFACE_LOCALES, type InterfaceLocale } from '@/lib/i18n/locales'
+import { transferOwnership, type OwnershipError } from '@/lib/people/ownership'
 
 export type InviteOwnerError = 'forbidden' | 'invalid_email' | 'not_found' | 'already_owner' | 'already_invited' | 'failed'
 
@@ -111,6 +112,64 @@ export async function inviteOwnerAction(input: {
     })
     if (!r.ok) return { ok: false, error: r.error === 'forbidden' || r.error === 'not_found' || r.error === 'invalid_email' ? r.error : 'failed' }
     return { ok: true, email, emailSent: r.emailSent }
+  } catch {
+    return { ok: false, error: 'failed' }
+  }
+}
+
+export type MakeOwnerResult = { ok: true; emailsSent: number } | { ok: false; error: OwnershipError }
+
+/**
+ * "Make owner" on the admin project page (PLAT-2): a Super Admin with a
+ * two-factor session makes a person who is already in the client an Owner,
+ * optionally stepping one current Owner down to Site admin on every site.
+ * `requireAbluoAdmin()` runs FIRST; the client is derived from the project id.
+ * The role changes are one transaction (migration 056, fails closed until it
+ * is applied); access history is written by that transaction, the admin audit
+ * log here.
+ */
+export async function makeOwnerAction(input: {
+  projectId?: unknown
+  userId?: unknown
+  stepDownUserId?: unknown
+  locale?: unknown
+}): Promise<MakeOwnerResult> {
+  // 1. Super Admin with two-factor — before anything else.
+  const actor = await requireAbluoAdmin()
+  if (!actor) return { ok: false, error: 'forbidden' }
+  const ctx = await getTenantAuthorizationContext()
+  if (!ctx) return { ok: false, error: 'forbidden' }
+  if (!isUuid(input?.projectId)) return { ok: false, error: 'not_found' }
+  if (!isUuid(input?.userId)) return { ok: false, error: 'invalid' }
+  const stepDown = input.stepDownUserId === null || input.stepDownUserId === undefined || input.stepDownUserId === '' ? null : input.stepDownUserId
+  if (stepDown !== null && !isUuid(stepDown)) return { ok: false, error: 'invalid' }
+  const projectId = input.projectId
+
+  try {
+    const db = createAdminClient()
+    const { data: project, error: projectError } = await db.from('projects').select('id, slug, tenant_id').eq('id', projectId).maybeSingle()
+    if (projectError) return { ok: false, error: 'failed' }
+    if (!project?.tenant_id) return { ok: false, error: 'not_found' }
+    const tenantId = project.tenant_id as string
+
+    const r = await transferOwnership(ctx, {
+      tenantId,
+      newOwnerUserId: input.userId,
+      stepDownUserId: stepDown,
+      adminAssured: true,
+      locale: emailLocale(input?.locale),
+      requestOrigin: ownerInviteOrigin(await requestOrigin()),
+      projectSlug: project.slug as string,
+    })
+    await recordAdminAudit({
+      actorId: actor.userId,
+      action: 'owner.transfer',
+      projectId: project.id as string,
+      detail: r.ok
+        ? { tenantId, newOwner: input.userId, steppedDown: stepDown, emailsSent: r.emailsSent }
+        : { tenantId, newOwner: input.userId, steppedDown: stepDown, error: r.error },
+    })
+    return r
   } catch {
     return { ok: false, error: 'failed' }
   }

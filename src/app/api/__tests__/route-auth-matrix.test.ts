@@ -246,6 +246,20 @@ describe('admin "Invite Owner" server action (project page) — only a two-facto
       noSideEffects()
       expect(sendInvite).not.toHaveBeenCalled()
     })
+    // PLAT-2 "Make owner" (admin side): the same gate, before anything else.
+    it(`${p} → makeOwnerAction is refused with no side effects`, async () => {
+      persona = p
+      tenantCtx = p === 'tenantA' ? { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [], tenants: [{ tenantId: '22222222-2222-4222-8222-222222222222', role: 'owner', permissions: ['users.invite', 'users.manage'] }] } : null
+      const r = await (await load()).makeOwnerAction({
+        projectId: '11111111-1111-4111-8111-111111111111',
+        userId: '33333333-3333-4333-8333-333333333333',
+        stepDownUserId: 'user-tenant-a',
+        locale: 'en',
+      })
+      expect(r).toEqual({ ok: false, error: 'forbidden' })
+      noSideEffects()
+      expect(sendInvite).not.toHaveBeenCalled()
+    })
   }
 })
 
@@ -379,6 +393,8 @@ describe('People server actions — Owner / Site admin only, nothing touched on 
       await a.archivePersonAction({ projectSlug, locale: 'en', membershipId: 'pm-1' }),
       await a.restorePersonAction({ projectSlug, locale: 'en', archiveId: '00000000-0000-4000-8000-000000000002' }),
       await a.resendInvitationAction({ projectSlug, locale: 'en', invitationId: '00000000-0000-4000-8000-000000000001' }),
+      // PLAT-2: "Make owner" — an Owner of the client only.
+      await a.makeOwnerAction({ projectSlug, locale: 'en', userId: '00000000-0000-4000-8000-000000000003', stepDown: true }),
     ]
   }
 
@@ -398,6 +414,15 @@ describe('People server actions — Owner / Site admin only, nothing touched on 
     tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [await grant('editor')] }
     for (const r of await all('tenant-a-site')) expect(r.ok).toBe(false)
     expect(userWrites).toEqual([])
+    expect(sendInvite).not.toHaveBeenCalled()
+  })
+  it('a Site admin → "Make owner" refused before any service-role I/O (no escalation)', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [await grant('admin')], tenants: [] }
+    const r = await (await load()).makeOwnerAction({ projectSlug: 'tenant-a-site', locale: 'en', userId: 'user-tenant-a', stepDown: false })
+    expect(r).toEqual({ ok: false, error: 'forbidden' })
+    expect(serviceRoleCalls).toEqual([])
+    noSideEffects()
     expect(sendInvite).not.toHaveBeenCalled()
   })
 })

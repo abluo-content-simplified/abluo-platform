@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/app/ui/Button'
+import { CheckboxCard } from '@/components/app/ui/CheckboxCard'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import type { CardMenuItem } from '@/components/app/ui/CardMenu'
@@ -27,6 +28,7 @@ import {
   archivePersonAction,
   cancelInvitationAction,
   invitePersonAction,
+  makeOwnerAction,
   resendInvitationAction,
   restorePersonAction,
   updatePersonAction,
@@ -38,6 +40,7 @@ import { PeoplePhoneList, PeopleTable } from './PeopleTable'
 
 const STATUS_FILTERS: PeopleStatusFilter[] = ['current', 'active', 'invited', 'archived', 'all']
 const ERRORS = ['invalid_email', 'invalid_role', 'forbidden', 'not_found', 'invalid', 'too_soon'] as const
+const OWNER_ERRORS = ['not_member', 'already_owner', 'not_owner', 'last_owner', 'not_ready'] as const
 
 /**
  * The People list — built on the shared list pattern (PageHeader, ListToolbar,
@@ -60,13 +63,20 @@ export function PeopleBrowser({ title, projectSlug, locale, view }: { title: str
   const [inviting, setInviting] = useState(false)
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [confirmArchive, setConfirmArchive] = useState<Person | null>(null)
+  const [confirmOwner, setConfirmOwner] = useState<Person | null>(null)
+  const [stepDown, setStepDown] = useState(false)
   const [busy, setBusy] = useState(false)
   const opened = view.people.find((p) => p.key === openKey) ?? null
 
   // Role names have one source, `app.roles`, shared with the account menu.
   const roleLabel = (role: string) => tRoles(role as 'editor')
   const extraLabel = (id: string) => t(`extras.${permissionMessageKey(id)}` as 'extras.formsSubmissionRead')
-  const errorText = (code: string) => (ERRORS.includes(code as never) ? t(`errors.${code}` as 'errors.failed') : t('errors.failed'))
+  const errorText = (code: string) =>
+    ERRORS.includes(code as never)
+      ? t(`errors.${code}` as 'errors.failed')
+      : OWNER_ERRORS.includes(code as never)
+        ? t(`ownerErrors.${code}` as 'ownerErrors.not_member')
+        : t('errors.failed')
 
   /** Run an action; toast the outcome; refresh the list. Returns whether it worked. */
   async function run(action: () => Promise<PeopleActionResult>, message: (r: Extract<PeopleActionResult, { ok: true }>) => string): Promise<boolean> {
@@ -107,12 +117,27 @@ export function PeopleBrowser({ title, projectSlug, locale, view }: { title: str
     setConfirmArchive(null)
   }
 
+  const askMakeOwner = (p: Person) => {
+    setStepDown(false)
+    setConfirmOwner(p)
+  }
+  const makeOwner = async (p: Person) => {
+    const down = stepDown
+    const ok = await run(
+      () => makeOwnerAction({ ...base, userId: p.userId!, stepDown: down }),
+      () => (down ? t('madeSteppedDown', { name: displayName(p) }) : t('made', { name: displayName(p) }))
+    )
+    if (ok) setOpenKey(null)
+    setConfirmOwner(null)
+  }
+
   const menuFor = (p: Person): CardMenuItem[] => {
     const items: CardMenuItem[] = []
     if (p.editableRoles.length) items.push({ key: 'edit', label: t('edit'), onSelect: () => setOpenKey(p.key) })
     else items.push({ key: 'details', label: t('details'), onSelect: () => setOpenKey(p.key) })
     if (p.canResend) items.push({ key: 'resend', label: t('resend'), onSelect: () => void resend(p) })
     if (p.canRestore) items.push({ key: 'restore', label: t('restore'), onSelect: () => void restore(p) })
+    if (p.canMakeOwner && p.userId) items.push({ key: 'makeOwner', label: t('makeOwner'), onSelect: () => askMakeOwner(p) })
     if (p.canCancel) items.push({ key: 'cancel', label: t('cancelInvite'), onSelect: () => void cancel(p), destructive: true })
     if (p.canArchive) items.push({ key: 'archive', label: t('archive'), onSelect: () => setConfirmArchive(p), destructive: true })
     return items
@@ -128,6 +153,11 @@ export function PeopleBrowser({ title, projectSlug, locale, view }: { title: str
       p.canRestore ? (
         <SheetAction key="restore" disabled={busy} onPress={() => void restore(p).then((ok) => ok && setOpenKey(null))}>
           {t('restore')}
+        </SheetAction>
+      ) : null,
+      p.canMakeOwner && p.userId ? (
+        <SheetAction key="makeOwner" disabled={busy} onPress={() => askMakeOwner(p)}>
+          {t('makeOwner')}
         </SheetAction>
       ) : null,
       p.canCancel ? (
@@ -261,6 +291,25 @@ export function PeopleBrowser({ title, projectSlug, locale, view }: { title: str
         onConfirm={() => confirmArchive && void archive(confirmArchive)}
         onCancel={() => setConfirmArchive(null)}
       />
+
+      <ConfirmDialog
+        open={confirmOwner !== null}
+        title={t('makeOwnerConfirm.title', { name: confirmOwner ? displayName(confirmOwner) : '' })}
+        body={t('makeOwnerConfirm.body', { name: confirmOwner ? displayName(confirmOwner) : '' })}
+        confirmLabel={t('makeOwnerConfirm.confirm')}
+        busy={busy}
+        onConfirm={() => confirmOwner && void makeOwner(confirmOwner)}
+        onCancel={() => setConfirmOwner(null)}
+      >
+        {view.canTransferOwnership ? (
+          <CheckboxCard
+            label={t('makeOwnerConfirm.stepDown')}
+            description={t('makeOwnerConfirm.stepDownHint')}
+            checked={stepDown}
+            onChange={setStepDown}
+          />
+        ) : null}
+      </ConfirmDialog>
 
       <Toast message={toast?.message ?? null} tone={toast?.tone} />
     </div>

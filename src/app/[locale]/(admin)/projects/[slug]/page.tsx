@@ -24,6 +24,8 @@ import { ProjectAnalyticsBlock } from '@/components/admin/analytics/ProjectAnaly
 import { ViewAsClient } from '@/components/admin/projects/ViewAsClient'
 import { GoogleCard } from '@/components/admin/projects/GoogleCard'
 import { InviteOwnerCard } from '@/components/admin/projects/InviteOwnerCard'
+import { listOwnershipCandidates, tenantOfProject } from '@/lib/people/ownership'
+import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 // "Connect Search Console" (a server action on this page) waits up to ~90 s
@@ -77,6 +79,14 @@ export default async function AdminProjectPage({
 
   const { project, content, requests, invitations, ownersKnown } = detail
   await recordAdminAudit({ actorId: actor.userId, action: 'project.view', projectId: project.id, detail: { slug: project.slug } })
+  // "Make owner" (PLAT-2): who is already in this client and could become Owner.
+  const ownership = await runAsTrustedSystemOperation(
+    `admin project page: ownership candidates for project ${project.id} by ${actor.userId} — requireAbluoAdmin() above`,
+    async (admin) => {
+      const place = await tenantOfProject(admin, project.id)
+      return place ? listOwnershipCandidates(admin, place.tenantId) : null
+    }
+  ).catch(() => null)
 
   const t = await getTranslations('admin.projectPage')
   const format = await getFormatter()
@@ -220,6 +230,7 @@ export default async function AdminProjectPage({
         projectId={project.id}
         defaultLocale={content?.defaultLocale || project.defaultLocale || null}
         owners={ownersKnown ? project.owners : null}
+        candidates={ownership?.candidates ?? null}
       />
 
       <ViewAsClient projectId={project.id} slug={project.slug} notice={supportNotice} />

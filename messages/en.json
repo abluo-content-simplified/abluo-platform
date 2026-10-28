@@ -2048,6 +2048,23 @@
         "showing": "{shown} of {total} people",
         "clear": "Clear filters",
         "noMatch": "Nobody matches these filters."
+      },
+      "makeOwner": "Make owner",
+      "made": "{name} is now an Owner.",
+      "madeSteppedDown": "{name} is now an Owner. You are now Site admin on all of this client’s sites.",
+      "makeOwnerConfirm": {
+        "title": "Make {name} an Owner?",
+        "body": "{name} will be able to manage every site of this client, its people and the account. Owners can’t be limited by site.",
+        "stepDown": "Step down to Site admin on all of this client’s sites",
+        "stepDownHint": "You keep full control of every site, but not of the people or the account.",
+        "confirm": "Make owner"
+      },
+      "ownerErrors": {
+        "not_member": "This person isn’t part of this client yet. Invite them first.",
+        "already_owner": "This person is already an Owner.",
+        "not_owner": "Only a current Owner can step down.",
+        "last_owner": "A client always needs at least one Owner.",
+        "not_ready": "Making someone Owner isn’t available yet: a database update (056) is still needed. Nothing was changed."
       }
     },
     "analytics": {
@@ -4118,6 +4135,30 @@
           "already_owner": "This person is already an Owner of this client.",
           "already_invited": "{email} already has an open invitation (expires {date}). No new email was sent.",
           "failed": "The invitation couldn’t be sent. Try again."
+        },
+        "makeOwnerButton": "Make owner",
+        "makeOwnerTitle": "Make an existing member Owner",
+        "makeOwnerPerson": "Person",
+        "makeOwnerPersonHint": "Only people who already have access to this client are listed.",
+        "makeOwnerNoCandidates": "Nobody else has access to this client yet. Use Invite Owner instead.",
+        "makeOwnerStepDown": "Current Owner who steps down to Site admin",
+        "makeOwnerStepDownNone": "Nobody steps down",
+        "makeOwnerConfirm": "{name} becomes an Owner of this client.",
+        "makeOwnerConfirmStepDown": "{name} becomes an Owner. {owner} becomes Site admin on all of this client’s sites.",
+        "makeOwnerNote": "Both people get an email (from production only).",
+        "makeOwnerSubmit": "Make owner",
+        "makeOwnerSaving": "Saving…",
+        "makeOwnerDone": "{name} is now an Owner.",
+        "makeOwnerErrors": {
+          "forbidden": "Only a Super Admin signed in with two-step verification can do this.",
+          "not_found": "This project or its client couldn’t be found.",
+          "invalid": "Choose a person.",
+          "not_member": "This person isn’t part of this client.",
+          "already_owner": "This person is already an Owner.",
+          "not_owner": "That person isn’t an Owner any more.",
+          "last_owner": "A client always needs at least one Owner.",
+          "not_ready": "Database update 056 is not applied yet. Nothing was changed.",
+          "failed": "That didn’t work. Try again."
         }
       }
     },
@@ -5001,6 +5042,21 @@
       "subject": "Your access to {place} is back",
       "heading": "Welcome back to {place}",
       "body": "{by} has given you back access to {place} as {role}.",
+      "button": "Open Abluo",
+      "replyHint": "Questions? Reply to this email to reach {by}."
+    },
+    "ownership": {
+      "newOwner": {
+        "subject": "You’re now an Owner of {place}",
+        "heading": "You’re now an Owner of {place}",
+        "body": "{by} has made you an Owner of {place}. You can now manage all of its sites, the people who work on them and the account."
+      },
+      "previousOwner": {
+        "subject": "{name} is now an Owner of {place}",
+        "heading": "{name} is now an Owner of {place}",
+        "body": "{by} has made {name} an Owner of {place}.",
+        "steppedDown": "You are now {role} on all of {place}’s sites."
+      },
       "button": "Open Abluo",
       "replyHint": "Questions? Reply to this email to reach {by}."
     }

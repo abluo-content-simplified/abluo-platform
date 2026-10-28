@@ -25,6 +25,7 @@ const p = (over: Partial<Person>): Person =>
     canRestore: false,
     canResend: false,
     canCancel: false,
+    canMakeOwner: false,
     ...over,
   }) as Person
 

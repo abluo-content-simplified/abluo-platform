@@ -82,3 +82,37 @@ export function renderAccessRestoredEmail(input: AccessRestoredEmailInput): { su
 </div></body></html>`
   return { subject, html: htmlBody, text }
 }
+
+export type OwnershipEmailInput = {
+  locale: string
+  /** newOwner: to the person who became Owner; previousOwner: to each Owner before the change. */
+  kind: 'newOwner' | 'previousOwner'
+  byName: string
+  ownerName: string
+  placeName: string
+  /** previousOwner only: this person stepped down to Site admin. */
+  steppedDown: boolean
+  url: string
+}
+
+/** "You're now an Owner" / "{name} is now an Owner" — sent after an ownership transfer (PLAT-2). */
+export function renderOwnershipEmail(input: OwnershipEmailInput): { subject: string; html: string; text: string } {
+  const locale = invitationLocale(input.locale)
+  const m = getInvitationMessages(locale)
+  const o = m.ownership
+  const part = input.kind === 'newOwner' ? o.newOwner : o.previousOwner
+  const plain = { by: input.byName, name: input.ownerName, place: input.placeName, role: roleLabel(m, 'admin') }
+  const html = Object.fromEntries(Object.entries(plain).map(([k, v]) => [k, esc(v)]))
+  const extra = input.kind === 'previousOwner' && input.steppedDown ? o.previousOwner.steppedDown : ''
+  const subject = fill(part.subject, plain)
+  const text = [fill(part.heading, plain), '', fill(part.body, plain), ...(extra ? [fill(extra, plain)] : []), '', `${o.button}: ${input.url}`, '', fill(o.replyHint, plain)].join('\n')
+  const htmlBody = `<!doctype html><html lang="${locale}"><body style="margin:0;padding:32px 16px;background:#f6f6f4;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#1c1c1a">
+<div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;padding:32px">
+<h1 style="font-size:20px;font-weight:600;margin:0 0 20px">${fill(esc(part.heading), html)}</h1>
+<p style="margin:0 0 16px;line-height:1.5">${fill(esc(part.body), html)}</p>
+${extra ? `<p style="margin:0 0 16px;line-height:1.5">${fill(esc(extra), html)}</p>` : ''}
+<p style="margin:24px 0"><a href="${esc(input.url)}" style="display:inline-block;background:#1c1c1a;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:500">${esc(o.button)}</a></p>
+<p style="margin:0;font-size:13px;color:#6b6b66">${fill(esc(o.replyHint), html)}</p>
+</div></body></html>`
+  return { subject, html: htmlBody, text }
+}

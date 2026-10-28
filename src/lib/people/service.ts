@@ -35,6 +35,8 @@ export type Person = {
   status: PersonStatus
   /** project_members.id — site memberships only (kind 'member'). */
   membershipId?: string
+  /** auth user id — active people (owner, member, clientMember) only. */
+  userId?: string
   /** invitations.id — kind 'invitation'. */
   invitationId?: string
   /** project_member_archive.id — kind 'archived'. */
@@ -61,6 +63,8 @@ export type Person = {
   canRestore: boolean
   canResend: boolean
   canCancel: boolean
+  /** "Make owner" (PLAT-2): the viewer is an Owner of the client and this person is in it, not an Owner yet. */
+  canMakeOwner: boolean
 }
 
 export type PeopleView = {
@@ -70,6 +74,8 @@ export type PeopleView = {
   grantableExtras: string[]
   /** Per role, the extras that add something (a role that already includes them gets none). */
   extrasForRole: Record<string, string[]>
+  /** The viewer is an Owner of this client who may hand ownership on (and step down while doing so). */
+  canTransferOwnership: boolean
 }
 
 type Err<E extends string> = { ok: false; error: E }
@@ -160,6 +166,7 @@ const BLANK = {
   canRestore: false,
   canResend: false,
   canCancel: false,
+  canMakeOwner: false,
 }
 
 export async function listProjectPeople(ctx: TenantAuthorizationContext, projectId: string): Promise<PeopleView | null> {
@@ -219,13 +226,15 @@ export async function listProjectPeople(ctx: TenantAuthorizationContext, project
         ]),
       ])
       const acc = (uid: unknown) => who.get(uid as string) ?? NOBODY
+      // PLAT-2: only an Owner of the client (never a support visit) may make someone Owner.
+      const mayTransfer = !ctx.support && checkGrant(granter, { scope: 'tenant', action: 'change', role: 'owner', currentRole: 'member', extras: [] }).ok
       const label = (uid: unknown) => (uid ? acc(uid).name || acc(uid).email || null : null)
       const activeEmails = new Set([...activeUserIds].map((u) => acc(u).email.toLowerCase()).filter(Boolean))
       const now = Date.now()
 
       const fromAccount = (uid: unknown) => {
         const a = acc(uid)
-        return { name: a.name, email: a.email, avatarUrl: a.avatarUrl, lastActiveAt: a.lastActiveAt, twoFactor: a.twoFactor, isYou: uid === ctx.userId }
+        return { userId: uid as string, name: a.name, email: a.email, avatarUrl: a.avatarUrl, lastActiveAt: a.lastActiveAt, twoFactor: a.twoFactor, isYou: uid === ctx.userId }
       }
 
       const list: Person[] = [
@@ -257,6 +266,7 @@ export async function listProjectPeople(ctx: TenantAuthorizationContext, project
             joinedAt: ((inv?.accepted_at ?? r.created_at) as string) ?? null,
             editableRoles: self ? [] : rolesAllowed(granter, 'change', currentRole),
             canArchive: !self && checkGrant(granter, { scope: 'project', action: 'remove', currentRole: currentRole as never }).ok,
+            canMakeOwner: mayTransfer && !self,
           }
         }),
         ...clientMembers.map((r) => ({
@@ -268,6 +278,7 @@ export async function listProjectPeople(ctx: TenantAuthorizationContext, project
           role: 'member' as const,
           extras: ((r.extra_permissions as string[]) ?? []).filter(isProjectGrantable),
           joinedAt: (r.created_at as string) ?? null,
+          canMakeOwner: mayTransfer && r.user_id !== ctx.userId,
         })),
         ...[...openByEmail.values()]
           .filter((i) => !activeEmails.has(String(i.email).toLowerCase()))
@@ -305,6 +316,7 @@ export async function listProjectPeople(ctx: TenantAuthorizationContext, project
             status: 'archived' as const,
             archiveId: a.id as string,
             ...fromAccount(a.user_id),
+            userId: undefined,
             role: a.role as Person['role'],
             extras,
             joinedAt: (a.member_since as string) ?? null,
@@ -316,6 +328,7 @@ export async function listProjectPeople(ctx: TenantAuthorizationContext, project
       return {
         people: list,
         invitableRoles: rolesAllowed(granter, 'invite'),
+        canTransferOwnership: mayTransfer,
         grantableExtras: grantableExtrasFor(grant),
         extrasForRole: Object.fromEntries(
           PROJECT_MEMBERSHIP_ROLES.map((role) => {

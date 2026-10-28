@@ -10,6 +10,8 @@ import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { resolveProjectAction } from '@/lib/api/project-action'
 import { createInvitation } from '@/lib/invitations/service'
+import { mayTransferOwnership, tenantOfProject, transferOwnership } from '@/lib/people/ownership'
+import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import {
   archiveProjectMember,
   cancelProjectInvitation,
@@ -110,4 +112,38 @@ export async function resendInvitationAction(input: { projectSlug: string; local
   if (!r.ok) return r
   refresh(input.locale, input.projectSlug)
   return { ok: true, emailSent: r.emailSent }
+}
+
+/**
+ * "Make owner" (PLAT-2): an Owner of this client makes a person who is already
+ * in it an Owner, optionally stepping down to Site admin on every site. Only
+ * an Owner passes (never a support visit); the client comes from the project
+ * row, never from the browser.
+ */
+export async function makeOwnerAction(input: {
+  projectSlug: string
+  locale: string
+  userId: string
+  stepDown: boolean
+}): Promise<PeopleActionResult> {
+  const s = await scope(input.projectSlug)
+  if (!s) return { ok: false, error: 'forbidden' }
+  // Before any service-role read: the caller must be an Owner of SOME client.
+  if (!(s.ctx.tenants ?? []).some((t) => mayTransferOwnership(s.ctx, t.tenantId))) return { ok: false, error: 'forbidden' }
+  const place = await runAsTrustedSystemOperation(
+    `people: client of project ${s.grant.projectId} for "Make owner" by user ${s.ctx.userId} — caller is an Owner of a client`,
+    (admin) => tenantOfProject(admin, s.grant.projectId)
+  )
+  if (!place) return { ok: false, error: 'not_found' }
+  const r = await transferOwnership(s.ctx, {
+    tenantId: place.tenantId,
+    newOwnerUserId: input.userId,
+    stepDownUserId: input.stepDown === true ? s.ctx.userId : null,
+    locale: input.locale,
+    requestOrigin: await requestOrigin(),
+    projectSlug: place.slug,
+  })
+  if (!r.ok) return r
+  refresh(input.locale, input.projectSlug)
+  return { ok: true, emailSent: r.emailsSent > 0 }
 }
