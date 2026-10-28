@@ -38,7 +38,7 @@ import { CtaBannerSection } from '@/components/sections/CtaBannerSection'
 import { LocationsSection } from '@/components/sections/LocationsSection'
 import { SECTION_MAP, isSectionTypeAvailable } from '@/lib/modules/sections'
 import type { ProjectModuleConfig } from '@/lib/modules/config'
-import { withEventPlaceName, withEventPlaceNames, type EventSiteContext } from '@/lib/modules/events/structured'
+import { withEventPlaceLine, withEventPlaceLines, type EventSiteContext } from '@/lib/modules/events/structured'
 import { EVENT_VOCABULARY_PUBLIC_QUERY, resolveEventCategories, type RawEventVocabulary } from '@/lib/modules/events/categories'
 import { resolveCategoriesFor, categoryKeysOf, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
 import type {
@@ -366,7 +366,7 @@ export async function hydrateSections(
         const els = section as EventsListingSectionType
         const fetched = await fetchEventsListingEvents(els, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale, ctx.moduleConfig)
         const scheduled = ctx.projectSlug ? await withSchedules(ctx.projectSlug, fetched) : fetched
-        const events = withEventPlaceNames(scheduled ?? [], await getSiteLocations())
+        const events = withEventPlaceLines(scheduled ?? [], await getSiteLocations())
         // Slice to maxItems — we fetched one extra to detect overflow for View All
         // ADR-033 Amendment J (dual-read) — category labels/colours from the term
         // records, else the module's old config list. A failed read shows no chips.
@@ -386,7 +386,7 @@ export async function hydrateSections(
           defaultLocale: ctx.defaultLocale,
         })
         const scheduled = ctx.projectSlug ? await withSchedule(ctx.projectSlug, live) : live
-        lls.event = scheduled ? withEventPlaceName(scheduled, await getSiteLocations()) : scheduled
+        lls.event = scheduled ? withEventPlaceLine(scheduled, await getSiteLocations()) : scheduled
         return
       }
     })

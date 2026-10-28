@@ -4,7 +4,7 @@
 // partner API contract (`Event v1`) later, so the website and connected apps
 // describe an event the same way.
 
-import { getLocationMapsLink } from '@/lib/maps/locations'
+import { formatLocationAddress, getLocationMapsLink } from '@/lib/maps/locations'
 import { resolveTimeZone } from '@/lib/time/zones'
 import { DEFAULT_CURRENCY, validPriceOptions } from './engagement'
 import type {
@@ -29,6 +29,8 @@ export interface ResolvedEventPlace {
   source: 'location' | 'venue'
   name?: string
   address?: BusinessLocation
+  /** How to get in (room, floor, entrance) — a site location's access note, localized by GROQ. Venues have none. */
+  accessNote?: string
   /** "Open in Google Maps" link, when the place carries anything a map can use. */
   mapsLink: string | null
   pin?: { lat: number; lng: number }
@@ -80,6 +82,7 @@ export function resolveEventPlace(
       source: 'location',
       name: loc.name,
       address: loc.address,
+      accessNote: loc.accessNote || undefined,
       mapsLink: getLocationMapsLink(loc),
       pin: validPin(loc.pin),
     }
@@ -101,7 +104,7 @@ export function resolveEventPlace(
 }
 
 /**
- * The place name an event card or list shows: the picked site location's name
+ * The place NAME only (the dashboard's short Events list):  the picked site location's name
  * (already localized by GROQ) or the saved venue's name, via resolveEventPlace.
  * Falls back to the free-text `location` when the event has no place (events
  * from before ADR-031, online-only events, a removed location key).
@@ -114,25 +117,56 @@ export function eventPlaceName(
 }
 
 /**
- * Cards and lists render `event.location`; this sets it to the resolved place
- * name (eventPlaceName) so every card shows where a dashboard-made event
- * happens without each component resolving places itself.
+ * The one line an event card, list or event page shows for a place — the same
+ * parts as the Contact page's locations list, in one line:
+ *   "Breydel (BREY), Avenue d'Auderghem 45, 1040 Etterbeek – Room 04/SF-01, 4th floor."
+ * Name, street, postal code + city (formatLocationAddress; state and country
+ * are left out of the short line), then the access note. Missing parts are
+ * skipped; nothing at all gives undefined.
  */
-export function withEventPlaceNames<T extends Pick<Event, 'place' | 'attendanceMode' | 'location'>>(
+export function formatEventPlaceLine(
+  place: Pick<ResolvedEventPlace, 'name' | 'address' | 'accessNote'> | null | undefined,
+): string | undefined {
+  if (!place) return undefined
+  const oneLine = (v?: string) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '')
+  const a = place.address
+  const address = a ? formatLocationAddress({ street: a.street, postalCode: a.postalCode, city: a.city }).join(', ') : ''
+  const head = [oneLine(place.name), address].filter(Boolean).join(', ')
+  return [head, oneLine(place.accessNote)].filter(Boolean).join(' – ') || undefined
+}
+
+/**
+ * What an event card shows for "where": the place's full line
+ * (formatEventPlaceLine), else the free-text `location` (events from before
+ * ADR-031, online-only events, a removed location key, a place with no parts).
+ */
+export function eventPlaceLine(
+  event: Pick<Event, 'place' | 'attendanceMode' | 'location'>,
+  siteLocations: SiteLocation[] | null | undefined,
+): string | undefined {
+  return formatEventPlaceLine(resolveEventPlace(event, siteLocations)) || event.location || undefined
+}
+
+/**
+ * Cards render `event.location`; this sets it to the place's full line
+ * (eventPlaceLine) so every card shows where a dashboard-made event happens
+ * without each component resolving places itself.
+ */
+export function withEventPlaceLines<T extends Pick<Event, 'place' | 'attendanceMode' | 'location'>>(
   events: T[],
   siteLocations: SiteLocation[] | null | undefined,
 ): T[] {
-  return events.map((event) => withEventPlaceName(event, siteLocations))
+  return events.map((event) => withEventPlaceLine(event, siteLocations))
 }
 
-/** As withEventPlaceNames, for one event (null passes through). */
-export function withEventPlaceName<T extends Pick<Event, 'place' | 'attendanceMode' | 'location'>>(
+/** As withEventPlaceLines, for one event (null passes through). */
+export function withEventPlaceLine<T extends Pick<Event, 'place' | 'attendanceMode' | 'location'>>(
   event: T,
   siteLocations: SiteLocation[] | null | undefined,
 ): T {
   if (!event) return event
-  const name = eventPlaceName(event, siteLocations)
-  return name === event.location ? event : { ...event, location: name }
+  const line = eventPlaceLine(event, siteLocations)
+  return line === event.location ? event : { ...event, location: line }
 }
 
 /** The zone the event is shown in: venue → website → undefined (server zone). */

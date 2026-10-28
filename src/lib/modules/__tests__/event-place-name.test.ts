@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { eventPlaceName, withEventPlaceName, withEventPlaceNames } from '@/lib/modules/events/structured'
+import { eventPlaceLine, eventPlaceName, formatEventPlaceLine, resolveEventPlace, withEventPlaceLine, withEventPlaceLines } from '@/lib/modules/events/structured'
 import * as Q from '@/lib/sanity/queries'
 import type { Event, SiteLocation } from '@/lib/sanity/types'
 
@@ -8,8 +8,16 @@ import type { Event, SiteLocation } from '@/lib/sanity/types'
 // the free-text `location` when there is none.
 
 // The real CYCE case: "Atelier avec Sabrina" picks the site location "brey".
+const BREY_NOTE = "Room 04/SF-01, 4th floor. Entrance Avenue d'Auderghem 45, stairs on the right, basement."
+const BREY_LINE = `Breydel (BREY), Avenue d'Auderghem 45, 1040 Etterbeek – ${BREY_NOTE}`
 const CYCE_LOCATIONS: SiteLocation[] = [
-  { _key: 'k1', key: 'brey', name: 'Breydel (BREY)' },
+  {
+    _key: 'k1',
+    key: 'brey',
+    name: 'Breydel (BREY)',
+    address: { street: "Avenue d'Auderghem 45", postalCode: '1040', city: 'Etterbeek', country: 'Belgium' },
+    accessNote: BREY_NOTE,
+  },
   { _key: 'k2', key: 'berl', name: 'Berlaymont (BERL)' },
 ]
 
@@ -44,19 +52,52 @@ describe('eventPlaceName', () => {
   })
 })
 
-describe('withEventPlaceNames', () => {
-  it('sets location on each card and leaves unchanged events as they are', () => {
+describe('formatEventPlaceLine — the full line cards and the event page show', () => {
+  it('a site location: name, street, postal code + city, then the access note (the CYCE "brey" case)', () => {
+    expect(formatEventPlaceLine(resolveEventPlace(ev({ place: { kind: 'location', locationKey: 'brey' } }), CYCE_LOCATIONS))).toBe(BREY_LINE)
+  })
+
+  it('skips any missing part', () => {
+    expect(formatEventPlaceLine({ name: 'Berlaymont (BERL)' })).toBe('Berlaymont (BERL)')
+    expect(formatEventPlaceLine({ name: 'BERL', accessNote: 'Room 1' })).toBe('BERL – Room 1')
+    expect(formatEventPlaceLine({ address: { city: 'Brussels' }, accessNote: 'Room 1' })).toBe('Brussels – Room 1')
+    expect(formatEventPlaceLine({ name: 'BERL', address: { postalCode: '1049' } })).toBe('BERL, 1049')
+    expect(formatEventPlaceLine({ name: '  ', address: {}, accessNote: '' })).toBeUndefined()
+    expect(formatEventPlaceLine(null)).toBeUndefined()
+  })
+
+  it('a multi-line access note becomes one line', () => {
+    expect(formatEventPlaceLine({ name: 'BREY', accessNote: 'Room 4\nStairs on the right ' })).toBe('BREY – Room 4 Stairs on the right')
+  })
+
+  it('a saved venue: name and address (venues have no note)', () => {
+    const place = resolveEventPlace(
+      ev({ place: { kind: 'venue', venue: { name: 'Salle Polyvalente', address: { street: 'Rue Belliard 1', postalCode: '1000', city: 'Bruxelles', country: 'BE' } } } }),
+      CYCE_LOCATIONS,
+    )
+    expect(formatEventPlaceLine(place)).toBe('Salle Polyvalente, Rue Belliard 1, 1000 Bruxelles')
+  })
+
+  it('eventPlaceLine falls back to the free-text location exactly like eventPlaceName', () => {
+    expect(eventPlaceLine(ev({ location: 'Room 3' }), CYCE_LOCATIONS)).toBe('Room 3')
+    expect(eventPlaceLine(ev({ attendanceMode: 'online', place: { kind: 'location', locationKey: 'brey' }, location: 'Teams' }), CYCE_LOCATIONS)).toBe('Teams')
+    expect(eventPlaceLine(ev(), CYCE_LOCATIONS)).toBeUndefined()
+  })
+})
+
+describe('withEventPlaceLines', () => {
+  it('sets the full line on each card and leaves unchanged events as they are', () => {
     const picked = ev({ _id: 'a', place: { kind: 'location', locationKey: 'brey' } })
     const legacy = ev({ _id: 'b', location: 'Room 3' })
-    const [a, b] = withEventPlaceNames([picked, legacy], CYCE_LOCATIONS)
-    expect(a.location).toBe('Breydel (BREY)')
+    const [a, b] = withEventPlaceLines([picked, legacy], CYCE_LOCATIONS)
+    expect(a.location).toBe(BREY_LINE)
     expect(a.place).toEqual(picked.place)
     expect(b).toBe(legacy)
     expect(picked.location).toBeUndefined() // input not mutated
   })
 
-  it('withEventPlaceName passes null through', () => {
-    expect(withEventPlaceName(null as unknown as Event, CYCE_LOCATIONS)).toBeNull()
+  it('withEventPlaceLine passes null through', () => {
+    expect(withEventPlaceLine(null as unknown as Event, CYCE_LOCATIONS)).toBeNull()
   })
 })
 
@@ -80,5 +121,6 @@ describe('the card queries project the place', () => {
 
   it('the site locations come from the same query as the event page', () => {
     expect(Q.eventSiteContextQuery).toMatch(/locations\[\]\s*\{[^}]*key,/)
+    expect(Q.eventSiteContextQuery).toMatch(/"accessNote": coalesce\(accessNote\[\$locale\]/)
   })
 })

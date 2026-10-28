@@ -41,9 +41,9 @@ import {
   eventIsIndexable,
   eventLifecycleStatus,
   eventTimeZone,
-  formatAddressLine,
+  formatEventPlaceLine,
   resolveEventPlace,
-  withEventPlaceNames,
+  withEventPlaceLines,
   type EventSiteContext,
 } from '@/lib/modules/events/structured'
 import { multiline } from '@/lib/multiline-text'
@@ -180,7 +180,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
   }
 
   // Related events — filter by resolved slug string.
-  const relatedEvents = withEventPlaceNames(
+  const relatedEvents = withEventPlaceLines(
     (allEvents ?? [])
       .filter(e => e.slug?.current !== slug)
       .slice(0, 3),
@@ -210,8 +210,8 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
       : lifecycle === 'postponed' ? msg.statusPostponed
         : lifecycle === 'soldOut' ? msg.statusSoldOut
           : null
-  const placeLabel = place?.name ?? (isOnline ? msg.online : event.location)
-  const placeAddress = formatAddressLine(place?.address)
+  // Same line as the event cards: name, address, access note (formatEventPlaceLine).
+  const placeLabel = formatEventPlaceLine(place) ?? (isOnline ? msg.online : event.location)
 
   const dateFormat = new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric', ...(timeZone && { timeZone }) })
   const startDate = event.startDate ? dateFormat.format(new Date(event.startDate)) : null
@@ -299,7 +299,6 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                   ) : (
                     placeLabel
                   )}
-                  {placeAddress && <span> · {placeAddress}</span>}
                 </div>
               )}
             </div>

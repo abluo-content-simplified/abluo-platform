@@ -750,7 +750,8 @@ export const eventSiteContextQuery = /* groq */ `
       "name": ${loc('name')},
       address { street, postalCode, city, state, country },
       mapsUrl,
-      pin { lat, lng }
+      pin { lat, lng },
+      "accessNote": ${loc('accessNote')}
     }
   }
 `
@@ -1607,7 +1608,7 @@ const eventsListingCardFields = /* groq */ `
   eventStatus,
   startDate,
   endDate,
-  // ADR-031 — the authored place; cards show its name (withEventPlaceNames).
+  // ADR-031 — the authored place; cards show its full line (withEventPlaceLines).
   attendanceMode,
   ${EVENT_PLACE_FIELDS},
   "location": coalesce(location[$locale], location[$defaultLocale], location.en, location),
@@ -1712,7 +1713,7 @@ export const currentLiveEventQuery = /* groq */ `
     isCurrentLiveEvent,
     startDate,
     endDate,
-    // ADR-031 — the authored place; cards show its name (withEventPlaceNames).
+    // ADR-031 — the authored place; cards show its full line (withEventPlaceLines).
     attendanceMode,
     ${EVENT_PLACE_FIELDS},
     "location": ${loc('location')},
@@ -1752,7 +1753,7 @@ const homepageFeaturedEventFields = /* groq */ `
   featuredOnHomePage,
   startDate,
   endDate,
-  // ADR-031 — the authored place; cards show its name (withEventPlaceNames).
+  // ADR-031 — the authored place; cards show its full line (withEventPlaceLines).
   attendanceMode,
   ${EVENT_PLACE_FIELDS},
   "location": ${loc('location')},
@@ -1804,7 +1805,7 @@ export const eventsQuery = /* groq */ `
     eventStatus,
     startDate,
     endDate,
-    // ADR-031 — the authored place; cards show its name (withEventPlaceNames).
+    // ADR-031 — the authored place; cards show its full line (withEventPlaceLines).
     attendanceMode,
     ${EVENT_PLACE_FIELDS},
     "location": ${loc('location')},
@@ -1823,7 +1824,7 @@ export const pastEventsQuery = /* groq */ `
     "title": ${loc('title')},
     "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
     status,
-    // ADR-031 — the authored place; cards show its name (withEventPlaceNames).
+    // ADR-031 — the authored place; cards show its full line (withEventPlaceLines).
     attendanceMode,
     ${EVENT_PLACE_FIELDS},
     "location": ${loc('location')},
@@ -1845,7 +1846,7 @@ export const additionalLiveEventsQuery = /* groq */ `
     "title": ${loc('title')},
     "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
     status,
-    // ADR-031 — the authored place; cards show its name (withEventPlaceNames).
+    // ADR-031 — the authored place; cards show its full line (withEventPlaceLines).
     attendanceMode,
     ${EVENT_PLACE_FIELDS},
     "location": ${loc('location')},

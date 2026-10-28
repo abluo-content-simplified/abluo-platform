@@ -5,7 +5,7 @@ import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resol
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { FeaturedEventBlock } from '@/components/events/FeaturedEventBlock'
-import { withEventPlaceName } from '@/lib/modules/events/structured'
+import { withEventPlaceLine } from '@/lib/modules/events/structured'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, SupportedLocale, DesignSystem, Event } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
@@ -146,7 +146,7 @@ export default async function WebsitePage({ params }: PageProps) {
   // ADR-038 C3 — dates from the schedule (Supabase) when one exists; Sanity's otherwise.
   // ADR-031 — the card shows the picked place's name (site location or venue).
   const scheduledFeaturedEvent = await withSchedule(String(tenantId), sanityFeaturedEvent)
-  const featuredEvent = scheduledFeaturedEvent ? withEventPlaceName(scheduledFeaturedEvent, siteConfig?.locations) : null
+  const featuredEvent = scheduledFeaturedEvent ? withEventPlaceLine(scheduledFeaturedEvent, siteConfig?.locations) : null
 
   if (!homePage) {
     return (
