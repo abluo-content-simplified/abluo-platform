@@ -1096,6 +1096,12 @@ export interface HeroSection {
    * then outputs nothing, so existing heroes are unchanged. `\n` is preserved.
    */
   tagline?: string
+  /**
+   * When true the tagline is painted in the brand accent colour — the same
+   * `HEADLINE_ACCENT_STYLE` the headline accent uses. Absent/null/false keeps
+   * the default `textPrimary` colour, so existing heroes are unchanged.
+   */
+  taglineAccent?: boolean | null
   ctaLabel?: string
   ctaHref?: string
   // Media
@@ -1312,6 +1318,13 @@ export interface TextSection {
   eyebrow?: string
   title?: string
   content?: PortableTextContent
+  /** Optional image beside the text (localizedImage, projected via focalImage). */
+  image?: SanityImage
+  /** Locale-resolved alt text of `image` (GROQ "imageAlt"). */
+  imageAlt?: string | null
+  /** Raw schema field; GROQ delivers it as `mediaPosition` (coalesce(mediaPosition, imagePosition)). */
+  imagePosition?: 'left' | 'right' | null
+  mediaPosition?: 'left' | 'right' | null
 }
 
 /**

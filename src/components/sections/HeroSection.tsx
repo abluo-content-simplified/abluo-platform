@@ -20,7 +20,7 @@ import { CtaButton } from '@/components/ui/CtaButton'
 import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { resolveEasing } from '@/lib/motion/easing'
-import { renderHeadline, lastContentLineIndex, accentsLine } from '@/lib/headline-accent'
+import { renderHeadline, lastContentLineIndex, accentsLine, HEADLINE_ACCENT_STYLE } from '@/lib/headline-accent'
 import { focalObjectPosition } from '@/lib/gallery/focal'
 import { multiline } from '@/lib/multiline-text'
 
@@ -294,7 +294,7 @@ function HeroBackgroundVideo({
 
 export function HeroSection({ section, surface, designSystem }: Props) {
   const {
-    eyebrow, headline, headlineAccent, subheadline, tagline, ctaLabel, ctaHref,
+    eyebrow, headline, headlineAccent, subheadline, tagline, taglineAccent, ctaLabel, ctaHref,
     mediaType, heroImage, heroVideo, posterImage,
     heroHeight = 'large',
     contentWidth = 'standard',
@@ -591,12 +591,14 @@ export function HeroSection({ section, surface, designSystem }: Props) {
             the same `textPrimary` white-over-media colour the headline uses
             (one step brighter than the subheadline), a heavier weight and a
             tighter leading, and preserves authored "\n" line breaks. It shares
-            the subheadline's `d3` delay because the two read as one block. */}
+            the subheadline's `d3` delay because the two read as one block.
+            `taglineAccent` (opt-in, default off) swaps the colour for the exact
+            accent colour the headline accent uses (HEADLINE_ACCENT_STYLE). */}
         {tagline && (
           <SlideUp duration={duration} ease={ease} delay={d3} className="mb-12">
             <p
               className="max-w-xl whitespace-pre-line text-lg font-semibold leading-snug"
-              style={{ color: textPrimary }}
+              style={taglineAccent === true ? HEADLINE_ACCENT_STYLE : { color: textPrimary }}
             >
               {tagline}
             </p>

@@ -884,6 +884,17 @@ const heroSectionType = defineType({
       group: 'content',
       description: 'Optional short, bold line shown between the subheadline and the CTA (e.g. “We build — you market”). Line breaks are preserved. Leave empty for none.',
     }),
+    // Opt-in: paint the tagline in the same accent colour the headline accent
+    // uses. Unset on every hero authored before this field → default colour.
+    defineField({
+      name: 'taglineAccent',
+      title: 'Tagline in accent colour',
+      type: 'boolean',
+      group: 'content',
+      description: 'Show the tagline in the brand accent colour (the same colour the headline accent uses) instead of the headline colour. Off by default.',
+      initialValue: false,
+      hidden: ({ parent }) => !(parent as { tagline?: unknown } | undefined)?.tagline,
+    }),
     defineField({ name: 'ctaLabel', title: 'CTA Button Label', type: 'localizedString', group: 'content' }),
     defineField({ name: 'ctaHref', title: 'CTA Button Link', type: 'string', group: 'content' }),
 
@@ -1696,6 +1707,29 @@ const textSectionType = defineType({
     defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({ name: 'content', title: 'Content', type: 'localizedPortableText' }),
+    // Optional image beside the text. Absent on every text section authored
+    // before this field → the single-column layout renders exactly as before.
+    defineField({
+      name: 'image',
+      title: 'Image (optional)',
+      type: 'localizedImage',
+      description: 'Optional image shown beside the text on desktop, and below it on phones. Pick it from the media library.',
+    }),
+    defineField({
+      name: 'imagePosition',
+      title: 'Image Position',
+      type: 'string',
+      description: 'Which side of the text the image sits on (desktop). On phones the image always follows the text.',
+      options: {
+        list: [
+          { title: 'Right', value: 'right' },
+          { title: 'Left', value: 'left' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'right',
+      hidden: ({ parent }) => !(parent as { image?: { asset?: unknown } } | undefined)?.image?.asset,
+    }),
   ],
   preview: {
     select: { title: 'title.it' },

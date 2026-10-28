@@ -456,6 +456,9 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       // simply renders nothing. treatmentCard's own nested "tagline" lives
       // inside the treatments[] sub-projection below and is untouched by this.
       "tagline": ${loc('tagline')},
+      // heroSection extension — opt-in accent colour for the tagline. Null on
+      // every hero authored before the field → default (headline) colour.
+      taglineAccent,
       "ctaLabel": ${loc('ctaLabel')},
       ctaHref,
       "title": ${loc('title')},
@@ -490,6 +493,11 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         anchorId,
       },
       "content": ${loc('content')},
+      // textSection extension — alt text of the optional image beside the
+      // text (the image itself is the shared focalImage('image') above; its
+      // left/right side arrives as "mediaPosition", which coalesces the raw
+      // imagePosition). Null when no image or no alt was authored.
+      "imageAlt": ${loc('image.alt')},
       items[] {
         _key,
         "question": ${loc('question')},
@@ -1968,6 +1976,11 @@ export const homePageQuery = /* groq */ `
         anchorId,
       },
       "content": ${loc('content')},
+      // textSection extension — alt text of the optional image beside the
+      // text (the image itself is the shared focalImage('image') above; its
+      // left/right side arrives as "mediaPosition", which coalesces the raw
+      // imagePosition). Null when no image or no alt was authored.
+      "imageAlt": ${loc('image.alt')},
       items[] {
         _key,
         "question": ${loc('question')},
