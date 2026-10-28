@@ -538,7 +538,7 @@ export function DocumentEditor({
         {!readOnly ? (
           <div className="flex flex-wrap justify-end gap-2">
             <ButtonLink variant="quiet" href={`/${projectSlug}/document-library`}>{t('cancel')}</ButtonLink>
-            <Button variant="primary" type="submit" disabled={busy}>{busy ? (progress !== null ? t('uploading') : t('saving')) : isNew ? (createdId ? t('tryAgain') : t('create')) : t('save')}</Button>
+            <Button variant="primary" type="submit" disabled={busy || (isNew && saved !== null)}>{busy ? (progress !== null ? t('uploading') : t('saving')) : isNew ? (createdId && error ? t('tryAgain') : t('create')) : t('save')}</Button>
           </div>
         ) : null}
       </form>
