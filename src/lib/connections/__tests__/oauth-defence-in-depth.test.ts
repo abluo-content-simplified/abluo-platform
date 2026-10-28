@@ -157,7 +157,7 @@ describe('our layer holds without the library', () => {
     const app = await f.newApp('TableRes')
     expect(await authenticateClient(f.store, app.clientId, undefined)).toBeNull()
     expect(await authenticateClient(f.store, app.clientId, '')).toBeNull()
-    expect(await authenticateClient(f.store, app.clientId, app.clientSecret.slice(0, -1) + 'x')).toBeNull()
+    expect(await authenticateClient(f.store, app.clientId, app.clientSecret.slice(0, -1) + (app.clientSecret.endsWith('x') ? 'y' : 'x'))).toBeNull()
     expect(await authenticateClient(f.store, app.clientId, app.clientSecret)).not.toBeNull()
     const model = createOAuthModel({ store: f.store, clock: f.clock })
     // @ts-expect-error — the library passes undefined for a PKCE request without a secret
