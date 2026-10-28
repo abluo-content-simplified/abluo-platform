@@ -209,7 +209,8 @@ describe('the route reads pages only through the gate', () => {
     }
     const props = read('components/site/RestrictedPage.tsx').match(/export type RestrictedPageProps = \{([\s\S]*?)\n\}/)![1]
     const keys = [...props.matchAll(/^\s+(\w+)\??:/gm)].map((m) => m[1]).sort()
-    expect(keys).toEqual(['actions', 'fields', 'homeHref', 'locale', 'notice', 'returnTo', 'signedIn'])
+    // R9: `note` is the page's PUBLIC note under the sign-in, read with the policy (page-groq.test.ts).
+    expect(keys).toEqual(['actions', 'fields', 'homeHref', 'locale', 'note', 'notice', 'returnTo', 'signedIn'])
   })
   it('the home page cannot be gated: its route and query do not read access', () => {
     expect(read('app/[locale]/(website)/[tenant]/page.tsx')).not.toMatch(/access|loadGatedPage/i)

@@ -122,6 +122,37 @@ describe('pageBySlugQuery — content only when open, or after authorisation', (
   })
 })
 
+describe('pageBySlugQuery — the note under the sign-in (R9)', () => {
+  const note = {
+    _type: 'accessPromptNote',
+    en: [{ _type: 'block', _key: 'b', style: 'normal', markDefs: [{ _type: 'link', _key: 'l', href: 'https://example.org/join' }],
+      children: [{ _type: 'span', _key: 's1', text: 'Not a member? ', marks: [] }, { _type: 'span', _key: 's2', text: 'Join', marks: ['l'] }] }],
+    fr: [{ _type: 'block', _key: 'b', style: 'normal', markDefs: [], children: [{ _type: 'span', _key: 's1', text: 'Pas encore membre ?', marks: [] }] }],
+  }
+  const dataset = [
+    { _id: 'project-a', _type: 'project', projectSlug: 'site-a' },
+    { ...page('noted', 'noted', { visibility: 'restricted', groups: [G], navigation: 'locked', promptNote: note }), slug: { en: { _type: 'slug', current: 'noted' }, fr: { _type: 'slug', current: 'note' } } },
+    page('members', 'members', { visibility: 'restricted', groups: [G] }),
+  ]
+  const fetchFrom = async (slug: string, locale = 'en') => {
+    const params = { projectSlug: 'site-a', locale, defaultLocale: 'en', slug, ancestorPaths: slugAncestorPaths(slug), unlocked: false }
+    return (await evaluate(parse(inlineLocaleKeys(pageBySlugQuery, params)), { dataset, params })).get()
+  }
+  it('is read with the policy while the page is locked — in the request language, links intact — and nothing else leaks', async () => {
+    const r = await fetchFrom('noted')
+    expect(r.contentWithheld).toBe(true)
+    expect(r.accessPromptNote).toHaveLength(1)
+    expect(r.accessPromptNote[0].children.map((c: { text: string }) => c.text).join('')).toBe('Not a member? Join')
+    expect(r.accessPromptNote[0].markDefs[0]).toMatchObject({ _type: 'link', href: 'https://example.org/join' })
+    expect((await fetchFrom('note', 'fr')).accessPromptNote[0].children[0].text).toBe('Pas encore membre ?')
+    for (const k of CONTENT_KEYS) expect(r, k).not.toHaveProperty(k)
+    expect(JSON.stringify(r)).not.toMatch(/SECRET|Title of/)
+  })
+  it('is null when the page has no note', async () => {
+    expect((await fetchFrom('members')).accessPromptNote ?? null).toBeNull()
+  })
+})
+
 describe('the GROQ rule and parseAccessPolicy() agree', () => {
   const shapes: unknown[] = [
     undefined, null, {}, { visibility: 'public' }, { visibility: 'public', groups: [G] },

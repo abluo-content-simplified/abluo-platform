@@ -28,6 +28,7 @@ import { RestrictedPage } from '@/components/site/RestrictedPage'
 import { ACCESS_FORM_FIELDS, accessFormActions, parseAccessNotice } from '@/lib/access/request'
 import { promptNotice, promptNoticeKind } from '@/lib/access/prompt'
 import { getAccessMessages } from '@/lib/i18n/access-messages'
+import { resolveBodyLinks, siteHostsForProject } from '@/lib/links/link-target'
 
 export const dynamic = 'force-dynamic'
 
@@ -298,6 +299,7 @@ export default async function WebsitePageRoute({ params, searchParams }: PagePro
           fields={ACCESS_FORM_FIELDS}
           notice={notice ? { tone: notice.tone, text: notice.text, invalid: notice.invalid } : null}
           signedIn={denied?.visitor === 'other_groups'}
+          note={page?.accessPromptNote ? resolveBodyLinks(page.accessPromptNote, { siteBase, siteHosts: siteHostsForProject(String(tenantId)), projectSlug: String(tenantId) }) : null}
         />
       </SlugMapProvider>
     )

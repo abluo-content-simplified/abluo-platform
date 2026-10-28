@@ -11,10 +11,13 @@
  *
  * B2.3: the password prompt (AccessPrompt) below the text; when the visitor
  * is signed in with a password that does not open this page, a sign-out link.
+ * R9: the page's optional public note under the sign-in (`note`), the only
+ * page-authored text it shows — read with the policy, not with the content.
  */
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { getAccessMessages } from '@/lib/i18n/access-messages'
 import { AccessPrompt } from './AccessPrompt'
+import { AccessPromptNote } from './AccessPromptNote'
 
 export type RestrictedPageProps = {
   locale: string
@@ -26,9 +29,16 @@ export type RestrictedPageProps = {
   notice: { tone: 'error' | 'info'; text: string; invalid?: boolean } | null
   /** The visitor holds a session here (it just does not open this page). */
   signedIn: boolean
+  /**
+   * R9 — the page's optional note under the sign-in (`access.promptNote`),
+   * links already resolved. The ONE piece of page data this placeholder takes,
+   * and it is public by design: it is read with the policy, never with the
+   * page's content. Absent → the output is exactly as without the feature.
+   */
+  note?: unknown[] | null
 }
 
-export function RestrictedPage({ locale, homeHref, actions, returnTo, fields, notice, signedIn }: RestrictedPageProps) {
+export function RestrictedPage({ locale, homeHref, actions, returnTo, fields, notice, signedIn, note }: RestrictedPageProps) {
   const m = getAccessMessages(locale)
   return (
     <SectionContainer>
@@ -73,6 +83,8 @@ export function RestrictedPage({ locale, homeHref, actions, returnTo, fields, no
             </form>
           )}
         </div>
+
+        <AccessPromptNote blocks={note} />
       </div>
     </SectionContainer>
   )

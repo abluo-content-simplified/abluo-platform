@@ -5,6 +5,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { schemaTypes } from '@/lib/sanity/schema'
+import { bodyLinkAnnotation } from '@/lib/sanity/fields/body-link'
 import { ACCESS_ROUTE_SLUG, findFileDownloadCtas, validatePageAccess, validatePageSlugNotReserved } from '../page-schema-rules'
 import { RESERVED_SLUGS } from '@/lib/platform/reserved-slugs'
 import { ACCESS_ROUTE_SEGMENT } from '../request'
@@ -49,15 +50,34 @@ describe('the page schema', () => {
   const pageType = (schemaTypes as any[]).find((t) => t.name === 'page')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const access = pageType.fields.find((f: any) => f.name === 'access')
-  it('has an `access` object with visibility, groups and navigation', () => {
+  it('has an `access` object with visibility, groups, navigation and the note under the sign-in', () => {
     expect(access?.type).toBe('object')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(access.fields.map((f: any) => f.name)).toEqual(['visibility', 'groups', 'navigation'])
+    expect(access.fields.map((f: any) => f.name)).toEqual(['visibility', 'groups', 'navigation', 'promptNote'])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const note = access.fields.find((f: any) => f.name === 'promptNote')
+    expect(note.type).toBe('accessPromptNote')
+    expect(note.description).toMatch(/under the sign-in/)
+    expect(note.hidden({ parent: { visibility: 'public' } })).toBe(true)
+    expect(note.hidden({ parent: { visibility: 'restricted' } })).toBe(false)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const vis = access.fields.find((f: any) => f.name === 'visibility')
     expect(vis.initialValue).toBe('public')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(vis.options.list.map((o: any) => o.value)).toEqual(['public', 'restricted'])
+  })
+  it('the note type allows paragraphs, bold and the shared body link only', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const t: any = schemaTypes.find((x: any) => x.name === 'accessPromptNote')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const en = t.fields.find((f: any) => f.name === 'en')
+    const block = en.of[0]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(block.styles.map((x: any) => x.value)).toEqual(['normal'])
+    expect(block.lists).toEqual([])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(block.marks.decorators.map((d: any) => d.value)).toEqual(['strong'])
+    expect(block.marks.annotations).toEqual([bodyLinkAnnotation])
   })
   it('is hidden on the home page — but stays visible if a restricted value is already stored there', () => {
     expect(access.hidden({ document: { pageType: 'home' }, value: undefined })).toBe(true)

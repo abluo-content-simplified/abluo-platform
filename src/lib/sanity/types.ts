@@ -2443,6 +2443,12 @@ export interface WebsitePage {
   access?: { visibility?: string; groups?: string[]; navigation?: string } | null
   ancestorAccess?: Array<{ access?: { visibility?: string; groups?: string[] } | null }> | null
   contentWithheld?: boolean | null
+  /**
+   * R9 — `access.promptNote` in the request language (internal links carry
+   * `internalTarget`). Read even while the page is locked: it is the public
+   * note under the sign-in. Absent/null when not set.
+   */
+  accessPromptNote?: PortableTextContent | null
 }
 
 // ─── Live Page ────────────────────────────────────────────────────────────────

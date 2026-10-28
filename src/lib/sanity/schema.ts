@@ -143,6 +143,39 @@ const localizedPortableTextType = defineType({
   ],
 })
 
+// ADR-040 R9 — the optional note under the sign-in of a members-only page
+// (`page.access.promptNote`). Short, localized, RESTRICTED rich text: plain
+// paragraphs, bold and the shared body link only (no headings, lists, italics),
+// so it stays a quiet line under the form. It is shown while the page is
+// LOCKED, so it is public text by design — never put members-only content here.
+const accessPromptNoteType = defineType({
+  name: 'accessPromptNote',
+  title: 'Note under the sign-in',
+  type: 'object',
+  components: { input: LocalizedPortableTextInput },
+  fields: [
+    ...LOCALE_CODES.map((code) =>
+      defineField({
+        name: code,
+        title: PLATFORM_LOCALES[code].nativeName,
+        type: 'array',
+        of: [
+          defineArrayMember({
+            type: 'block',
+            styles: [{ title: 'Paragraph', value: 'normal' }],
+            lists: [],
+            marks: {
+              decorators: [{ title: 'Bold', value: 'strong' }],
+              annotations: [bodyLinkAnnotation],
+            },
+          }),
+        ],
+      })
+    ),
+    translationStatusField,
+  ],
+})
+
 // Each locale field is a proper Sanity slug — keeps slug generation, validation,
 // and uniqueness checks. Source auto-generates from the matching locale's title.
 // Tenant-aware: only the project's supportedLocales are shown in Studio (Phase 2).
@@ -5837,6 +5870,14 @@ const pageType = defineType({
             layout: 'radio',
           },
         }),
+        defineField({
+          name: 'promptNote',
+          title: 'Note under the sign-in',
+          type: 'accessPromptNote',
+          hidden: ({ parent }: { parent?: { visibility?: string } }) => parent?.visibility !== 'restricted',
+          description:
+            'Optional short note shown under the sign-in, for visitors who don\u2019t have the password yet (e.g. where to join). Everyone sees it, signed in or not — never put members-only information here.',
+        }),
       ],
     }),
   ],
@@ -6250,6 +6291,7 @@ export const schemaTypes = [
   localizedStringType,
   localizedTextType,
   localizedPortableTextType,
+  accessPromptNoteType,
   localizedSlugType,
   redirectFromType,
   localizedImageType,

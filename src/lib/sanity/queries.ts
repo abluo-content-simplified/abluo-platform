@@ -2113,6 +2113,10 @@ export const pageBySlugQuery = /* groq */ `
     "slugMap": slug,
     "redirectFrom": redirectFrom,
     ${PAGE_ACCESS_PROJECTION},
+    // R9 — the optional note under the sign-in. Read WITH the policy (outside
+    // the content gate) because it is shown while the page is locked; it is
+    // public text by design (Studio says so). Absent when not set.
+    "accessPromptNote": select(defined(access.promptNote) => ${locBody('access.promptNote')}),
     ${onlyWhenReadable(`
       "title": ${loc('title')},
       backgroundPattern,
