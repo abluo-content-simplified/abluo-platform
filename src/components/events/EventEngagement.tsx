@@ -30,12 +30,15 @@ export function EventHostsLine({
   tenantId,
   linked = true,
   className,
+  hostScoped = false,
 }: {
   hosts: Event['hosts']
   locale: string
   tenantId: string
   linked?: boolean
   className?: string
+  /** True on the site's own host — see siteBasePath() in @/lib/sanity/href. */
+  hostScoped?: boolean
 }) {
   const list = visibleHosts(hosts)
   if (list.length === 0) return null
@@ -45,7 +48,7 @@ export function EventHostsLine({
     <p className={className} style={{ color: 'var(--color-text-secondary)' }}>
       <span>{msg.hostedBy} </span>
       {list.map((host, i) => {
-        const link = linked ? resolveEventLink(host.url, locale, tenantId) : null
+        const link = linked ? resolveEventLink(host.url, locale, tenantId, hostScoped) : null
         const name = link ? (
           <a
             href={link.href}
@@ -80,12 +83,15 @@ export function EventRegisterButton({
   event,
   locale,
   tenantId,
+  hostScoped = false,
 }: {
   event: Pick<Event, 'registrationUrl' | 'registrationLabel'>
   locale: string
   tenantId: string
+  /** True on the site's own host — see siteBasePath() in @/lib/sanity/href. */
+  hostScoped?: boolean
 }) {
-  const link = resolveEventLink(event.registrationUrl, locale, tenantId)
+  const link = resolveEventLink(event.registrationUrl, locale, tenantId, hostScoped)
   if (!link) return null
   const msg = getEventMessages(locale)
   return (

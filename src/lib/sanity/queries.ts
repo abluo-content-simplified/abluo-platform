@@ -2155,6 +2155,19 @@ export const pageByOldSlugQuery = /* groq */ `
   }
 `
 
+// Every page of the project with its slug in each language — the map that
+// turns an authored site-relative path (`/teachers#x`) into the page's slug in
+// the visitor's language (src/lib/links/localize-site-path.ts). Raw `slug`
+// object: one key per locale, `{ current }` each. Read once per request
+// (getSitePageSlugs, React cache) and only when a page carries such a link.
+export const sitePageSlugsQuery = /* groq */ `
+  *[_type == "page" && projectSlug == $projectSlug && defined(slug)] {
+    _id,
+    pageType,
+    "slugs": slug
+  }
+`
+
 export const siteConfigQuery = websiteSiteConfigQuery
 
 // ─── Live Page ────────────────────────────────────────────────────────────────

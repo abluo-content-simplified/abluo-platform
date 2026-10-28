@@ -82,6 +82,9 @@ import type { CatalogueListingSection as CatalogueListingSectionType } from '@/l
 import type { CatalogueConfigDTO } from '@/lib/modules/catalogue/dto'
 import { hydrateCatalogueListing, loadCatalogueConfig } from '@/lib/modules/catalogue/website'
 import { visitorCountry } from '@/lib/affiliate/visitor-country'
+import { localizeSiteLinks, normalizeSitePageSlugs } from '@/lib/links/localize-site-path'
+import { getSitePageSlugs } from '@/lib/links/page-slugs.server'
+import { sitePageSlugsQuery } from '@/lib/sanity/queries'
 
 // ─── Blog listing post fetcher ────────────────────────────────────────────────
 
@@ -391,6 +394,14 @@ export async function hydrateSections(
         return
       }
     })
+  )
+  // Free-text site paths (CTA URL, event registration/host links) are authored
+  // in one language: point them at the page's slug in this one. The slug map
+  // is read only when such a link exists, once per request.
+  await localizeSiteLinks(sections, ctx.locale, () =>
+    ctx.projectSlug
+      ? getSitePageSlugs(ctx.projectSlug)
+      : ctx.fetchForTenant<unknown>(sitePageSlugsQuery, {}).then(normalizeSitePageSlugs, () => [])
   )
 }
 

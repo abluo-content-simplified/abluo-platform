@@ -33,6 +33,8 @@ import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 import { withSchedule, withSchedules } from '@/lib/scheduling/read.server'
 import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { siteBasePath } from '@/lib/sanity/href'
+import { localizeSiteLinks } from '@/lib/links/localize-site-path'
+import { getSitePageSlugs } from '@/lib/links/page-slugs.server'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 import { safeJsonLd } from '@/lib/seo/safe-json-ld'
 import {
@@ -135,7 +137,8 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
   const resolvedSearch = await searchParams
   const from = resolvedSearch?.from
   const { fetchForTenant } = tenantClient(tenantId)
-  const siteBase = siteBasePath(locale, tenantId, await isHostScopedRequest(tenantId))
+  const hostScoped = await isHostScopedRequest(tenantId)
+  const siteBase = siteBasePath(locale, tenantId, hostScoped)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
@@ -186,6 +189,10 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
       .slice(0, 3),
     siteContext?.locations,
   )
+
+  // Host / registration links authored as a site path in one language
+  // (`/teachers#…`) → this language's page slug (`/professeurs#…`).
+  await localizeSiteLinks([event, relatedEvents], locale, () => getSitePageSlugs(String(tenantId)))
 
   const msg = getEventMessages(locale)
 
@@ -302,7 +309,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                 </div>
               )}
             </div>
-            <EventHostsLine hosts={event.hosts} locale={locale} tenantId={tenantId} className="-mt-4 mb-8 text-sm" />
+            <EventHostsLine hosts={event.hosts} locale={locale} tenantId={tenantId} hostScoped={hostScoped} className="-mt-4 mb-8 text-sm" />
           </SlideUp>
 
           {/* ── Short description ────────────────────────────────── */}
@@ -320,7 +327,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
               <div className="mb-12 flex flex-col gap-6">
                 <EventPriceList options={event.priceOptions} locale={locale} />
                 <div>
-                  <EventRegisterButton event={event} locale={locale} tenantId={tenantId} />
+                  <EventRegisterButton event={event} locale={locale} tenantId={tenantId} hostScoped={hostScoped} />
                 </div>
               </div>
             </SlideUp>

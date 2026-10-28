@@ -79,16 +79,20 @@ const EXTERNAL_RE = /^(https?:)?\/\//i
  * Absolute URLs pass through and are flagged external; site-relative paths
  * (`/teachers#florian-parra`) get the `/{locale}/{tenant}/` prefix via the
  * shared withTenantPrefix rule; `#anchor`, `mailto:` and `tel:` pass through
- * unchanged. Empty input → null.
+ * unchanged. Empty input → null. The path itself is put in the visitor's
+ * language beforehand, on the server (localizeSiteLinks in
+ * @/lib/links/localize-site-path), where the page slug map is available.
  */
 export function resolveEventLink(
   url: string | null | undefined,
   locale: string,
-  tenantId: string
+  tenantId: string,
+  /** True on the site's own host — see siteBasePath() in @/lib/sanity/href. */
+  hostScoped = false
 ): ResolvedEventLink | null {
   const raw = url?.trim()
   if (!raw) return null
-  return { href: withTenantPrefix(raw, locale, tenantId), external: EXTERNAL_RE.test(raw) }
+  return { href: withTenantPrefix(raw, locale, tenantId, hostScoped), external: EXTERNAL_RE.test(raw) }
 }
 
 /** Hosts that have a name — the only ones we render. */
