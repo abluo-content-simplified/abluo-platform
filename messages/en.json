@@ -84,6 +84,13 @@
       "support": "Support",
       "documents": "Documents"
     },
+    "navGroups": {
+      "publish": "Publish",
+      "show": "Show",
+      "visitors": "Visitors",
+      "tools": "Tools",
+      "other": "Other"
+    },
     "shell": {
       "brandTagline": "Dashboard",
       "noModules": "No modules are enabled for this project yet.",

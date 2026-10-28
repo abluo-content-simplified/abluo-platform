@@ -2,6 +2,7 @@ import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
 import { schemaTypes, initialValueTemplates } from './src/lib/sanity/schema'
 import { MODULE_REGISTRY } from './src/lib/modules'
+import { sortByModuleOrder } from './src/lib/modules/order'
 import { buildCollectionItems } from './src/lib/modules/navigation'
 import { DesignSystemPreview } from './src/sanity/components/DesignSystemPreview'
 import { sectionPickerInput } from './src/sanity/components/section-picker/SectionPicker'
@@ -324,8 +325,10 @@ export default defineConfig({
               ),
           ]
 
-          const contentModules = MODULE_REGISTRY.filter(
-            (m) => !!m.platformContract.pageType && enabledModuleIds.includes(m.id)
+          // PLAT-3: the same fixed module order as the Modules list and the client sidebar.
+          const contentModules = sortByModuleOrder(
+            MODULE_REGISTRY.filter((m) => !!m.platformContract.pageType && enabledModuleIds.includes(m.id)),
+            (m) => m.id
           )
 
           for (const mod of contentModules) {
@@ -354,12 +357,15 @@ export default defineConfig({
           // no group of their own: their collection sits beside Media, one
           // click deep. Restricted to category 'content' so configuration-only
           // modules (Forms, WhatsApp) never appear under Content.
-          const collectionOnlyModules = MODULE_REGISTRY.filter(
-            (m) =>
-              !m.platformContract.pageType &&
-              m.category === 'content' &&
-              m.platformContract.collections.length > 0 &&
-              enabledModuleIds.includes(m.id)
+          const collectionOnlyModules = sortByModuleOrder(
+            MODULE_REGISTRY.filter(
+              (m) =>
+                !m.platformContract.pageType &&
+                m.category === 'content' &&
+                m.platformContract.collections.length > 0 &&
+                enabledModuleIds.includes(m.id)
+            ),
+            (m) => m.id
           )
           for (const mod of collectionOnlyModules) {
             items.push(...buildCollectionItems(slug, tenantSlug, S, mod))

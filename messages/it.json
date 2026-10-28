@@ -84,6 +84,13 @@
       "support": "Supporto",
       "documents": "Documenti"
     },
+    "navGroups": {
+      "publish": "Pubblica",
+      "show": "Mostra",
+      "visitors": "Visitatori",
+      "tools": "Strumenti",
+      "other": "Altro"
+    },
     "shell": {
       "brandTagline": "Dashboard",
       "noModules": "Nessun modulo è ancora attivo per questo progetto.",

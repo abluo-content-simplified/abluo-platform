@@ -142,9 +142,10 @@ describe('buildTenantSurfaces', () => {
 
   it('an owner with every module sees every nav item and the module widgets', () => {
     const s = buildTenantSurfaces(grantFor('owner', ['blog', 'forms', 'gallery']))
-    // Sidebar order and groups (Tom, 2026-10-22): content · activity · support & configuration. Categories & Tags closes the content group.
-    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'media', 'people', 'taxonomy', 'forms', 'analytics', 'support', 'connections', 'settings'])
-    expect(s.nav.map((n) => n.group)).toEqual(['content', 'content', 'content', 'content', 'content', 'activity', 'activity', 'support', 'support', 'support'])
+    // Sidebar order and groups: the modules in their PLAT-3 groups (Publish · Show · Visitors), then
+    // content work · activity · support & configuration (Tom, 2026-10-22). Categories & Tags closes the content group.
+    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'forms', 'media', 'people', 'taxonomy', 'analytics', 'support', 'connections', 'settings'])
+    expect(s.nav.map((n) => n.group)).toEqual(['publish', 'show', 'visitors', 'content', 'content', 'content', 'activity', 'support', 'support', 'support'])
     expect(ids(s.widgets)).toEqual(expect.arrayContaining(['siteStatus', 'attention', 'glance.posts', 'glance.requests', 'glance.galleries', 'traffic', 'latest.posts']))
   })
 

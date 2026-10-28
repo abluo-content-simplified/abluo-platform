@@ -1,6 +1,8 @@
 // Pure rules for the Studio Modules overview pane (ModulesOverview.tsx) — kept
 // free of Studio imports so they are unit-testable.
 
+import { groupByModuleOrder } from '../../modules/order'
+
 export type Installation = { moduleId?: string; enabled?: boolean }
 
 /** Enabled = listed and not explicitly disabled — same rule as the GROQ `[enabled != false]` used elsewhere. */
@@ -10,11 +12,19 @@ export function enabledModuleIdsFrom(installations: Installation[] | null | unde
     .map((i) => i.moduleId as string)
 }
 
-/** Registry order is kept inside each group, so the list never reshuffles within a group. */
-export function splitModules<T extends { id: string }>(registry: readonly T[], enabledIds: readonly string[]) {
+/**
+ * The overview's rows (PLAT-3, Tom 2026-10-28): every module in the fixed
+ * order and groups of `@/lib/modules/order` (Publish · Show · Visitors ·
+ * Tools), shared with the client dashboard sidebar. A module that is off
+ * stays in its place, marked off (the pane greys it) — the list never
+ * reshuffles when a module is switched on or off, and never depends on the
+ * registry or installation order.
+ */
+export function groupModules<T extends { id: string }>(registry: readonly T[], enabledIds: readonly string[]) {
   const on = new Set(enabledIds)
-  return {
-    active: registry.filter((m) => on.has(m.id)),
-    inactive: registry.filter((m) => !on.has(m.id)),
-  }
+  return groupByModuleOrder(registry, (m) => m.id).map(({ group, items }) => ({
+    id: group.id,
+    label: group.label,
+    modules: items.map((module) => ({ module, on: on.has(module.id) })),
+  }))
 }

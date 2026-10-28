@@ -14,6 +14,7 @@
  *
  * Browser-safe and pure: no server imports, so the sidebar and pages can use it.
  */
+import { moduleGroupOf, sortByModuleOrder, type ModuleGroupId } from '@/lib/modules/order'
 
 /** What a surface needs. Empty = anyone with a grant on the project. */
 export type SurfaceRequirement = {
@@ -37,15 +38,29 @@ export type NavSurface = {
   segment: string
   requires: SurfaceRequirement
   /**
-   * Sidebar group (Tom, 2026-10-22): content work, then activity (what comes in,
-   * how the site is doing), then support & configuration. Groups are separated
-   * by spacing only — no headings. Home belongs to `content`; the client's
-   * "What's new" row opens the `support` group.
+   * Sidebar group. A module's screen sits in its module group (PLAT-3, Tom
+   * 2026-10-28: Publish · Show · Visitors · Tools, from `@/lib/modules/order`,
+   * shown with a heading). Then the screens that are not a module (Tom,
+   * 2026-10-22): content work (Media, Categories & Tags, People), activity
+   * (Analytics), support & configuration — separated by spacing only. The
+   * client's "What's new" row opens the `support` group.
    */
   group: NavGroup
 }
 
-export type NavGroup = 'content' | 'activity' | 'support'
+/** Screens that are not a module: spacing only, no heading. */
+export type PlainNavGroup = 'content' | 'activity' | 'support'
+export type NavGroup = ModuleGroupId | PlainNavGroup
+
+/** Is this a module group (shown with a heading in the sidebar)? */
+export function isModuleNavGroup(group: NavGroup): group is ModuleGroupId {
+  return group !== 'content' && group !== 'activity' && group !== 'support'
+}
+
+/** A module's screen: its group and position come from the shared module order (PLAT-3). */
+function moduleNav(id: string, segment: string, module: string, permission: string): NavSurface {
+  return { kind: 'nav', id, segment, group: moduleGroupOf(module), requires: { module, permission } }
+}
 
 /** Where a Home widget sits. Each slot is laid out by the Home page. */
 export type WidgetSlot = 'header' | 'setup' | 'attention' | 'continue' | 'glance' | 'latest'
@@ -94,24 +109,38 @@ export const CONFIGURATION_PERMISSIONS: readonly string[] = [
 /** Feature controls Tom has explicitly approved for the tenant UI. Empty on purpose. */
 export const FEATURE_CONTROL_ALLOWLIST: readonly string[] = []
 
+/**
+ * The modules' own screens. Listed in any order: their sidebar order and group
+ * come from `@/lib/modules/order` (PLAT-3), shared with the Studio module list.
+ * Each needs its module installed + enabled AND the permission.
+ */
+const MODULE_NAV: readonly NavSurface[] = sortByModuleOrder(
+  [
+    moduleNav('blog', 'posts', 'blog', 'blog.post.read'),
+    // `agenda`, not `events`: `/{project}/events` is the public website's events route.
+    moduleNav('events', 'agenda', 'events', 'events.event.read'),
+    // ADR-037 D9: the FAQ Sets library (list + editor).
+    moduleNav('faq', 'faq-sets', 'faq', 'faq.set.read'),
+    moduleNav('gallery', 'galleries', 'gallery', 'gallery.gallery.read'),
+    // ADR-033 D12: one entry. Label "Catalogue" unless the project sets the optional `navLabel` override (presentation only).
+    moduleNav('catalogue', 'catalogue', 'catalogue', 'catalogue.item.read'),
+    // ADR-040 §15 — Documents (the library).
+    moduleNav('documents', 'document-library', 'documents', 'documents.document.read'),
+    moduleNav('forms', 'submissions', 'forms', 'forms.submission.read'),
+    // ADR-040 B2.5 / §15 — Access (groups, passwords, who can see each page): next to Forms (PLAT-3).
+    moduleNav('members', 'access', 'members', 'members.access.read'),
+  ],
+  (s) => s.requires.module as string
+)
+
 export const TENANT_SURFACES: readonly TenantSurface[] = [
   // ── Navigation (order = sidebar order, after Home) ──────────────────────
-  // Content: what the site publishes (Home is first, in the same group).
-  { kind: 'nav', id: 'blog', segment: 'posts', group: 'content', requires: { module: 'blog', permission: 'blog.post.read' } },
-  // `agenda`, not `events`: `/{project}/events` is the public website's events route.
-  { kind: 'nav', id: 'events', segment: 'agenda', group: 'content', requires: { module: 'events', permission: 'events.event.read' } },
-  // ADR-033 D12: one entry. Label "Catalogue" unless the project sets the optional `navLabel` override (presentation only).
-  { kind: 'nav', id: 'catalogue', segment: 'catalogue', group: 'content', requires: { module: 'catalogue', permission: 'catalogue.item.read' } },
-  { kind: 'nav', id: 'gallery', segment: 'galleries', group: 'content', requires: { module: 'gallery', permission: 'gallery.gallery.read' } },
+  // 1. The modules' screens, in the shared module order and groups (PLAT-3).
+  ...MODULE_NAV,
+  // 2. Content work that is not a module.
   { kind: 'nav', id: 'media', segment: 'media', group: 'content', requires: { permission: 'media.library.manage' } },
   // People sits with the content work (Tom, 2026-10-22).
   { kind: 'nav', id: 'people', segment: 'people', group: 'content', requires: { anyPermission: ['users.invite', 'users.manage'] } },
-  // ADR-037 D9: the FAQ Sets library (list + editor).
-  { kind: 'nav', id: 'faq', segment: 'faq-sets', group: 'content', requires: { module: 'faq', permission: 'faq.set.read' } },
-  // ADR-040 B2.5 — groups, passwords, protected documents and who can see each page.
-  // ADR-040 §15 — Documents (the library) and Access (groups and passwords).
-  { kind: 'nav', id: 'documents', segment: 'document-library', group: 'content', requires: { module: 'documents', permission: 'documents.document.read' } },
-  { kind: 'nav', id: 'members', segment: 'access', group: 'content', requires: { module: 'members', permission: 'members.access.read' } },
   // ADR-033 Amendment J: Categories & Tags, one manager for every module that declares a taxonomy.
   // Shown when the person may manage terms (`<module>.taxonomy.write`) or at least read them
   // (the module's read permission; viewers list read-only) in one of those modules, or the internal
@@ -131,13 +160,12 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
       ],
     },
   },
-  // Activity: what comes in, and how the site is doing.
-  { kind: 'nav', id: 'forms', segment: 'submissions', group: 'activity', requires: { module: 'forms', permission: 'forms.submission.read' } },
+  // 3. Activity: how the site is doing. Contact requests moved to Visitors (PLAT-3).
   // Analytics is not a module (ADR-029 §3.4): only the permission gates it. Whether
   // Google is connected is Abluo's configuration, which tenant code may not read
   // (boundary test) — the page itself says "not connected yet" until it is.
   { kind: 'nav', id: 'analytics', segment: 'analytics', group: 'activity', requires: { permission: 'analytics.read' } },
-  // Support & configuration ("What's new" opens this group in the sidebar).
+  // 4. Support & configuration ("What's new" opens this group in the sidebar).
   // Support (Tom, 2026-10-22): a "coming soon" page for everyone on the project until ticketing exists.
   { kind: 'nav', id: 'support', segment: 'support', group: 'support', requires: {} },
   // ADR-031: partner apps reading this site. Owners and Site admins only; always listed (calm empty state).

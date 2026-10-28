@@ -1,8 +1,11 @@
 // ─── Studio › <project> › Modules — the overview pane ────────────────────────
 //
-// LIVE list of the modules for one project: switched-on modules first, a
-// divider, then the ones that are off (Tom, 2026-09-30). Clicking a row opens
-// that module's own pane (ModuleList) to the right, exactly as before.
+// LIVE list of the modules for one project, in the fixed order and groups
+// shared with the client dashboard (PLAT-3, Tom 2026-10-28: Publish · Show ·
+// Visitors · Tools — `src/lib/modules/order.ts`). A module that is off stays
+// in its place, greyed and marked "off" (it replaced the earlier "on first,
+// off below" split of 2026-09-30). Clicking a row opens that module's own pane
+// (ModuleList) to the right, exactly as before.
 //
 // Why a component pane and not S.list(): list-item titles are strings fixed
 // when the structure resolves ("Events — off"), and the Studio keeps the
@@ -24,7 +27,7 @@ interface ModulesOverviewProps {
   options?: { projectId?: string; projectSlug?: string }
 }
 
-import { enabledModuleIdsFrom, splitModules, type Installation } from './modules-overview'
+import { enabledModuleIdsFrom, groupModules, type Installation } from './modules-overview'
 
 export function ModulesOverview({ options }: ModulesOverviewProps) {
   const projectId = options?.projectId
@@ -58,10 +61,8 @@ export function ModulesOverview({ options }: ModulesOverviewProps) {
     }
   }, [client, projectId])
 
-  const { active, inactive } = useMemo(
-    () => splitModules(MODULE_REGISTRY, enabledIds ?? []),
-    [enabledIds]
-  )
+  const groups = useMemo(() => groupModules(MODULE_REGISTRY, enabledIds ?? []), [enabledIds])
+  const activeCount = groups.reduce((n, g) => n + g.modules.filter((m) => m.on).length, 0)
 
   // Which module pane is open to the right, to highlight its row.
   const openChildId = routerPanesState?.[groupIndex + 1]?.[0]?.id
@@ -90,11 +91,14 @@ export function ModulesOverview({ options }: ModulesOverviewProps) {
     <div className="abluo-modules-overview" style={{ padding: 8 }}>
       {/* ChildLink renders an <a> and takes no style prop: neutralise link styling here. */}
       <style>{'.abluo-modules-overview a{color:inherit;text-decoration:none;display:block}'}</style>
-      <div style={groupLabel}>Active · {active.length}</div>
-      {active.length ? active.map((m) => row(m, true)) : <p style={note}>No modules switched on.</p>}
-      <hr style={divider} />
-      <div style={groupLabel}>Not active · {inactive.length}</div>
-      {inactive.map((m) => row(m, false))}
+      <p style={note}>{activeCount ? `${activeCount} of ${MODULE_REGISTRY.length} switched on` : 'No modules switched on.'}</p>
+      {groups.map((g, i) => (
+        <div key={g.id}>
+          {i > 0 ? <hr style={divider} /> : null}
+          <div style={groupLabel}>{g.label}</div>
+          {g.modules.map(({ module, on }) => row(module, on))}
+        </div>
+      ))}
     </div>
   )
 }

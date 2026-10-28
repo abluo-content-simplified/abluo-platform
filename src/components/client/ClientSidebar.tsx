@@ -13,6 +13,7 @@ import { AppSidebar, type AppNavEntry } from '@/components/app/shell/AppSidebar'
 import { useOpenAddContent } from './create/AddContentRoot'
 import type { ClientNavItem } from '@/lib/modules/client-navigation'
 import { isNavItemActive, phoneNavLayout } from '@/lib/modules/client-nav-layout'
+import { isModuleNavGroup, type NavGroup } from '@/lib/client/surfaces'
 import type { ClientProductUpdate } from '@/lib/whats-new/model'
 import { useWhatsNew } from './whats-new/WhatsNew'
 import { ProfilePanel, type ProfileData } from './account/ProfilePanel'
@@ -115,10 +116,13 @@ export function ClientSidebar({
   const news = useWhatsNew(whatsNew, { popup: whatsNewPopup })
   const liveSupportUnread = useLiveSupportCount(activeSlug, supportUnread, pathname, navItems.some((i) => i.moduleId === 'support'))
 
-  // Home opens the content group; a new group gets extra space above it (no headings).
-  // "What's new" (a panel, not a page) opens the support & configuration group (Tom, 2026-10-22).
+  // Home stands alone at the top. The modules' screens follow in their groups
+  // (PLAT-3: Publish · Show · Visitors · Tools), each with a small heading; the
+  // other groups (content work, activity, support & configuration) get extra
+  // space above them, no heading. "What's new" (a panel, not a page) opens the
+  // support & configuration group (Tom, 2026-10-22).
   const links: (AppNavEntry & { group: string })[] = [
-    { key: 'home', href: homeHref, label: t('nav.home'), icon: ICONS.home, group: 'content' },
+    { key: 'home', href: homeHref, label: t('nav.home'), icon: ICONS.home, group: 'home' },
     ...navItems.map((i) => ({
       key: i.moduleId,
       href: i.href,
@@ -134,7 +138,12 @@ export function ClientSidebar({
       ? [...links, { key: 'whatsNew', node: news.sidebarRow, group: 'support' }]
       : [...links.slice(0, supportAt), { key: 'whatsNew', node: news.sidebarRow, group: 'support' }, ...links.slice(supportAt)]
     : links
-  const items: AppNavEntry[] = grouped.map(({ group, ...item }, n) => ({ ...item, groupStart: n > 0 && group !== grouped[n - 1].group }))
+  const items: AppNavEntry[] = grouped.map(({ group, ...item }, n) => {
+    const starts = n > 0 && group !== grouped[n - 1].group
+    return starts && isModuleNavGroup(group as NavGroup)
+      ? { ...item, groupStart: true, groupHeading: t(`navGroups.${group}` as 'navGroups.publish') }
+      : { ...item, groupStart: starts }
+  })
 
   return (
     <>

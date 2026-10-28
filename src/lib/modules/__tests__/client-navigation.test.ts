@@ -45,7 +45,7 @@ describe('buildClientNavItems', () => {
   it('yields a Blog nav item ONLY when the module is installed AND blog.post.read is held', () => {
     const items = navWithoutSupport(grantWith(['blog'], ['blog.post.read']))
     // Posts also brings Categories & Tags (ADR-033 Amendment J), which the same permission opens.
-    expect(items.filter((i) => i.moduleId !== 'taxonomy')).toEqual([{ moduleId: 'blog', labelKey: 'clientDashboard.nav.blog', href: '/livener/posts', group: 'content' }])
+    expect(items.filter((i) => i.moduleId !== 'taxonomy')).toEqual([{ moduleId: 'blog', labelKey: 'clientDashboard.nav.blog', href: '/livener/posts', group: 'publish' }])
   })
 
   it('yields NO Blog item when the module is not installed, even with the permission', () => {
@@ -73,12 +73,12 @@ describe('buildClientNavItems', () => {
     expect(navWithoutSupport(grantWith([], ['users.manage'])).map((i) => i.moduleId)).toEqual(['people'])
   })
 
-  it('keeps registry order: content (modules, Media, People), then activity (Forms)', () => {
+  it('modules first in the shared PLAT-3 order (Publish · Show · Visitors), then Media, People, Categories & Tags', () => {
     const all = grantWith(
       ['blog', 'forms', 'gallery'],
       ['blog.post.read', 'forms.submission.read', 'gallery.gallery.read', 'media.library.manage', 'users.invite'],
     )
-    expect(navWithoutSupport(all).map((i) => i.moduleId)).toEqual(['blog', 'gallery', 'media', 'people', 'taxonomy', 'forms'])
+    expect(navWithoutSupport(all).map((i) => i.moduleId)).toEqual(['blog', 'gallery', 'forms', 'media', 'people', 'taxonomy'])
   })
 
   it('builds the href from the grant projectSlug + the registry segment', () => {

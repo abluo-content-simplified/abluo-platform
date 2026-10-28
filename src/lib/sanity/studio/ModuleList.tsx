@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useClient } from 'sanity'
 import { MODULE_REGISTRY } from '../../modules'
+import { groupByModuleOrder } from '../../modules/order'
 import { moduleInstallationTypeNameForId, moduleConfigTypeName } from '../../modules/config-schema'
 import type {
   AppliedPreset,
@@ -418,46 +419,53 @@ function ModuleIndex({
             available-but-inactive everywhere the moment it is registered —
             ADR-020: "New modules appear in every site's list as
             available-but-inactive." Nothing here is gated by tenant. */}
-        {MODULE_REGISTRY.map((manifest) => {
-          const inst = byModuleId.get(manifest.id)
-          const status = statusOf(inst)
-          const isOn = status === 'active'
+        {/* PLAT-3: the fixed order and groups shared with the client dashboard
+            (src/lib/modules/order.ts); inactive modules stay in place, greyed. */}
+        {groupByModuleOrder(MODULE_REGISTRY, (m) => m.id).map(({ group, items }) => (
+          <div key={group.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: '#888', marginTop: 8 }}>{group.label}</div>
+            {items.map((manifest) => {
+              const inst = byModuleId.get(manifest.id)
+              const status = statusOf(inst)
+              const isOn = status === 'active'
 
-          return (
-            <button
-              key={manifest.id}
-              type="button"
-              onClick={() => onSelect(manifest.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '14px 16px',
-                background: '#fafafa',
-                border: '1px solid #eeeeee',
-                borderRadius: 6,
-                cursor: 'pointer',
-                textAlign: 'left',
-                font: 'inherit',
-                width: '100%',
-              }}
-            >
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 500, color: isOn ? '#111' : '#888' }}>
-                  {manifest.label}
-                </div>
-                <div style={{ fontSize: 12, color: '#bbb', fontFamily: 'monospace' }}>
-                  {manifest.id}
-                  {inst?.version ? ` · v${inst.version}` : ''}
-                  {inst?.provenance === 'auto' ? ' · migrated' : ''}
-                </div>
-              </div>
-              <div style={{ flexShrink: 0, marginLeft: 16 }}>
-                <span style={badgeStyle(status)}>{statusLabel(status)}</span>
-              </div>
-            </button>
-          )
-        })}
+              return (
+                <button
+                  key={manifest.id}
+                  type="button"
+                  onClick={() => onSelect(manifest.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '14px 16px',
+                    background: '#fafafa',
+                    border: '1px solid #eeeeee',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    font: 'inherit',
+                    width: '100%',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: isOn ? '#111' : '#888' }}>
+                      {manifest.label}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#bbb', fontFamily: 'monospace' }}>
+                      {manifest.id}
+                      {inst?.version ? ` · v${inst.version}` : ''}
+                      {inst?.provenance === 'auto' ? ' · migrated' : ''}
+                    </div>
+                  </div>
+                  <div style={{ flexShrink: 0, marginLeft: 16 }}>
+                    <span style={badgeStyle(status)}>{statusLabel(status)}</span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        ))}
       </div>
     </div>
   )
