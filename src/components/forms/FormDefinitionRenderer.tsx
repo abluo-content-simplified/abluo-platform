@@ -28,6 +28,7 @@ import {
   submissionEndpoint,
   projectScopeSlugFromUrlSegment,
   applySuccessTemplate,
+  resolveSuccessTitle,
   CONSENT_FIELD_ID,
 } from '@/lib/forms/render-mapping'
 import { collectClientSource } from '@/lib/forms/source'
@@ -37,6 +38,8 @@ export interface FormDefinitionRendererMessages {
   submitLabel: string
   submitting: string
   successMessage: string
+  /** Default title when the visitor gave a name, e.g. "Thank you, {first_name}!". */
+  successTitleNamed: string
   errorMessage: string
   /** "Fields marked with * are required." — shown when the form has required fields. */
   requiredHint: string
@@ -145,7 +148,7 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
   }
 
   if (status === 'success') {
-    const successTitle = applySuccessTemplate(definition.successTitle, values)
+    const successTitle = resolveSuccessTitle(definition.successTitle, messages.successTitleNamed, values)
     const successBody = applySuccessTemplate(definition.successBody, values) ?? messages.successMessage
     return (
       <div ref={successRef} tabIndex={-1} role="status" aria-live="polite" className="py-8 text-center outline-none">

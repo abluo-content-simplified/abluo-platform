@@ -14,6 +14,9 @@ export interface FormSectionMessages {
   submitLabel: string
   submitting: string
   successMessage: string
+  /** Default success title when the visitor gave a name and the form has no
+   * own successTitle. `{first_name}` = first word of the `name` field. */
+  successTitleNamed: string
   errorMessage: string
   /** Advance-to-next-step button on a non-final multi-step page. */
   continueLabel: string
@@ -40,6 +43,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     submitLabel:    'Submit',
     submitting:     'Sending…',
     successMessage: 'Your message has been sent. Thank you!',
+    successTitleNamed: 'Thank you, {first_name}!',
     errorMessage:   'Something went wrong. Please try again.',
     continueLabel:  'Continue',
     stepLabel:      'Step {current} of {total}',
@@ -56,6 +60,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     submitLabel:    'Invia',
     submitting:     'Invio in corso…',
     successMessage: 'Il tuo messaggio è stato inviato. Grazie!',
+    successTitleNamed: 'Grazie, {first_name}!',
     errorMessage:   'Si è verificato un problema. Riprova.',
     continueLabel:  'Continua',
     stepLabel:      'Passo {current} di {total}',
@@ -72,6 +77,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     submitLabel:    'Absenden',
     submitting:     'Wird gesendet…',
     successMessage: 'Ihre Nachricht wurde gesendet. Vielen Dank!',
+    successTitleNamed: 'Vielen Dank, {first_name}!',
     errorMessage:   'Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.',
     continueLabel:  'Weiter',
     stepLabel:      'Schritt {current} von {total}',
@@ -88,6 +94,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     submitLabel:    'Envoyer',
     submitting:     'Envoi en cours…',
     successMessage: 'Votre message a été envoyé. Merci !',
+    successTitleNamed: 'Merci, {first_name} !',
     errorMessage:   'Une erreur est survenue. Veuillez réessayer.',
     continueLabel:  'Continuer',
     stepLabel:      'Étape {current} sur {total}',
@@ -104,6 +111,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     submitLabel:    'Enviar',
     submitting:     'Enviando…',
     successMessage: '¡Tu mensaje ha sido enviado. Gracias!',
+    successTitleNamed: '¡Gracias, {first_name}!',
     errorMessage:   'Algo salió mal. Por favor, inténtalo de nuevo.',
     continueLabel:  'Continuar',
     stepLabel:      'Paso {current} de {total}',
@@ -120,6 +128,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     submitLabel:    'Bericht verzenden',
     submitting:     'Bezig met verzenden…',
     successMessage: 'Uw bericht is verzonden. Bedankt!',
+    successTitleNamed: 'Bedankt, {first_name}!',
     errorMessage:   'Er is iets misgegaan — probeer het opnieuw.',
     continueLabel:  'Volgende',
     stepLabel:      'Stap {current} van {total}',
@@ -136,6 +145,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     submitLabel:    'Enviar mensagem',
     submitting:     'A enviar…',
     successMessage: 'A sua mensagem foi enviada. Obrigado!',
+    successTitleNamed: 'Obrigado, {first_name}!',
     errorMessage:   'Algo correu mal — por favor, tente novamente.',
     continueLabel:  'Seguinte',
     stepLabel:      'Passo {current} de {total}',

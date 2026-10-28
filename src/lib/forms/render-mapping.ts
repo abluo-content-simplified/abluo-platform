@@ -252,8 +252,17 @@ export function projectScopeSlugFromUrlSegment(
 export const projectScopeSlugFromTenantSlug = projectScopeSlugFromUrlSegment
 
 /** First whitespace-separated token of a full-name value ("Frank Zappa" → "Frank"). */
+/** Longest first name we echo back to the visitor; anything longer is cut with "…". */
+export const MAX_FIRST_NAME_LENGTH = 40
+
 function firstNameOf(name: unknown): string {
-  return typeof name === 'string' ? (name.trim().split(/\s+/)[0] ?? '') : ''
+  if (typeof name !== 'string') return ''
+  const first = name.trim().split(/\s+/)[0] ?? ''
+  // Cap by code point so a cut never splits an emoji / surrogate pair.
+  const chars = Array.from(first)
+  return chars.length > MAX_FIRST_NAME_LENGTH
+    ? chars.slice(0, MAX_FIRST_NAME_LENGTH).join('') + '…'
+    : first
 }
 
 /**
@@ -276,4 +285,24 @@ export function applySuccessTemplate(text: string | undefined, values: Record<st
     return Array.isArray(v) ? v.join(', ') : String(v)
   })
   return filled.replace(/\s{2,}/g, ' ').replace(/^[\s,]+/, '').trim()
+}
+
+/**
+ * The success-state title shown to a visitor (plain text — React escapes it,
+ * it is never rendered as HTML).
+ *
+ * - A form's own `successTitle` always wins (with `{token}` personalization).
+ * - Otherwise, when the visitor gave a non-empty `name`, the platform default
+ *   `namedTemplate` (e.g. "Thank you, {first_name}!") is used.
+ * - Otherwise there is no title — the success state shows the body only, as
+ *   before this default existed.
+ */
+export function resolveSuccessTitle(
+  customTitle: string | undefined,
+  namedTemplate: string,
+  values: Record<string, unknown>,
+): string | undefined {
+  if (customTitle && customTitle.trim()) return applySuccessTemplate(customTitle, values)
+  if (!firstNameOf(values.name)) return undefined
+  return applySuccessTemplate(namedTemplate, values)
 }

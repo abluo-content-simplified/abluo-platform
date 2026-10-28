@@ -45,7 +45,7 @@ import { useFocusOnChange } from './useFocusOnChange'
 import { FormField, validateForm } from '@/components/fields'
 import type { RenderableFormDefinition, RenderableFormField } from '@/lib/sanity/types'
 import type { FormSectionMessages } from '@/lib/i18n/form-section-messages'
-import { buildFieldConfigs, buildSubmissionPayload, submissionEndpoint, projectScopeSlugFromUrlSegment, applySuccessTemplate, CONSENT_FIELD_ID } from '@/lib/forms/render-mapping'
+import { buildFieldConfigs, buildSubmissionPayload, submissionEndpoint, projectScopeSlugFromUrlSegment, applySuccessTemplate, resolveSuccessTitle, CONSENT_FIELD_ID } from '@/lib/forms/render-mapping'
 import { collectClientSource } from '@/lib/forms/source'
 import {
   mapContextToValues,
@@ -402,7 +402,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
   }
 
   if (status === 'success') {
-    const successTitle = applySuccessTemplate(def.successTitle, values)
+    const successTitle = resolveSuccessTitle(def.successTitle, messages.successTitleNamed, values)
     const successBody = applySuccessTemplate(def.successBody, values) ?? messages.successMessage
     return (
       <div ref={successRef} tabIndex={-1} role="status" aria-live="polite" className="py-8 text-center outline-none">
