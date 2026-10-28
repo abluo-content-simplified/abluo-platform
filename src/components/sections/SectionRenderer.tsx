@@ -36,6 +36,7 @@ import { MediaFeatureSection } from '@/components/sections/MediaFeatureSection'
 import { CategoryListSection } from '@/components/sections/CategoryListSection'
 import { CtaBannerSection } from '@/components/sections/CtaBannerSection'
 import { LocationsSection } from '@/components/sections/LocationsSection'
+import { PriceListSection } from '@/components/sections/PriceListSection'
 import { SECTION_MAP, isSectionTypeAvailable } from '@/lib/modules/sections'
 import type { ProjectModuleConfig } from '@/lib/modules/config'
 import { withEventPlaceLine, withEventPlaceLines, type EventSiteContext } from '@/lib/modules/events/structured'
@@ -517,6 +518,8 @@ export function SectionRenderer({
       return <CategoryListSection section={section} surface={surface} designSystem={designSystem} />
     case 'ctaBannerSection':
       return <CtaBannerSection section={section} surface={surface} designSystem={designSystem} />
+    case 'priceListSection':
+      return <PriceListSection section={section} surface={surface} designSystem={designSystem} locale={locale} />
     case 'locationsSection':
       // Presentation of siteConfig.locations — siteConfig is fetched by both
       // routes and passed here, so no hydration step is needed.

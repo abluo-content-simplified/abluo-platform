@@ -2320,6 +2320,60 @@ export interface DownloadSection {
   documents?: DownloadSectionDocument[]
 }
 
+// ─── Price List Section (platform) ───────────────────────────────────────────
+// Prices are numbers; the renderer formats them per locale with the section
+// currency (src/lib/price-list/format.ts). Localized fields arrive resolved.
+
+export interface PriceListRow {
+  _type?: 'priceListRow'
+  _key: string
+  /** Locale-resolved by GROQ */
+  label?: string
+  /** Locale-resolved by GROQ */
+  sublabel?: string
+  price?: number | null
+  /** How many units (months, sessions, …) the price covers — drives the per-period line. */
+  quantity?: number | null
+  /** Locale-resolved by GROQ. Free text that replaces the calculated per-period line. */
+  priceNote?: string
+}
+
+export interface PriceListHighlight {
+  _type?: 'priceListHighlight'
+  _key: string
+  /** Locale-resolved by GROQ */
+  label?: string
+  /** Optional — a card may carry no price. */
+  price?: number | null
+  /** Locale-resolved by GROQ */
+  description?: string
+}
+
+export interface PriceListSection {
+  _type: 'priceListSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
+  anchorId?: string
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
+  /** Locale-resolved by GROQ */
+  intro?: string
+  /** ISO 4217 code; EUR when empty. */
+  currency?: string | null
+  priceDecimals?: 'auto' | 'none' | 'always' | null
+  /** 'none' or a unit from PER_PERIOD_UNITS (src/lib/i18n/price-list-messages.ts). */
+  perPeriod?: string | null
+  rows?: PriceListRow[] | null
+  /** Locale-resolved by GROQ */
+  highlightsTitle?: string
+  highlights?: PriceListHighlight[] | null
+  /** Locale-resolved by GROQ */
+  footnote?: string
+}
+
 export type PageSection =
   | HeroSection
   | HeroLiveCaptureSection
@@ -2349,6 +2403,7 @@ export type PageSection =
   | CategoryListSection
   | CtaBannerSection
   | LocationsSection
+  | PriceListSection
   | CatalogueListingSection
   | DownloadSection
 

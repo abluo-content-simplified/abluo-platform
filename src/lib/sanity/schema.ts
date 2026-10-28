@@ -16,6 +16,7 @@ import {
   VentureListWireframe,
   ClientsFlowWireframe,
   CareerTimelineWireframe,
+  PriceListWireframe,
 } from '@/sanity/components/SectionWireframes'
 import { ICON_OPTIONS } from '@/components/icons/registry'
 import { buildSchema } from '@/lib/modules/schema'
@@ -2992,6 +2993,204 @@ const ctaBannerSectionType = defineType({
     prepare: ({ heading_it, heading_en }: { heading_it?: string; heading_en?: string }) => ({
       title: heading_it ?? heading_en ?? 'CTA Banner',
       subtitle: 'CTA Banner Section',
+    }),
+  },
+})
+
+// ─── Price List Section (platform) ────────────────────────────────────────────
+//
+// A generic price list: rows (label + sub-label on the left, price on the
+// right), optional highlight cards, a footnote. Prices are NUMBERS and the
+// section's ISO currency; the website formats them per visitor locale
+// (src/lib/price-list/format.ts). Optional "price per …" divides a row's price
+// by its quantity ("€25.00/month") with unit words from the platform
+// dictionary (src/lib/i18n/price-list-messages.ts), never typed per site.
+//
+// SHARED KEYS in the flat PAGE_SECTIONS_PROJECTION: "rows" is also
+// careerTimelineSection's field (careerRow) and "footnote" is also
+// ctaBannerSection's. The rows[] sub-projection names the union of both row
+// types; do not rename either field without updating the projection.
+
+const PRICE_PER_PERIOD_OPTIONS = [
+  { title: 'Off', value: 'none' },
+  { title: 'Month', value: 'month' },
+  { title: 'Week', value: 'week' },
+  { title: 'Day', value: 'day' },
+  { title: 'Hour', value: 'hour' },
+  { title: 'Session', value: 'session' },
+  { title: 'Person', value: 'person' },
+]
+
+const priceListRowType = defineType({
+  name: 'priceListRow',
+  title: 'Price Row',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'label',
+      title: 'Label',
+      type: 'localizedString',
+      description: 'What the price is for, e.g. "January" or "Single session".',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'sublabel',
+      title: 'Sub-label',
+      type: 'localizedString',
+      description:
+        'Small line under the label. Leave empty to show the quantity automatically (e.g. "12 months") when "Show price per" is set and the row has a quantity.',
+    }),
+    defineField({
+      name: 'price',
+      title: 'Price',
+      type: 'number',
+      description: 'A number only — no currency sign. The currency is set once for the section.',
+      validation: (Rule) => Rule.required().min(0),
+    }),
+    defineField({
+      name: 'quantity',
+      title: 'Quantity',
+      type: 'number',
+      description:
+        'How many units the price covers (e.g. 12 for twelve months). Used to work out the price per unit when "Show price per" is set.',
+      validation: (Rule) => Rule.positive(),
+    }),
+    defineField({
+      name: 'priceNote',
+      title: 'Note under the price',
+      type: 'localizedString',
+      description: 'Optional. Replaces the calculated "per unit" line, e.g. "one-off fee".',
+    }),
+  ],
+  preview: {
+    select: { label_en: 'label.en', label_fr: 'label.fr', label_it: 'label.it', price: 'price', quantity: 'quantity' },
+    prepare: ({ label_en, label_fr, label_it, price, quantity }: { label_en?: string; label_fr?: string; label_it?: string; price?: number; quantity?: number }) => ({
+      title: label_en ?? label_fr ?? label_it ?? 'Price row',
+      subtitle: [typeof price === 'number' ? String(price) : 'no price', typeof quantity === 'number' ? `÷ ${quantity}` : ''].filter(Boolean).join(' '),
+    }),
+  },
+})
+
+const priceListHighlightType = defineType({
+  name: 'priceListHighlight',
+  title: 'Highlight Card',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'label',
+      title: 'Label',
+      type: 'localizedString',
+      description: 'Small label at the top of the card, e.g. "Students".',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'price',
+      title: 'Price (optional)',
+      type: 'number',
+      description: 'A number only. Leave empty for a card without a price.',
+      validation: (Rule) => Rule.min(0),
+    }),
+    defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
+  ],
+  preview: {
+    select: { label_en: 'label.en', label_fr: 'label.fr', label_it: 'label.it', price: 'price' },
+    prepare: ({ label_en, label_fr, label_it, price }: { label_en?: string; label_fr?: string; label_it?: string; price?: number }) => ({
+      title: label_en ?? label_fr ?? label_it ?? 'Highlight',
+      subtitle: typeof price === 'number' ? String(price) : 'no price',
+    }),
+  },
+})
+
+const priceListSectionType = defineType({
+  name: 'priceListSection',
+  title: 'Price List Section',
+  type: 'object',
+  icon: PriceListWireframe,
+  fieldsets: [
+    { name: 'pricing', title: 'Price display', options: { collapsible: true, collapsed: false } },
+  ],
+  fields: [
+    anchorIdField(),
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    headlineAccentField(),
+    defineField({ name: 'intro', title: 'Intro', type: 'localizedText' }),
+    defineField({
+      name: 'currency',
+      title: 'Currency',
+      type: 'string',
+      fieldset: 'pricing',
+      description: 'Three-letter code, e.g. EUR, CHF, GBP. Prices are shown in each visitor’s language format (€300 / 300 €).',
+      initialValue: 'EUR',
+      validation: (Rule) => Rule.regex(/^[A-Z]{3}$/, { name: 'ISO currency code' }),
+    }),
+    defineField({
+      name: 'priceDecimals',
+      title: 'Decimals',
+      type: 'string',
+      fieldset: 'pricing',
+      options: {
+        list: [
+          { title: 'Automatic — €300, €32.50', value: 'auto' },
+          { title: 'None — always round (€33)', value: 'none' },
+          { title: 'Always — €300.00', value: 'always' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'auto',
+    }),
+    defineField({
+      name: 'perPeriod',
+      title: 'Show price per',
+      type: 'string',
+      fieldset: 'pricing',
+      description:
+        'Divides each row’s price by its quantity and shows it under the price (e.g. "€25.00/month"). Rows without a quantity show nothing — or their own note.',
+      options: { list: PRICE_PER_PERIOD_OPTIONS },
+      initialValue: 'none',
+    }),
+    defineField({
+      name: 'rows',
+      title: 'Prices',
+      type: 'array',
+      of: [defineArrayMember({ type: 'priceListRow' })],
+      description: 'Drag to reorder.',
+      validation: (Rule) => Rule.max(30),
+    }),
+    defineField({
+      name: 'highlightsTitle',
+      title: 'Highlight cards — heading',
+      type: 'localizedString',
+      description: 'Optional heading above the cards, e.g. "Special rates".',
+    }),
+    defineField({
+      name: 'highlights',
+      title: 'Highlight cards',
+      type: 'array',
+      of: [defineArrayMember({ type: 'priceListHighlight' })],
+      description: 'Optional cards shown side by side under the list (stacked on phones). Drag to reorder.',
+      validation: (Rule) => Rule.max(6),
+    }),
+    defineField({
+      name: 'footnote',
+      title: 'Footnote',
+      type: 'localizedText',
+      description: 'Small print under everything. Line breaks you type are kept.',
+    }),
+  ],
+  preview: {
+    select: { title_en: 'title.en', title_fr: 'title.fr', title_it: 'title.it', rows: 'rows', highlights: 'highlights' },
+    prepare: ({ title_en, title_fr, title_it, rows, highlights }: { title_en?: string; title_fr?: string; title_it?: string; rows?: unknown[]; highlights?: unknown[] }) => ({
+      title: title_en ?? title_fr ?? title_it ?? 'Price list',
+      subtitle: `Price List Section — ${rows?.length ?? 0} prices${highlights?.length ? ` · ${highlights.length} cards` : ''}`,
+      media: PriceListWireframe,
     }),
   },
 })
@@ -6096,6 +6295,9 @@ export const schemaTypes = [
   categoryListSectionType,
   ctaBannerSectionType,
   locationsSectionType,
+  priceListRowType,
+  priceListHighlightType,
+  priceListSectionType,
   formOptionItemType,
   formFieldItemType,
   formSectionType,

@@ -242,6 +242,28 @@ export const SECTION_PREVIEWS: Record<string, () => ReactNode> = {
       ))}
     </>
   ),
+  priceListSection: () => (
+    <>
+      <Title />
+      <Box x={10} y={26} w={100} h={26} />
+      {[30, 42].map((y, i) => (
+        <g key={y}>
+          {i > 0 && <Rule x1={11} x2={109} y={38.5} />}
+          <rect x={16} y={y} width={22} height={2.5} rx={1} fill="currentColor" opacity={HEAD} />
+          <rect x={16} y={y + 4.5} width={14} height={2} rx={1} fill="currentColor" opacity={BODY} />
+          <rect x={88} y={y - 0.5} width={16} height={4} rx={1} fill="currentColor" opacity={0.75} />
+          <rect x={90} y={y + 4.5} width={14} height={2} rx={1} fill="currentColor" opacity={BODY} />
+        </g>
+      ))}
+      {[10, 61].map((x) => (
+        <g key={x}>
+          <Box x={x} y={56} w={49} h={14} />
+          <rect x={x + 5} y={59} width={14} height={2} rx={1} fill="currentColor" opacity={BODY} />
+          <rect x={x + 5} y={63} width={12} height={4} rx={1} fill="currentColor" opacity={0.75} />
+        </g>
+      ))}
+    </>
+  ),
   metricsSection: () => (
     <>
       <Title />

@@ -134,3 +134,26 @@ export function FeatureGridOrdinalWireframe() {
     </svg>
   )
 }
+
+/**
+ * Price list — one bordered card of rows, a label on the left and a heavier
+ * price on the right, hairlines between them; two small cards underneath.
+ */
+export function PriceListWireframe() {
+  return (
+    <svg {...BOX} fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="2.5" y="2.5" width="19" height="11" stroke="currentColor" strokeWidth="1" opacity="0.3" />
+      {[5, 9.5].map((y) => (
+        <g key={y}>
+          <rect x="4.5" y={y} width="7" height="1.5" fill="currentColor" opacity="0.55" />
+          <rect x="15" y={y - 0.5} width="4.5" height="2.5" fill="currentColor" />
+        </g>
+      ))}
+      <line x1="3" y1="8" x2="21" y2="8" stroke="currentColor" strokeWidth="1" opacity="0.3" />
+      <rect x="2.5" y="15.5" width="8.5" height="6" stroke="currentColor" strokeWidth="1" opacity="0.3" />
+      <rect x="13" y="15.5" width="8.5" height="6" stroke="currentColor" strokeWidth="1" opacity="0.3" />
+      <rect x="4.5" y="17.5" width="4" height="2" fill="currentColor" />
+      <rect x="15" y="17.5" width="4" height="2" fill="currentColor" />
+    </svg>
+  )
+}

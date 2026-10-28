@@ -655,7 +655,11 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       // are not translated — so it passes through with no locale projection.
       separator,
       names,
-      // careerTimelineSection
+      // SHARED "rows[]" KEY — careerTimelineSection (careerRow: period/role/
+      // org/note/award) and priceListSection (priceListRow: label/sublabel/
+      // price/quantity/priceNote) both store their rows under "rows". One
+      // sub-projection names the union; GROQ returns null for a key the
+      // concrete member does not have.
       rows[] {
         _type, _key,
         "period": ${loc('period')},
@@ -663,6 +667,11 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         "org": ${loc('org')},
         "note": ${loc('note')},
         "award": ${loc('award')},
+        "label": ${loc('label')},
+        "sublabel": ${loc('sublabel')},
+        price,
+        quantity,
+        "priceNote": ${loc('priceNote')},
       },
       // SHARED "features[]" KEY — featureGridSection stores featureCard members
       // (icon/kicker/title/description/bullets) and mediaFeatureSection stores
@@ -723,6 +732,19 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       // intro, layout and background are shared keys projected above.
       selection,
       locationKeys,
+      // priceListSection — rows[] and footnote are the shared keys above
+      // (careerTimelineSection / ctaBannerSection). Prices are numbers; the
+      // renderer formats them per locale with this currency.
+      currency,
+      priceDecimals,
+      perPeriod,
+      "highlightsTitle": ${loc('highlightsTitle')},
+      highlights[] {
+        _type, _key,
+        "label": ${loc('label')},
+        price,
+        "description": ${loc('description')},
+      },
       // heroSection extension — optional stat row. "ctas[]" is already
       // projected above (heroLiveCapture / heroLens) and is reused verbatim.
       stats[] {
