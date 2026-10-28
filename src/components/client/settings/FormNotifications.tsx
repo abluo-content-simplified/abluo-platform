@@ -146,11 +146,15 @@ export function FormNotifications({
                   )}
 
                   {canEdit && !full ? (
-                    <form className="flex flex-col gap-2 sm:flex-row sm:items-start" noValidate onSubmit={(e) => submitAdd(g, e)}>
-                      <Field label={t('addLabel')} hint={t('limit', { max: MAX_RECIPIENTS_PER_TOPIC })} error={errors[id]} className="sm:flex-1">
+                    <form noValidate onSubmit={(e) => submitAdd(g, e)}>
+                      <Field label={t('addLabel')} hint={t('limit', { max: MAX_RECIPIENTS_PER_TOPIC })} error={errors[id]}>
                         {(p) => (
+                          // Input and Add button on one row, same height (h-12), so they line up.
+                          <div className="mt-1.5 flex items-center gap-2">
                           <TextInput
                             {...p}
+                            flush
+                            className="min-w-0 flex-1"
                             type="email"
                             inputMode="email"
                             autoComplete="off"
@@ -164,11 +168,12 @@ export function FormNotifications({
                               if (errors[id]) setErrors((x) => ({ ...x, [id]: '' }))
                             }}
                           />
+                          <Button type="submit" variant="primary" size="lg" className="shrink-0" disabled={busy || !(drafts[id] ?? '').trim()}>
+                            {t('add')}
+                          </Button>
+                          </div>
                         )}
                       </Field>
-                      <Button type="submit" variant="secondary" className="sm:mt-7" disabled={busy || !(drafts[id] ?? '').trim()}>
-                        {t('add')}
-                      </Button>
                     </form>
                   ) : null}
                   {canEdit && full ? <p className="text-sm text-muted-foreground">{t('full', { max: MAX_RECIPIENTS_PER_TOPIC })}</p> : null}
