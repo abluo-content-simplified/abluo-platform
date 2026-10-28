@@ -4092,6 +4092,33 @@
           "sanity_missing": "Die Projektdokumente in Sanity fehlen oder sind doppelt.",
           "google_error": "Google hat einen Fehler gemeldet."
         }
+      },
+      "inviteOwner": {
+        "heading": "Inhaber",
+        "body": "Die Personen, die die Websites dieses Kunden verwalten. Ein Kunde kann mehrere Inhaber haben.",
+        "current": "Aktuelle Inhaber",
+        "none": "Noch kein Inhaber",
+        "unknown": "Die aktuellen Inhaber konnten nicht geladen werden",
+        "button": "Inhaber einladen",
+        "title": "Inhaber einladen",
+        "email": "E-Mail",
+        "language": "Sprache der E-Mail",
+        "languageHint": "Die Einladungs-E-Mail und die Seite zum Annehmen sind in dieser Sprache.",
+        "note": "Die Einladungs-E-Mail wird sofort verschickt, wenn du auf Senden drückst. Die Person gibt beim Annehmen selbst ihren Namen und ihr Passwort ein.",
+        "send": "Einladung senden",
+        "sending": "Wird gesendet…",
+        "sent": "Einladung an {email} gesendet.",
+        "sentNoEmail": "Die Einladung für {email} wurde erstellt, aber die E-Mail konnte nicht verschickt werden. Versuch es gleich noch einmal mit einer neuen.",
+        "sendAgain": "Neue Einladung senden",
+        "sendAgainHint": "Die neue ersetzt sie, und der alte Link funktioniert nicht mehr.",
+        "errors": {
+          "forbidden": "Nur ein Super Admin mit Zwei-Faktor-Anmeldung kann einen Inhaber einladen.",
+          "invalid_email": "Das sieht nicht nach einer E-Mail-Adresse aus.",
+          "not_found": "Dieses Projekt oder sein Kunde wurde nicht gefunden.",
+          "already_owner": "Diese Person ist bereits Inhaber dieses Kunden.",
+          "already_invited": "{email} hat bereits eine offene Einladung (läuft am {date} ab). Es wurde keine neue E-Mail verschickt.",
+          "failed": "Die Einladung konnte nicht gesendet werden. Versuch es noch einmal."
+        }
       }
     },
     "media": {

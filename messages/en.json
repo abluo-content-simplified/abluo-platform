@@ -4092,6 +4092,33 @@
           "sanity_missing": "The project’s documents in Sanity are missing or duplicated.",
           "google_error": "Google returned an error."
         }
+      },
+      "inviteOwner": {
+        "heading": "Owners",
+        "body": "The people who manage this client’s sites. A client can have several Owners.",
+        "current": "Current Owners",
+        "none": "No Owner yet",
+        "unknown": "Couldn’t load the current Owners",
+        "button": "Invite Owner",
+        "title": "Invite an Owner",
+        "email": "Email",
+        "language": "Email language",
+        "languageHint": "The invitation email and the page where they accept are in this language.",
+        "note": "The invitation email is sent as soon as you press Send. The person enters their own name and password when they accept.",
+        "send": "Send invitation",
+        "sending": "Sending…",
+        "sent": "Invitation sent to {email}.",
+        "sentNoEmail": "The invitation for {email} was created, but the email couldn’t be sent. Try sending a new one in a moment.",
+        "sendAgain": "Send a new invitation",
+        "sendAgainHint": "A new one replaces it, and the old link stops working.",
+        "errors": {
+          "forbidden": "Only a Super Admin signed in with two-step verification can invite an Owner.",
+          "invalid_email": "That doesn’t look like an email address.",
+          "not_found": "This project or its client couldn’t be found.",
+          "already_owner": "This person is already an Owner of this client.",
+          "already_invited": "{email} already has an open invitation (expires {date}). No new email was sent.",
+          "failed": "The invitation couldn’t be sent. Try again."
+        }
       }
     },
     "media": {

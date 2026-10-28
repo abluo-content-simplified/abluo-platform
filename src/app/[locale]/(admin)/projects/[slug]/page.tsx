@@ -23,6 +23,7 @@ import { MODULE_REGISTRY } from '@/lib/modules/registry'
 import { ProjectAnalyticsBlock } from '@/components/admin/analytics/ProjectAnalyticsBlock'
 import { ViewAsClient } from '@/components/admin/projects/ViewAsClient'
 import { GoogleCard } from '@/components/admin/projects/GoogleCard'
+import { InviteOwnerCard } from '@/components/admin/projects/InviteOwnerCard'
 
 export const dynamic = 'force-dynamic'
 // "Connect Search Console" (a server action on this page) waits up to ~90 s
@@ -45,7 +46,8 @@ const icon = (d: ReactNode) => (
  * client sees" — the client Home's own widgets (StatTile, LatestList) fed by
  * the admin providers, read-only (no links into the client editor) — then the
  * admin facts (modules, languages, Owners, pending invitations, created,
- * links). Every view is written to the internal admin audit log. Unknown
+ * links). "Invite Owner" invites a person to the client as Owner
+ * (owner-actions.ts, Super Admin + two-factor). Every view is written to the internal admin audit log. Unknown
  * slug → 404. "View as client" opens the client dashboard in support mode
  * (ADR-028 §8, docs/engineering/support-mode.md). "Google" sets up GA4 and
  * Search Console with the Abluo service account (docs/engineering/analytics-setup.md).
@@ -213,6 +215,12 @@ export default async function AdminProjectPage({
           </>
         )}
       </section>
+
+      <InviteOwnerCard
+        projectId={project.id}
+        defaultLocale={content?.defaultLocale || project.defaultLocale || null}
+        owners={ownersKnown ? project.owners : null}
+      />
 
       <ViewAsClient projectId={project.id} slug={project.slug} notice={supportNotice} />
 

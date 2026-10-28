@@ -4092,6 +4092,33 @@
           "sanity_missing": "I documenti del progetto in Sanity mancano o sono duplicati.",
           "google_error": "Google ha restituito un errore."
         }
+      },
+      "inviteOwner": {
+        "heading": "Proprietari",
+        "body": "Le persone che gestiscono i siti di questo cliente. Un cliente può avere più Proprietari.",
+        "current": "Proprietari attuali",
+        "none": "Ancora nessun Proprietario",
+        "unknown": "Impossibile caricare i Proprietari attuali",
+        "button": "Invita Proprietario",
+        "title": "Invita un Proprietario",
+        "email": "Email",
+        "language": "Lingua dell’email",
+        "languageHint": "L’email di invito e la pagina in cui si accetta sono in questa lingua.",
+        "note": "L’email di invito parte appena premi Invia. La persona inserisce il proprio nome e la propria password quando accetta.",
+        "send": "Invia invito",
+        "sending": "Invio…",
+        "sent": "Invito inviato a {email}.",
+        "sentNoEmail": "L’invito per {email} è stato creato, ma non è stato possibile inviare l’email. Riprova a inviarne uno nuovo tra poco.",
+        "sendAgain": "Invia un nuovo invito",
+        "sendAgainHint": "Quello nuovo lo sostituisce e il vecchio link smette di funzionare.",
+        "errors": {
+          "forbidden": "Solo un Super Admin con verifica in due passaggi può invitare un Proprietario.",
+          "invalid_email": "Non sembra un indirizzo email.",
+          "not_found": "Impossibile trovare questo progetto o il suo cliente.",
+          "already_owner": "Questa persona è già Proprietario di questo cliente.",
+          "already_invited": "{email} ha già un invito aperto (scade il {date}). Nessuna nuova email è stata inviata.",
+          "failed": "Impossibile inviare l’invito. Riprova."
+        }
       }
     },
     "media": {

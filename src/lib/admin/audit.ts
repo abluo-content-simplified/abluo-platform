@@ -57,6 +57,9 @@ export type AdminAuditAction =
   // `detail`: topic, groupKey, email, count after the change.
   | 'notifications.recipient.add'
   | 'notifications.recipient.remove'
+  // "Invite Owner" on the admin project page: a Super Admin invites a client Owner.
+  // `detail`: tenantId, locale, emailSent, sendAgain (or the error) — never the email.
+  | 'owner.invite'
 
 export const ADMIN_AUDIT_ACTION_PATTERN = /^[a-z][a-z0-9_.]{2,63}$/
 

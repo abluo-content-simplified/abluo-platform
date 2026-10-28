@@ -231,6 +231,24 @@ describe('admin-only routes refuse everyone but a two-factor admin', () => {
   })
 })
 
+describe('admin "Invite Owner" server action (project page) — only a two-factor admin', () => {
+  const load = () => import('@/app/[locale]/(admin)/projects/[slug]/owner-actions')
+  beforeAll(async () => {
+    await load()
+  }, 30_000)
+  for (const p of ['anon', 'tenantA', 'adminAal1'] as const) {
+    it(`${p} → inviteOwnerAction is refused with no side effects`, async () => {
+      persona = p
+      // Even with a resolved context (a tenant Owner), the admin gate decides first.
+      tenantCtx = p === 'tenantA' ? { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [], tenants: [] } : null
+      const r = await (await load()).inviteOwnerAction({ projectId: '11111111-1111-4111-8111-111111111111', email: 'x@y.z', locale: 'en' })
+      expect(r).toEqual({ ok: false, error: 'forbidden' })
+      noSideEffects()
+      expect(sendInvite).not.toHaveBeenCalled()
+    })
+  }
+})
+
 // ── Tenant-facing writes ────────────────────────────────────────────────────
 
 describe('POST /api/projects/[projectId]/invite — authorized from the resolved grant (ADR-028)', () => {
