@@ -1318,13 +1318,6 @@ export interface TextSection {
   eyebrow?: string
   title?: string
   content?: PortableTextContent
-  /** Optional image beside the text (localizedImage, projected via focalImage). */
-  image?: SanityImage
-  /** Locale-resolved alt text of `image` (GROQ "imageAlt"). */
-  imageAlt?: string | null
-  /** Raw schema field; GROQ delivers it as `mediaPosition` (coalesce(mediaPosition, imagePosition)). */
-  imagePosition?: 'left' | 'right' | null
-  mediaPosition?: 'left' | 'right' | null
 }
 
 /**

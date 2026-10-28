@@ -69,10 +69,7 @@ describe('GROQ projection carries the new fields', () => {
   const start = src.indexOf('export const PAGE_SECTIONS_PROJECTION')
   const pageSections = src.slice(start, src.indexOf('export const', start + 10))
 
-  it('PAGE_SECTIONS_PROJECTION projects taglineAccent, the image, its alt and its side', () => {
+  it('PAGE_SECTIONS_PROJECTION projects taglineAccent', () => {
     expect(pageSections).toMatch(/^\s*taglineAccent,$/m)
-    expect(pageSections).toContain("\"imageAlt\": ${loc('image.alt')}")
-    expect(pageSections).toContain("${focalImage('image')}")
-    expect(pageSections).toContain('"mediaPosition": coalesce(mediaPosition, imagePosition)')
   })
 })

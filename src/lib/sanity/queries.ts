@@ -493,11 +493,6 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         anchorId,
       },
       "content": ${loc('content')},
-      // textSection extension — alt text of the optional image beside the
-      // text (the image itself is the shared focalImage('image') above; its
-      // left/right side arrives as "mediaPosition", which coalesces the raw
-      // imagePosition). Null when no image or no alt was authored.
-      "imageAlt": ${loc('image.alt')},
       items[] {
         _key,
         "question": ${loc('question')},
@@ -1976,11 +1971,6 @@ export const homePageQuery = /* groq */ `
         anchorId,
       },
       "content": ${loc('content')},
-      // textSection extension — alt text of the optional image beside the
-      // text (the image itself is the shared focalImage('image') above; its
-      // left/right side arrives as "mediaPosition", which coalesces the raw
-      // imagePosition). Null when no image or no alt was authored.
-      "imageAlt": ${loc('image.alt')},
       items[] {
         _key,
         "question": ${loc('question')},

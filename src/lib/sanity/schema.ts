@@ -1707,29 +1707,6 @@ const textSectionType = defineType({
     defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({ name: 'content', title: 'Content', type: 'localizedPortableText' }),
-    // Optional image beside the text. Absent on every text section authored
-    // before this field → the single-column layout renders exactly as before.
-    defineField({
-      name: 'image',
-      title: 'Image (optional)',
-      type: 'localizedImage',
-      description: 'Optional image shown beside the text on desktop, and below it on phones. Pick it from the media library.',
-    }),
-    defineField({
-      name: 'imagePosition',
-      title: 'Image Position',
-      type: 'string',
-      description: 'Which side of the text the image sits on (desktop). On phones the image always follows the text.',
-      options: {
-        list: [
-          { title: 'Right', value: 'right' },
-          { title: 'Left', value: 'left' },
-        ],
-        layout: 'radio',
-      },
-      initialValue: 'right',
-      hidden: ({ parent }) => !(parent as { image?: { asset?: unknown } } | undefined)?.image?.asset,
-    }),
   ],
   preview: {
     select: { title: 'title.it' },
