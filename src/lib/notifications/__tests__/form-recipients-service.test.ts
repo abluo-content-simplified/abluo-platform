@@ -23,9 +23,10 @@ import {
   type FormNotificationsDeps,
 } from '../form-recipients-service'
 
+import type { AccessRole } from '@/lib/authz/roles'
 const SLUG = 'cyce'
 const PID = 'project-a'
-const grant = (permissions: string[], role = 'owner'): ProjectGrant => ({
+const grant = (permissions: string[], role: AccessRole = 'owner'): ProjectGrant => ({
   projectId: PID,
   projectSlug: asSupabaseProjectSlug(SLUG),
   membershipId: 'm1',
@@ -34,7 +35,7 @@ const grant = (permissions: string[], role = 'owner'): ProjectGrant => ({
   enabledModuleIds: ['forms'],
 })
 const ctxOf = (g: ProjectGrant, extra: Partial<TenantAuthorizationContext> = {}): TenantAuthorizationContext => ({ userId: 'u1', platformRole: 'tenant_user', projects: [g], ...extra })
-const roleCtx = (role: string) => ctxOf(grant(grantPermissions(role, ['forms']), role))
+const roleCtx = (role: AccessRole) => ctxOf(grant(grantPermissions(role, ['forms']), role))
 
 type Doc = { _id: string; _rev: string; projectName?: string; groups: Array<Record<string, unknown>> }
 
@@ -99,7 +100,7 @@ describe('permissions matrix (ADR-028)', () => {
     ['viewer', false, false],
   ])('%s: read %s, write %s', async (role, canRead, canWrite) => {
     const f = fake()
-    const ctx = roleCtx(role)
+    const ctx = roleCtx(role as AccessRole)
     if (canRead) expect((await loadFormNotifications(ctx, PID, { locale: 'en' }, f.deps))?.canWrite).toBe(canWrite)
     else await expect(loadFormNotifications(ctx, PID, { locale: 'en' }, f.deps)).rejects.toBeInstanceOf(TenantAuthorizationError)
     if (canWrite) expect((await changeFormRecipient(ctx, PID, add('new@x.it'), f.deps)).view.groups[0].emails).toContain('new@x.it')
