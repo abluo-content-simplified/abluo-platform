@@ -45,7 +45,7 @@ export const DOCUMENTS_PERMISSIONS = {
 export const ACCESS_LIMITS = {
   /** Default "remember me" (Tom, 2026-10-24: 30 days, revocable). */
   sessionDays: 30,
-  passwordMinLength: 10,
+  passwordMinLength: 8, // Tom 2026-10-28: 8 (CYCE's existing password); attempts are rate-limited server-side
   passwordMaxLength: 200,
   labelMax: 80,
   groupNameMax: 80,

@@ -27,7 +27,7 @@ const KNOWN = new Set([
 
 export function errorText(t: AccessT, code: string, limits?: { passwordMinLength: number }): string {
   if (!KNOWN.has(code)) return t('errors.failed')
-  if (code === 'password_too_short') return t('errors.password_too_short', { min: limits?.passwordMinLength ?? 10 })
+  if (code === 'password_too_short') return t('errors.password_too_short', { min: limits?.passwordMinLength ?? 8 })
   return t(`errors.${code}` as 'errors.failed')
 }
 
