@@ -261,10 +261,10 @@ const NOTICE_COPY: Record<string, { subject: (site: string) => string; form: (si
     why: 'L’indirizzo è stato aggiunto da chi gestisce il sito. Se non era previsto, avvisi chi gestisce il sito.',
   },
   de: {
-    subject: (site) => `Sie erhalten ab jetzt Nachrichten der Website ${site}`,
-    form: (site, form) => `Sie erhalten ab jetzt die Nachrichten aus dem Formular „${form}“ der Website ${site}.`,
-    all: (site) => `Sie erhalten ab jetzt die Nachrichten aus allen Formularen der Website ${site}.`,
-    why: 'Diese Adresse wurde von jemandem hinzugefügt, der die Website verwaltet. Falls Sie das nicht erwartet haben, geben Sie bitte Bescheid.',
+    subject: (site) => `Du erhältst ab jetzt Nachrichten der Website ${site}`,
+    form: (site, form) => `Du erhältst ab jetzt die Nachrichten aus dem Formular „${form}“ der Website ${site}.`,
+    all: (site) => `Du erhältst ab jetzt die Nachrichten aus allen Formularen der Website ${site}.`,
+    why: 'Diese Adresse wurde von jemandem hinzugefügt, der die Website verwaltet. Falls du das nicht erwartet hast, gib bitte Bescheid.',
   },
 }
 

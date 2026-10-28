@@ -225,7 +225,7 @@ describe('the notice email', () => {
   })
 
   it('is written in the site language, escaped, with an every-form variant', () => {
-    expect(recipientNoticeEmail({ siteName: 'Studio', formLabel: 'Kontakt', locale: 'de' }).text).toContain('Sie erhalten ab jetzt die Nachrichten aus dem Formular „Kontakt“ der Website Studio.')
+    expect(recipientNoticeEmail({ siteName: 'Studio', formLabel: 'Kontakt', locale: 'de' }).text).toContain('Du erhältst ab jetzt die Nachrichten aus dem Formular „Kontakt“ der Website Studio.')
     expect(recipientNoticeEmail({ siteName: 'Studio', formLabel: null, locale: 'it' }).text).toContain('tutti i moduli del sito Studio')
     expect(recipientNoticeEmail({ siteName: '<b>X</b>', formLabel: null, locale: 'fr' }).html).toContain('&lt;b&gt;X&lt;/b&gt;')
   })
