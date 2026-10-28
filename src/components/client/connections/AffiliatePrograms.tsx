@@ -20,7 +20,7 @@ import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { Select } from '@/components/app/ui/Select'
 import { TextArea, TextInput } from '@/components/app/ui/TextInput'
 import { dropIndex, usePointerDrag } from '@/components/app/ui/use-pointer-drag'
-import { saveSettingsAction } from '@/app/[locale]/(client)/[tenant]/settings/actions'
+import { saveAffiliateSettingsAction } from '@/app/[locale]/(client)/[tenant]/apps/affiliate-actions'
 import { languageName } from '@/components/client/create/StepHeading'
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
 import type { SendResult } from '@/lib/client/autosave/engine'
@@ -71,7 +71,7 @@ export function AffiliatePrograms({
 
   const send = useCallback(
     async ({ rev, set }: { rev: string; set: Record<string, unknown> }): Promise<SendResult> => {
-      const r = await saveSettingsAction({ projectSlug, rev, set })
+      const r = await saveAffiliateSettingsAction({ projectSlug, rev, set })
       if (r.ok) return { ok: true, rev: r.rev }
       if (r.error === 'conflict' || r.error === 'failed') return { ok: false, error: r.error }
       if (r.error === 'invalid_field' || r.error === 'invalid_value' || r.error === 'invalid_marketplace' || r.error === 'duplicate_marketplace' || r.error === 'too_many') return { ok: false, error: 'invalid_value' }

@@ -1,58 +1,49 @@
 /**
- * Settings server actions: identity and grant come from the shared
- * resolveProjectAction helper, failures collapse to opaque codes, and the
- * project id handed to the service is the GRANT's — never the caller's.
+ * Settings server actions (form notifications, 2026-10-28): identity and grant
+ * come from the shared resolveProjectAction helper, failures collapse to opaque
+ * codes, and the project id handed to the service is the GRANT's.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const access = vi.fn()
 vi.mock('@/lib/api/project-action', () => ({ resolveProjectAction: (slug: unknown) => access(slug) }))
 vi.mock('@/lib/sanity/server-clients', () => ({ sanityWriteClient: {} }))
-const revalidate = vi.hoisted(() => vi.fn())
-vi.mock('next/cache', () => ({ revalidatePath: revalidate }))
-const service = vi.hoisted(() => ({ saveSettings: vi.fn() }))
-vi.mock('@/lib/settings/service', async (orig) => ({ ...((await orig()) as object), ...service }))
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+const service = vi.hoisted(() => ({ changeFormRecipient: vi.fn() }))
+vi.mock('@/lib/notifications/form-recipients-service', async (orig) => ({ ...((await orig()) as object), ...service }))
 
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
-import { SettingsError } from '@/lib/settings/service'
-import { saveSettingsAction } from '../actions'
+import { FormNotificationsError } from '@/lib/notifications/form-recipients-service'
+import { addFormRecipientAction, removeFormRecipientAction } from '../actions'
 
 const ctx = { userId: 'u1', projects: [] }
+const input = { projectSlug: 'cyce', locale: 'it', rev: 'r1', groupKey: 'kc', email: 'a@x.it' }
 beforeEach(() => {
   vi.clearAllMocks()
   access.mockResolvedValue({ ok: true, ctx, grant: { projectId: 'project-a' } })
 })
 
-describe('saveSettingsAction', () => {
-  it('passes the grant project id and the input, returns the new rev, and revalidates', async () => {
-    service.saveSettings.mockResolvedValue({ rev: 'n1|p1' })
-    const r = await saveSettingsAction({ projectSlug: 'trattoria', rev: 's1|p1', set: { amazonTrackingIds: [] } })
-    expect(r).toMatchObject({ ok: true, rev: 'n1|p1' })
-    expect(service.saveSettings).toHaveBeenCalledWith(ctx, 'project-a', { rev: 's1|p1', set: { amazonTrackingIds: [] } })
-    expect(revalidate).toHaveBeenCalled()
+describe('form recipient actions', () => {
+  it('pass the grant project id and the input to the service', async () => {
+    service.changeFormRecipient.mockResolvedValue({ view: { rev: 'r2', groups: [], canWrite: true }, notice: 'sent' })
+    expect(await addFormRecipientAction(input)).toMatchObject({ ok: true, notice: 'sent' })
+    expect(service.changeFormRecipient).toHaveBeenCalledWith(ctx, 'project-a', { op: 'add', rev: 'r1', groupKey: 'kc', email: 'a@x.it', locale: 'it' })
+    await removeFormRecipientAction(input)
+    expect(service.changeFormRecipient).toHaveBeenLastCalledWith(ctx, 'project-a', expect.objectContaining({ op: 'remove' }))
   })
-  it('an anonymous caller is unauthenticated; the service is not reached', async () => {
+  it('an anonymous or ungranted caller never reaches the service', async () => {
     access.mockResolvedValue({ ok: false, error: 'unauthenticated' })
-    expect(await saveSettingsAction({ projectSlug: 'x', rev: '', set: {} })).toMatchObject({ ok: false, error: 'unauthenticated' })
-    expect(service.saveSettings).not.toHaveBeenCalled()
+    expect(await addFormRecipientAction(input)).toEqual({ ok: false, error: 'unauthenticated' })
+    access.mockResolvedValue({ ok: false, error: 'forbidden' })
+    expect(await removeFormRecipientAction(input)).toEqual({ ok: false, error: 'forbidden' })
+    expect(service.changeFormRecipient).not.toHaveBeenCalled()
   })
-  it('maps service failures to opaque codes and does not revalidate', async () => {
-    service.saveSettings.mockRejectedValueOnce(new SettingsError('conflict'))
-    expect(await saveSettingsAction({ projectSlug: 'x', rev: 'a|b', set: {} })).toMatchObject({ ok: false, error: 'conflict' })
-    service.saveSettings.mockRejectedValueOnce(new TenantAuthorizationError('no'))
-    expect(await saveSettingsAction({ projectSlug: 'x', rev: 'a|b', set: {} })).toMatchObject({ ok: false, error: 'forbidden' })
-    service.saveSettings.mockRejectedValueOnce(new Error('boom'))
-    expect(await saveSettingsAction({ projectSlug: 'x', rev: 'a|b', set: {} })).toMatchObject({ ok: false, error: 'failed' })
-    expect(revalidate).not.toHaveBeenCalled()
-  })
-  it('passes Awin fields through to the service unchanged', async () => {
-    service.saveSettings.mockResolvedValue({ rev: 'n2|p1' })
-    const set = { awinPublisherId: '123456', affiliateShops: ['ibs', 'amazon'] }
-    expect(await saveSettingsAction({ projectSlug: 'trattoria', rev: 's1|p1', set })).toMatchObject({ ok: true, rev: 'n2|p1' })
-    expect(service.saveSettings).toHaveBeenCalledWith(ctx, 'project-a', { rev: 's1|p1', set })
-  })
-  it('an invalid Awin value comes back as invalid_value', async () => {
-    service.saveSettings.mockRejectedValueOnce(new SettingsError('invalid_value'))
-    expect(await saveSettingsAction({ projectSlug: 'x', rev: 'a|b', set: { awinPublisherId: 'abc' } })).toMatchObject({ ok: false, error: 'invalid_value' })
+  it('maps failures to opaque codes', async () => {
+    service.changeFormRecipient.mockRejectedValueOnce(new FormNotificationsError('too_many'))
+    expect(await addFormRecipientAction(input)).toEqual({ ok: false, error: 'too_many' })
+    service.changeFormRecipient.mockRejectedValueOnce(new TenantAuthorizationError('no'))
+    expect(await addFormRecipientAction(input)).toEqual({ ok: false, error: 'forbidden' })
+    service.changeFormRecipient.mockRejectedValueOnce(new Error('boom'))
+    expect(await addFormRecipientAction(input)).toEqual({ ok: false, error: 'failed' })
   })
 })

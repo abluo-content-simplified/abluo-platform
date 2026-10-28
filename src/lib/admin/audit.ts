@@ -52,6 +52,11 @@ export type AdminAuditAction =
   // Users (ADR-030 A1): the list, and one person's page (`detail.user`, never their email).
   | 'users.view'
   | 'user.view'
+  // Form notifications on the client's Settings page (2026-10-28): a client
+  // (or an approved support visit, `detail.by`) adds / removes one address.
+  // `detail`: topic, groupKey, email, count after the change.
+  | 'notifications.recipient.add'
+  | 'notifications.recipient.remove'
 
 export const ADMIN_AUDIT_ACTION_PATTERN = /^[a-z][a-z0-9_.]{2,63}$/
 

@@ -2327,6 +2327,43 @@
         "comingSoon": "Prossimamente — non ancora collegato.",
         "amazonNote": "Usa i tuoi ID Amazon qui sopra. Trascina per scegliere dove compare Amazon.",
         "drag": "Sposta {shop}, posizione {position} di {total}. Trascina, oppure usa le frecce su e giù."
+      },
+      "formNotifications": {
+        "title": "Notifiche dei moduli",
+        "intro": "Quando qualcuno invia un modulo dal tuo sito, inviamo il messaggio per email agli indirizzi qui sotto. Puoi aggiungere o togliere indirizzi per ogni modulo; la modifica vale dal messaggio successivo.",
+        "previewNote": "I messaggi inviati dall’anteprima del sito non mandano mai email, quindi puoi provare i moduli senza problemi.",
+        "readOnly": "Solo il proprietario e gli amministratori del sito possono cambiare chi riceve queste email.",
+        "readOnlySupport": "Solo visualizzazione durante una visita di assistenza. Le modifiche sono possibili quando il cliente le consente.",
+        "emptyTitle": "Ancora nessun modulo invia email",
+        "emptyBody": "Quando un modulo del tuo sito è impostato per inviare email, compare qui con gli indirizzi che ricevono i suoi messaggi.",
+        "allForms": "Tutti i moduli",
+        "allFormsNote": "Questi indirizzi ricevono i messaggi di tutti i moduli del tuo sito.",
+        "paused": "Le email di questo modulo sono disattivate al momento. Abluo può riattivarle per te.",
+        "nobody": "Al momento nessuno riceve questi messaggi per email.",
+        "listLabel": "Indirizzi per {form}",
+        "remove": "Rimuovi",
+        "removeNamed": "Rimuovi {email}",
+        "addLabel": "Aggiungi un indirizzo email",
+        "addPlaceholder": "nome@esempio.it",
+        "add": "Aggiungi",
+        "limit": "Fino a {max} indirizzi per modulo. A ogni nuovo indirizzo mandiamo un breve avviso.",
+        "full": "Questo modulo ha già {max} indirizzi, il massimo possibile. Rimuovine uno per aggiungerne un altro.",
+        "lastTitle": "Rimuovere l’ultimo indirizzo?",
+        "lastBody": "Se rimuovi {email}, nessuno riceverà un’email quando qualcuno invia il modulo “{form}”, e i nuovi messaggi potrebbero passare inosservati.",
+        "lastConfirm": "Rimuovi comunque",
+        "added": {
+          "sent": "{email} riceverà da ora questi messaggi. Gli abbiamo mandato un breve avviso.",
+          "preview": "{email} riceverà da ora questi messaggi. Questa è una versione di prova della dashboard, quindi non è stato inviato nessun avviso.",
+          "notSent": "{email} riceverà da ora questi messaggi. Non è stato possibile inviare il breve avviso."
+        },
+        "errors": {
+          "invalidEmail": "Questo non sembra un indirizzo email. Controllalo, per favore.",
+          "duplicate": "Questo indirizzo è già nella lista.",
+          "tooMany": "Un modulo può avere fino a {max} indirizzi. Rimuovine uno per aggiungerne un altro.",
+          "conflict": "Qualcun altro ha cambiato queste impostazioni nel frattempo. Ricarica la pagina per vedere la versione più recente.",
+          "forbidden": "Non puoi modificare questa impostazione.",
+          "failed": "Non è stato possibile salvare. Riprova."
+        }
       }
     },
     "internalTags": {

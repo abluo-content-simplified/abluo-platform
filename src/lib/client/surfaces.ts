@@ -142,7 +142,8 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   { kind: 'nav', id: 'support', segment: 'support', group: 'support', requires: {} },
   // ADR-031: partner apps reading this site. Owners and Site admins only; always listed (calm empty state).
   { kind: 'nav', id: 'connections', segment: 'apps', group: 'support', requires: { permission: 'connections.manage' } },
-  // Settings (Tom, 2026-10-18): the client's own business facts (Amazon IDs, affiliate disclosure; contact and legal later).
+  // Settings (Tom, 2026-10-18; 2026-10-28): the client's own settings — today Form notifications (who receives form emails).
+  // The affiliate programs live only in Connected Apps (`connections`) since 2026-10-26.
   // Never technical configuration: gated on its own content-style permission, NOT `settings.manage`.
   { kind: 'nav', id: 'settings', segment: 'settings', group: 'support', requires: { permission: 'site.details.read' } },
 

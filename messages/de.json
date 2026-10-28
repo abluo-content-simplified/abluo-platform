@@ -2327,6 +2327,43 @@
         "comingSoon": "Demnächst — noch nicht verknüpft.",
         "amazonNote": "Nutzt deine Amazon-IDs oben. Ziehe, um festzulegen, wo Amazon erscheint.",
         "drag": "{shop} verschieben, Position {position} von {total}. Ziehen oder mit den Pfeiltasten nach oben und unten."
+      },
+      "formNotifications": {
+        "title": "Formular-Benachrichtigungen",
+        "intro": "Wenn jemand ein Formular auf Ihrer Website absendet, schicken wir die Nachricht per E-Mail an die Adressen unten. Sie können für jedes Formular Adressen hinzufügen oder entfernen; die Änderung gilt ab der nächsten Nachricht.",
+        "previewNote": "Nachrichten aus der Vorschau Ihrer Website lösen nie E-Mails aus, Sie können Ihre Formulare also gefahrlos testen.",
+        "readOnly": "Nur der Inhaber und die Website-Admins können ändern, wer diese E-Mails erhält.",
+        "readOnlySupport": "Während eines Support-Besuchs nur Ansicht. Änderungen sind möglich, sobald der Kunde sie erlaubt.",
+        "emptyTitle": "Noch keine Formulare mit E-Mail-Versand",
+        "emptyBody": "Sobald ein Formular Ihrer Website E-Mails versendet, erscheint es hier mit den Adressen, die seine Nachrichten erhalten.",
+        "allForms": "Alle Formulare",
+        "allFormsNote": "Diese Adressen erhalten die Nachrichten aller Formulare Ihrer Website.",
+        "paused": "Die E-Mails für dieses Formular sind im Moment ausgeschaltet. Abluo kann sie für Sie wieder einschalten.",
+        "nobody": "Im Moment erhält niemand diese Nachrichten per E-Mail.",
+        "listLabel": "Adressen für {form}",
+        "remove": "Entfernen",
+        "removeNamed": "{email} entfernen",
+        "addLabel": "E-Mail-Adresse hinzufügen",
+        "addPlaceholder": "name@beispiel.de",
+        "add": "Hinzufügen",
+        "limit": "Bis zu {max} Adressen pro Formular. Jede neue Adresse erhält von uns einen kurzen Hinweis.",
+        "full": "Dieses Formular hat bereits {max} Adressen, das Maximum. Entfernen Sie eine, um eine andere hinzuzufügen.",
+        "lastTitle": "Letzte Adresse entfernen?",
+        "lastBody": "Wenn Sie {email} entfernen, erhält niemand mehr eine E-Mail, wenn jemand das Formular „{form}“ absendet, und neue Nachrichten könnten unbemerkt bleiben.",
+        "lastConfirm": "Trotzdem entfernen",
+        "added": {
+          "sent": "{email} erhält ab jetzt diese Nachrichten. Wir haben einen kurzen Hinweis an die Adresse geschickt.",
+          "preview": "{email} erhält ab jetzt diese Nachrichten. Dies ist eine Testversion des Dashboards, daher wurde kein Hinweis verschickt.",
+          "notSent": "{email} erhält ab jetzt diese Nachrichten. Der kurze Hinweis an die Adresse konnte nicht verschickt werden."
+        },
+        "errors": {
+          "invalidEmail": "Das sieht nicht wie eine E-Mail-Adresse aus. Bitte prüfen Sie sie.",
+          "duplicate": "Diese Adresse steht bereits auf der Liste.",
+          "tooMany": "Ein Formular kann bis zu {max} Adressen haben. Entfernen Sie eine, um eine andere hinzuzufügen.",
+          "conflict": "Jemand anderes hat diese Einstellungen inzwischen geändert. Laden Sie die Seite neu, um den aktuellen Stand zu sehen.",
+          "forbidden": "Sie können das nicht ändern.",
+          "failed": "Das konnte nicht gespeichert werden. Bitte versuchen Sie es erneut."
+        }
       }
     },
     "internalTags": {

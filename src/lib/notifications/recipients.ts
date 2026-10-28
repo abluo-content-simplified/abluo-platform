@@ -3,7 +3,9 @@
  *
  * Recipients live on the Sanity project document (`notifications.recipients`),
  * edited by an admin in Project Settings → Notifications, filtered by topic +
- * enabled.
+ * enabled. Since 2026-10-28 the client's Owner / Site admin can also add or
+ * remove the addresses of an existing group from the dashboard's Settings page
+ * (`./form-recipients-service.ts`); topics and on/off stay Studio-only.
  *
  * ── Grain: PROJECT, resolved by project ID ───────────────────────────────────
  * Until 2026-08-31 this resolved the Sanity project by feeding the event's

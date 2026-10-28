@@ -2327,6 +2327,43 @@
         "comingSoon": "Coming soon — not linked yet.",
         "amazonNote": "Uses your Amazon IDs above. Drag to choose where Amazon appears.",
         "drag": "Move {shop}, position {position} of {total}. Drag, or use the up and down arrow keys."
+      },
+      "formNotifications": {
+        "title": "Form notifications",
+        "intro": "When someone sends a form on your website, we email the message to the addresses below. Add or remove addresses for each form; the change applies to the next message.",
+        "previewNote": "Messages sent from the preview of your website never send emails, so you can test your forms safely.",
+        "readOnly": "Only the owner and site admins can change who receives these emails.",
+        "readOnlySupport": "View only during a support visit. Changes are possible once the client allows them.",
+        "emptyTitle": "No forms send emails yet",
+        "emptyBody": "When a form on your website is set up to send emails, it appears here with the addresses that receive its messages.",
+        "allForms": "All forms",
+        "allFormsNote": "These addresses receive the messages of every form on your website.",
+        "paused": "Emails for this form are switched off at the moment. Abluo can switch them back on for you.",
+        "nobody": "No one receives these messages by email right now.",
+        "listLabel": "Addresses for {form}",
+        "remove": "Remove",
+        "removeNamed": "Remove {email}",
+        "addLabel": "Add an email address",
+        "addPlaceholder": "name@example.com",
+        "add": "Add",
+        "limit": "Up to {max} addresses per form. We send each new address a short note to let them know.",
+        "full": "This form already has {max} addresses, the most it can have. Remove one to add another.",
+        "lastTitle": "Remove the last address?",
+        "lastBody": "If you remove {email}, no one will get an email when someone sends the “{form}” form, and new messages could go unnoticed.",
+        "lastConfirm": "Remove anyway",
+        "added": {
+          "sent": "{email} will now receive these messages. We sent them a short note to let them know.",
+          "preview": "{email} will now receive these messages. This is a test version of the dashboard, so no note was emailed.",
+          "notSent": "{email} will now receive these messages. The short note to let them know could not be sent."
+        },
+        "errors": {
+          "invalidEmail": "This doesn’t look like an email address. Please check it.",
+          "duplicate": "This address is already on the list.",
+          "tooMany": "A form can have up to {max} addresses. Remove one to add another.",
+          "conflict": "Someone else changed these settings in the meantime. Reload the page to see the latest version.",
+          "forbidden": "You can’t change this.",
+          "failed": "This could not be saved. Please try again."
+        }
       }
     },
     "internalTags": {
