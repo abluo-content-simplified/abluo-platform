@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server'
 import { PageShell } from '@/components/app/ui/PageShell'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { EmptyState } from '@/components/app/ui/EmptyState'
+import { getDateLocale } from '@/lib/i18n/date-locale-server'
 import { AnalyticsOverview } from '@/components/app/analytics/AnalyticsOverview'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
@@ -49,7 +50,7 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ tena
       {view === null ? (
         <EmptyState title={t('errorTitle')} body={t('errorBody')} />
       ) : view.hasData ? (
-        <AnalyticsOverview view={view} requests={requests} />
+        <AnalyticsOverview view={view} requests={requests} dateLocale={await getDateLocale()} />
       ) : (
         <EmptyState title={t('notConnectedTitle')} body={t('notConnectedBody')} />
       )}

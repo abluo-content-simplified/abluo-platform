@@ -34,6 +34,7 @@ import { gallerySegments, navHref, percentChange, postDraftSegments, segmentsToP
 import { ticketAccess } from '@/lib/support-tickets/access'
 import { clientTicketAttention } from '@/lib/support-tickets/service'
 import { getProjectAnalytics } from '@/lib/analytics/read'
+import { getDateLocale } from '@/lib/i18n/date-locale-server'
 import { DailySparkline } from '@/components/app/analytics/AnalyticsOverview'
 
 /**
@@ -344,7 +345,7 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
               label={ta('home.visitors')}
               value={traffic.visitors.value}
               delta={traffic.visitors.change === null ? null : { percent: traffic.visitors.change, period: ta('home.previousPeriod') }}
-              trend={traffic.dailyVisitors.length > 1 ? <DailySparkline points={traffic.dailyVisitors} label={ta('home.dailyVisitors')} /> : null}
+              trend={traffic.dailyVisitors.length > 1 ? <DailySparkline points={traffic.dailyVisitors} label={ta('home.dailyVisitors')} dateLocale={await getDateLocale()} /> : null}
               href={analyticsHref}
             />
           ) : null,

@@ -1,4 +1,4 @@
-import { useFormatter, useTranslations } from 'next-intl'
+import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { RankedList } from '@/components/app/ui/RankedList'
 import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { Sparkline } from '@/components/app/ui/Sparkline'
@@ -8,8 +8,7 @@ import { TrendChart } from '@/components/app/ui/TrendChart'
 import type { RequestStats } from '@/lib/analytics/request-stats'
 import type { MetricValue, ProjectAnalyticsView } from '@/lib/analytics/view'
 import { UpdatedNote } from './UpdatedNote'
-import { useDateLocale } from '@/lib/i18n/date-locale-context'
-import { formatDateTime } from '@/lib/i18n/date-locale'
+import { formatDateTime, resolveDateLocale } from '@/lib/i18n/date-locale'
 
 /**
  * The analytics widgets for ONE site (ADR-029 §3.4) — the same composition on
@@ -39,9 +38,19 @@ export function useDelta() {
     m && m.change !== null ? { percent: m.change, period, goodWhen } : null
 }
 
-export function DailySparkline({ points, label }: { points: { date: string; value: number }[]; label: string }) {
+/**
+ * Rendered as a server component (Home, Analytics), so it cannot read the client
+ * DateLocaleProvider: server callers pass `dateLocale` from `getDateLocale()`;
+ * without it (Lab demo) the interface locale's default date style is used.
+ */
+function useDateLocaleProp(dateLocale?: string): string {
+  const ui = useLocale()
+  return dateLocale ?? resolveDateLocale(ui, null)
+}
+
+export function DailySparkline({ points, label, dateLocale: dateLocaleProp }: { points: { date: string; value: number }[]; label: string; dateLocale?: string }) {
   const format = useFormatter()
-  const dateLocale = useDateLocale()
+  const dateLocale = useDateLocaleProp(dateLocaleProp)
   return (
     <Sparkline
       values={points.map((p) => p.value)}
@@ -51,10 +60,10 @@ export function DailySparkline({ points, label }: { points: { date: string; valu
   )
 }
 
-export function AnalyticsOverview({ view, requests = null }: { view: ProjectAnalyticsView; requests?: RequestStats | null }) {
+export function AnalyticsOverview({ view, requests = null, dateLocale: dateLocaleProp }: { view: ProjectAnalyticsView; requests?: RequestStats | null; dateLocale?: string }) {
   const t = useTranslations('app.analytics')
   const format = useFormatter()
-  const dateLocale = useDateLocale()
+  const dateLocale = useDateLocaleProp(dateLocaleProp)
   const delta = useDelta()
 
   const channel = (raw: string) => {

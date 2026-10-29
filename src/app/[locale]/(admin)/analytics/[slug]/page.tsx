@@ -7,6 +7,7 @@ import { FactRow } from '@/components/app/ui/FactRow'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { PageShell } from '@/components/app/ui/PageShell'
 import { SectionHeading } from '@/components/app/ui/SectionHeading'
+import { getDateLocale } from '@/lib/i18n/date-locale-server'
 import { AnalyticsOverview } from '@/components/app/analytics/AnalyticsOverview'
 import { RefreshNowButton } from '@/components/admin/analytics/RefreshNowButton'
 import { StatusPill } from '@/components/admin/analytics/PortfolioBrowser'
@@ -52,7 +53,7 @@ export default async function AdminSiteAnalyticsPage({ params }: { params: Promi
         </Notice>
       ) : null}
 
-      {view.hasData ? <AnalyticsOverview view={view} requests={requests} /> : <EmptyState title={t('site.emptyTitle')} body={t('site.emptyBody')} />}
+      {view.hasData ? <AnalyticsOverview view={view} requests={requests} dateLocale={await getDateLocale()} /> : <EmptyState title={t('site.emptyTitle')} body={t('site.emptyBody')} />}
 
       <section aria-labelledby="analytics-config" className="flex flex-col gap-3">
         <SectionHeading id="analytics-config" title={t('site.configHeading')} />
