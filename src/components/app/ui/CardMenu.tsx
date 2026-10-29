@@ -70,7 +70,7 @@ export function CardMenu({ label, items, variant = 'default' }: { label: string;
           aria-controls={open ? id : undefined}
           onClick={toggle}
           className={`${
-            variant === 'chip' ? `${OVERLAY_CHIP} transition-colors duration-200 hover:bg-background` : 'grid size-11 place-items-center rounded-full text-foreground hover:bg-hover'
+            variant === 'chip' ? `${OVERLAY_CHIP} relative before:absolute before:-inset-1.5 before:content-[''] transition-colors duration-200 hover:bg-background` : 'grid size-11 place-items-center rounded-full text-foreground hover:bg-hover'
           } focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none`}
         >
           {DOTS}

@@ -42,7 +42,7 @@ export function buttonClass({
   fullWidth = false,
   className = '',
 }: { variant?: ButtonVariant; size?: ButtonSize; fullWidth?: boolean; className?: string } = {}): string {
-  const sizing = variant === 'link' ? 'min-h-11 px-1' : SIZE[size]
+  const sizing = variant === 'link' ? 'min-h-11 min-w-11 px-1' : SIZE[size]
   return [BASE, VARIANT[variant], sizing, fullWidth ? 'w-full' : '', className].filter(Boolean).join(' ')
 }
 

@@ -24,7 +24,7 @@ export function ViewSwitch<V extends string>({
   options: ViewSwitchOption<V>[]
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="hidden h-11 items-center gap-0.5 rounded-xl border border-border p-0.5 md:flex">
+    <div role="radiogroup" aria-label={label} className="hidden h-11 items-center gap-0.5 rounded-xl border border-border p-0.5 pointer-coarse:h-12 md:flex">
       {options.map((o) => (
         <button
           key={o.value}
@@ -34,7 +34,7 @@ export function ViewSwitch<V extends string>({
           aria-label={o.label}
           title={o.label}
           onClick={() => onChange(o.value)}
-          className={`grid h-full w-10 place-items-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
+          className={`grid h-full w-10 pointer-coarse:w-11 place-items-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
             value === o.value ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-hover hover:text-foreground'
           }`}
         >

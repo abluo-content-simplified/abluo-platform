@@ -184,7 +184,7 @@ export function TranslationsBrowser({ rows, locales, summary }: { rows: Translat
             {visible.map((r) => (
               <ListRow key={r.key} onOpen={() => setOpenKey(r.key)} label={t('detail.open', { key: r.key })}>
                 <span className="line-clamp-2 text-[0.9375rem] leading-[1.375rem] font-semibold text-foreground">{r.en}</span>
-                <span className="line-clamp-1 text-sm leading-5 text-muted-foreground">{r.key}</span>
+                <span className="line-clamp-2 min-w-0 text-sm leading-5 [overflow-wrap:anywhere] text-muted-foreground">{r.key}</span>
                 <span className="flex flex-wrap items-center gap-1.5">
                   {scope.map((l) => (
                     <Pill key={l} tone={TONE[r.cells[l].state]}>
@@ -216,7 +216,7 @@ function TranslationDetail({ row, locales }: { row: TranslationRow; locales: str
     <div className="flex flex-col gap-6">
       <dl>
         <FactRow label={t('detail.key')}>
-          <span className="font-mono text-sm">{row.key}</span>
+          <span className="font-mono text-sm [overflow-wrap:anywhere]">{row.key}</span>
         </FactRow>
       </dl>
       <section className="flex flex-col gap-1.5">

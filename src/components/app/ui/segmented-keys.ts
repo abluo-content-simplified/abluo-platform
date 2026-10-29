@@ -33,14 +33,14 @@ export type SegmentedAppearance = 'solid' | 'soft' | 'pill' | 'chips'
 
 const GROUP: Record<SegmentedAppearance, string> = {
   solid: 'flex max-w-full gap-1 overflow-x-auto rounded-xl border border-border p-1',
-  soft: 'flex h-11 w-full max-w-full items-stretch gap-1 overflow-x-auto rounded-xl border border-border bg-background p-1 sm:w-auto',
+  soft: 'flex h-11 pointer-coarse:h-13 w-full max-w-full items-stretch gap-1 overflow-x-auto rounded-xl border border-border bg-background p-1 sm:w-auto',
   pill: 'inline-flex max-w-full gap-1 overflow-x-auto rounded-full border border-border bg-muted p-1',
   chips: 'flex flex-wrap items-start gap-2',
 }
 const SEG_BASE = 'rounded-lg font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
 const SEG: Record<SegmentedAppearance, { base: string; on: string; off: string }> = {
   solid: {
-    base: `${SEG_BASE} h-10 shrink-0 px-3.5 text-[0.9375rem] whitespace-nowrap transition-[background-color,border-color,box-shadow,opacity] duration-200 ease-out motion-reduce:transition-none`,
+    base: `${SEG_BASE} h-10 pointer-coarse:h-11 shrink-0 px-3.5 text-[0.9375rem] whitespace-nowrap transition-[background-color,border-color,box-shadow,opacity] duration-200 ease-out motion-reduce:transition-none`,
     on: 'bg-action text-action-foreground',
     off: 'text-foreground hover:bg-hover',
   },

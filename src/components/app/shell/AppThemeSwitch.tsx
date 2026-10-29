@@ -49,7 +49,7 @@ export function AppThemeSwitch({ initial }: { initial: AppTheme }) {
               role="radio"
               aria-checked={on}
               onClick={(e) => choose(option, e.currentTarget)}
-              className={`h-11 rounded-md md:h-8 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+              className={`h-11 rounded-md md:pointer-fine:h-8 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
                 on
                   ? 'bg-background font-semibold text-foreground shadow-sm'
                   : 'font-medium text-muted-foreground hover:text-foreground'
