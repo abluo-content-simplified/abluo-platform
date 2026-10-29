@@ -1,11 +1,12 @@
 'use client'
 
 import { useMemo, type ReactNode } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import type { FilterOption } from '@/components/app/ui/FilterBar'
 import type { FilterChip } from '@/components/app/ui/FilterSheet'
 import { ListToolbar, type ListDateValue, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
 import type { DateField, PostFilters, PostSort, PostStatus } from '@/lib/client/posts-filter'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /** ADR-032 slice 6: All (everything but archived) · Draft · Scheduled · Published · Unpublished · Archived. */
 const STATUSES: PostStatus[] = ['draft', 'scheduled', 'published', 'unpublished', 'archived']
@@ -53,9 +54,9 @@ export function PostsFilters({
   const t = useTranslations('clientDashboard.posts')
   const tr = useTranslations('app.ui.dateRange')
   const tl = useTranslations('app.lifecycle')
-  const locale = useLocale()
+  const dateLocale = useDateLocale()
 
-  const dayFmt = useMemo(() => new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }), [locale])
+  const dayFmt = useMemo(() => new Intl.DateTimeFormat(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' }), [dateLocale])
   const day = (iso: string) => {
     const [y, m, d] = iso.split('-').map(Number)
     return dayFmt.format(new Date(y, m - 1, d, 12))

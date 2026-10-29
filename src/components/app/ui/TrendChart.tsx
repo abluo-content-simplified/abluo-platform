@@ -2,6 +2,8 @@
 
 import { useId, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { useFormatter } from 'next-intl'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
+import { formatDateTime } from '@/lib/i18n/date-locale'
 
 export type TrendPoint = { date: string; value: number }
 
@@ -32,6 +34,7 @@ export function TrendChart({
   labels: { current: string; previous: string; date: string }
 }) {
   const format = useFormatter()
+  const dateLocale = useDateLocale()
   const id = useId()
   const [active, setActive] = useState<number | null>(null)
   if (current.length < 2) return null
@@ -54,7 +57,7 @@ export function TrendChart({
   const line = path(current)
   const area = `${line} L${x(n - 1).toFixed(1)},${y(0)} L${x(0).toFixed(1)},${y(0)} Z`
   const day = (iso: string, long = false) =>
-    format.dateTime(new Date(`${iso}T12:00:00Z`), long ? { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' } : { day: 'numeric', month: 'short', timeZone: 'UTC' })
+    formatDateTime(dateLocale, new Date(`${iso}T12:00:00Z`), long ? { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' } : { day: 'numeric', month: 'short', timeZone: 'UTC' })
   // Daily counts are whole numbers: no "2.5 visitors" gridline.
   const ticks = Number.isInteger(max / 2) ? [0, max / 2, max] : [0, max]
   const xTicks = [0, Math.floor((n - 1) / 2), n - 1]

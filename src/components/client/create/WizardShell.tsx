@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { PostActivitySheet } from '@/components/client/posts/PostActivitySheet'
 import { useLocale, useTranslations } from 'next-intl'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 import type { PortableTextBlock } from '@portabletext/editor'
 import { useRouter } from '@/i18n/navigation'
 import { createPostDraftAction, patchPostDraftAction } from '@/app/[locale]/(client)/[tenant]/posts/actions'
@@ -114,6 +115,7 @@ export function WizardShell({
   const tp = useTranslations('app.lifecycle.publish')
   const tf = useTranslations('clientDashboard.faq.post')
   const ui = useLocale()
+  const dateUi = useDateLocale()
   const router = useRouter()
   // Categories created inline (Category step) join the site's list, so the Review step shows their names.
   const [addedCategories, setAddedCategories] = useState<PickerTerm[]>([])
@@ -580,7 +582,7 @@ export function WizardShell({
   // an archived post offers only Restore and, for Owners and Site admins, Delete permanently.
   const sentenceOf = (dates: { publishedAt: string | null; expiresAt: string | null }) => {
     const sv = datesSentence(dates)
-    const m = (iso?: string) => (iso ? tp('moment', shortMoment(iso, zone, ui)) : '')
+    const m = (iso?: string) => (iso ? tp('moment', shortMoment(iso, zone, dateUi)) : '')
     return tp(sv.key, { start: m(sv.start), end: m(sv.end) })
   }
   const publication = showDates && live ? (

@@ -38,6 +38,7 @@ import { useCatalogueDraft } from './use-catalogue-draft'
 import { useItemState } from './use-item-state'
 import { Button } from '@/components/app/ui/Button'
 import { Notice } from '@/components/app/ui/Notice'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 type Tab = ItemTab
 type PublishResult = { kind: 'published' } | { kind: 'scheduled'; at: string | null }
@@ -78,6 +79,7 @@ export function ItemEditor({
   const tl = useTranslations('app.lifecycle')
   const td = useTranslations('catalogue.dashboard.dates')
   const ui = useLocale()
+  const dateLocale = useDateLocale()
   const router = useRouter()
   const errorText = useCatalogueError()
   const d = site.defaultLocale
@@ -276,7 +278,7 @@ export function ItemEditor({
       </div>
       {result && !draft.hasDraft ? (
         <Notice tone="info">
-          {result.kind === 'scheduled' && result.at ? t('resultScheduled', { date: new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', hourCycle: 'h23', timeZone: zone }).format(new Date(result.at)) }) : result.kind === 'scheduled' ? t('scheduled') : t('resultPublished')}
+          {result.kind === 'scheduled' && result.at ? t('resultScheduled', { date: new Intl.DateTimeFormat(dateLocale, { dateStyle: 'full', timeStyle: 'short', hourCycle: 'h23', timeZone: zone }).format(new Date(result.at)) }) : result.kind === 'scheduled' ? t('scheduled') : t('resultPublished')}
         </Notice>
       ) : null}
       {!readOnly && !canPublish ? <ItemIssueList issues={blockers} onFix={fix} /> : null}

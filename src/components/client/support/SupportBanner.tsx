@@ -10,6 +10,7 @@ import {
   showContactRequestsAction,
 } from '@/app/[locale]/(client)/[tenant]/support-actions'
 import type { SupportStatus } from '@/lib/support/state'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /**
  * The admin's persistent banner while visiting a client dashboard in support
@@ -25,12 +26,13 @@ import type { SupportStatus } from '@/lib/support/state'
 /** HH:MM in the viewer's own time zone — formatted after mount, so server and browser never disagree. */
 export function useLocalTime(iso: string | null): string {
   const locale = useLocale()
+  const dateLocale = useDateLocale()
   const [text, setText] = useState('')
   useEffect(() => {
     if (!iso) return
     const d = new Date(iso)
     // eslint-disable-next-line react-hooks/set-state-in-effect -- the browser's time zone is only known after mount
-    if (!Number.isNaN(d.getTime())) setText(d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }))
+    if (!Number.isNaN(d.getTime())) setText(d.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }))
   }, [iso, locale])
   return text
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useId, useMemo, useState } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { BottomSheet } from './BottomSheet'
 import { Button } from './Button'
 import { Calendar } from './Calendar'
@@ -10,6 +10,7 @@ import { FieldLabel } from './FieldLabel'
 import { inputClass } from './field-styles'
 import { timeSteps } from '@/lib/client/date-range'
 import { formatInZone, fromLocalInput, offsetLabel, toLocalInput } from '../lifecycle/zoned-time'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /**
  * A date + time, entered in a given time zone (the SITE's, ADR-032 D8).
@@ -37,9 +38,9 @@ const DEFAULT_TIME = '09:00'
 /** "Rome time (GMT+1)" for a zone at a moment. */
 function useZoneNote(zone: string) {
   const t = useTranslations('app.ui.dateTime')
-  const locale = useLocale()
+  const dateLocale = useDateLocale()
   const city = zone.split('/').pop()?.replace(/_/g, ' ') ?? zone
-  return (at: string | number) => t('zone', { city, offset: offsetLabel(at, zone, locale) })
+  return (at: string | number) => t('zone', { city, offset: offsetLabel(at, zone, dateLocale) })
 }
 
 export function DateTimeSheet({
@@ -76,7 +77,7 @@ export function DateTimeSheet({
 
 function SheetBody({ value, zone, after, allowPast, note, onDone }: { value: string | null; zone: string; after?: string | null; allowPast: boolean; note?: string; onDone: (utc: string) => void }) {
   const t = useTranslations('app.ui.dateTime')
-  const locale = useLocale()
+  const dateLocale = useDateLocale()
   const zoneNote = useZoneNote(zone)
   const timeId = useId()
   const initial = toLocalInput(value, zone)
@@ -88,10 +89,10 @@ function SheetBody({ value, zone, after, allowPast, note, onDone }: { value: str
   const limit = allowPast ? (after ?? null) : afterIsLater ? after! : openedAt
   const minDay = limit ? toLocalInput(limit, zone).slice(0, 10) || undefined : undefined
   const steps = useMemo(() => timeSteps(initial ? initial.slice(11, 16) : undefined), [initial])
-  const timeFmt = useMemo(() => new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }), [locale])
+  const timeFmt = useMemo(() => new Intl.DateTimeFormat(dateLocale, { hour: 'numeric', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }), [dateLocale])
   const parsed = day ? fromLocalInput(`${day}T${time}`, zone) : null
   const tooEarly = !!parsed && !!limit && Date.parse(parsed.utc) <= Date.parse(limit)
-  const reason = !day ? t('pickDay') : tooEarly ? (after && (allowPast || afterIsLater) ? t('mustBeAfter', { date: formatInZone(after, zone, locale) }) : t('mustBeFuture')) : null
+  const reason = !day ? t('pickDay') : tooEarly ? (after && (allowPast || afterIsLater) ? t('mustBeAfter', { date: formatInZone(after, zone, dateLocale) }) : t('mustBeFuture')) : null
 
   return (
     <div className="flex flex-col gap-4">
@@ -107,9 +108,9 @@ function SheetBody({ value, zone, after, allowPast, note, onDone }: { value: str
         </Select>
         <p className="mt-2 text-sm text-muted-foreground" aria-live="polite">
           {parsed?.resolution === 'gap'
-            ? t('gap', { date: formatInZone(parsed.utc, zone, locale) })
+            ? t('gap', { date: formatInZone(parsed.utc, zone, dateLocale) })
             : parsed?.resolution === 'overlap'
-              ? t('overlap', { date: formatInZone(parsed.utc, zone, locale), offset: offsetLabel(parsed.utc, zone, locale) })
+              ? t('overlap', { date: formatInZone(parsed.utc, zone, dateLocale), offset: offsetLabel(parsed.utc, zone, dateLocale) })
               : zoneNote(parsed?.utc ?? openedAt)}
         </p>
       </div>
@@ -167,11 +168,11 @@ export function DateTimePicker({
   className?: string
 }) {
   const t = useTranslations('app.ui.dateTime')
-  const locale = useLocale()
+  const dateLocale = useDateLocale()
   const zoneNote = useZoneNote(zone)
   const [open, setOpen] = useState(false)
   const [openedAt] = useState(() => Date.now())
-  const text = formatInZone(value, zone, locale)
+  const text = formatInZone(value, zone, dateLocale)
   return (
     <div className={className}>
       <button

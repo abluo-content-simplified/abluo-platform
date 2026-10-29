@@ -7,17 +7,18 @@
  */
 
 import { useEffect, useState } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { Button } from '@/components/app/ui/Button'
 import { getFaqSetActivityAction } from '@/app/[locale]/(client)/[tenant]/faq-sets/actions'
 import type { ActivityItem } from '@/lib/lifecycle/activity'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 type State = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; items: ActivityItem[] }
 
 export function FaqSetActivitySheet({ open, onClose, projectSlug, setId }: { open: boolean; onClose: () => void; projectSlug: string; setId: string }) {
   const t = useTranslations('clientDashboard.activity')
-  const locale = useLocale()
+  const dateLocale = useDateLocale()
   const [state, setState] = useState<State>({ kind: 'loading' })
   const [attempt, setAttempt] = useState(0)
 
@@ -36,7 +37,7 @@ export function FaqSetActivitySheet({ open, onClose, projectSlug, setId }: { ope
 
   const when = (iso: string) => {
     try {
-      return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso))
+      return new Intl.DateTimeFormat(dateLocale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso))
     } catch {
       return iso
     }

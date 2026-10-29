@@ -13,6 +13,7 @@ import type { DashboardSubmission } from '@/lib/api/client-dashboard'
 import { buildLeadOriginRows } from '@/lib/forms/lead-origin'
 import { getLeadOriginMessages } from '@/lib/i18n/lead-origin-messages'
 import { rawValue } from '@/lib/client/submissions-filter'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 export function humanizeKey(key: string): string {
   const spaced = key.replace(/_/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -60,6 +61,7 @@ function Row({ label, value }: { label: string; value: string }) {
 /** What they sent + "Where it came from". `columns={1}` stacks the two (narrow panels). */
 export function SubmissionDetail({ s, locale, columns = 2 }: { s: DashboardSubmission; locale: string; columns?: 1 | 2 }) {
   const t = useTranslations('clientDashboard')
+  const dateLocale = useDateLocale()
   const msgs = getLeadOriginMessages(locale)
   const origin = buildLeadOriginRows(s.source, msgs)
   const src = s.source ?? {}
@@ -76,9 +78,9 @@ export function SubmissionDetail({ s, locale, columns = 2 }: { s: DashboardSubmi
     label: t('submissions.columns.form'),
     value: s.formVersion !== null ? `${s.formId} (v${s.formVersion})` : s.formId,
   })
-  extra.push({ key: 'recv', label: t('submissions.columns.received'), value: formatReceived(s.createdAt, locale) })
+  extra.push({ key: 'recv', label: t('submissions.columns.received'), value: formatReceived(s.createdAt, dateLocale) })
   if (s.consentAt) {
-    extra.push({ key: 'consent', label: t('submissions.detail.consent'), value: formatReceived(s.consentAt, locale) })
+    extra.push({ key: 'consent', label: t('submissions.detail.consent'), value: formatReceived(s.consentAt, dateLocale) })
   }
 
   const head = 'mb-2 text-[0.75rem] font-semibold uppercase tracking-wide text-muted-foreground'

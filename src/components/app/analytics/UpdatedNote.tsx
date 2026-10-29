@@ -1,7 +1,9 @@
 'use client'
 
 import { useSyncExternalStore } from 'react'
-import { useFormatter, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
+import { formatDateTime } from '@/lib/i18n/date-locale'
 
 /**
  * "Updated 9 Oct, 16:25" in the READER's time zone (Tom 2026-10-09: the server
@@ -11,10 +13,10 @@ import { useFormatter, useTranslations } from 'next-intl'
  */
 export function UpdatedNote({ iso, stale }: { iso: string; stale: boolean }) {
   const t = useTranslations('app.analytics')
-  const format = useFormatter()
+  const dateLocale = useDateLocale()
   // Server snapshot = null (zone unknown → UTC, written out); in the browser, the reader's zone.
   const zone = useSyncExternalStore(noSubscribe, browserZone, () => null)
-  const when = format.dateTime(new Date(iso), {
+  const when = formatDateTime(dateLocale, new Date(iso), {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',

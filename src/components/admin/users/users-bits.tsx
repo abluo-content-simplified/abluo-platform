@@ -1,10 +1,12 @@
 'use client'
 
 import { useSyncExternalStore } from 'react'
-import { useFormatter, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { Pill, type PillTone } from '@/components/app/ui/list/cells'
 import { isActiveNow } from '@/lib/presence/model'
 import type { AdminPerson, PersonAccess, PersonStatus } from '@/lib/admin/users-model'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
+import { formatDateTime } from '@/lib/i18n/date-locale'
 
 const TONE: Record<PersonStatus, PillTone> = { active: 'success', invited: 'highlight', archived: 'muted', none: 'outline' }
 
@@ -36,12 +38,12 @@ export function LastActive({ iso, now }: { iso: string | null; now: number }) {
 
 /** Date and time in the reader's zone (server render: UTC, written out — never silently wrong). */
 export function useLocalDateTime(iso: string | null): string {
-  const format = useFormatter()
+  const dateLocale = useDateLocale()
   const zone = useSyncExternalStore(noSubscribe, browserZone, () => null)
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return format.dateTime(d, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: zone ?? 'UTC', ...(zone ? {} : { timeZoneName: 'short' }) })
+  return formatDateTime(dateLocale, d, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: zone ?? 'UTC', ...(zone ? {} : { timeZoneName: 'short' }) })
 }
 
 const noSubscribe = () => () => {}

@@ -1,7 +1,7 @@
 'use client'
 
-import { useLocale } from 'next-intl'
 import { formatLastUpdate, type LastUpdateLabels } from '@/lib/support-tickets/time'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /**
  * A ticket's "last update" as date AND time in the viewer's own time zone
@@ -11,11 +11,11 @@ import { formatLastUpdate, type LastUpdateLabels } from '@/lib/support-tickets/t
  * warning, this node only).
  */
 export function LastUpdate({ iso, labels, className = '' }: { iso: string | null | undefined; labels: LastUpdateLabels; className?: string }) {
-  const locale = useLocale()
+  const dateLocale = useDateLocale()
   if (!iso) return null
   return (
     <time dateTime={iso} suppressHydrationWarning className={className}>
-      {formatLastUpdate(iso, { locale, labels })}
+      {formatLastUpdate(iso, { locale: dateLocale, labels })}
     </time>
   )
 }

@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { useLocale } from 'next-intl'
 import { Avatar } from './Avatar'
 import { ImageViewer, type ImageViewerLabels } from './ImageViewer'
 import { segmentBody } from '@/lib/support-tickets/redaction'
 import type { TicketAttachmentView, ThreadEntry } from '@/lib/support-tickets/model'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /**
  * A conversation, oldest first: the messages both sides wrote, the screenshots
@@ -67,12 +67,12 @@ export function MessageThread({
   /** Controls inside the viewer for one screenshot (admin: Delete; client: Delete on their own). */
   imageActions?: (attachment: TicketAttachmentView, entry: Extract<ThreadEntry, { kind: 'message' }>) => ReactNode
 }) {
-  const locale = useLocale()
+  const dateLocale = useDateLocale()
   const [viewing, setViewing] = useState<{ entryId: string; attachmentId: string } | null>(null)
   const viewedEntry = viewing ? entries.find((e): e is Extract<ThreadEntry, { kind: 'message' }> => e.kind === 'message' && e.id === viewing.entryId) : undefined
   const live = viewedEntry ? viewedEntry.attachments.filter((a) => a.url && a.deleted === null) : []
   const viewIndex = viewing ? Math.max(0, live.findIndex((a) => a.id === viewing.attachmentId)) : 0
-  const fmt = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  const fmt = new Intl.DateTimeFormat(dateLocale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   const time = (iso: string) => (
     <time dateTime={iso} suppressHydrationWarning className="text-xs leading-5 text-muted-foreground">
       {fmt.format(new Date(iso))}

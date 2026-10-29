@@ -7,17 +7,18 @@
  */
 
 import { useEffect, useState } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { Button } from '@/components/app/ui/Button'
 import { getPostActivityAction, type PostActivityResult } from '@/app/[locale]/(client)/[tenant]/posts/activity-actions'
 import type { ActivityItem } from '@/lib/lifecycle/activity'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 type State = { kind: 'loading' } | { kind: 'error' } | ({ kind: 'ready' } & Extract<PostActivityResult, { ok: true }>)
 
 export function PostActivitySheet({ open, onClose, projectSlug, postId }: { open: boolean; onClose: () => void; projectSlug: string; postId: string | null }) {
   const t = useTranslations('clientDashboard.activity')
-  const locale = useLocale()
+  const dateLocale = useDateLocale()
   const [state, setState] = useState<State>({ kind: 'loading' })
   const [attempt, setAttempt] = useState(0)
 
@@ -35,7 +36,7 @@ export function PostActivitySheet({ open, onClose, projectSlug, postId }: { open
 
   const when = (iso: string, timeZone: string | null) => {
     try {
-      return new Intl.DateTimeFormat(locale, {
+      return new Intl.DateTimeFormat(dateLocale, {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
@@ -45,7 +46,7 @@ export function PostActivitySheet({ open, onClose, projectSlug, postId }: { open
         ...(timeZone && { timeZone }),
       }).format(new Date(iso))
     } catch {
-      return new Date(iso).toLocaleString(locale, { hourCycle: 'h23' })
+      return new Date(iso).toLocaleString(dateLocale, { hourCycle: 'h23' })
     }
   }
   const who = (a: ActivityItem['actor']) => (a.kind === 'person' ? t('actor.person', { name: a.name ?? '' }) : t(`actor.${a.kind}`))

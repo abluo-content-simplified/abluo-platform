@@ -1,9 +1,10 @@
 'use client'
 
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { Pill, type PillTone } from '@/components/app/ui/list/cells'
 import { formatLastUpdate } from '@/lib/support-tickets/time'
 import { TICKET_LIMITS, type TicketDetail, type TicketStatus, type ThreadEntry } from '@/lib/support-tickets/model'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /** Status pill in the client's wording (Open / In Progress / Waiting for You / Resolved). */
 const TONE: Record<TicketStatus, PillTone> = {
@@ -20,9 +21,9 @@ export function TicketStatusPill({ status }: { status: TicketStatus }) {
 
 /** Date and time in the viewer's own time zone ("Today, 10:42"; the server's guess is corrected on hydration). */
 export function TicketTime({ iso, className = '' }: { iso: string; className?: string }) {
-  const locale = useLocale()
+  const dateLocale = useDateLocale()
   const t = useTranslations('clientDashboard.supportTickets.time')
-  const text = formatLastUpdate(iso, { locale, labels: { today: t('today'), yesterday: t('yesterday') } })
+  const text = formatLastUpdate(iso, { locale: dateLocale, labels: { today: t('today'), yesterday: t('yesterday') } })
   if (!text) return null
   return (
     <time dateTime={iso} suppressHydrationWarning className={className}>
@@ -55,12 +56,12 @@ export function useEventFormatter(): (event: Extract<ThreadEntry, { kind: 'event
 /** The plain sentence under a status ("We're working on it"); resolved carries its own date and reply window. */
 export function useStatusSentence(): (ticket: Pick<TicketDetail, 'status' | 'resolvedAt'>) => string {
   const t = useTranslations('clientDashboard.supportTickets.statusSentence')
-  const locale = useLocale()
+  const dateLocale = useDateLocale()
   return (ticket) => {
     if (ticket.status !== 'resolved') return t(ticket.status)
     const at = ticket.resolvedAt ? new Date(ticket.resolvedAt) : null
     if (!at || Number.isNaN(at.getTime())) return t('resolvedNoDate')
-    const date = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(at)
+    const date = new Intl.DateTimeFormat(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' }).format(at)
     const until = at.getTime() + TICKET_LIMITS.reopenDays * 86_400_000
     return Date.now() < until ? t('resolvedWindow', { date, days: TICKET_LIMITS.reopenDays }) : t('resolved', { date })
   }

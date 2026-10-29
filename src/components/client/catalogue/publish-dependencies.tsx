@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { Pill } from '@/components/app/ui/list/cells'
@@ -13,6 +13,7 @@ import { referrerHref, useCatalogueError } from './catalogue-ui'
 import { Button } from '@/components/app/ui/Button'
 import { Notice } from '@/components/app/ui/Notice'
 import { Panel } from '@/components/app/ui/Panel'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /**
  * ADR-033 D-4 / D-5 in the dashboard.
@@ -122,7 +123,7 @@ export function PublishTogetherSheet({
 }) {
   const t = useTranslations('catalogue.dashboard.together')
   const te = useTranslations('catalogue.dashboard.errors')
-  const ui = useLocale()
+  const dateLocale = useDateLocale()
   const errorText = useCatalogueError()
   const reqKey = open && id ? `${requestId}:${kind}:${id}:${publishAt ?? ''}` : null
   const [result, setResult] = useState<{ key: string; preview?: CataloguePublishPreview; error?: string } | null>(null)
@@ -146,7 +147,7 @@ export function PublishTogetherSheet({
   const error = current?.error ?? null
 
   const when = preview?.publishAt
-    ? t('whenScheduled', { date: new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', hourCycle: 'h23', timeZone: zone }).format(new Date(preview.publishAt)) })
+    ? t('whenScheduled', { date: new Intl.DateTimeFormat(dateLocale, { dateStyle: 'full', timeStyle: 'short', hourCycle: 'h23', timeZone: zone }).format(new Date(preview.publishAt)) })
     : t('whenNow')
   const blocking = Boolean(preview && (preview.forbidden.length || preview.missing.length || preview.blocked.length))
 

@@ -1,13 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { createPortal } from 'react-dom'
 import { BottomSheet } from './BottomSheet'
 import { FLOATING_STYLE, portalTarget, useAnchoredPopover } from './anchored-popover'
 import { Button } from './Button'
 import { Calendar } from './Calendar'
 import { parseISO, presetRange, todayISO, type DateRange, type RangePreset } from '@/lib/client/date-range'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /**
  * Date range filter for a FilterBar. Renders, in a row: quick-range toggle
@@ -78,7 +79,7 @@ export function DateRangePicker({
   className?: string
 }) {
   const t = useTranslations('app.ui.dateRange')
-  const locale = useLocale()
+  const dateLocale = useDateLocale()
   const desktop = useIsDesktop()
   const [open, setOpen] = useState(false)
   const [target, setTarget] = useState<HTMLElement | null>(null)
@@ -87,7 +88,7 @@ export function DateRangePicker({
   const triggerRef = useRef<HTMLButtonElement>(null)
   const dialogId = useId()
 
-  const fmt = useMemo(() => new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }), [locale])
+  const fmt = useMemo(() => new Intl.DateTimeFormat(dateLocale, { day: 'numeric', month: 'short' }), [dateLocale])
   const fmtDay = useCallback(
     (iso: string) => {
       const p = parseISO(iso)

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useFormatter, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { Button } from '@/components/app/ui/Button'
@@ -12,6 +12,8 @@ import { Select } from '@/components/app/ui/Select'
 import { TextInput } from '@/components/app/ui/TextInput'
 import { INTERFACE_LOCALES, LOCALE_NATIVE_NAMES } from '@/lib/i18n/locales'
 import { inviteOwnerAction, makeOwnerAction, type InviteOwnerResult, type MakeOwnerResult } from '@/app/[locale]/(admin)/projects/[slug]/owner-actions'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
+import { formatDateTime } from '@/lib/i18n/date-locale'
 
 type Owner = { userId: string; name: string; email: string }
 type Candidate = { userId: string; name: string; email: string }
@@ -39,7 +41,7 @@ export function InviteOwnerCard({
   candidates?: Candidate[] | null
 }) {
   const t = useTranslations('admin.projectPage.inviteOwner')
-  const format = useFormatter()
+  const dateLocale = useDateLocale()
   const router = useRouter()
   const initialLocale = (INTERFACE_LOCALES as readonly string[]).includes(defaultLocale ?? '') ? (defaultLocale as string) : 'en'
   const [open, setOpen] = useState(false)
@@ -50,7 +52,7 @@ export function InviteOwnerCard({
 
   const date = (iso?: string) => {
     const d = iso ? new Date(iso) : null
-    return d && !Number.isNaN(d.getTime()) ? format.dateTime(d, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+    return d && !Number.isNaN(d.getTime()) ? formatDateTime(dateLocale, d, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
   }
 
   async function send(sendAgain: boolean) {

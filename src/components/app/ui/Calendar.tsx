@@ -16,6 +16,7 @@ import {
   type DateRange,
   type YearMonth,
 } from '@/lib/client/date-range'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /**
  * Just the calendar: a month grid (one month, or two side by side) with
@@ -66,6 +67,7 @@ export function Calendar(props: CalendarProps) {
   const { months = 1, min, max, className = '' } = props
   const t = useTranslations('app.ui.calendar')
   const locale = useLocale()
+  const dateLocale = useDateLocale()
   const today = useMemo(() => todayISO(), [])
   const weekStart = useMemo(() => weekStartForLocale(locale), [locale])
   const range: DateRange = props.mode === 'range' ? props.value : { from: props.value, to: props.value }
@@ -76,9 +78,9 @@ export function Calendar(props: CalendarProps) {
   const gridRef = useRef<HTMLDivElement>(null)
   const wantFocus = useRef(false)
 
-  const monthFmt = useMemo(() => new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }), [locale])
-  const dayFmt = useMemo(() => new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), [locale])
-  const weekdayFmt = useMemo(() => new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }), [locale])
+  const monthFmt = useMemo(() => new Intl.DateTimeFormat(dateLocale, { month: 'long', year: 'numeric' }), [dateLocale])
+  const dayFmt = useMemo(() => new Intl.DateTimeFormat(dateLocale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), [dateLocale])
+  const weekdayFmt = useMemo(() => new Intl.DateTimeFormat(dateLocale, { weekday: 'short', timeZone: 'UTC' }), [dateLocale])
   const weekdays = useMemo(
     () => weekdayOrder(weekStart).map((w) => weekdayFmt.format(new Date(Date.UTC(2026, 0, 4 + w))).replace('.', '').slice(0, 2)),
     [weekStart, weekdayFmt]

@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, type ButtonHTMLAttributes, type ReactNode, type Ref } from 'react'
 import { useLocale } from 'next-intl'
 import { Link } from '@/i18n/navigation'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /**
  * Cell primitives for DataTable (and the same pieces reused on cards).
@@ -27,12 +28,13 @@ export const DisplayTimeZoneContext = createContext<string | null>(null)
 
 export function useShortDate() {
   const locale = useLocale()
+  const dateLocale = useDateLocale()
   const timeZone = useContext(DisplayTimeZoneContext) ?? undefined
   const fmt = useMemo(() => {
     try {
-      return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone })
+      return new Intl.DateTimeFormat(dateLocale, { day: 'numeric', month: 'short', year: 'numeric', timeZone })
     } catch {
-      return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' })
+      return new Intl.DateTimeFormat(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' })
     }
   }, [locale, timeZone])
   return useCallback(

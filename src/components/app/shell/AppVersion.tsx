@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { deployment, isProduction } from '@/lib/deployment'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /**
  * Version + deployment time, quietly at the bottom of the app menu.
@@ -15,6 +16,7 @@ import { deployment, isProduction } from '@/lib/deployment'
  */
 export function AppVersion() {
   const t = useTranslations('app.version')
+  const dateLocale = useDateLocale()
   const [built, setBuilt] = useState<string | null>(null)
   const version = process.env.NEXT_PUBLIC_PLATFORM_VERSION || deployment.release
 
@@ -22,7 +24,7 @@ export function AppVersion() {
     const d = new Date(deployment.buildTime)
     if (Number.isNaN(d.getTime())) return
     setBuilt(
-      d.toLocaleString(undefined, {
+      d.toLocaleString(dateLocale, {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
@@ -31,7 +33,7 @@ export function AppVersion() {
         timeZoneName: 'short',
       }),
     )
-  }, [])
+  }, [dateLocale])
 
   return (
     <p className="text-[0.6875rem] leading-4 text-muted-foreground tabular-nums">

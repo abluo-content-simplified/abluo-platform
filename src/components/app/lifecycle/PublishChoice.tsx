@@ -1,9 +1,10 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { PublicationDates } from './PublicationDates'
 import { publishChoiceDates, shortMoment, type PublishChoiceValue, type PublishMode } from './publish-plan'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /**
  * The publishing choice (Catalogue redesign §2.6) — one component for Posts
@@ -53,13 +54,13 @@ export function PublishChoice({
   children?: ReactNode
 }) {
   const t = useTranslations('app.lifecycle.publish')
-  const locale = useLocale()
+  const dateLocale = useDateLocale()
   const say = (k: TextKey) => text[k] ?? t(k)
   const set = (patch: Partial<PublishChoiceValue>) => onChange({ ...value, ...patch })
   const modes: PublishMode[] = ['now', 'schedule', 'draft']
   const until = allowExpire && value.expire ? value.unpublishAt : null
   const moment = (iso: string) => {
-    const m = shortMoment(iso, zone, locale)
+    const m = shortMoment(iso, zone, dateLocale)
     return t('moment', m)
   }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, type ReactNode } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import type { FilterChip } from '@/components/app/ui/FilterSheet'
 import { ListToolbar, type ListDateValue, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
 import {
@@ -10,6 +10,7 @@ import {
   type SubmissionFilters,
   type SubmissionStatusFilter,
 } from '@/lib/client/submissions-filter'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /**
  * The Forms list's toolbar: the shared ListToolbar configured for contact
@@ -43,9 +44,9 @@ export function SubmissionsFilters({
 }) {
   const t = useTranslations('clientDashboard.submissions')
   const tr = useTranslations('app.ui.dateRange')
-  const locale = useLocale()
+  const dateLocale = useDateLocale()
 
-  const dayFmt = useMemo(() => new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }), [locale])
+  const dayFmt = useMemo(() => new Intl.DateTimeFormat(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' }), [dateLocale])
   const day = (iso: string) => {
     const [y, m, d] = iso.split('-').map(Number)
     return dayFmt.format(new Date(y, m - 1, d, 12))

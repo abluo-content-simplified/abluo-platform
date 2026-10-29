@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { Button } from '../ui/Button'
 import { DateTimeSheet } from '../ui/DateTimePicker'
 import { shortMoment } from './publish-plan'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /**
  * When something is on the website, as two rows (ADR-032 D8: entered in the
@@ -51,10 +52,10 @@ export function PublicationDates({
   sentence?: ReactNode
 }) {
   const t = useTranslations('app.lifecycle.publish')
-  const locale = useLocale()
+  const dateLocale = useDateLocale()
   const [editing, setEditing] = useState<'from' | 'until' | null>(null)
   const [openedAt] = useState(() => Date.now())
-  const moment = (iso: string) => t('moment', shortMoment(iso, zone, locale))
+  const moment = (iso: string) => t('moment', shortMoment(iso, zone, dateLocale))
   const past = !!from && Date.parse(from) <= openedAt
   const end = allowUntil ? until : null
 

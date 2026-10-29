@@ -22,6 +22,7 @@ import { useItemState } from './use-item-state'
 import { TermPicker } from '@/components/client/taxonomy/TermPicker'
 import { useUploadOwner } from '@/components/client/media/use-media-uploads'
 import { Button, ButtonLink } from '@/components/app/ui/Button'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 type Done = { kind: 'live' } | { kind: 'scheduled'; at: string } | { kind: 'draft' }
 
@@ -43,6 +44,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
   const tl = useTranslations('app.lifecycle')
   const ti = useTranslations('catalogue.dashboard.item.issues')
   const ui = useLocale()
+  const dateLocale = useDateLocale()
   const router = useRouter()
   const errorText = useCatalogueError()
   const d = site.defaultLocale
@@ -329,7 +331,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
               {t(`done.${done.kind}`)}
             </h1>
             <p className="mt-3 text-[1.0625rem] leading-7 text-muted-foreground">
-              {done.kind === 'scheduled' ? t('done.scheduledBody', { date: new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', hourCycle: 'h23', timeZone: zone }).format(new Date(done.at)) }) : t(`done.${done.kind}Body`)}
+              {done.kind === 'scheduled' ? t('done.scheduledBody', { date: new Intl.DateTimeFormat(dateLocale, { dateStyle: 'full', timeStyle: 'short', hourCycle: 'h23', timeZone: zone }).format(new Date(done.at)) }) : t(`done.${done.kind}Body`)}
             </p>
             <div className="mt-10 flex w-full flex-col gap-3 sm:flex-row">
               <ButtonLink variant="primary" href={listHref}>

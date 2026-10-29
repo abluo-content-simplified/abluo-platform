@@ -1,6 +1,7 @@
 'use client'
 
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 import { Link } from '@/i18n/navigation'
 
 export type DoneResult =
@@ -12,7 +13,7 @@ export type DoneResult =
 /** The final screen: live / scheduled / saved as draft, with the way back. */
 export function DoneStep({ result, homeHref }: { result: DoneResult; homeHref: string }) {
   const t = useTranslations('clientDashboard.create.done')
-  const ui = useLocale()
+  const ui = useDateLocale()
   const when =
     result.kind === 'scheduled'
       ? new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', hourCycle: 'h23' }).format(new Date(result.at))

@@ -1,7 +1,8 @@
 'use client'
 
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { Pill, type PillTone } from '@/components/app/ui/list/cells'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 const svg = (d: string) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -40,21 +41,21 @@ export function EventStatePill({ state }: { state: EventState }) {
 
 /** "Sat 12 Apr 2026, 09:00 – Mon 14 Apr, 20:00" in the viewer's language and time zone. */
 export function useEventDates() {
-  const ui = useLocale()
+  const dateLocale = useDateLocale()
   return (start: string | null, end: string | null): string => {
     if (!start) return ''
     const s = new Date(start)
     if (Number.isNaN(s.getTime())) return ''
     const day: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }
     const time: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }
-    const full = new Intl.DateTimeFormat(ui, { ...day, ...time })
+    const full = new Intl.DateTimeFormat(dateLocale, { ...day, ...time })
     if (!end) return full.format(s)
     const e = new Date(end)
     if (Number.isNaN(e.getTime())) return full.format(s)
     const sameDay = s.toDateString() === e.toDateString()
     try {
       return sameDay
-        ? `${full.format(s)} – ${new Intl.DateTimeFormat(ui, time).format(e)}`
+        ? `${full.format(s)} – ${new Intl.DateTimeFormat(dateLocale, time).format(e)}`
         : full.formatRange(s, e)
     } catch {
       return `${full.format(s)} – ${full.format(e)}`

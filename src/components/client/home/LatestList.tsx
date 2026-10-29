@@ -1,9 +1,10 @@
 'use client'
 
 import { useSyncExternalStore } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { SectionHeading } from '@/components/app/ui/SectionHeading'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 export type LatestItem = {
   id: string
@@ -27,7 +28,7 @@ const noop = () => () => undefined
  */
 export function LatestList({ heading, items, seeAllHref, kind }: { heading: string; items: LatestItem[]; seeAllHref: string; kind: 'post' | 'gallery' }) {
   const t = useTranslations('clientDashboard.home')
-  const ui = useLocale()
+  const dateLocale = useDateLocale()
   const client = useSyncExternalStore(noop, () => true, () => false)
 
   const when = (p: LatestItem): string => {
@@ -39,8 +40,8 @@ export function LatestList({ heading, items, seeAllHref, kind }: { heading: stri
     if (Number.isNaN(d.getTime())) return t(`recent.${p.status}`)
     const date =
       p.status === 'scheduled'
-        ? new Intl.DateTimeFormat(ui, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d)
-        : new Intl.DateTimeFormat(ui, { day: 'numeric', month: 'short' }).format(d)
+        ? new Intl.DateTimeFormat(dateLocale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d)
+        : new Intl.DateTimeFormat(dateLocale, { day: 'numeric', month: 'short' }).format(d)
     return t(`recent.${p.status}On`, { date })
   }
 

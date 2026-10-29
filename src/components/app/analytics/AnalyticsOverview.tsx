@@ -8,6 +8,8 @@ import { TrendChart } from '@/components/app/ui/TrendChart'
 import type { RequestStats } from '@/lib/analytics/request-stats'
 import type { MetricValue, ProjectAnalyticsView } from '@/lib/analytics/view'
 import { UpdatedNote } from './UpdatedNote'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
+import { formatDateTime } from '@/lib/i18n/date-locale'
 
 /**
  * The analytics widgets for ONE site (ADR-029 §3.4) — the same composition on
@@ -39,10 +41,11 @@ export function useDelta() {
 
 export function DailySparkline({ points, label }: { points: { date: string; value: number }[]; label: string }) {
   const format = useFormatter()
+  const dateLocale = useDateLocale()
   return (
     <Sparkline
       values={points.map((p) => p.value)}
-      labels={points.map((p) => `${format.dateTime(new Date(`${p.date}T12:00:00Z`), { day: 'numeric', month: 'short' })} · ${format.number(p.value)}`)}
+      labels={points.map((p) => `${formatDateTime(dateLocale, new Date(`${p.date}T12:00:00Z`), { day: 'numeric', month: 'short' })} · ${format.number(p.value)}`)}
       label={label}
     />
   )
@@ -51,6 +54,7 @@ export function DailySparkline({ points, label }: { points: { date: string; valu
 export function AnalyticsOverview({ view, requests = null }: { view: ProjectAnalyticsView; requests?: RequestStats | null }) {
   const t = useTranslations('app.analytics')
   const format = useFormatter()
+  const dateLocale = useDateLocale()
   const delta = useDelta()
 
   const channel = (raw: string) => {
@@ -58,7 +62,7 @@ export function AnalyticsOverview({ view, requests = null }: { view: ProjectAnal
     return t.has(`channels.${key}`) ? t(`channels.${key}` as 'channels.direct') : raw
   }
   const device = (raw: string) => (t.has(`devices.${raw.replace(/\s+/g, '')}`) ? t(`devices.${raw.replace(/\s+/g, '')}` as 'devices.desktop') : raw)
-  const until = view.periodEnd ? format.dateTime(new Date(`${view.periodEnd}T12:00:00Z`), { day: 'numeric', month: 'long', timeZone: 'UTC' }) : null
+  const until = view.periodEnd ? formatDateTime(dateLocale, new Date(`${view.periodEnd}T12:00:00Z`), { day: 'numeric', month: 'long', timeZone: 'UTC' }) : null
   const percent = (share: number) => format.number(share, { style: 'percent', maximumFractionDigits: 0 })
 
   const tiles = [

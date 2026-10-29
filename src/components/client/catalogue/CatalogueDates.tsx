@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { PublicationDates } from '@/components/app/lifecycle/PublicationDates'
 import { datesSentence, shortMoment } from '@/components/app/lifecycle/publish-plan'
 import { publishedStatus } from '@/lib/lifecycle/status'
 import type { useCatalogueDraft } from './use-catalogue-draft'
 import { useCatalogueError } from './catalogue-ui'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 export type CatalogueLive = { rev: string; publishedAt: string | null; expiresAt: string | null }
 
@@ -40,13 +41,13 @@ export function CatalogueDates({
 }) {
   const t = useTranslations('catalogue.dashboard.dates')
   const tp = useTranslations('app.lifecycle.publish')
-  const ui = useLocale()
+  const dateLocale = useDateLocale()
   const errorText = useCatalogueError()
   const [busy, setBusy] = useState(false)
   const [now, setNow] = useState(() => new Date())
   const online = publishedStatus({ publishedAt: live.publishedAt, expiresAt: live.expiresAt, archivedAt: null }, 'optional', now) === 'published'
   const sv = datesSentence(live, now)
-  const m = (iso?: string) => (iso ? tp('moment', shortMoment(iso, zone, ui)) : '')
+  const m = (iso?: string) => (iso ? tp('moment', shortMoment(iso, zone, dateLocale)) : '')
 
   async function save(next: { from: string | null; until: string | null }) {
     if (busy || disabled) return
