@@ -1,17 +1,19 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { usePathname } from '@/i18n/navigation'
+import { usePathname, useRouter } from '@/i18n/navigation'
 import { useLiveAdminSupportCount } from '@/components/admin/tickets/use-live-admin-support-count'
 import type { AccountMenuProps } from '@/components/app/shell/AccountMenu'
 import { APP_ICONS } from '@/components/app/shell/AppIcon'
 import { AppSidebar } from '@/components/app/shell/AppSidebar'
+import { TabBarButton } from '@/components/app/ui/TabBarButton'
 
 /**
  * Abluo admin navigation (admin.abluo.app, ADR-030). A composition of the
  * shared `AppSidebar` — the same light/dark frame, drawer and account menu as
- * the client dashboard — replacing the old dark zinc sidebar. No phone tab bar:
- * on phones the menu button opens the drawer.
+ * the client dashboard — replacing the old dark zinc sidebar. On phones the menu
+ * button opens the drawer and a bottom bar (Home · Projects · Support · Users)
+ * gives one-tap access to the everyday destinations.
  *
  * The destinations are the `(admin)` route folders; each one is also listed in
  * `ADMIN_SURFACE_SEGMENTS` (src/lib/proxy/admin-surface.ts), which is what
@@ -20,6 +22,9 @@ import { AppSidebar } from '@/components/app/shell/AppSidebar'
 
 // Order and groups (Tom, 2026-10-22): Home, then Platform · Operations · Product,
 // each under a small heading (`admin.navGroups.*`). The client dashboard has no headings.
+// Phone bottom bar: the everyday destinations, in this order.
+const PHONE_TABS = ['home', 'projects', 'support', 'users'] as const
+
 const NAV = [
   { key: 'home', href: '/dashboard', icon: APP_ICONS.home },
   { key: 'projects', href: '/projects', icon: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', group: 'platform' },
@@ -39,6 +44,7 @@ const NAV = [
 export function AdminSidebar({ account, supportUnread = 0 }: { account: Omit<AccountMenuProps, 'variant'>; supportUnread?: number }) {
   const t = useTranslations('admin')
   const pathname = usePathname()
+  const router = useRouter()
   const supportCount = useLiveAdminSupportCount(supportUnread, pathname)
   return (
     <AppSidebar
@@ -54,6 +60,29 @@ export function AdminSidebar({ account, supportUnread = 0 }: { account: Omit<Acc
         ...(item.key === 'support' && supportCount > 0 ? { badge: { count: supportCount, label: t('supportTickets.unreadNav', { count: supportCount }) } } : {}),
       }))}
       account={account}
+      bottomBar={({ isActive }) => (
+        <nav
+          aria-label={t('shell.navLabel')}
+          className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 items-end border-t border-border bg-background pb-[max(8px,env(safe-area-inset-bottom))] pt-2 md:hidden"
+        >
+          {PHONE_TABS.map((key) => {
+            const item = NAV.find((n) => n.key === key)!
+            const badge = key === 'support' && supportCount > 0 ? { count: supportCount, label: t('supportTickets.unreadNav', { count: supportCount }) } : undefined
+            return (
+              <TabBarButton
+                key={key}
+                icon={item.icon}
+                active={isActive(item.href)}
+                aria-current={isActive(item.href) ? 'page' : undefined}
+                badge={badge}
+                onClick={() => router.push(item.href)}
+              >
+                {t(`nav.${key}`)}
+              </TabBarButton>
+            )
+          })}
+        </nav>
+      )}
     />
   )
 }

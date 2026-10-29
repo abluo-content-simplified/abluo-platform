@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import { Notice } from '@/components/app/ui/Notice'
 import { notFound } from 'next/navigation'
-import { getFormatter, getLocale, getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { formatDateTime } from '@/lib/i18n/date-locale'
+import { getDateLocale } from '@/lib/i18n/date-locale-server'
 import { Link } from '@/i18n/navigation'
 import { PageShell } from '@/components/app/ui/PageShell'
 import { PageHeader } from '@/components/app/ui/PageHeader'
@@ -89,10 +91,11 @@ export default async function AdminProjectPage({
   ).catch(() => null)
 
   const t = await getTranslations('admin.projectPage')
-  const format = await getFormatter()
+  const tRoles = await getTranslations('admin.users.roles')
+  const dateLocale = await getDateLocale()
   const date = (iso: string) => {
     const d = new Date(iso)
-    return Number.isNaN(d.getTime()) ? '' : format.dateTime(d, { day: 'numeric', month: 'short', year: 'numeric' })
+    return Number.isNaN(d.getTime()) ? '' : formatDateTime(dateLocale, d, { day: 'numeric', month: 'short', year: 'numeric' })
   }
   const languageName = (code: string) => {
     try {
@@ -148,7 +151,7 @@ export default async function AdminProjectPage({
   const owners = !ownersKnown ? (
     unknown
   ) : project.owners.length ? (
-    <span className="flex flex-col items-end">
+    <span className="flex flex-col">
       {project.owners.map((o) => (
         <span key={o.userId} className="break-all">
           {o.name ? `${o.name} · ${o.email}` : o.email || o.userId}
@@ -156,7 +159,7 @@ export default async function AdminProjectPage({
       ))}
     </span>
   ) : (
-    <span className="flex flex-col items-end">
+    <span className="flex flex-col">
       <span className="font-medium text-destructive">{t('facts.noOwner')}</span>
       <span className="text-sm text-muted-foreground">{t('facts.noOwnerHint')}</span>
     </span>
@@ -165,14 +168,16 @@ export default async function AdminProjectPage({
     invitations === null ? (
       unknown
     ) : invitations.length ? (
-      <span className="flex flex-col items-end gap-1">
+      <span className="flex flex-col gap-3">
         {invitations.map((i) => {
-          const role = `${i.role}${i.scope === 'tenant' ? ` (${t('facts.invitationClientWide')})` : ''}`
+          const role = tRoles.has(i.role as 'owner') ? tRoles(i.role as 'owner') : i.role
+          const scope = t(i.scope === 'tenant' ? 'facts.invitationWholeClient' : 'facts.invitationThisProject')
           return (
-            <span key={i.id} className="flex flex-col items-end">
-              <span className="break-all">{i.email}</span>
+            <span key={i.id} className="flex flex-col">
+              <span>{i.email}</span>
+              <span className="text-sm text-muted-foreground">{t('facts.invitationRoleScope', { role, scope })}</span>
               <span className={`text-sm ${i.expired ? 'text-destructive' : 'text-muted-foreground'}`}>
-                {t(i.expired ? 'facts.invitationExpired' : 'facts.invitationExpires', { role, date: date(i.expiresAt) })}
+                {t(i.expired ? 'facts.invitationExpired' : 'facts.invitationExpires', { date: date(i.expiresAt) })}
               </span>
             </span>
           )
