@@ -1,5 +1,6 @@
 'use client'
 
+import { CreateAction } from '@/components/app/ui/CreateAction'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { BATCH_MAX, BatchSheet, type BatchMode } from '@/components/client/media/BatchSheet'
@@ -400,6 +401,7 @@ export function MediaLibraryScreen({
                 { value: 'list', label: t('view.list'), icon: MEDIA_ICONS.list },
               ]}
             />
+            <CreateAction>
             {addHref ? (
               <ButtonLink variant="primary" href={addHref}>
                 {MEDIA_ICONS.plus}
@@ -412,6 +414,7 @@ export function MediaLibraryScreen({
                 {addDisabledHint ? <span className="sr-only">{` · ${addDisabledHint}`}</span> : null}
               </Button>
             ) : null}
+            </CreateAction>
           </>
         }
       />

@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { CreateAction } from '@/components/app/ui/CreateAction'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
@@ -113,7 +114,7 @@ export default async function PostsPage({
         <>
           <PageHeader
             title={t('posts.title')}
-            actions={canEdit && !moduleNotInstalled ? <NewPostLink href={`/${projectSlug}/posts/write/new`} label={t('posts.newPost')} /> : null}
+            actions={canEdit && !moduleNotInstalled ? <CreateAction><NewPostLink href={`/${projectSlug}/posts/write/new`} label={t('posts.newPost')} /></CreateAction> : null}
           />
           <p className="text-sm text-muted-foreground">
             {moduleNotInstalled ? t('posts.moduleNotInstalled') : t('posts.emptyNoPosts')}

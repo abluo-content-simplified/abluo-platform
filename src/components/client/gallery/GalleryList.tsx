@@ -1,5 +1,6 @@
 'use client'
 
+import { CreateAction } from '@/components/app/ui/CreateAction'
 import { useMemo, useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
@@ -255,6 +256,7 @@ export function GalleryList({
             />
           ) : null}
           {canWrite ? (
+            <CreateAction>
             <Link
               href={`/${projectSlug}/galleries/new`}
               className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
@@ -262,6 +264,7 @@ export function GalleryList({
               {GALLERY_ICONS.plus}
               {t('new')}
             </Link>
+            </CreateAction>
           ) : null}
         </>
       }

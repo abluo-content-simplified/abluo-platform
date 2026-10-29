@@ -1,5 +1,6 @@
 'use client'
 
+import { CreateAction } from '@/components/app/ui/CreateAction'
 import { useMemo, useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
@@ -351,7 +352,11 @@ export function PostsBrowser({
                 { value: 'cards', label: t('view.cards'), icon: ICONS.cards },
               ]}
             />
-            {canEdit && projectSlug ? <NewPostLink href={`/${projectSlug}/posts/write/new`} label={t('newPost')} /> : null}
+            {canEdit && projectSlug ? (
+              <CreateAction>
+                <NewPostLink href={`/${projectSlug}/posts/write/new`} label={t('newPost')} />
+              </CreateAction>
+            ) : null}
           </>
         }
       />

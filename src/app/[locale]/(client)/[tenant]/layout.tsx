@@ -169,7 +169,7 @@ async function ClientProjectLayoutInner({
           reportProblem={Boolean(ticketAccessForNav?.canWrite) && navItems.some((i) => i.moduleId === 'support')}
           profile={profile}
         />
-        {/* #client-main: the main scroll container (the floating "+" listens to it and to the window). */}
+        {/* #client-main: the main scroll container (the selection bar / scroll listeners use it); bottom padding on phones clears the fixed tab bar — the only place that does. */}
         <div id="client-main" className="min-h-screen min-w-0 flex-1 md:ml-56">
           {/* A newer Abluo build is live: calm, never reloads by itself. */}
           <NewVersionNotice className="mx-4 mt-4 md:mx-6 md:mt-6" />
@@ -185,7 +185,7 @@ async function ClientProjectLayoutInner({
               contactRequestsHidden={!support.contactRequestsShown && activeGrant.enabledModuleIds.includes('forms')}
             />
           ) : null}
-          <main className="p-4 pb-28 md:p-6">
+          <main className="p-4 pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:p-6">
             {supportNotices.length ? (
               <SupportAccessNotice
                 projectSlug={activeGrant.projectSlug}

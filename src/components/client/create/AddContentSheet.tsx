@@ -7,7 +7,6 @@ import { Button } from '@/components/app/ui/Button'
 import { Chip } from '@/components/app/ui/Chip'
 import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
 import { DialogFrame } from '@/components/app/ui/DialogFrame'
-import { Fab } from '@/components/app/ui/Fab'
 import type { CreateMenu } from '@/lib/modules/add-content-sheet'
 
 /**
@@ -25,9 +24,8 @@ import type { CreateMenu } from '@/lib/modules/add-content-sheet'
  * Motion: a full-screen transparent native dialog holding a dimmed, slightly
  * blurred backdrop and a glass panel that slides up from the bottom (280ms
  * ease-out, translate-y + opacity) and back down on close; reduced motion
- * skips the slide. When `fab` is given, a copy of the FAB sits above the
- * panel (inside the dialog, so above it in the top layer) at the same spot,
- * its "+" turned 45° into an ×; tapping it closes the panel.
+ * skips the slide. The panel closes with its "Close" button, the
+ * scrim, or Escape.
  */
 export function AddContentSheet({
   open,
@@ -36,7 +34,6 @@ export function AddContentSheet({
   menu,
   contactEmail,
   mediaLibrary = false,
-  fab = null,
 }: {
   open: boolean
   onClose: () => void
@@ -46,8 +43,6 @@ export function AddContentSheet({
   contactEmail?: string | null
   /** Show "Add to media library" (owner/editor). */
   mediaLibrary?: boolean
-  /** Show the FAB above the panel (as ×) — when the page has one. */
-  fab?: { label: string; closeLabel: string } | null
 }) {
   const t = useTranslations('clientDashboard.create.type')
   const router = useRouter()
@@ -109,9 +104,7 @@ export function AddContentSheet({
     >
       <div aria-hidden="true" onClick={onClose} className={`absolute inset-0 bg-scrim backdrop-blur-sm ${motion} ${shown ? 'opacity-100' : 'opacity-0'}`} />
       <div
-        className={`absolute inset-x-0 bottom-0 mx-auto max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl border-t border-border bg-background/80 p-6 backdrop-blur-xl ${
-          fab ? 'pb-[calc(9.5rem+env(safe-area-inset-bottom))]' : 'pb-[max(1.5rem,env(safe-area-inset-bottom))]'
-        } md:pb-[max(1.5rem,env(safe-area-inset-bottom))] ${motion} ${shown ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}
+        className={`absolute inset-x-0 bottom-0 mx-auto max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl border-t border-border bg-background/80 p-6 backdrop-blur-xl pb-[max(1.5rem,env(safe-area-inset-bottom))] ${motion} ${shown ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}
       >
         {asking ? (
           <div>
@@ -190,7 +183,6 @@ export function AddContentSheet({
           </div>
         )}
       </div>
-      {fab ? <Fab label={fab.label} closeLabel={fab.closeLabel} open={shown} onPress={onClose} portal={false} /> : null}
     </DialogFrame>
   )
 }

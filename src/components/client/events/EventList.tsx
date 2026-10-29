@@ -1,5 +1,6 @@
 'use client'
 
+import { CreateAction } from '@/components/app/ui/CreateAction'
 import { useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import type { EventListItem } from '@/lib/api/event-drafts'
@@ -131,7 +132,7 @@ export function EventList({
           />
         </span>
       ) : null}
-      {newButton}
+      {newButton ? <CreateAction>{newButton}</CreateAction> : null}
     </>
   )
   const hrefOf = (e: EventListItem) => `${base}/${e.id}`

@@ -1,5 +1,6 @@
 'use client'
 
+import { CreateAction } from '@/components/app/ui/CreateAction'
 import { useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
@@ -496,11 +497,12 @@ export function CatalogueBrowser({
                 />
               </span>
               {abilities.write ? (
-                <ButtonLink variant="primary" href={newHref}>
-                  {CAT_ICONS.plus}
-                  <span className="hidden sm:inline">{newLabel}</span>
-                  <span className="sr-only sm:hidden">{newLabel}</span>
-                </ButtonLink>
+                <CreateAction>
+                  <ButtonLink variant="primary" href={newHref}>
+                    {CAT_ICONS.plus}
+                    {newLabel}
+                  </ButtonLink>
+                </CreateAction>
               ) : null}
             </>
           }

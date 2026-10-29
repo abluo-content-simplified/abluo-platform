@@ -1,18 +1,16 @@
 'use client'
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
-import { useTranslations } from 'next-intl'
 import { usePathname } from '@/i18n/navigation'
 import { AddContentSheet } from './AddContentSheet'
-import { Fab } from '@/components/app/ui/Fab'
 import type { CreateMenu } from '@/lib/modules/add-content-sheet'
 
 /**
  * "+ Add content" for the whole dashboard (rendered by `[tenant]/layout.tsx`,
  * outside the sidebar): owns the open state of the "What would you like to
- * create?" panel (`AddContentSheet`), renders the floating "+" (`ui/Fab`,
- * every page except the wizard / create surfaces) and lets other triggers —
+ * create?" panel (`AddContentSheet`), and lets other triggers —
  * the phone tab bar's "+" in ClientSidebar — open it via `useOpenAddContent()`.
+ * (No floating "+": phones use the tab bar's, iPad/desktop the page header's.)
  */
 
 const OpenAddContent = createContext<() => void>(() => {})
@@ -38,7 +36,6 @@ export function AddContentRoot({
   mediaLibrary?: boolean
   children: ReactNode
 }) {
-  const t = useTranslations('clientDashboard')
   const pathname = usePathname() // locale-stripped, e.g. "/livener/posts"
   // Open on the page it was opened on: navigating closes it. The page is then
   // forgotten (adjusting state during render, no effect), so coming BACK to it
@@ -48,14 +45,9 @@ export function AddContentRoot({
   const open = openOn === pathname
   const openPanel = useCallback(() => setOpenOn(pathname), [pathname])
 
-  // The wizard / create surfaces (post wizard, gallery editor, media wizard) get no floating "+".
-  const onCreateSurface = /\/posts\/write(\/|$)|\/galleries\/(new|[^/]+\/edit)(\/|$)|\/media\/add(\/|$)/.test(pathname)
-  const fab = onCreateSurface ? null : { label: t('nav.add'), closeLabel: t('create.type.close') }
-
   return (
     <OpenAddContent.Provider value={openPanel}>
       {children}
-      {fab ? <Fab label={fab.label} closeLabel={fab.closeLabel} onPress={openPanel} /> : null}
       <AddContentSheet
         open={open}
         onClose={() => setOpenOn(null)}
@@ -63,7 +55,6 @@ export function AddContentRoot({
         menu={menu}
         contactEmail={contactEmail}
         mediaLibrary={mediaLibrary}
-        fab={fab}
       />
     </OpenAddContent.Provider>
   )

@@ -1,5 +1,6 @@
 'use client'
 
+import { CreateAction } from '@/components/app/ui/CreateAction'
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
@@ -245,10 +246,12 @@ export function FaqSetsBrowser({
             />
           ) : null}
           {canWrite ? (
+            <CreateAction>
             <Button variant="primary" onClick={() => setCreating(true)}>
               {FAQ_ICONS.plus}
               {t('new')}
             </Button>
+            </CreateAction>
           ) : null}
         </>
       }
