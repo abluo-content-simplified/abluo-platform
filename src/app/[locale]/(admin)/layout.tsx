@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers'
+import { dashboardAppMetadata, dashboardViewport } from '@/lib/app-install'
 import { redirect } from 'next/navigation'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
 import { NewVersionNotice } from '@/components/system/NewVersionNotice'
@@ -9,6 +10,10 @@ import { resolveAdminAccess } from '@/lib/api/auth'
 import { getViewerAccount } from '@/lib/api/viewer-account'
 import { countAdminUnread } from '@/lib/support-tickets/service'
 import { APP_TEXT_SIZE_COOKIE, APP_THEME_COOKIE, parseAppTextSize, parseAppTheme } from '@/lib/app-theme'
+
+// Installable dashboard (manifest, icons, theme colour): dashboards only, never the websites.
+export const metadata = dashboardAppMetadata
+export const viewport = dashboardViewport
 
 /**
  * Defence in depth for the admin dashboard. `src/proxy.ts` already gates every
@@ -56,7 +61,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           }}
         />
         <div className="min-h-screen min-w-0 flex-1 md:ml-56">
-          <main className="p-4 md:p-6">
+          <main className="p-4 pb-28 md:p-6">
             <NewVersionNotice className="mb-4" />
             <PresenceHeartbeat />
             {children}

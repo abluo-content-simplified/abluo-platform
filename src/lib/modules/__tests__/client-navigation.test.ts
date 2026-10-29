@@ -13,6 +13,7 @@ import {
   segmentOf,
   isNavItemActive,
   phoneNavLayout,
+  PHONE_TAB_PRIORITY,
 } from '../client-navigation'
 import type { ProjectGrant } from '@/lib/api/tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
@@ -174,24 +175,49 @@ describe('phoneNavLayout', () => {
     item('people', 'people'),
   ]
 
-  it('gives Posts and Forms their own tab and sends the rest to More', () => {
+  const ids = (xs: { moduleId: string }[]) => xs.map((i) => i.moduleId)
+  const noDupes = (items: { moduleId: string }[]) => {
+    const layout = phoneNavLayout(items as typeof all)
+    const placed = ids([...layout.tabs, ...layout.overflow])
+    expect([...placed].sort()).toEqual(ids(items).sort())
+  }
+
+  it('tmz-like: Posts and Contact Requests take the tabs, the rest goes to More', () => {
     const layout = phoneNavLayout(all)
-    expect(layout.content?.moduleId).toBe('blog')
-    expect(layout.forms?.moduleId).toBe('forms')
-    expect(layout.overflow.map((i) => i.moduleId)).toEqual(['gallery', 'media', 'people'])
+    expect(ids(layout.tabs)).toEqual(['blog', 'forms'])
+    expect(ids(layout.overflow)).toEqual(['gallery', 'media', 'people'])
+  })
+
+  it('CYCE-like (no blog): Contact Requests + Events', () => {
+    const cyce = [item('events', 'events'), item('faq', 'faq'), item('forms', 'submissions'), item('documents', 'documents'), item('members', 'access'), item('media', 'media')]
+    const layout = phoneNavLayout(cyce)
+    expect(ids(layout.tabs)).toEqual(['forms', 'events'])
+    expect(ids(layout.overflow)).toEqual(['faq', 'documents', 'members', 'media'])
+    noDupes(cyce)
+  })
+
+  it('catalogue-only: Catalogue + the next item in menu order', () => {
+    const cat = [item('catalogue', 'catalogue'), item('media', 'media'), item('people', 'people')]
+    const layout = phoneNavLayout(cat)
+    expect(ids(layout.tabs)).toEqual(['catalogue', 'media'])
+    expect(ids(layout.overflow)).toEqual(['people'])
+  })
+
+  it('follows the exported priority, then menu order', () => {
+    expect(PHONE_TAB_PRIORITY.slice(0, 3)).toEqual(['blog', 'forms', 'events'])
+    const layout = phoneNavLayout([item('media', 'media'), item('gallery', 'galleries'), item('catalogue', 'catalogue')])
+    expect(ids(layout.tabs)).toEqual(['catalogue', 'gallery'])
   })
 
   it('puts every item in exactly one place (nothing unreachable on a phone)', () => {
-    const layout = phoneNavLayout(all)
-    const placed = [layout.content, layout.forms, ...layout.overflow].filter(Boolean)
-    expect(placed).toHaveLength(all.length)
+    noDupes(all)
+    noDupes([])
+    noDupes([item('media', 'media')])
   })
 
-  it('leaves the tab empty when the project lacks the module', () => {
-    const layout = phoneNavLayout([item('gallery', 'galleries')])
-    expect(layout.content).toBeNull()
-    expect(layout.forms).toBeNull()
-    expect(layout.overflow.map((i) => i.moduleId)).toEqual(['gallery'])
+  it('never leaves a slot empty while the project has items', () => {
+    expect(phoneNavLayout([item('media', 'media'), item('people', 'people')]).tabs).toHaveLength(2)
+    expect(phoneNavLayout([item('media', 'media')]).tabs).toHaveLength(1)
   })
 })
 

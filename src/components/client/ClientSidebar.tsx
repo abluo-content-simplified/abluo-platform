@@ -26,9 +26,9 @@ import { ProfilePanel, type ProfileData } from './account/ProfilePanel'
  *
  * One component, two layouts, one set of destinations:
  *   • Phones: a slim top bar (menu button + project name) and a bottom tab bar —
- *     Home · Content · [+ Add content] · Forms · More. Both the menu button and
+ *     Home · two tabs from the site's own items (`PHONE_TAB_PRIORITY`) · [+ Add content] · More. Both the menu button and
  *     "More" open the drawer: the same sidebar, with EVERY destination
- *     (Galleries, Media, People… have no tab of their own, `phoneNavLayout`)
+ *     (whatever has no tab of its own, `phoneNavLayout`)
  *     plus the project switcher — navigation only, no personal settings. The
  *     person's own menu (account, appearance, text size, help, sign out) is the
  *     avatar button at the right of the top bar (a bottom sheet). "More" is shown
@@ -112,7 +112,8 @@ export function ClientSidebar({
   const t = useTranslations('clientDashboard')
   const openAddContent = useOpenAddContent()
   const activeProjectName = projects.find((p) => p.projectSlug === activeSlug)?.name?.trim() || activeSlug
-  const { content: contentItem, forms: leadsItem, overflow } = phoneNavLayout(navItems)
+  const { tabs: phoneTabs, overflow } = phoneNavLayout(navItems)
+  const tabFor = (i: ClientNavItem) => ({ key: i.moduleId, href: i.href, label: i.label ?? t(`nav.${i.moduleId}`), d: iconFor(i.moduleId) })
   const news = useWhatsNew(whatsNew, { popup: whatsNewPopup })
   const liveSupportUnread = useLiveSupportCount(activeSlug, supportUnread, pathname, navItems.some((i) => i.moduleId === 'support'))
 
@@ -187,9 +188,24 @@ export function ClientSidebar({
           >
             {[
               { key: 'home', href: homeHref, label: t('nav.home'), d: ICONS.home },
-              contentItem ? { key: 'blog', href: contentItem.href, label: t('nav.blog'), d: ICONS.blog } : null,
-            ].map((tab, i) =>
-              tab ? (
+              ...phoneTabs.slice(0, 1).map((i) => tabFor(i)),
+            ].map((tab) => (
+              <Link
+                key={tab.key}
+                href={tab.href}
+                aria-current={isActive(tab.href) ? 'page' : undefined}
+                className={`flex min-h-11 flex-col items-center justify-center gap-0.5 text-xs font-medium ${
+                  isActive(tab.href) ? 'text-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                <AppIcon d={tab.d} />
+                {tab.label}
+              </Link>
+            ))}
+            <TabBarButton appearance="add" icon={ICONS.plus} onClick={openAddContent} aria-label={t('nav.add')} />
+            {phoneTabs.slice(1, 2).map((i) => {
+              const tab = tabFor(i)
+              return (
                 <Link
                   key={tab.key}
                   href={tab.href}
@@ -201,25 +217,9 @@ export function ClientSidebar({
                   <AppIcon d={tab.d} />
                   {tab.label}
                 </Link>
-              ) : (
-                <span key={`empty-${i}`} />
-              ),
-            )}
-            <TabBarButton appearance="add" icon={ICONS.plus} onClick={openAddContent} aria-label={t('nav.add')} />
-            {leadsItem ? (
-              <Link
-                href={leadsItem.href}
-                aria-current={isActive(leadsItem.href) ? 'page' : undefined}
-                className={`flex min-h-11 flex-col items-center justify-center gap-0.5 text-xs font-medium ${
-                  isActive(leadsItem.href) ? 'text-foreground' : 'text-muted-foreground'
-                }`}
-              >
-                <AppIcon d={ICONS.forms} />
-                {t('nav.forms')}
-              </Link>
-            ) : (
-              <span />
-            )}
+              )
+            })}
+            {phoneTabs.length < 2 ? <span /> : null}
             <TabBarButton
               icon={ICONS.more}
               iconWidth={2.4}

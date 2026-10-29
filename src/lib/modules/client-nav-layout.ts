@@ -14,29 +14,34 @@ export function isNavItemActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
-/** The modules that get their own slot in the phone tab bar (Home · Content · + · Forms · More). */
-export const PHONE_TAB_MODULE_IDS = ['blog', 'forms'] as const
+/**
+ * Which items earn the two phone tab slots, in priority order. Whatever the
+ * project actually has first; after these, the remaining nav items in their
+ * existing (fixed menu) order fill any slot left, so the bar is never half
+ * empty and no tenant needs a special case.
+ */
+export const PHONE_TAB_PRIORITY = ['blog', 'forms', 'events', 'catalogue', 'gallery'] as const
 
 export type PhoneNavLayout = {
-  /** The Content tab (blog), when the project has it. */
-  content: ClientNavItem | null
-  /** The Forms tab, when the project has it. */
-  forms: ClientNavItem | null
-  /** Everything else (Galleries, Media, People, …): reached through "More". */
+  /** The two tab slots, left then right of "+". Fewer only when the project has fewer than two nav items. */
+  tabs: ClientNavItem[]
+  /** Everything else: reached through "More", exactly once. */
   overflow: ClientNavItem[]
 }
 
 /**
- * Splits the dashboard nav for phones: the two items with a fixed tab, and the
- * rest, which only "More" (the drawer) reaches. Every item lands in exactly one
- * place, so nothing on the desktop sidebar is unreachable on a phone. Pure.
+ * Splits the dashboard nav for phones: two tabs picked from the items the
+ * project has (PHONE_TAB_PRIORITY, then menu order), and the rest, which only
+ * "More" (the drawer) reaches. Every item lands in exactly one place. Pure.
  */
 export function phoneNavLayout(items: ClientNavItem[]): PhoneNavLayout {
-  const tabIds: readonly string[] = PHONE_TAB_MODULE_IDS
-  return {
-    content: items.find((i) => i.moduleId === 'blog') ?? null,
-    forms: items.find((i) => i.moduleId === 'forms') ?? null,
-    overflow: items.filter((i) => !tabIds.includes(i.moduleId)),
+  const rank = (i: ClientNavItem) => {
+    const n = (PHONE_TAB_PRIORITY as readonly string[]).indexOf(i.moduleId)
+    return n === -1 ? PHONE_TAB_PRIORITY.length : n
   }
+  // Stable sort: ties (unprioritised items) keep their existing menu order.
+  const ranked = items.map((item, n) => ({ item, n })).sort((a, b) => rank(a.item) - rank(b.item) || a.n - b.n)
+  const tabs = ranked.slice(0, 2).map((r) => r.item)
+  const overflow = items.filter((i) => !tabs.includes(i))
+  return { tabs, overflow }
 }
-

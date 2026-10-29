@@ -116,7 +116,7 @@ export function mediaNavItems(grant: Pick<ProjectGrant, 'projectSlug' | 'permiss
 }
 
 // Phone nav helpers live in a browser-safe module (this one reaches server code).
-export { isNavItemActive, PHONE_TAB_MODULE_IDS, phoneNavLayout, type PhoneNavLayout } from './client-nav-layout'
+export { isNavItemActive, PHONE_TAB_PRIORITY, phoneNavLayout, type PhoneNavLayout } from './client-nav-layout'
 
 /**
  * Resolves the `ProjectGrant` for `projectSlug` from a caller's grants, or

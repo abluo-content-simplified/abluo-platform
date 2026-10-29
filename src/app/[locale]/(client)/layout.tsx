@@ -1,6 +1,11 @@
+import { dashboardAppMetadata, dashboardViewport } from '@/lib/app-install'
 import { redirect } from 'next/navigation'
 import { AppRoot } from '@/components/app/AppRoot'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
+
+// Installable dashboard (manifest, icons, theme colour): dashboards only, never the websites.
+export const metadata = dashboardAppMetadata
+export const viewport = dashboardViewport
 
 /**
  * Client dashboard group layout (ADR-017 Phase 2 / task #81).
