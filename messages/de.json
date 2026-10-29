@@ -82,7 +82,10 @@
       "members": "Zugang",
       "settings": "Einstellungen",
       "support": "Support",
-      "documents": "Dokumente"
+      "documents": "Dokumente",
+      "content": "Inhalte",
+      "requests": "Anfragen",
+      "discover": "Mehr zum Hinzufügen"
     },
     "navGroups": {
       "publish": "Veröffentlichen",
@@ -95,7 +98,9 @@
       "brandTagline": "Dashboard",
       "noModules": "Für dieses Projekt sind noch keine Module aktiviert.",
       "entryTitle": "Dashboard",
-      "noProjects": "Du hast noch keinen Zugriff auf Projekte."
+      "noProjects": "Du hast noch keinen Zugriff auf Projekte.",
+      "closeMenu": "Menü schließen",
+      "requestsUnanswered": "{count, plural, one {# unbeantwortete Anfrage} other {# unbeantwortete Anfragen}}"
     },
     "projectSwitcher": {
       "label": "Projekt",
@@ -2140,6 +2145,11 @@
         "allowedBodyNoName": "Der Abluo-Support hilft bei deiner Website. Änderungen werden protokolliert.",
         "end": "Zugang beenden",
         "error": "Das hat nicht geklappt. Lade die Seite neu und versuch es noch einmal."
+      },
+      "replyNotice": {
+        "message": "Der Abluo-Support hat auf deine Anfrage geantwortet.",
+        "open": "Support öffnen",
+        "dismiss": "Ausblenden"
       }
     },
     "connect": {
@@ -3175,6 +3185,30 @@
       "notTranslated": "noch nicht übersetzt",
       "fallbackHint": "Optional. Bleibt es leer, sehen Besucher in dieser Sprache den Text auf {language}: „{text}“.",
       "fallbackHintEmpty": "Optional. Bleibt es leer, sehen Besucher in dieser Sprache den Text auf {language}."
+    },
+    "discover": {
+      "title": "Mehr zum Hinzufügen",
+      "intro": "Deine Website könnte auch das. Neugierig? Schreib uns und wir zeigen dir, wie es geht.",
+      "tellMore": "Mehr erfahren",
+      "requestSubject": "Ich möchte mehr über {module} erfahren",
+      "requestBody": "Hallo! Ich möchte mehr über {module} erfahren und wie es für meine Website funktionieren könnte.",
+      "emptyTitle": "Du hast schon alles",
+      "emptyBody": "Jedes Modul, das wir anbieten, ist schon Teil deiner Website. Im Moment gibt es nichts mehr hinzuzufügen.",
+      "modules": {
+        "blog": "Teile Neuigkeiten und Wissen in deinen eigenen Worten, vom Handy oder vom Computer.",
+        "news": "Kündige an, was in deiner Praxis passiert, kurz und mit Datum.",
+        "events": "Veröffentliche Workshops, Tage der offenen Tür und Termine mit Datum, Ort und Kalender.",
+        "faq": "Beantworte die Fragen, die immer kommen, einmal und zeig die Antworten dort, wo sie helfen.",
+        "live": "Teile kurze Updates, während sie passieren, ohne einen ganzen Artikel zu schreiben.",
+        "gallery": "Zeig deine Räume, deine Arbeit und dein Team in Galerien, die auf jedem Bildschirm gut aussehen.",
+        "catalogue": "Liste Leistungen, Produkte oder Speisekarte mit Preisen und Details übersichtlich an einem Ort.",
+        "documents": "Biete Formulare, Broschüren und Preislisten zum Download an, immer aktuell.",
+        "forms": "Lass Besucher dir über deine Website schreiben und lies ihre Nachrichten an einem Ort.",
+        "whatsapp": "Füge einen WhatsApp-Button hinzu, damit man dich in der App erreicht, die man schon nutzt.",
+        "members": "Mach ausgewählte Seiten oder Dateien nur für bestimmte Personen zugänglich, mit Passwort.",
+        "translate": "Biete deine Website in mehr Sprachen an, mit einer ersten Übersetzung, die du nur noch prüfst.",
+        "brand-hub": "Halte Logo, Farben und Schriften an einem Ort, für dich und alle, die mit dir arbeiten."
+      }
     }
   },
   "app": {
@@ -3462,6 +3496,10 @@
         "save": "Veröffentlichungsende speichern",
         "pickFirst": "Wähle zuerst Datum und Uhrzeit."
       }
+    },
+    "quickAdd": {
+      "label": "Schnell-Hinzufügen-Button anzeigen",
+      "hint": "Der runde +-Button in der Ecke, auf iPad und Computer. Auf dem Handy ist er immer da."
     }
   },
   "admin": {
@@ -4058,7 +4096,10 @@
         "invitationClientWide": "ganzer Kunde",
         "created": "Erstellt",
         "unknown": "Konnte nicht geladen werden",
-        "links": "Links"
+        "links": "Links",
+        "invitationRoleScope": "{role} · {scope}",
+        "invitationWholeClient": "Ganzer Kunde",
+        "invitationThisProject": "Dieses Projekt"
       },
       "links": {
         "preview": "Vorschau der Website",

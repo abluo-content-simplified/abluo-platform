@@ -46,6 +46,14 @@ export default function CountBadgeDemo() {
           </li>
         </ul>
       </DemoBlock>
+      <DemoBlock title="Overlap (tab bar icons)" note="overlap: top-right corner of a relative parent, slightly overlapping, absolutely positioned (never moves the icon or label). 99+ from 100, hidden at 0. TabBarButton's badge prop uses it.">
+        <span className="relative inline-flex text-foreground">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+            <path d="M4 6h16M4 12h16M4 18h10" />
+          </svg>
+          <CountBadge overlap tone="attention" count={7} srLabel="7 unanswered requests" />
+        </span>
+      </DemoBlock>
     </DemoStack>
   )
 }

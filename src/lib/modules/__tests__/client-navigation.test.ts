@@ -13,7 +13,7 @@ import {
   segmentOf,
   isNavItemActive,
   phoneNavLayout,
-  PHONE_TAB_PRIORITY,
+  formatBadgeCount,
 } from '../client-navigation'
 import type { ProjectGrant } from '@/lib/api/tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
@@ -160,64 +160,90 @@ describe('resolveProjectGrant', () => {
   })
 })
 
-describe('phoneNavLayout', () => {
-  const item = (moduleId: string, segment: string) => ({
+describe('phoneNavLayout (Home · Content · Requests · Media · More)', () => {
+  const item = (moduleId: string, segment: string, group = 'content') => ({
     moduleId,
     labelKey: `clientDashboard.nav.${moduleId}`,
     href: `/livener/${segment}`,
-    group: 'content' as const,
+    group: group as 'content',
   })
-  const all = [
-    item('blog', 'posts'),
-    item('forms', 'submissions'),
-    item('gallery', 'galleries'),
-    item('media', 'media'),
-    item('people', 'people'),
-  ]
-
   const ids = (xs: { moduleId: string }[]) => xs.map((i) => i.moduleId)
-  const noDupes = (items: { moduleId: string }[]) => {
-    const layout = phoneNavLayout(items as typeof all)
-    const placed = ids([...layout.tabs, ...layout.overflow])
+  /** Every item lands in exactly one place: content, requests, media or overflow. */
+  const placedOnce = (items: ReturnType<typeof item>[]) => {
+    const l = phoneNavLayout(items)
+    const placed = ids([...l.content, ...(l.requests ? [l.requests] : []), ...(l.media ? [l.media] : []), ...l.overflow])
     expect([...placed].sort()).toEqual(ids(items).sort())
   }
 
-  it('tmz-like: Posts and Contact Requests take the tabs, the rest goes to More', () => {
-    const layout = phoneNavLayout(all)
-    expect(ids(layout.tabs)).toEqual(['blog', 'forms'])
-    expect(ids(layout.overflow)).toEqual(['gallery', 'media', 'people'])
+  const tmz = [
+    item('blog', 'posts', 'publish'),
+    item('events', 'agenda', 'publish'),
+    item('gallery', 'galleries', 'show'),
+    item('catalogue', 'catalogue', 'show'),
+    item('documents', 'document-library', 'show'),
+    item('forms', 'submissions', 'visitors'),
+    item('media', 'media'),
+    item('people', 'people'),
+    item('taxonomy', 'taxonomy'),
+    item('analytics', 'analytics', 'activity'),
+    item('support', 'support', 'support'),
+  ]
+
+  it('tmz-like: Content sheet of five modules, Requests, Media; the rest is More', () => {
+    const l = phoneNavLayout(tmz)
+    expect(ids(l.content)).toEqual(['blog', 'events', 'gallery', 'catalogue', 'documents'])
+    expect(l.requests?.moduleId).toBe('forms')
+    expect(l.media?.moduleId).toBe('media')
+    expect(ids(l.overflow)).toEqual(['people', 'taxonomy', 'analytics', 'support'])
+    placedOnce(tmz)
   })
 
-  it('CYCE-like (no blog): Contact Requests + Events', () => {
-    const cyce = [item('events', 'events'), item('faq', 'faq'), item('forms', 'submissions'), item('documents', 'documents'), item('members', 'access'), item('media', 'media')]
-    const layout = phoneNavLayout(cyce)
-    expect(ids(layout.tabs)).toEqual(['forms', 'events'])
-    expect(ids(layout.overflow)).toEqual(['faq', 'documents', 'members', 'media'])
-    noDupes(cyce)
+  it('CYCE-like: Events + FAQ + Documents in the sheet, Requests, Media; Access (members) in More', () => {
+    const cyce = [
+      item('events', 'agenda', 'publish'),
+      item('faq', 'faq-sets', 'publish'),
+      item('documents', 'document-library', 'show'),
+      item('forms', 'submissions', 'visitors'),
+      item('members', 'access', 'visitors'),
+      item('media', 'media'),
+    ]
+    const l = phoneNavLayout(cyce)
+    expect(ids(l.content)).toEqual(['events', 'faq', 'documents'])
+    expect(l.requests?.moduleId).toBe('forms')
+    expect(l.media?.moduleId).toBe('media')
+    expect(ids(l.overflow)).toEqual(['members'])
+    placedOnce(cyce)
   })
 
-  it('catalogue-only: Catalogue + the next item in menu order', () => {
-    const cat = [item('catalogue', 'catalogue'), item('media', 'media'), item('people', 'people')]
-    const layout = phoneNavLayout(cat)
-    expect(ids(layout.tabs)).toEqual(['catalogue', 'media'])
-    expect(ids(layout.overflow)).toEqual(['people'])
+  it('Amélie-like (galleries only, no forms): Content links straight to Galleries, no Requests tab', () => {
+    const amelie = [item('gallery', 'galleries', 'show'), item('media', 'media')]
+    const l = phoneNavLayout(amelie)
+    expect(ids(l.content)).toEqual(['gallery']) // exactly one → the tab links straight to it
+    expect(l.requests).toBeNull()
+    expect(l.media?.moduleId).toBe('media')
+    expect(l.overflow).toEqual([])
+    placedOnce(amelie)
   })
 
-  it('follows the exported priority, then menu order', () => {
-    expect(PHONE_TAB_PRIORITY.slice(0, 3)).toEqual(['blog', 'forms', 'events'])
-    const layout = phoneNavLayout([item('media', 'media'), item('gallery', 'galleries'), item('catalogue', 'catalogue')])
-    expect(ids(layout.tabs)).toEqual(['catalogue', 'gallery'])
+  it('no Publish/Show module → no Content tab; Requests only when the person has forms', () => {
+    const l = phoneNavLayout([item('media', 'media'), item('people', 'people')])
+    expect(l.content).toEqual([])
+    expect(l.requests).toBeNull()
+    expect(ids(l.overflow)).toEqual(['people'])
+    placedOnce([])
   })
 
-  it('puts every item in exactly one place (nothing unreachable on a phone)', () => {
-    noDupes(all)
-    noDupes([])
-    noDupes([item('media', 'media')])
+  it('keeps menu order inside the Content sheet', () => {
+    expect(ids(phoneNavLayout(tmz).content)).toEqual(ids(tmz.filter((i) => ['blog', 'events', 'gallery', 'catalogue', 'documents'].includes(i.moduleId))))
   })
+})
 
-  it('never leaves a slot empty while the project has items', () => {
-    expect(phoneNavLayout([item('media', 'media'), item('people', 'people')]).tabs).toHaveLength(2)
-    expect(phoneNavLayout([item('media', 'media')]).tabs).toHaveLength(1)
+describe('formatBadgeCount', () => {
+  it('shows 1–99 as is and 99+ from 100', () => {
+    expect(formatBadgeCount(1)).toBe('1')
+    expect(formatBadgeCount(99)).toBe('99')
+    expect(formatBadgeCount(100)).toBe('99+')
+    expect(formatBadgeCount(1234)).toBe('99+')
   })
 })
 

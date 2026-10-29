@@ -82,7 +82,10 @@
       "members": "Accesso",
       "settings": "Impostazioni",
       "support": "Supporto",
-      "documents": "Documenti"
+      "documents": "Documenti",
+      "content": "Contenuti",
+      "requests": "Richieste",
+      "discover": "Altro da Aggiungere"
     },
     "navGroups": {
       "publish": "Pubblica",
@@ -95,7 +98,9 @@
       "brandTagline": "Dashboard",
       "noModules": "Nessun modulo è ancora attivo per questo progetto.",
       "entryTitle": "Dashboard",
-      "noProjects": "Non hai ancora accesso a nessun progetto."
+      "noProjects": "Non hai ancora accesso a nessun progetto.",
+      "closeMenu": "Chiudi menu",
+      "requestsUnanswered": "{count, plural, one {# richiesta senza risposta} other {# richieste senza risposta}}"
     },
     "projectSwitcher": {
       "label": "Progetto",
@@ -2140,6 +2145,11 @@
         "allowedBodyNoName": "L’assistenza Abluo sta lavorando al tuo sito. Le modifiche vengono registrate.",
         "end": "Chiudi l’accesso",
         "error": "Non è andato a buon fine. Ricarica la pagina e riprova."
+      },
+      "replyNotice": {
+        "message": "Il supporto Abluo ha risposto alla tua richiesta.",
+        "open": "Apri Supporto",
+        "dismiss": "Chiudi"
       }
     },
     "connect": {
@@ -3175,6 +3185,30 @@
       "notTranslated": "non ancora tradotto",
       "fallbackHint": "Facoltativo. Se lo lasci vuoto, i visitatori in questa lingua vedono il testo in {language}: “{text}”.",
       "fallbackHintEmpty": "Facoltativo. Se lo lasci vuoto, i visitatori in questa lingua vedono il testo in {language}."
+    },
+    "discover": {
+      "title": "Altro da Aggiungere",
+      "intro": "Il tuo sito potrebbe fare anche questo. Curioso? Scrivici e ti mostriamo come.",
+      "tellMore": "Dimmi di più",
+      "requestSubject": "Vorrei saperne di più su {module}",
+      "requestBody": "Ciao! Vorrei saperne di più su {module} e su come potrebbe funzionare per il mio sito.",
+      "emptyTitle": "Hai già tutto",
+      "emptyBody": "Ogni modulo che offriamo fa già parte del tuo sito. Per ora non c’è altro da aggiungere.",
+      "modules": {
+        "blog": "Condividi novità e competenze con parole tue, dal telefono o dal computer.",
+        "news": "Annuncia cosa succede nel tuo studio, in breve e con la data.",
+        "events": "Pubblica workshop, open day e appuntamenti con date, luoghi e calendario.",
+        "faq": "Rispondi una volta alle domande che ti fanno sempre e mostra le risposte dove servono.",
+        "live": "Condividi aggiornamenti rapidi mentre succedono, senza scrivere un articolo intero.",
+        "gallery": "Mostra i tuoi spazi, il tuo lavoro e il tuo team in gallerie che stanno bene su ogni schermo.",
+        "catalogue": "Elenca servizi, prodotti o menu con prezzi e dettagli, ordinati in un unico posto.",
+        "documents": "Offri moduli, brochure e listini da scaricare, sempre aggiornati.",
+        "forms": "Fai scrivere i visitatori dal tuo sito e leggi i loro messaggi in un unico posto.",
+        "whatsapp": "Aggiungi un pulsante WhatsApp, così le persone ti raggiungono nell’app che già usano.",
+        "members": "Riserva pagine o file scelti solo a determinate persone, protetti da password.",
+        "translate": "Offri il tuo sito in più lingue, con una prima traduzione pronta da controllare.",
+        "brand-hub": "Tieni logo, colori e font in un unico posto, per te e per chi lavora con te."
+      }
     }
   },
   "app": {
@@ -3462,6 +3496,10 @@
         "save": "Salva fine pubblicazione",
         "pickFirst": "Prima scegli data e ora."
       }
+    },
+    "quickAdd": {
+      "label": "Mostra il pulsante di aggiunta rapida",
+      "hint": "Il pulsante rotondo + nell’angolo, su iPad e computer. Sui telefoni è sempre visibile."
     }
   },
   "admin": {
@@ -4058,7 +4096,10 @@
         "invitationClientWide": "tutto il cliente",
         "created": "Creato",
         "unknown": "Impossibile caricare",
-        "links": "Link"
+        "links": "Link",
+        "invitationRoleScope": "{role} · {scope}",
+        "invitationWholeClient": "Intero cliente",
+        "invitationThisProject": "Questo progetto"
       },
       "links": {
         "preview": "Anteprima del sito",

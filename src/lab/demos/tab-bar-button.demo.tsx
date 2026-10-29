@@ -18,6 +18,20 @@ export default function TabBarButtonDemo() {
           </TabBarButton>
         </div>
       </DemoBlock>
+      <DemoBlock title="With a badge" note="badge={{ count, label }}: orange count on the icon's top-right corner, overlapping, never shifting icon or label. 1–99, then 99+; hidden at 0.">
+        <div className="grid w-full max-w-sm grid-cols-4 items-end border-t border-border pt-2">
+          <TabBarButton icon={DOTS} badge={{ count: 3, label: '3 unanswered requests' }}>
+            Requests
+          </TabBarButton>
+          <TabBarButton icon={DOTS} badge={{ count: 128, label: '128 unanswered requests' }}>
+            Many
+          </TabBarButton>
+          <TabBarButton icon={DOTS} badge={{ count: 0, label: 'none' }}>
+            Zero
+          </TabBarButton>
+          <TabBarButton icon={DOTS}>None</TabBarButton>
+        </div>
+      </DemoBlock>
     </DemoStack>
   )
 }

@@ -82,7 +82,10 @@
       "members": "Access",
       "settings": "Settings",
       "support": "Support",
-      "documents": "Documents"
+      "documents": "Documents",
+      "content": "Content",
+      "requests": "Requests",
+      "discover": "More You Can Add"
     },
     "navGroups": {
       "publish": "Publish",
@@ -95,7 +98,9 @@
       "brandTagline": "Dashboard",
       "noModules": "No modules are enabled for this project yet.",
       "entryTitle": "Dashboard",
-      "noProjects": "You don’t have access to any projects yet."
+      "noProjects": "You don’t have access to any projects yet.",
+      "closeMenu": "Close menu",
+      "requestsUnanswered": "{count, plural, one {# unanswered request} other {# unanswered requests}}"
     },
     "projectSwitcher": {
       "label": "Project",
@@ -2140,6 +2145,11 @@
         "allowedBodyNoName": "Abluo support is helping with your site. Changes are recorded.",
         "end": "End access",
         "error": "That didn’t work. Refresh the page and try again."
+      },
+      "replyNotice": {
+        "message": "Abluo Support replied to your request.",
+        "open": "Open Support",
+        "dismiss": "Dismiss"
       }
     },
     "connect": {
@@ -3175,6 +3185,30 @@
       "notTranslated": "not translated yet",
       "fallbackHint": "Optional. If you leave it empty, visitors in this language see the {language} text: “{text}”.",
       "fallbackHintEmpty": "Optional. If you leave it empty, visitors in this language see the {language} text."
+    },
+    "discover": {
+      "title": "More You Can Add",
+      "intro": "Your site could also do this. Curious? Tell us and we’ll walk you through it.",
+      "tellMore": "Tell me more",
+      "requestSubject": "I’d like to know more about {module}",
+      "requestBody": "Hi! I’d like to know more about {module} and how it could work for my site.",
+      "emptyTitle": "You’ve got it all",
+      "emptyBody": "Every module we offer is already part of your site. Nothing left to add for now.",
+      "modules": {
+        "blog": "Share news and know-how in your own words, from your phone or your computer.",
+        "news": "Announce what’s happening at your practice, short and dated.",
+        "events": "Publish workshops, open days and appointments with dates, places and a calendar.",
+        "faq": "Answer the questions people always ask once, then show the answers wherever they help.",
+        "live": "Share quick updates as they happen, without writing a full article.",
+        "gallery": "Show your space, your work and your team in photo galleries that look good on any screen.",
+        "catalogue": "List your services, products or menu with prices and details, neatly in one place.",
+        "documents": "Offer forms, brochures and price lists as downloads, always up to date.",
+        "forms": "Let visitors write to you from your site and read their messages in one place.",
+        "whatsapp": "Add a WhatsApp button so people can reach you in the app they already use.",
+        "members": "Keep chosen pages or files for selected people only, behind a password.",
+        "translate": "Offer your site in more languages, with a first translation ready for you to check.",
+        "brand-hub": "Keep your logo, colours and fonts in one place for you and anyone who works with you."
+      }
     }
   },
   "app": {
@@ -3462,6 +3496,10 @@
         "save": "Save unpublish date",
         "pickFirst": "Pick a date and time first."
       }
+    },
+    "quickAdd": {
+      "label": "Show quick add button",
+      "hint": "The round + button in the corner, on iPad and computers. On phones it is always shown."
     }
   },
   "admin": {
@@ -4053,12 +4091,15 @@
         "noOwnerHint": "Nobody on the client’s side can manage this site.",
         "invitations": "Pending invitations",
         "noInvitations": "None",
-        "invitationExpires": "{role} · expires {date}",
-        "invitationExpired": "{role} · expired {date}",
+        "invitationExpires": "Expires {date}",
+        "invitationExpired": "Expired {date}",
         "invitationClientWide": "whole client",
         "created": "Created",
         "unknown": "Couldn’t load",
-        "links": "Links"
+        "links": "Links",
+        "invitationRoleScope": "{role} · {scope}",
+        "invitationWholeClient": "Whole client",
+        "invitationThisProject": "This project"
       },
       "links": {
         "preview": "Preview site",

@@ -9,8 +9,10 @@ import { ProjectSwitcher, type SwitcherProject } from './ProjectSwitcher'
 import type { AccountMenuProps } from '@/components/app/shell/AccountMenu'
 import { AppIcon, APP_ICONS } from '@/components/app/shell/AppIcon'
 import { TabBarButton } from '@/components/app/ui/TabBarButton'
+import { BottomSheet } from '@/components/app/ui/BottomSheet'
+import { LinkCard } from '@/components/app/ui/LinkCard'
+import { CountBadge } from '@/components/app/ui/CountBadge'
 import { AppSidebar, type AppNavEntry } from '@/components/app/shell/AppSidebar'
-import { useOpenAddContent } from './create/AddContentRoot'
 import type { ClientNavItem } from '@/lib/modules/client-navigation'
 import { isNavItemActive, phoneNavLayout } from '@/lib/modules/client-nav-layout'
 import { isModuleNavGroup, type NavGroup } from '@/lib/client/surfaces'
@@ -25,25 +27,22 @@ import { ProfilePanel, type ProfileData } from './account/ProfilePanel'
  * has — the project switcher, the module-driven nav and the phone tab bar.
  *
  * One component, two layouts, one set of destinations:
- *   • Phones: a slim top bar (menu button + project name) and a bottom tab bar —
- *     Home · two tabs from the site's own items (`PHONE_TAB_PRIORITY`) · [+ Add content] · More. Both the menu button and
- *     "More" open the drawer: the same sidebar, with EVERY destination
- *     (whatever has no tab of its own, `phoneNavLayout`)
- *     plus the project switcher — navigation only, no personal settings. The
- *     person's own menu (account, appearance, text size, help, sign out) is the
- *     avatar button at the right of the top bar (a bottom sheet). "More" is shown
- *     active while you are on one of those pages. The drawer closes on
- *     navigation, a tap on the backdrop or any item, and Escape.
+ *   • Phones: a slim top bar (title + the person's avatar; no menu button) and a
+ *     bottom tab bar — Home · Content · Requests · Media · More (`phoneNavLayout`).
+ *     Content opens a bottom sheet of the Publish + Show modules (one → links
+ *     straight to it), Requests carries the unanswered-requests badge, More
+ *     opens the drawer from the RIGHT and turns into an X (same button closes it).
+ *     The drawer is the sidebar with EVERY destination plus the project switcher;
+ *     the person's own menu is the avatar button (a bottom sheet). The drawer
+ *     closes on navigation, a tap on the backdrop or any item, and Escape.
  *   • From md up: the fixed sidebar — Home first, then the module-driven items,
  *     and the same account menu (a popover) from the avatar at its bottom.
  * Content and Leads exist only when the project has the module (navItems come
  * from the tenant surface registry, `buildClientNavItems`). Client copy from
  * `clientDashboard.*`; the frame's own (menu buttons) from `app.shell`.
  *
- * The phone tab bar's "+" opens the "What would you like to create?" panel
- * (ADR-025 D8). That panel and the floating "+" live OUTSIDE the sidebar, in
- * `create/AddContentRoot` (rendered by `[tenant]/layout.tsx`), so the FAB is
- * truly fixed to the viewport.
+ * The "+ Add content" panel and the floating "+" live OUTSIDE the sidebar, in
+ * `create/AddContentRoot` (rendered by `[tenant]/layout.tsx`).
  */
 
 export type ClientSidebarProps = {
@@ -66,6 +65,8 @@ export type ClientSidebarProps = {
   supportUnread?: number
   /** Show "Report a Problem" in the account menu (the person may send support requests). */
   reportProblem?: boolean
+  /** Contact requests nobody has answered yet (status `new`): badge on the Requests tab and the sidebar entry; 0 = none. */
+  newRequestsCount?: number
 }
 
 const ICONS = {
@@ -86,7 +87,9 @@ const ICONS = {
   documents: 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M12 11v6M9 14l3 3 3-3',
   support: APP_ICONS.support,
   more: 'M5 12h.01M12 12h.01M19 12h.01',
-  plus: 'M12 5v14M5 12h14',
+  close: 'M6 6l12 12M18 6L6 18',
+  content: 'M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
+  discover: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM17.5 14v7M14 17.5h7',
   generic: APP_ICONS.generic,
 } as const
 
@@ -105,15 +108,20 @@ export function ClientSidebar({
   profile = null,
   supportUnread = 0,
   reportProblem = false,
+  newRequestsCount = 0,
 }: ClientSidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [profileOpen, setProfileOpen] = useState(false)
   const t = useTranslations('clientDashboard')
-  const openAddContent = useOpenAddContent()
+  // The Content sheet is open on the page it was opened on (navigating closes it), like the drawer.
+  const [contentOpenOn, setContentOpenOn] = useState<string | null>(null)
+  if (contentOpenOn !== null && contentOpenOn !== pathname) setContentOpenOn(null)
+  const contentOpen = contentOpenOn === pathname
   const activeProjectName = projects.find((p) => p.projectSlug === activeSlug)?.name?.trim() || activeSlug
-  const { tabs: phoneTabs, overflow } = phoneNavLayout(navItems)
-  const tabFor = (i: ClientNavItem) => ({ key: i.moduleId, href: i.href, label: i.label ?? t(`nav.${i.moduleId}`), d: iconFor(i.moduleId) })
+  const { content, requests, media, overflow } = phoneNavLayout(navItems)
+  const labelOf = (i: ClientNavItem) => i.label ?? t(`nav.${i.moduleId}`)
+  const requestsBadge = newRequestsCount > 0 ? { count: newRequestsCount, label: t('shell.requestsUnanswered', { count: newRequestsCount }) } : undefined
   const news = useWhatsNew(whatsNew, { popup: whatsNewPopup })
   const liveSupportUnread = useLiveSupportCount(activeSlug, supportUnread, pathname, navItems.some((i) => i.moduleId === 'support'))
 
@@ -130,15 +138,26 @@ export function ClientSidebar({
       label: i.label ?? t(`nav.${i.moduleId}`),
       icon: iconFor(i.moduleId),
       group: i.group as string,
-      badge: i.moduleId === 'support' && liveSupportUnread > 0 ? { count: liveSupportUnread, label: t('supportTickets.list.unreadCount', { count: liveSupportUnread }) } : undefined,
+      badge:
+        i.moduleId === 'support' && liveSupportUnread > 0
+          ? { count: liveSupportUnread, label: t('supportTickets.list.unreadCount', { count: liveSupportUnread }) }
+          : i.moduleId === 'forms'
+            ? requestsBadge
+            : undefined,
     })),
   ]
-  const supportAt = links.findIndex((i) => i.group === 'support')
-  const grouped: (AppNavEntry & { group: string })[] = news.sidebarRow
-    ? supportAt === -1
-      ? [...links, { key: 'whatsNew', node: news.sidebarRow, group: 'support' }]
-      : [...links.slice(0, supportAt), { key: 'whatsNew', node: news.sidebarRow, group: 'support' }, ...links.slice(supportAt)]
-    : links
+  // The bottom group (Tom, 2026-10-29): Connected Apps, Settings, Support, What's New, More You Can Add.
+  const SUPPORT_ORDER = ['connections', 'settings', 'support']
+  const supportRank = (key: string) => SUPPORT_ORDER.indexOf(key)
+  const supportRows = links.filter((i) => i.group === 'support').sort((x, y) => supportRank(x.key) - supportRank(y.key))
+  const discover: AppNavEntry & { group: string } = { key: 'discover', href: `/${activeSlug}/discover`, label: t('nav.discover'), icon: ICONS.discover, group: 'support' }
+  const bottomGroup: (AppNavEntry & { group: string })[] = [
+    ...supportRows,
+    ...(news.sidebarRow ? [{ key: 'whatsNew', node: news.sidebarRow, group: 'support' }] : []),
+    discover,
+  ]
+  const rest = links.filter((i) => i.group !== 'support')
+  const grouped: (AppNavEntry & { group: string })[] = [...rest, ...bottomGroup]
   const items: AppNavEntry[] = grouped.map(({ group, ...item }, n) => {
     const starts = n > 0 && group !== grouped[n - 1].group
     return starts && isModuleNavGroup(group as NavGroup)
@@ -177,63 +196,75 @@ export function ClientSidebar({
         ...(profile ? { onProfile: () => setProfileOpen(true) } : {}),
       }}
       isActive={isNavItemActive}
+      drawerSide="right"
+      showMenuButton={false}
       bottomBar={({ drawerOpen, setDrawerOpen, isActive }) => {
-        // "More" carries the active state for pages without a tab of their own.
+        // Slots (phoneNavLayout): Home · Content · Requests · Media · More. A slot the project does not have is left out.
+        const contentActive = content.some((i) => isActive(i.href))
         const moreActive = drawerOpen || overflow.some((i) => isActive(i.href))
+        const linkTabs: { key: string; href: string; label: string; d: string; badge?: { count: number; label: string } }[] = [
+          { key: 'home', href: homeHref, label: t('nav.home'), d: ICONS.home },
+          ...(content.length === 1 ? [{ key: 'content', href: content[0].href, label: t('nav.content'), d: ICONS.content }] : []),
+        ]
+        const afterContent: typeof linkTabs = [
+          ...(requests ? [{ key: 'requests', href: requests.href, label: t('nav.requests'), d: iconFor('forms'), badge: requestsBadge }] : []),
+          ...(media ? [{ key: 'media', href: media.href, label: labelOf(media), d: iconFor('media') }] : []),
+        ]
+        const tabLink = (tab: (typeof linkTabs)[number]) => (
+          <Link
+            key={tab.key}
+            href={tab.href}
+            aria-current={isActive(tab.href) ? 'page' : undefined}
+            className={`flex min-h-11 flex-col items-center justify-center gap-0.5 text-xs font-medium ${isActive(tab.href) ? 'text-foreground' : 'text-muted-foreground'}`}
+          >
+            <span className="relative inline-flex">
+              <AppIcon d={tab.d} />
+              {tab.badge ? <CountBadge overlap tone="attention" count={tab.badge.count} srLabel={tab.badge.label} /> : null}
+            </span>
+            {tab.label}
+          </Link>
+        )
+        const slots = 2 + (content.length > 0 ? 1 : 0) + afterContent.length
         return (
           /* ── Bottom tab bar (phones) ──────────────────────────────────── */
+          /* Above the drawer while it is open, so the More tab (an X then) stays tappable. */
           <nav
             aria-label={t('shell.brandTagline')}
-            className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 items-end border-t border-border bg-background pb-[max(8px,env(safe-area-inset-bottom))] pt-2 md:hidden"
+            style={{ gridTemplateColumns: `repeat(${slots}, minmax(0, 1fr))` }}
+            className={`fixed inset-x-0 bottom-0 grid items-end border-t border-border bg-background pb-[max(8px,env(safe-area-inset-bottom))] pt-2 md:hidden ${drawerOpen ? 'z-[60]' : 'z-30'}`}
           >
-            {[
-              { key: 'home', href: homeHref, label: t('nav.home'), d: ICONS.home },
-              ...phoneTabs.slice(0, 1).map((i) => tabFor(i)),
-            ].map((tab) => (
-              <Link
-                key={tab.key}
-                href={tab.href}
-                aria-current={isActive(tab.href) ? 'page' : undefined}
-                className={`flex min-h-11 flex-col items-center justify-center gap-0.5 text-xs font-medium ${
-                  isActive(tab.href) ? 'text-foreground' : 'text-muted-foreground'
-                }`}
-              >
-                <AppIcon d={tab.d} />
-                {tab.label}
-              </Link>
-            ))}
-            <TabBarButton appearance="add" icon={ICONS.plus} onClick={openAddContent} aria-label={t('nav.add')} />
-            {phoneTabs.slice(1, 2).map((i) => {
-              const tab = tabFor(i)
-              return (
-                <Link
-                  key={tab.key}
-                  href={tab.href}
-                  aria-current={isActive(tab.href) ? 'page' : undefined}
-                  className={`flex min-h-11 flex-col items-center justify-center gap-0.5 text-xs font-medium ${
-                    isActive(tab.href) ? 'text-foreground' : 'text-muted-foreground'
-                  }`}
-                >
-                  <AppIcon d={tab.d} />
-                  {tab.label}
-                </Link>
-              )
-            })}
-            {phoneTabs.length < 2 ? <span /> : null}
+            {tabLink(linkTabs[0])}
+            {content.length === 1 ? tabLink(linkTabs[1]) : null}
+            {content.length > 1 ? (
+              <TabBarButton icon={ICONS.content} active={contentActive || contentOpen} onClick={() => setContentOpenOn(pathname)} aria-haspopup="dialog">
+                {t('nav.content')}
+              </TabBarButton>
+            ) : null}
+            {afterContent.map(tabLink)}
             <TabBarButton
-              icon={ICONS.more}
+              icon={drawerOpen ? ICONS.close : ICONS.more}
               iconWidth={2.4}
               active={moreActive}
               onClick={() => setDrawerOpen(!drawerOpen)}
+              aria-label={drawerOpen ? t('shell.closeMenu') : t('nav.more')}
               aria-expanded={drawerOpen}
               aria-controls="client-sidebar"
             >
-              {t('nav.more')}
+              {drawerOpen ? t('shell.closeMenu') : t('nav.more')}
             </TabBarButton>
           </nav>
         )
       }}
     />
+    {content.length > 1 ? (
+      <BottomSheet open={contentOpen} title={t('nav.content')} onClose={() => setContentOpenOn(null)}>
+        <div className="flex flex-col gap-2">
+          {content.map((i) => (
+            <LinkCard key={i.moduleId} href={i.href} icon={<AppIcon d={iconFor(i.moduleId)} size={20} />} title={labelOf(i)} />
+          ))}
+        </div>
+      </BottomSheet>
+    ) : null}
     {news.panel}
     {profile ? <ProfilePanel open={profileOpen} onClose={() => setProfileOpen(false)} profile={profile} /> : null}
     </>

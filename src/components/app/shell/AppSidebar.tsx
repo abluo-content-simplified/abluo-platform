@@ -89,6 +89,10 @@ export type AppSidebarProps = {
   isActive?: (pathname: string, href: string) => boolean
   /** Phone-only bottom tab bar. None → no tab bar. */
   bottomBar?: (bar: AppSidebarBottomBar) => ReactNode
+  /** Phones: the side the drawer slides in from. Default `left` (admin); the client dashboard uses `right` (its "More" tab). md+ is always the left sidebar. */
+  drawerSide?: 'left' | 'right'
+  /** Phones: the hamburger at the left of the top bar. Default true; the client dashboard hides it (its "More" tab opens the same drawer). */
+  showMenuButton?: boolean
 }
 
 const BRAND = 'Abluo'
@@ -110,6 +114,8 @@ export function AppSidebar({
   account,
   isActive: isActiveFor = isHrefActive,
   bottomBar,
+  drawerSide = 'left',
+  showMenuButton = true,
 }: AppSidebarProps) {
   const t = useTranslations('app.shell')
   const pathname = usePathname() // locale-stripped, e.g. "/livener/posts"
@@ -159,7 +165,8 @@ export function AppSidebar({
   return (
     <>
       {/* ── Phone top bar ─────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 flex h-14 items-center gap-1 border-b border-border-subtle bg-background pl-1 pr-1 md:hidden">
+      <div className={`sticky top-0 z-30 flex h-14 items-center gap-1 border-b border-border-subtle bg-background pr-1 md:hidden ${showMenuButton ? 'pl-1' : 'pl-4'}`}>
+        {showMenuButton ? (
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
@@ -170,6 +177,7 @@ export function AppSidebar({
         >
           <AppIcon d={APP_ICONS.menu} size={22} />
         </button>
+        ) : null}
         <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{heading}</span>
         <AccountMenu variant="bar" {...account} />
       </div>
@@ -192,10 +200,14 @@ export function AppSidebar({
         id={id}
         ref={drawerRef}
         tabIndex={-1}
-        className={`fixed left-0 top-0 z-50 flex h-dvh w-64 flex-col overflow-y-auto overscroll-contain border-r border-border bg-card text-card-foreground outline-none duration-200 motion-reduce:transition-none md:visible md:z-40 md:h-screen md:w-56 md:translate-x-0 ${
+        className={`fixed top-0 z-50 flex h-dvh w-64 flex-col overflow-y-auto overscroll-contain border-border bg-card text-card-foreground outline-none duration-200 motion-reduce:transition-none md:visible md:z-40 md:h-screen md:w-56 md:translate-x-0 ${
+          drawerSide === 'right'
+            ? `right-0 border-l pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:right-auto md:left-0 md:border-l-0 md:border-r md:pb-0 ${drawerOpen ? '' : 'translate-x-full'}`
+            : `left-0 border-r ${drawerOpen ? '' : '-translate-x-full'}`
+        } ${
           drawerOpen
             ? 'visible translate-x-0 shadow-[var(--shadow-raise)] transition-[translate]'
-            : 'invisible -translate-x-full transition-[translate,visibility]'
+            : 'invisible transition-[translate,visibility]'
         }`}
       >
         <div className="border-b border-border-subtle px-5 py-5">
