@@ -17,16 +17,6 @@ type Labels = {
   filter: string
 }
 
-function FileIcon({ image }: { image: boolean }) {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      {image
-        ? <path d="M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9h.01" />
-        : <path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h6" />}
-    </svg>
-  )
-}
-
 function LockIcon({ label }: { label: string }) {
   return (
     <svg role="img" aria-label={label} viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -69,37 +59,33 @@ export function DownloadDocumentList({ documents, meta, labels }: { documents: D
         </div>
       ) : null}
       <ul className="divide-y" style={{ borderColor: border }} data-documents>
-        {shown.map((d) => {
-          const isImage = d.file.mimeType.startsWith('image/')
-          return (
-            <li key={d.id} className="flex flex-wrap items-start gap-x-4 gap-y-3 py-5" style={{ borderColor: border }}>
-              <span className="mt-0.5 shrink-0" style={{ color: 'var(--color-text-secondary)' }}><FileIcon image={isImage} /></span>
-              <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-2 font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                  <span className="min-w-0 break-words">{d.title}</span>
-                  {d.members && <span className="shrink-0" style={{ color: 'var(--color-text-secondary)' }}><LockIcon label={labels.lock} /></span>}
-                </p>
-                {d.note && <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{d.note}</p>}
-                <p className="mt-1 text-sm" style={{ color: 'var(--color-text-muted, var(--color-text-secondary))' }}>{meta[d.id]}</p>
-                {d.tags.length > 0 ? (
-                  <ul className="mt-2 flex flex-wrap gap-1.5">
-                    {d.tags.map((tag) => (
-                      <li key={tag} className="rounded-full border px-2.5 py-0.5 text-xs" style={{ borderColor: border, color: 'var(--color-text-secondary)' }}>{tag}</li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-              <div className="flex shrink-0 items-center gap-4 text-sm font-medium">
-                <a href={d.href} target="_blank" rel="noopener" style={{ color: 'var(--color-text-primary)' }} className="underline-offset-4 hover:underline">
+        {shown.map((d) => (
+          <li key={d.id} className="py-5" style={{ borderColor: border }}>
+            <p className="font-medium" style={{ color: 'var(--color-text-primary)' }}>
+              <span className="break-words">{d.title}</span>
+              {d.members && <span className="ml-2 inline-block align-middle" style={{ color: 'var(--color-text-secondary)' }}><LockIcon label={labels.lock} /></span>}
+            </p>
+            {d.note && <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{d.note}</p>}
+            {d.tags.length > 0 ? (
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {d.tags.map((tag) => (
+                  <li key={tag} className="rounded-full border px-2.5 py-0.5 text-xs" style={{ borderColor: border, color: 'var(--color-text-secondary)' }}>{tag}</li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="mt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between sm:gap-4" data-document-footer>
+              <p className="text-sm" style={{ color: 'var(--color-text-muted, var(--color-text-secondary))' }} data-document-meta>{meta[d.id]}</p>
+              <div className="-mr-3 flex items-center self-end text-sm font-medium" data-document-actions>
+                <a href={d.href} target="_blank" rel="noopener" style={{ color: 'var(--color-text-primary)' }} className="inline-flex min-h-11 items-center px-3 underline-offset-4 hover:underline">
                   {labels.view}
                 </a>
-                <a href={`${d.href}?download=1`} rel="nofollow" style={{ color: 'var(--color-brand-primary, var(--color-text-primary))' }} className="underline-offset-4 hover:underline">
+                <a href={`${d.href}?download=1`} rel="nofollow" style={{ color: 'var(--color-brand-primary, var(--color-text-primary))' }} className="inline-flex min-h-11 items-center px-3 underline-offset-4 hover:underline">
                   {labels.download}
                 </a>
               </div>
-            </li>
-          )
-        })}
+            </div>
+          </li>
+        ))}
       </ul>
     </>
   )
