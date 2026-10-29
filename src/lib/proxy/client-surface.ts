@@ -69,6 +69,8 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   'settings',
   // Support (Tom, 2026-10-22): "coming soon" until the ticketing system exists. Reserved slug.
   'support',
+  // More You Can Add: the showcase of modules this site does not have yet.
+  'discover',
 ])
 
 /**

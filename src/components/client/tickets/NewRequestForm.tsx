@@ -23,13 +23,13 @@ import { ATTACHMENT_MIME_TYPES, TICKET_LIMITS } from '@/lib/support-tickets/mode
  * (`from`) and, after a closed request, which one this follows (`relatedTo`)
  * go with it as context for Abluo Support.
  */
-export function NewRequestForm({ projectSlug, from, relatedTo }: { projectSlug: string; from?: string; relatedTo?: string }) {
+export function NewRequestForm({ projectSlug, from, relatedTo, initialTitle = '', initialBody = '' }: { projectSlug: string; from?: string; relatedTo?: string; initialTitle?: string; initialBody?: string }) {
   const t = useTranslations('clientDashboard.supportTickets')
   const locale = useLocale()
   const router = useRouter()
   const [token] = useState(() => crypto.randomUUID())
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
+  const [title, setTitle] = useState(initialTitle)
+  const [body, setBody] = useState(initialBody)
   const [files, setFiles] = useState<File[]>([])
   const [errors, setErrors] = useState<NewRequestErrors>({})
   const [failure, setFailure] = useState<string | null>(null)

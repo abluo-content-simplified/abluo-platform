@@ -51,6 +51,19 @@ export function cleanRelatedTo(value: string | string[] | undefined): string | u
   return v && /^ABL-\d{1,12}$/i.test(v.trim()) ? v.trim().toUpperCase() : undefined
 }
 
+/**
+ * `?title=` / `?body=` prefill the new-request form (e.g. "Tell me more" on
+ * More You Can Add). Plain text only: control characters are dropped, the value
+ * is cut to the field's limit, and React renders it as text, never as HTML.
+ */
+export function cleanPrefill(value: string | string[] | undefined, max: number): string | undefined {
+  const v = Array.isArray(value) ? value[0] : value
+  if (typeof v !== 'string') return undefined
+  // eslint-disable-next-line no-control-regex
+  const cleaned = v.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, max)
+  return cleaned || undefined
+}
+
 /** `?from=` must be a path on this site; anything else is dropped. */
 export function cleanFrom(value: string | string[] | undefined): string | undefined {
   const v = Array.isArray(value) ? value[0] : value

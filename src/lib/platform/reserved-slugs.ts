@@ -81,6 +81,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'agenda',
   'apps',
   'catalogue',
+  'discover',  // More You Can Add
   'faq-sets',
   'galleries',
   'home',

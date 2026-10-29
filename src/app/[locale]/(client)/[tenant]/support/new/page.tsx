@@ -4,14 +4,16 @@ import { NewRequestForm } from '@/components/client/tickets/NewRequestForm'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { ticketAccess } from '@/lib/support-tickets/access'
-import { cleanFrom, cleanRelatedTo } from '@/lib/support-tickets/client-form'
+import { TICKET_LIMITS } from '@/lib/support-tickets/model'
+import { cleanFrom, cleanPrefill, cleanRelatedTo } from '@/lib/support-tickets/client-form'
 
 /**
  * Client dashboard — Support › New Request (ADR-039). People who may not send
  * requests (read-only roles, an Abluo admin viewing as the client) go back to
  * the list, which says why. `?from=` is the page the person was on (the
  * "Report a Problem" menu item) and `?relatedTo=ABL-…` the closed request this
- * follows; both are only context for Abluo Support.
+ * follows; both are only context for Abluo Support. `?title=` and `?body=` prefill the
+ * form (cleaned and length-limited; "Tell me more" on More You Can Add).
  */
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +22,7 @@ export default async function NewSupportRequestPage({
   searchParams,
 }: {
   params: Promise<{ tenant: string }>
-  searchParams: Promise<{ from?: string | string[]; relatedTo?: string | string[] }>
+  searchParams: Promise<{ from?: string | string[]; relatedTo?: string | string[]; title?: string | string[]; body?: string | string[] }>
 }) {
   const { tenant: projectSlug } = await params
   const query = await searchParams
@@ -32,7 +34,10 @@ export default async function NewSupportRequestPage({
 
   return (
     <PageShell>
-      <NewRequestForm projectSlug={projectSlug} from={cleanFrom(query.from)} relatedTo={cleanRelatedTo(query.relatedTo)} />
+      <NewRequestForm projectSlug={projectSlug} from={cleanFrom(query.from)} relatedTo={cleanRelatedTo(query.relatedTo)}
+        initialTitle={cleanPrefill(query.title, TICKET_LIMITS.titleMax)}
+        initialBody={cleanPrefill(query.body, TICKET_LIMITS.bodyMax)}
+      />
     </PageShell>
   )
 }
