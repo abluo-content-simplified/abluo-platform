@@ -36,3 +36,19 @@ describe('app text size', () => {
     expect(m.appTextSizeCookie('sm')).toMatch(/^abluo-app-text=sm; path=\/; max-age=\d+; SameSite=Lax$/)
   })
 })
+
+import { APP_QUICK_ADD_COOKIE, appQuickAddCookie, parseAppQuickAdd } from '@/lib/app-theme'
+
+describe('quick add preference', () => {
+  it('is on unless explicitly off', () => {
+    expect(parseAppQuickAdd(undefined)).toBe(true)
+    expect(parseAppQuickAdd(null)).toBe(true)
+    expect(parseAppQuickAdd('on')).toBe(true)
+    expect(parseAppQuickAdd('garbage')).toBe(true)
+    expect(parseAppQuickAdd('off')).toBe(false)
+  })
+  it('writes a one-year cookie', () => {
+    expect(appQuickAddCookie(false)).toBe(`${APP_QUICK_ADD_COOKIE}=off; path=/; max-age=31536000; SameSite=Lax`)
+    expect(appQuickAddCookie(true)).toContain('=on;')
+  })
+})

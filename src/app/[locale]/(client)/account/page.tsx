@@ -2,13 +2,14 @@ import type { ReactNode } from 'react'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
-import { APP_TEXT_SIZE_COOKIE, APP_THEME_COOKIE, parseAppTextSize, parseAppTheme } from '@/lib/app-theme'
+import { APP_QUICK_ADD_COOKIE, APP_TEXT_SIZE_COOKIE, APP_THEME_COOKIE, parseAppQuickAdd, parseAppTextSize, parseAppTheme } from '@/lib/app-theme'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { getViewerAccount } from '@/lib/api/viewer-account'
 import { dashboardHomeHref, resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { Link } from '@/i18n/navigation'
 import { filterSwitchableProjects, loadProjectSummaries, statusesOf } from '@/lib/client/switchable-projects'
 import { AppTextSizeSwitch } from '@/components/app/shell/AppTextSizeSwitch'
+import { AppQuickAddSwitch } from '@/components/app/shell/AppQuickAddSwitch'
 import { AppThemeSwitch } from '@/components/app/shell/AppThemeSwitch'
 import { AvatarEditor } from '@/components/client/account/AvatarEditor'
 import { NameEditor } from '@/components/client/account/NameEditor'
@@ -66,6 +67,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
   }))
   const theme = parseAppTheme(jar.get(APP_THEME_COOKIE)?.value)
   const textSize = parseAppTextSize(jar.get(APP_TEXT_SIZE_COOKIE)?.value)
+  const quickAdd = parseAppQuickAdd(jar.get(APP_QUICK_ADD_COOKIE)?.value)
 
   const lastSlug = jar.get('abluo_last_project')?.value
   const home = (lastSlug && resolveProjectGrant(ctx.projects, lastSlug)) || ctx.projects[0]
@@ -111,6 +113,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
             <div className="space-y-4 py-1">
               <AppThemeSwitch initial={theme} />
               <AppTextSizeSwitch initial={textSize} />
+              <AppQuickAddSwitch initial={quickAdd} />
             </div>
           </Section>
 

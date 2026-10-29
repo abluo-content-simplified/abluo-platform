@@ -9,6 +9,8 @@ import { SignOutButton } from './SignOutButton'
 import { Avatar } from '../ui/Avatar'
 import { AppLanguageSwitch } from './AppLanguageSwitch'
 import { AppTextSizeSwitch } from './AppTextSizeSwitch'
+import { AppQuickAddSwitch } from './AppQuickAddSwitch'
+import { useQuickAdd } from './QuickAddContext'
 import { AppThemeSwitch } from './AppThemeSwitch'
 import { BottomSheet } from '../ui/BottomSheet'
 import { SidePanel } from '../ui/SidePanel'
@@ -185,6 +187,7 @@ function MenuBody({ variant, name, email, helpUrl, profileHref, onProfile, role,
 }
 
 export function AccountMenu(props: AccountMenuProps) {
+  const quickAdd = useQuickAdd()
   const { variant, name, email, avatarUrl, role, siteName } = props
   const t = useTranslations('app.accountMenu')
   const roleLine = useRoleLine(role, siteName)
@@ -274,6 +277,7 @@ export function AccountMenu(props: AccountMenuProps) {
           <AppLanguageSwitch />
           <AppThemeSwitch initial={props.theme} />
           <AppTextSizeSwitch initial={props.textSize} />
+          {quickAdd ? <AppQuickAddSwitch /> : null}
         </div>
       </SidePanel>
 

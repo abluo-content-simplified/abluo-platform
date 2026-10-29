@@ -57,3 +57,18 @@ export function appTextSizeAttribute(size: AppTextSize): Exclude<AppTextSize, 'm
 export function appTextSizeCookie(size: AppTextSize): string {
   return `${APP_TEXT_SIZE_COOKIE}=${size}; path=/; max-age=${APP_THEME_COOKIE_MAX_AGE}; SameSite=Lax`
 }
+
+// ── Quick add button (floating "+") ──────────────────────────────────────────
+// Per-person preference, same cookie pattern. Only affects iPad / computers
+// (md and up): phones always show the floating "+". On by default; only an
+// explicit "off" turns it off.
+
+export const APP_QUICK_ADD_COOKIE = 'abluo_quick_add'
+
+export function parseAppQuickAdd(value: string | undefined | null): boolean {
+  return value !== 'off'
+}
+
+export function appQuickAddCookie(on: boolean): string {
+  return `${APP_QUICK_ADD_COOKIE}=${on ? 'on' : 'off'}; path=/; max-age=${APP_THEME_COOKIE_MAX_AGE}; SameSite=Lax`
+}

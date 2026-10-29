@@ -3,7 +3,7 @@ import { navSegmentsFor } from '@/lib/client/surfaces'
 import { stopwatch, traced } from '@/lib/perf/timing'
 import { perfBeacon } from '@/lib/perf/beacon'
 import { notFound, redirect } from 'next/navigation'
-import { APP_TEXT_SIZE_COOKIE, APP_THEME_COOKIE, parseAppTextSize, parseAppTheme } from '@/lib/app-theme'
+import { APP_QUICK_ADD_COOKIE, APP_TEXT_SIZE_COOKIE, APP_THEME_COOKIE, parseAppQuickAdd, parseAppTextSize, parseAppTheme } from '@/lib/app-theme'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { getViewerAccount } from '@/lib/api/viewer-account'
 import {
@@ -28,6 +28,8 @@ import { listSupportNotices } from '@/lib/support/server'
 import { ticketAccess } from '@/lib/support-tickets/access'
 import { countClientUnread } from '@/lib/support-tickets/service'
 import { SupportBanner } from '@/components/client/support/SupportBanner'
+import { SupportReplyNotice } from '@/components/client/support/SupportReplyNotice'
+import { getFormsDashboard } from '@/lib/api/dashboard/forms'
 import { SupportAccessNotice } from '@/components/client/support/SupportAccessNotice'
 import { loadCatalogueNavLabel } from '@/lib/api/catalogue-drafts'
 
@@ -136,6 +138,16 @@ async function ClientProjectLayoutInner({
   const jar = await cookies()
   const theme = parseAppTheme(jar.get(APP_THEME_COOKIE)?.value)
   const textSize = parseAppTextSize(jar.get(APP_TEXT_SIZE_COOKIE)?.value)
+  const quickAdd = parseAppQuickAdd(jar.get(APP_QUICK_ADD_COOKIE)?.value)
+  // Unanswered contact requests (status "new") for the nav badge: the same read as Home's
+  // "Unanswered requests" (getFormsDashboard → the enforced, RLS-backed submissions read), only
+  // when the person has the contact-requests item and, in a support visit, requests are shown.
+  const showRequestsCount =
+    navItems.some((i) => i.moduleId === 'forms') && (!support || support.contactRequestsShown)
+  const newRequestsCount = showRequestsCount
+    ? ((await getFormsDashboard(ctx, activeGrant.projectId, { attentionHref: null }).catch(() => null))?.glance?.open ?? 0)
+    : 0
+  lap('newRequestsCount')
 
   return (
     <AddContentRoot
@@ -143,6 +155,7 @@ async function ClientProjectLayoutInner({
       menu={buildCreateMenu(activeGrant)}
       mediaLibrary={navItems.some((i) => i.moduleId === 'media')}
       contactEmail={process.env.ABLUO_CONTACT_EMAIL || null}
+      quickAdd={quickAdd}
     >
       {/* ADR-035: one upload store — photos keep uploading while the person moves between screens. */}
       <UploadsProvider>
@@ -166,6 +179,7 @@ async function ClientProjectLayoutInner({
           whatsNew={whatsNew?.updates ?? null}
           whatsNewPopup={!support}
           supportUnread={supportUnread}
+          newRequestsCount={newRequestsCount}
           reportProblem={Boolean(ticketAccessForNav?.canWrite) && navItems.some((i) => i.moduleId === 'support')}
           profile={profile}
         />
@@ -185,7 +199,9 @@ async function ClientProjectLayoutInner({
               contactRequestsHidden={!support.contactRequestsShown && activeGrant.enabledModuleIds.includes('forms')}
             />
           ) : null}
-          <main className="p-4 pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:p-6">
+          {/* Bottom room, set here only: phones clear the fixed tab bar (5.25rem) + the floating "+" (3.5rem + 1rem gap above the bar); md+ only when the "+" is shown. */}
+          <main className={`p-4 pb-[calc(9.75rem+env(safe-area-inset-bottom))] md:p-6 ${quickAdd ? 'md:pb-[calc(6rem+env(safe-area-inset-bottom))]' : ''}`}>
+            <SupportReplyNotice projectSlug={activeGrant.projectSlug} count={supportUnread} className="mb-4" />
             {supportNotices.length ? (
               <SupportAccessNotice
                 projectSlug={activeGrant.projectSlug}

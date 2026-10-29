@@ -58,6 +58,7 @@ export function Fab({
   open = false,
   closeLabel,
   portal = true,
+  desktop = true,
 }: {
   label: string
   onPress: () => void
@@ -67,6 +68,8 @@ export function Fab({
   closeLabel?: string
   /** Portal into the `.abluo-app` root (default). False inside a dialog. */
   portal?: boolean
+  /** Shown on iPad / computers (md and up). False: phones only. Phones always show it. */
+  desktop?: boolean
 }) {
   const [scrolling, setScrolling] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -100,7 +103,7 @@ export function Fab({
       title={name}
       onClick={onPress}
       tabIndex={hidden ? -1 : undefined}
-      className={`fixed right-[calc(1.5rem+env(safe-area-inset-right))] bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-30 grid size-14 place-items-center rounded-full bg-action text-action-foreground shadow-[var(--shadow-raise)] transition-[opacity,transform] duration-200 ease-out hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none motion-reduce:transition-none md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] ${
+      className={`${desktop ? '' : 'md:hidden '}fixed right-[calc(1.5rem+env(safe-area-inset-right))] bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-30 grid size-14 place-items-center rounded-full bg-action text-action-foreground shadow-[var(--shadow-raise)] transition-[opacity,transform] duration-200 ease-out hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none motion-reduce:transition-none md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] ${
         hidden ? 'pointer-events-none translate-y-2 opacity-0' : 'translate-y-0 opacity-100'
       } ${selecting && !open ? 'max-md:pointer-events-none max-md:invisible max-md:translate-y-2 max-md:opacity-0' : ''}`}
     >
