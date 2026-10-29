@@ -85,7 +85,7 @@
       "documents": "Documenti",
       "content": "Contenuti",
       "requests": "Richieste",
-      "discover": "Altro da Aggiungere"
+      "discover": "Altro da aggiungere"
     },
     "navGroups": {
       "publish": "Pubblica",
@@ -3187,7 +3187,7 @@
       "fallbackHintEmpty": "Facoltativo. Se lo lasci vuoto, i visitatori in questa lingua vedono il testo in {language}."
     },
     "discover": {
-      "title": "Altro da Aggiungere",
+      "title": "Altro da aggiungere",
       "intro": "Il tuo sito potrebbe fare anche questo. Curioso? Scrivici e ti mostriamo come.",
       "tellMore": "Dimmi di più",
       "requestSubject": "Vorrei saperne di più su {module}",
