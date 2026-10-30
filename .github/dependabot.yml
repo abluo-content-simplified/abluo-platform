@@ -17,6 +17,13 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: 'chore(deps)'
+    ignore:
+      # Types must match the Node version we run (22), not the newest Node.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      # Sanity 5 is built for @sanity/client 7; v8 comes with the Sanity 6 upgrade.
+      - dependency-name: '@sanity/client'
+        update-types: ['version-update:semver-major']
     groups:
       # One PR for all patch updates, one for all minor updates.
       # Major updates arrive as separate PRs, one per package.
