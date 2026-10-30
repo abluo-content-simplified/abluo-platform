@@ -114,21 +114,26 @@ describe('media provider', () => {
 
 describe('site status', () => {
   const routes = (status: string) => [
-    { host: 'example.com', hostKind: 'custom-domain' as const, status },
-    { host: 'example.preview.abluo.app', hostKind: 'preview-subdomain' as const, status },
+    { host: 'example.com', hostKind: 'custom-domain' as const, status, projectSlug: 'example' },
+    { host: 'example.preview.abluo.app', hostKind: 'preview-subdomain' as const, status, projectSlug: 'example' },
   ]
   it('live / preview / offline from the routing table', () => {
     expect(siteStatusFrom(routes('active'), null)).toEqual({ state: 'live', host: 'example.com', url: 'https://example.com' })
     expect(siteStatusFrom(routes('active'), 'www.example.com')).toMatchObject({ host: 'www.example.com' })
-    expect(siteStatusFrom(routes('preview'), 'example.com')).toEqual({ state: 'preview', host: 'example.preview.abluo.app', url: 'https://example.preview.abluo.app' })
+    // Not live → the shared preview address, never the <project>.preview subdomain (Tom, 2026-10-30).
+    expect(siteStatusFrom(routes('preview'), 'example.com')).toEqual({ state: 'preview', host: 'preview.abluo.app/example', url: 'https://preview.abluo.app/example' })
     expect(siteStatusFrom(routes('draft'), null)).toEqual({ state: 'offline', host: null, url: null })
+  })
+  it('live without any domain of its own still links the preview address', () => {
+    const previewOnly = [{ host: 'x.preview.abluo.app', hostKind: 'preview-subdomain' as const, status: 'active', projectSlug: 'x' }]
+    expect(siteStatusFrom(previewOnly, null)).toEqual({ state: 'live', host: 'preview.abluo.app/x', url: 'https://preview.abluo.app/x' })
   })
   it('falls back to the domain when the project is not in the table yet', () => {
     expect(siteStatusFrom([], 'example.com')).toMatchObject({ state: 'live', url: 'https://example.com' })
     expect(siteStatusFrom([], null)).toMatchObject({ state: 'offline', url: null })
   })
   it('own domain (setup checklist): live AND a custom domain, never only an Abluo address', () => {
-    const previewOnly = (status: string) => [{ host: 'x.preview.abluo.app', hostKind: 'preview-subdomain' as const, status }]
+    const previewOnly = (status: string) => [{ host: 'x.preview.abluo.app', hostKind: 'preview-subdomain' as const, status, projectSlug: 'x' }]
     expect(isOnOwnDomain(routes('active'), null, 'live')).toBe(true)
     expect(isOnOwnDomain(previewOnly('active'), 'example.com', 'live')).toBe(true)
     expect(isOnOwnDomain(previewOnly('active'), null, 'live')).toBe(false)

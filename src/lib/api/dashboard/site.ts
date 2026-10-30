@@ -9,6 +9,7 @@ import { getProjectSiteDomain } from '@/lib/api/client-dashboard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { hostsForProjectId, type GeneratedHostRoute } from '@/lib/tenancy/host-scope'
 import { settle } from '@/lib/api/dashboard/settle'
+import { previewSiteUrl } from '@/lib/admin/projects-filter'
 
 /** live = public on its own address · preview = only on the private preview address · offline = not served. */
 export type SiteState = 'live' | 'preview' | 'offline'
@@ -18,19 +19,24 @@ export type SiteStatusData = { state: SiteState; host: string | null; url: strin
  * Pure. `routes` are the project's rows in the routing table; `domain` is the
  * Sanity custom domain. A project missing from the (build-time) table falls
  * back to the domain, which is what Home always showed.
+ *
+ * A site that is not live is shown on the shared preview address
+ * `preview.abluo.app/<project>` — the same one the admin project page links
+ * (`previewSiteUrl`). Never the `<project>.preview.abluo.app` subdomain (Tom,
+ * 2026-10-30: that is not where previews are given out).
  */
-export function siteStatusFrom(routes: readonly Pick<GeneratedHostRoute, 'host' | 'hostKind' | 'status'>[], domain: string | null): SiteStatusData {
+export function siteStatusFrom(routes: readonly Pick<GeneratedHostRoute, 'host' | 'hostKind' | 'status' | 'projectSlug'>[], domain: string | null): SiteStatusData {
   const status = routes[0]?.status
   const at = (host: string | null | undefined): SiteStatusData['url'] => (host ? `https://${host}` : null)
   if (!status) return domain ? { state: 'live', host: domain, url: at(domain) } : { state: 'offline', host: null, url: null }
+  const slug = routes.find((r) => r.projectSlug)?.projectSlug
+  const preview: SiteStatusData | null = slug ? { state: 'preview', host: `preview.abluo.app/${slug}`, url: previewSiteUrl(slug) } : null
   if (status === 'active') {
-    const host = domain ?? routes.find((r) => r.hostKind === 'custom-domain')?.host ?? routes.find((r) => r.hostKind === 'preview-subdomain')?.host ?? null
-    return { state: 'live', host, url: at(host) }
+    const host = domain ?? routes.find((r) => r.hostKind === 'custom-domain')?.host ?? null
+    if (host) return { state: 'live', host, url: at(host) }
+    return preview ? { ...preview, state: 'live' } : { state: 'live', host: null, url: null }
   }
-  if (status === 'preview') {
-    const host = routes.find((r) => r.hostKind === 'preview-subdomain')?.host ?? null
-    return { state: 'preview', host, url: at(host) }
-  }
+  if (status === 'preview') return preview ?? { state: 'preview', host: null, url: null }
   return { state: 'offline', host: domain, url: null }
 }
 
