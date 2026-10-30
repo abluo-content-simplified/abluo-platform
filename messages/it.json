@@ -5072,6 +5072,7 @@
       "password": "Password",
       "passwordConfirm": "Ripeti la password",
       "passwordTooShort": "La password deve avere almeno {min} caratteri.",
+      "passwordRejected": "Questa password non è accettata. Scegline una più lunga che combini lettere, numeri e un simbolo e che non sia una password comune.",
       "passwordMismatch": "Le due password non coincidono.",
       "createAndAccept": "Crea account e accetta",
       "haveAccount": "Hai già un account Abluo?",

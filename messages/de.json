@@ -5072,6 +5072,7 @@
       "password": "Passwort",
       "passwordConfirm": "Passwort wiederholen",
       "passwordTooShort": "Das Passwort braucht mindestens {min} Zeichen.",
+      "passwordRejected": "Dieses Passwort wird nicht akzeptiert. Wähle ein längeres mit Buchstaben, Zahlen und einem Sonderzeichen, das kein gängiges Passwort ist.",
       "passwordMismatch": "Die beiden Passwörter stimmen nicht überein.",
       "createAndAccept": "Konto erstellen und annehmen",
       "haveAccount": "Du hast schon ein Abluo-Konto?",

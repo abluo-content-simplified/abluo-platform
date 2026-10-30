@@ -5072,6 +5072,7 @@
       "password": "Password",
       "passwordConfirm": "Repeat password",
       "passwordTooShort": "The password needs at least {min} characters.",
+      "passwordRejected": "This password isn't accepted. Choose a longer one that mixes letters, numbers and a symbol, and isn't a common password.",
       "passwordMismatch": "The two passwords are different.",
       "createAndAccept": "Create account and accept",
       "haveAccount": "Already have an Abluo account?",

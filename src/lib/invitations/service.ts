@@ -321,7 +321,7 @@ async function acceptWithClient(admin: SupabaseClient, token: string, user: { id
 export async function registerAndAccept(
   token: unknown,
   input: { password: unknown; fullName: unknown }
-): Promise<AcceptResult | { ok: false; error: 'email_exists' | 'weak_password' }> {
+): Promise<AcceptResult | { ok: false; error: 'email_exists' | 'weak_password' | 'password_rejected' }> {
   if (!isWellFormedToken(token)) return { ok: false, error: 'invalid' }
   if (typeof input.password !== 'string' || input.password.length < MIN_PASSWORD_LENGTH || input.password.length > 200) {
     return { ok: false, error: 'weak_password' }
@@ -341,7 +341,14 @@ export async function registerAndAccept(
         user_metadata: fullName ? { full_name: fullName } : {},
       })
       if (error || !data.user) {
-        const exists = /already|exists|registered/i.test(error?.message ?? '') || error?.status === 422
+        // Supabase answers 422 for several different problems, so the status alone
+        // says nothing. Read the error code first: a password refused by the auth
+        // password policy (length, character classes, leaked-password check) must
+        // never be shown as "an account with this email already exists".
+        const code = (error as { code?: string } | null)?.code ?? ''
+        const message = error?.message ?? ''
+        if (code === 'weak_password' || /password/i.test(message)) return { ok: false as const, error: 'password_rejected' as const }
+        const exists = code === 'email_exists' || code === 'user_already_exists' || /already (been )?registered|already exists/i.test(message)
         return { ok: false as const, error: exists ? ('email_exists' as const) : ('failed' as const) }
       }
       return acceptWithClient(admin, token as string, { id: data.user.id, email: data.user.email })

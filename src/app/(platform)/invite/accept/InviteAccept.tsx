@@ -44,6 +44,7 @@ export function InviteAccept({
       wrong_account: m.accept.wrongAccount,
       email_exists: m.accept.emailExists,
       weak_password: m.accept.passwordTooShort,
+      password_rejected: m.accept.passwordRejected,
     }
     return fill(known[code] ?? m.accept.failed, vars)
   }
