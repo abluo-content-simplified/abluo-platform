@@ -160,8 +160,10 @@ describe('our layer holds without the library', () => {
     expect(await authenticateClient(f.store, app.clientId, app.clientSecret.slice(0, -1) + (app.clientSecret.endsWith('x') ? 'y' : 'x'))).toBeNull()
     expect(await authenticateClient(f.store, app.clientId, app.clientSecret)).not.toBeNull()
     const model = createOAuthModel({ store: f.store, clock: f.clock })
-    // @ts-expect-error — the library passes undefined for a PKCE request without a secret
-    expect(await model.getClient(app.clientId, undefined)).toBeNull()
+    // The library passes undefined for a PKCE request without a secret. Typed as
+    // string before @node-oauth/oauth2-server 5.3.1, optional since — the cast
+    // compiles on both (an @ts-expect-error broke the build once the types caught up).
+    expect(await model.getClient(app.clientId, undefined as unknown as string)).toBeNull()
     f.store.apps.get(app.id)!.status = 'pending'
     expect(await authenticateClient(f.store, app.clientId, app.clientSecret)).toBeNull()
   })
