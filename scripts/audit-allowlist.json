@@ -40,14 +40,6 @@
       "title": "adm-zip: Unhandled error event in async DEFLATE decompression crashes Node.js process (DoS)",
       "reason": "Sanity CLI (@sanity/runtime-cli 15 pins adm-zip ^0.5.16; fix needs 0.6). Only used by Sanity Functions/Blueprints deploy, which Abluo does not use. Never runs on Vercel or in the sites.",
       "removedBy": "sanity 6 (runtime-cli 17 uses adm-zip ^0.6.1)"
-    },
-    {
-      "id": "GHSA-mrhx-c7xc-m3w5",
-      "package": "zod",
-      "severity": "high",
-      "title": "Zod can exhaust memory while validating oversized constrained collections",
-      "reason": "zod 3.x nested under the shadcn CLI only. The app does not import zod.",
-      "removedBy": "shadcn bump"
     }
   ]
 }
