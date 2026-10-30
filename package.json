@@ -21,11 +21,12 @@
   },
   "dependencies": {
     "@node-oauth/oauth2-server": "^5.3.0",
-    "@portabletext/editor": "^1.58.1",
-    "@sanity/client": "^6",
-    "@sanity/google-maps-input": "4.1.1",
+    "@portabletext/editor": "^6.6.9",
+    "@sanity/client": "^7.28.0",
+    "@sanity/google-maps-input": "^6.1.17",
+    "@sanity/icons": "^3.7.4",
     "@sanity/image-url": "^1",
-    "@sanity/vision": "^3",
+    "@sanity/ui": "^3.2.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.1",
     "@vercel/analytics": "^2.0.1",
@@ -37,11 +38,11 @@
     "motion": "^12",
     "next": "16.4.3",
     "next-intl": "^4.12.0",
-    "next-sanity": "^9",
+    "next-sanity": "^12.4.5",
     "radix-ui": "^1.4.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "sanity": "^3",
+    "sanity": "^5.31.2",
     "shadcn": "^4.7.0",
     "styled-components": "^6.4.2",
     "tailwind-merge": "^3.6.0",
@@ -59,5 +60,10 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.9"
+  },
+  "overrides": {
+    "@vercel/frameworks": {
+      "js-yaml": "3.15.2"
+    }
   }
 }
