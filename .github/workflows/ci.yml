@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # NOTE: package.json has no `engines` field and the repo has no .nvmrc,
       # so there is no declared Node version to read. 22 is chosen because it
