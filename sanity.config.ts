@@ -355,13 +355,14 @@ export default defineConfig({
 
           // Content modules without a singleton page (Gallery, ADR-022) have
           // no group of their own: their collection sits beside Media, one
-          // click deep. Restricted to category 'content' so configuration-only
+          // click deep. Restricted to category 'content' (or a module that opts
+          // in with showUnderContent, e.g. Access) so configuration-only
           // modules (Forms, WhatsApp) never appear under Content.
           const collectionOnlyModules = sortByModuleOrder(
             MODULE_REGISTRY.filter(
               (m) =>
                 !m.platformContract.pageType &&
-                m.category === 'content' &&
+                (m.category === 'content' || m.platformContract.showUnderContent === true) &&
                 m.platformContract.collections.length > 0 &&
                 enabledModuleIds.includes(m.id)
             ),

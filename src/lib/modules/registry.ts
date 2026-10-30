@@ -1522,6 +1522,8 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     platformContract: {
       // ADR-040 §15 — Studio: Content → Access → Protected pages (the same
       // `page` type, filtered), with "New protected page" (protection on).
+      // Category is 'engagement', so it needs showUnderContent to appear there.
+      showUnderContent: true,
       collections: [
         {
           id: 'access-pages',

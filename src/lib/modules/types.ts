@@ -433,6 +433,13 @@ export type ModuleManifest = {
      */
     collections: ModuleCollectionGroupDef[]
     /**
+     * Show this module's collections under Studio → Content even though its
+     * category is not 'content' (e.g. Access: Content → Access → Protected
+     * pages, ADR-040 §15). Without it, only 'content' modules appear there, so
+     * configuration modules (Forms, WhatsApp) stay out of Content.
+     */
+    showUnderContent?: boolean
+    /**
      * Sanity section _type values this module contributes to SectionRenderer.
      * Declared here; consumed by Phase D2 (Section Map Derivation).
      */
