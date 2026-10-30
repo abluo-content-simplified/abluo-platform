@@ -25,7 +25,7 @@
     "@sanity/client": "^7.28.0",
     "@sanity/google-maps-input": "^6.1.17",
     "@sanity/icons": "^3.7.4",
-    "@sanity/image-url": "^1",
+    "@sanity/image-url": "^2",
     "@sanity/ui": "^3.2.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.1",
