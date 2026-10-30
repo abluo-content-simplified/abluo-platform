@@ -19,6 +19,7 @@ import { FocalPointPicker, type FocalPoint } from '@/components/app/ui/FocalPoin
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { PageHeader } from '@/components/app/ui/PageHeader'
+import { Panel } from '@/components/app/ui/Panel'
 import { MediaFrame } from '@/components/app/ui/list/cells'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
@@ -378,7 +379,7 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
         </div>
         <p className="text-sm leading-5 text-muted-foreground">{t('photo.helper')}</p>
         {canWrite && adjusting && cover?.url ? (
-          <div className="space-y-2 rounded-2xl border border-border p-4">
+          <Panel className="space-y-2">
             <FocalPointPicker
               url={cover.url}
               alt={cover.alt[d] ?? ''}
@@ -404,7 +405,7 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
               }}
             />
             <p className="text-sm leading-5 text-muted-foreground">{t('photo.focal.scope')}</p>
-          </div>
+          </Panel>
         ) : null}
       </section>
 
