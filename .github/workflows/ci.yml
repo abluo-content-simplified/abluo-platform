@@ -21,7 +21,7 @@
 #     clean, otherwise the workflow is red from day one for unrelated reasons.
 #
 # No deploy step, and no `secrets.*` reference anywhere in this file — this
-# workflow only checks out, installs, typechecks and tests.
+# workflow only checks out, installs, typechecks, tests, builds and audits.
 # ---------------------------------------------------------------------------
 
 name: CI
@@ -32,7 +32,7 @@ on:
 
 jobs:
   build:
-    name: typecheck + test
+    name: typecheck + test + build + audit
     runs-on: ubuntu-latest
 
     steps:
@@ -58,5 +58,23 @@ jobs:
         run: npx tsc --noEmit
 
       # package.json defines: "test": "vitest run"
+      # `!cancelled()` on the remaining steps: each check reports on its own,
+      # so a red test run still shows whether the build and the audit pass.
       - name: Test
+        if: ${{ !cancelled() }}
         run: npm test
+
+      # The step most likely to catch a dependency change that tsc and vitest
+      # miss. Needs no secrets: the build has been verified to pass without any
+      # env vars (2026-10-30).
+      - name: Build
+        if: ${{ !cancelled() }}
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+
+      # Fails on any HIGH/CRITICAL advisory in production dependencies that is
+      # not on the accepted list (scripts/audit-allowlist.json — may only shrink).
+      - name: Security audit (production dependencies)
+        if: ${{ !cancelled() }}
+        run: node scripts/audit-gate.mjs

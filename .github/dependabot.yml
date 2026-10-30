@@ -1,0 +1,34 @@
+# Dependabot — weekly dependency update PRs.
+#
+# Opens PRs only; nothing is auto-merged. CI runs tsc, vitest, a build and the
+# security audit, but no browser checks — so green does not prove a tenant site
+# still renders. Every PR is checked by a person and ships through
+# dev → preview → main like any other change.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Rome
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'chore(deps)'
+    groups:
+      # One PR for all patch updates, one for all minor updates.
+      # Major updates arrive as separate PRs, one per package.
+      patch:
+        update-types: ['patch']
+      minor:
+        update-types: ['minor']
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: 'chore(ci)'
