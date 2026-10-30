@@ -96,7 +96,7 @@ export default async function PostsPage({
       return {
         ...toBrowserPost(post, list.languages, t),
         // Live posts open on their overview (a copy is made on first open).
-        href: canEdit ? `/${projectSlug}/posts/write/${post._id}` : null,
+        href: canEdit ? `/${projectSlug}/posts/write/${post._id}?from=posts` : null,
         badge: draft ? t('posts.unpublishedChanges') : null,
         // The last edit of either version.
         updatedAt: latest(post.updatedAt, draft?.updatedAt),
@@ -114,7 +114,7 @@ export default async function PostsPage({
         <>
           <PageHeader
             title={t('posts.title')}
-            actions={canEdit && !moduleNotInstalled ? <CreateAction><NewPostLink href={`/${projectSlug}/posts/write/new`} label={t('posts.newPost')} /></CreateAction> : null}
+            actions={canEdit && !moduleNotInstalled ? <CreateAction><NewPostLink href={`/${projectSlug}/posts/write/new?from=posts`} label={t('posts.newPost')} /></CreateAction> : null}
           />
           <p className="text-sm text-muted-foreground">
             {moduleNotInstalled ? t('posts.moduleNotInstalled') : t('posts.emptyNoPosts')}
@@ -201,7 +201,7 @@ function draftToBrowserPost(
     featured: draft.featured,
     languageStates: states,
     translationsComplete: states.length ? states.every((s) => s.complete) : undefined,
-    href: `/${projectSlug}/posts/write/${draft.id}`,
+    href: `/${projectSlug}/posts/write/${draft.id}?from=posts`,
     thumb: draft.coverThumb,
     cardImage: draft.coverCard,
     hasLive: false,

@@ -27,6 +27,7 @@ import {
   canPublish,
   coverNeedsAlt,
   laterStep,
+  overviewSections,
   progressSteps,
   resumeTarget,
   unpublishedFaqSets,
@@ -96,6 +97,7 @@ export function WizardShell({
   draft: initialDraft,
   site: initialSite,
   homeHref,
+  exitHref,
   postsHref,
   canDelete = false,
   aiImprove = false,
@@ -103,6 +105,8 @@ export function WizardShell({
   draft: DraftSnapshot
   site: SiteInfo
   homeHref: string
+  /** Where "save and exit" and closing an empty wizard go: the page it was opened from (Posts or Home). Defaults to Home. */
+  exitHref?: string
   /** The posts list, where Discard / Delete land. */
   postsHref: string
   /** Owner holding blog.post.delete (the server re-checks). */
@@ -286,12 +290,13 @@ export function WizardShell({
   }, [steps, index, go, editing])
   const openSection = useCallback((section: OverviewSection['id']) => go(section, { editing: true }), [go])
 
+  const leaveHref = exitHref ?? homeHref
   const saveAndExit = useCallback(async () => {
     await autosave.flush()
-    router.push(homeHref)
-  }, [autosave, router, homeHref])
-  /** Nothing saved yet: just leave (no draft is created). */
-  const closeEmpty = useCallback(() => router.push(homeHref), [router, homeHref])
+    router.push(leaveHref)
+  }, [autosave, router, leaveHref])
+  /** Nothing saved yet: just leave (no draft is created), back where the wizard was opened from. */
+  const closeEmpty = useCallback(() => router.push(leaveHref), [router, leaveHref])
 
   const reload = useCallback(async () => {
     await autosave.discard()
@@ -642,6 +647,9 @@ export function WizardShell({
     (onReview ? canPublish(snap, locale) : step === 'cover' || canAdvance(step, snap, locale))
   const segmentIndex = step ? segments.indexOf(step as WizardFlowStep) : 0
   const showProgress = !editing && !onReview
+  // An optional step with nothing chosen yet says "Skip for now", not "Next" — the
+  // same optional/done rule the review screen shows (overviewSections).
+  const stepIsEmptyOptional = overviewSections(snap, site).some((s) => s.id === step && s.state === 'optional')
   const nextLabel =
     step === 'publish'
       ? busy
@@ -657,7 +665,7 @@ export function WizardShell({
           ? t('shell.finishingPhoto')
           : editing
           ? t('shell.done')
-          : step === 'cover' && !snap.cover
+          : stepIsEmptyOptional
             ? t('shell.skip')
             : t('shell.next')
   const onPrimary =

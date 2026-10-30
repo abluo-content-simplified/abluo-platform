@@ -354,7 +354,7 @@ export function PostsBrowser({
             />
             {canEdit && projectSlug ? (
               <CreateAction>
-                <NewPostLink href={`/${projectSlug}/posts/write/new`} label={t('newPost')} />
+                <NewPostLink href={`/${projectSlug}/posts/write/new?from=posts`} label={t('newPost')} />
               </CreateAction>
             ) : null}
           </>

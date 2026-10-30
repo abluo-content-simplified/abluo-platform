@@ -55,8 +55,16 @@ function emptyPostDraft(): Awaited<ReturnType<typeof getPostDraft>> {
   }
 }
 
-export default async function WriteDraftPage({ params }: { params: Promise<{ tenant: string; id: string }> }) {
+export default async function WriteDraftPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ tenant: string; id: string }>
+  searchParams: Promise<{ from?: string | string[] }>
+}) {
   const { tenant: projectSlug, id } = await params
+  // Opened from the Posts list (`?from=posts`) → leaving returns there; otherwise Home.
+  const fromPosts = (await searchParams).from === 'posts'
 
   const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=/${projectSlug}/posts/write/${encodeURIComponent(id)}`)
@@ -104,6 +112,7 @@ export default async function WriteDraftPage({ params }: { params: Promise<{ ten
         faqWrite: grant.enabledModuleIds.includes('faq') && grant.permissions.includes('faq.set.write'),
       }}
       homeHref={dashboardHomeHref(projectSlug)}
+      exitHref={fromPosts ? `/${projectSlug}/posts` : undefined}
       postsHref={`/${projectSlug}/posts`}
       canDelete={canDeletePublished(grant)}
       aiImprove={getAiFeatureFlags().improve}
