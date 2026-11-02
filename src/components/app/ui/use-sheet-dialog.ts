@@ -48,29 +48,17 @@ export function useSheetDialog(open: boolean, onClose: () => void) {
     return () => window.clearTimeout(id)
   }, [open, target])
 
-  const dialogProps = { ref, ...sheetDialogHandlers(onClose, closingByUs) }
-  return { target, dialogProps }
-}
-
-/**
- * The cancel/close handlers of a sheet dialog. Pure (exported for tests).
- *
- * React bubbles synthetic events through portals along the COMPONENT tree, so a
- * sheet opened from inside a panel (a DatePicker in a SidePanel) would hand its
- * own cancel/close to the panel too and close both (Tom, 2026-11-02). Only
- * events whose target is THIS dialog count.
- */
-export function sheetDialogHandlers(onClose: () => void, closingByUs: { current: boolean }) {
-  return {
+  const dialogProps = {
+    ref,
     // Escape: animate out like any other close, instead of the browser's instant close.
-    onCancel: (e: Pick<SyntheticEvent<HTMLDialogElement>, 'target' | 'currentTarget' | 'preventDefault'>) => {
-      if (e.target !== e.currentTarget) return
+    onCancel: (e: SyntheticEvent<HTMLDialogElement>) => {
+      if (!isOwnDialogEvent(e)) return
       e.preventDefault()
       onClose()
     },
     // A close we did not start (e.g. a form with method="dialog") still tells the owner.
-    onClose: (e: Pick<SyntheticEvent<HTMLDialogElement>, 'target' | 'currentTarget'>) => {
-      if (e.target !== e.currentTarget) return
+    onClose: (e: SyntheticEvent<HTMLDialogElement>) => {
+      if (!isOwnDialogEvent(e)) return
       if (closingByUs.current) {
         closingByUs.current = false
         return
@@ -78,4 +66,15 @@ export function sheetDialogHandlers(onClose: () => void, closingByUs: { current:
       onClose()
     },
   }
+  return { target, dialogProps }
+}
+
+/**
+ * React bubbles synthetic events through portals along the COMPONENT tree, so a
+ * sheet opened from inside a panel (a DatePicker in a SidePanel) would hand its
+ * own cancel/close to the panel too and close both (Tom, 2026-11-02). Only
+ * events whose target is the dialog handling them count. Pure (tested).
+ */
+export function isOwnDialogEvent(e: { target: unknown; currentTarget: unknown }): boolean {
+  return e.target === e.currentTarget
 }
