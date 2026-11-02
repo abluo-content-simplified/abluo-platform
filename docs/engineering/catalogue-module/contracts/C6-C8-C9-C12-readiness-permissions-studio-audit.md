@@ -1162,6 +1162,10 @@ The Studio marker adapter is ~40 lines: `findingToStudioMarker(f) → { level: f
 | T-19 `access-register-documented` | docs lint: the C10 plan lists the access-register checklist (seats, single write token, read-only MCP/CLI tokens) | fails if the checklist item is absent |
 | T-13 `validations-shrunk` | `schema.ts` contains no `OPTION_LIST_FOOD_USERS_QUERY`/`studioOptionListProblem` usage after the cut-over; allergen validation calls `evaluateItem` |
 
+### R1 implementation note — `cataloguePage` stays Studio-edited
+
+`cataloguePage` (the public Catalogue landing page: sections, SEO) is edited **only in Studio**; the dashboard has no editor for it. Locking it in R1 (read-only form, no document actions) would leave nobody able to edit or publish it. R1 therefore classifies it as **"Studio-edited until a dashboard editor exists"**: it stays in `CATALOGUE_STUDIO_TYPES` (T-3 still requires every Catalogue document type to be classified) and is listed, with that reason, in `CATALOGUE_STUDIO_EDITED` (`src/lib/sanity/studio/catalogue-posture.ts`). The R1 lock applies to `CATALOGUE_LOCKED_TYPES` = the classified types minus that exception: `cataloguePage` keeps its normal document actions, its pre-R1 "+ New" templates, and no posture `readOnly`. T-1, T-10 and T-5's template check run over the locked types; the posture test asserts the exception and its reason. The entry is removed — and the page locked like the other types — in the same commit that ships a dashboard editor for it.
+
 
 ---
 

@@ -389,3 +389,17 @@ describe('categories vocabulary from term records (Amendment J)', () => {
     expect(code(() => cleanCatalogueSet('item', { categories: ['romanzi', 'nope'] }, ctx({ categories: termKeys })))).toBe('invalid_value')
   })
 })
+
+describe('D-21 linked-item refusal (R1 review)', () => {
+  it('ships as `linked_item_needs_price` with the decided message in every interface language, and the dashboard knows the code', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const errors = (l: string) => JSON.parse(readFileSync(join(process.cwd(), 'messages', `${l}.json`), 'utf8')).catalogue.dashboard.errors as Record<string, string>
+    expect(errors('en').linked_item_needs_price).toBe('This item needs at least one price before it can be used as a linked choice.')
+    for (const l of ['it', 'de']) expect(errors(l).linked_item_needs_price, l).toBeTruthy()
+    const ui = readFileSync(join(process.cwd(), 'src/components/client/catalogue/catalogue-ui.tsx'), 'utf8')
+    expect(ui).toMatch(/'linked_item_needs_price'/)
+    const drafts = readFileSync(join(process.cwd(), 'src/lib/api/catalogue-drafts.ts'), 'utf8')
+    expect(drafts).toMatch(/new CatalogueError\('linked_item_needs_price', 'This item needs at least one price before it can be used as a linked choice\.'\)/)
+  })
+})

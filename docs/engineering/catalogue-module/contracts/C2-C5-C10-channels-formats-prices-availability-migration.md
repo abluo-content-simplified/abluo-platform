@@ -730,6 +730,8 @@ Callers that **must** switch (no caller keeps reading offers directly):
 | `dashboard-queries.ts` `CATALOGUE_REF_TARGETS_QUERY` result **`offered`** (option-item picker, D2) | `count(offers) > 0` | renamed **`hasPrice`** = ≥ 1 price on any format (legacy `offers` during transition). *Decided — Tom 2026-11-02, D-21:* refusal message **"This item needs at least one price before it can be used as a linked choice."** An item with at least one price qualifies even when unavailable on a particular channel; all other picker requirements (project scope, valid draft/published dependency, lifecycle checks) continue to apply. After the split, "offered" is never a synonym for "priced". |
 | Future: automatic listings ("available now / at this time", D-6), preview, PDF, export, partner API | — | `availableNow` / `resolveOffering` (point-in-time, cache contract C5a-4) or `publicCommerce` (instant-free) — nothing else |
 
+> **R1 implementation note (D-21):** R1 ships the option-item refusal under the renamed code **`linked_item_needs_price`** (was `invalid_value`) with Tom's decided message "This item needs at least one price before it can be used as a linked choice." (`src/lib/api/catalogue-drafts.ts`).
+
 ### C5-6 Impact calculator (rules and schedules)
 
 ```ts

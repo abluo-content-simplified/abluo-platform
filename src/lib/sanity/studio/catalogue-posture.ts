@@ -2,8 +2,9 @@
 //
 // K-7: the dashboard is the editor. Catalogue DOCUMENTS are read-only in
 // Studio by default; the only sanctioned Studio write path is break-glass
-// (C9 §9.4, migration 062 — NOT in R1), so in R1 every Catalogue document is
-// always read-only and offers no document action.
+// (C9 §9.4, migration 062 — NOT in R1), so in R1 every LOCKED Catalogue document
+// is always read-only and offers no document action. Exception: types with no
+// dashboard editor yet (CATALOGUE_STUDIO_EDITED — `cataloguePage`) stay Studio-edited.
 //
 // Read-only Studio is a UI control, NOT a security boundary (D-18): anyone
 // with API access can still write. The compensating controls are the
@@ -27,7 +28,24 @@ export const CATALOGUE_STUDIO_TYPES = [
 
 export type CatalogueStudioType = (typeof CATALOGUE_STUDIO_TYPES)[number]
 
-const STUDIO_TYPES: ReadonlySet<string> = new Set(CATALOGUE_STUDIO_TYPES)
+/**
+ * Posture classification exceptions — "Studio-edited until a dashboard editor exists" (C9 R1
+ * implementation note). These types are classified (T-3) but NOT locked: no read-only form, their
+ * normal document actions, their pre-R1 templates. Locking a type whose only editor is Studio removes
+ * its only editor (same reasoning as REVIEW C-18 for taxonomyTerm). An entry is removed in the SAME
+ * commit that ships the type's dashboard editor.
+ */
+export const CATALOGUE_STUDIO_EDITED: Readonly<Partial<Record<CatalogueStudioType, string>>> = Object.freeze({
+  cataloguePage:
+    'The public Catalogue landing page (sections, SEO) is edited only in Studio; the dashboard has no editor for it yet, so the R1 lock would leave nobody able to edit or publish it.',
+})
+
+export const isStudioEditedCatalogueType = (type: string): boolean => Object.prototype.hasOwnProperty.call(CATALOGUE_STUDIO_EDITED, type)
+
+/** The Catalogue document types the R1 lock applies to (every classified type minus the Studio-edited exceptions). */
+export const CATALOGUE_LOCKED_TYPES: readonly CatalogueStudioType[] = Object.freeze(CATALOGUE_STUDIO_TYPES.filter((t) => !isStudioEditedCatalogueType(t)))
+
+const STUDIO_TYPES: ReadonlySet<string> = new Set(CATALOGUE_LOCKED_TYPES)
 
 export type LockPhase = 'R1' | 'R2'
 
@@ -129,8 +147,8 @@ export function catalogueDocumentActions<A extends { action?: string | null }>(p
   return args.gate ? [args.gate, ...discard] : discard
 }
 
-/** Catalogue templates are removed from every "+ New" menu, always — documents are created by the dashboard (even in break-glass). */
-export const CATALOGUE_TEMPLATE_IDS: readonly string[] = Object.freeze(CATALOGUE_STUDIO_TYPES.flatMap((t) => [t, `${t}ProjectOwned`]))
+/** Catalogue templates are removed from every "+ New" menu, always — documents are created by the dashboard (even in break-glass). Studio-edited types keep their pre-R1 templates. */
+export const CATALOGUE_TEMPLATE_IDS: readonly string[] = Object.freeze(CATALOGUE_LOCKED_TYPES.flatMap((t) => [t, `${t}ProjectOwned`]))
 
 /**
  * Fields that stay `readOnly: true` unconditionally on Catalogue documents,

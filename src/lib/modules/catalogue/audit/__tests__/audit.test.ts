@@ -68,6 +68,29 @@ describe('migration 061 ↔ TS kinds', () => {
     expect(MIGRATION).toMatch(/create unique index catalogue_audit_txn on public\.catalogue_audit_log \(transaction_id, kind, coalesce\(target_id, ''\)\) where transaction_id is not null/)
     expect(MIGRATION).not.toMatch(/\b(drop|alter)\s+table\s+(?!public\.catalogue_audit_log)/i)
   })
+
+  it('is append-only for service_role: everything revoked, then only SELECT/INSERT/DELETE (retention purge) granted back', () => {
+    const sql = MIGRATION.replace(/^\s*--.*$/gm, '')
+    const revokeAll = sql.indexOf('revoke all on public.catalogue_audit_log from service_role;')
+    const grant = sql.indexOf('grant select, insert, delete on public.catalogue_audit_log to service_role;')
+    expect(revokeAll).toBeGreaterThan(0)
+    expect(grant).toBeGreaterThan(revokeAll)
+    const grants = [...sql.matchAll(/\bgrant\s+([a-z ,]+?)\s+on\s+(?:table\s+)?public\.catalogue_audit_log\b/gi)].map((m) => m[1].toLowerCase())
+    expect(grants).toEqual(['select, insert, delete'])
+    expect(sql).not.toMatch(/grant\s+[^;]*\b(update|truncate|all)\b[^;]*catalogue_audit_log/i)
+  })
+
+  it('a trigger refuses UPDATE (except the foreign keys\' set-null) and TRUNCATE for every role; DELETE stays for retention', () => {
+    const sql = MIGRATION.replace(/^\s*--.*$/gm, '')
+    expect(sql).toMatch(/create trigger catalogue_audit_log_no_update\s+before update on public\.catalogue_audit_log\s+for each row execute function public\.catalogue_audit_log_append_only\(\)/)
+    expect(sql).toMatch(/create trigger catalogue_audit_log_no_truncate\s+before truncate on public\.catalogue_audit_log\s+for each statement execute function public\.catalogue_audit_log_append_only\(\)/)
+    // Only actor_id / project_id may change, and only to null (FK `on delete set null`, §12.5).
+    expect(sql).toMatch(/\(to_jsonb\(new\) - 'actor_id' - 'project_id'\) = \(to_jsonb\(old\) - 'actor_id' - 'project_id'\)/)
+    expect(sql).toMatch(/new\.actor_id is null/)
+    expect(sql).toMatch(/new\.project_id is null/)
+    expect(sql).not.toMatch(/before delete on public\.catalogue_audit_log/)
+    expect(MIGRATION).toMatch(/drop function public\.catalogue_audit_log_append_only\(\)/) // rollback covers it
+  })
 })
 
 describe('C12 payloads', () => {

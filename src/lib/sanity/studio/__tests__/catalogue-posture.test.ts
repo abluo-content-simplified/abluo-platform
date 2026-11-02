@@ -7,6 +7,8 @@ import { MODULE_REGISTRY } from '@/lib/modules'
 import { DASHBOARD_TRANSACTION_PREFIX } from '@/lib/lifecycle/audit'
 import {
   CATALOGUE_LOCK_PHASE,
+  CATALOGUE_LOCKED_TYPES,
+  CATALOGUE_STUDIO_EDITED,
   CATALOGUE_STUDIO_SCOPED,
   CATALOGUE_STUDIO_TYPES,
   CATALOGUE_TEMPLATE_IDS,
@@ -47,12 +49,19 @@ describe('T-3 registry-and-posture-agree (classification)', () => {
   it('the four document types the dashboard edits today are there, plus the reserved ones of C1/C6/C7', () => {
     expect([...CATALOGUE_STUDIO_TYPES]).toEqual(['catalogueItem', 'catalogueCollection', 'catalogueOptionList', 'cataloguePage', 'catalogueTaxonomy', 'cataloguePackHistory', 'cataloguePublicationStandards', 'cataloguePackRun'])
   })
+
+  it('cataloguePage is classified "Studio-edited until a dashboard editor exists", with a reason; every other type is locked', () => {
+    expect(Object.keys(CATALOGUE_STUDIO_EDITED)).toEqual(['cataloguePage'])
+    expect(CATALOGUE_STUDIO_EDITED.cataloguePage).toMatch(/Studio/)
+    expect([...CATALOGUE_LOCKED_TYPES]).toEqual(CATALOGUE_STUDIO_TYPES.filter((t) => t !== 'cataloguePage'))
+    for (const t of CATALOGUE_STUDIO_TYPES) expect(CATALOGUE_LOCKED_TYPES.includes(t) !== Object.hasOwn(CATALOGUE_STUDIO_EDITED, t), t).toBe(true)
+  })
 })
 
 describe('T-1 every-catalogue-document-type-readonly (layer 1)', () => {
   const wrapped = applyCataloguePosture(catalogueSchemaTypes as never[]) as Array<{ name: string; type?: string; readOnly?: unknown; fields?: Array<{ name: string; readOnly?: unknown }> }>
 
-  it.each(documentTypes())('%s has a function readOnly that is true with no grant, not loaded, and an expired grant', (name) => {
+  it.each(documentTypes().filter((t) => !Object.hasOwn(CATALOGUE_STUDIO_EDITED, t)))('%s has a function readOnly that is true with no grant, not loaded, and an expired grant', (name) => {
     const t = wrapped.find((x) => x.name === name)!
     expect(typeof t.readOnly).toBe('function')
     const doc = { projectSlug: 'p', module: 'catalogue' }
@@ -63,6 +72,13 @@ describe('T-1 every-catalogue-document-type-readonly (layer 1)', () => {
     postureStore.set(OPEN)
     expect((t.readOnly as (c: unknown) => boolean)({ document: doc })).toBe(false)
     expect((t.readOnly as (c: unknown) => boolean)({ document: { projectSlug: 'other' } })).toBe(true)
+  })
+
+  it('cataloguePage (Studio-edited) is not wrapped: no posture readOnly, its own fields as defined', () => {
+    const page = wrapped.find((x) => x.name === 'cataloguePage')!
+    expect(page).toBe((catalogueSchemaTypes as unknown[]).find((x) => (x as { name: string }).name === 'cataloguePage'))
+    for (const state of [NONE, CLOSED_POSTURE]) expect(catalogueReadOnly({ type: 'cataloguePage', doc: { projectSlug: 'p' }, state, now: NOW })).toBe(false)
+    expect(isCatalogueStudioDoc('cataloguePage')).toBe(false)
   })
 
   it('object types are untouched; identity fields stay read-only unconditionally', () => {
@@ -82,7 +98,7 @@ describe('T-1 every-catalogue-document-type-readonly (layer 1)', () => {
 
 describe('T-10 fails-closed / T-15 lock-phases', () => {
   it('loaded=false ⇒ read-only for every type, even with a live grant in the list', () => {
-    for (const type of CATALOGUE_STUDIO_TYPES) expect(catalogueReadOnly({ type, doc: { projectSlug: 'p' }, state: { grants: OPEN.grants, loaded: false }, now: NOW })).toBe(true)
+    for (const type of CATALOGUE_LOCKED_TYPES) expect(catalogueReadOnly({ type, doc: { projectSlug: 'p' }, state: { grants: OPEN.grants, loaded: false }, now: NOW })).toBe(true)
   })
 
   it('a document without a projectSlug is read-only', () => {
@@ -112,6 +128,11 @@ describe('T-2 / T-4 document actions (layer 2)', () => {
     for (const state of [NONE, EXPIRED, CLOSED_POSTURE]) expect(catalogueDocumentActions(prev, { state, now: NOW, gate })).toEqual([])
   })
 
+  it('cataloguePage keeps its normal document actions (the sanity.config branch is skipped for Studio-edited types)', () => {
+    expect(isCatalogueStudioDoc('cataloguePage')).toBe(false)
+    for (const t of CATALOGUE_LOCKED_TYPES) expect(isCatalogueStudioDoc(t), t).toBe(true)
+  })
+
   it('T-4 posture on → exactly [gate, discard]; without a gate (R1) only discard', () => {
     expect(catalogueDocumentActions(prev, { state: OPEN, now: NOW, gate })).toEqual([gate, { action: 'discardChanges' }])
     const r1 = catalogueDocumentActions(prev, { state: OPEN, now: NOW })
@@ -129,8 +150,9 @@ describe('T-5 sanity-config-delegates (layers 2 and 3)', () => {
     expect(src).toMatch(/types: applyCataloguePosture\(schemaTypes\)/)
   })
 
-  it('CATALOGUE_TEMPLATE_IDS covers the default and project-owned template of every Catalogue document type', () => {
-    for (const t of CATALOGUE_STUDIO_TYPES) {
+  it('CATALOGUE_TEMPLATE_IDS covers the default and project-owned template of every LOCKED Catalogue document type; cataloguePage keeps its pre-R1 template', () => {
+    expect(CATALOGUE_TEMPLATE_IDS).not.toContain('cataloguePage')
+    for (const t of CATALOGUE_LOCKED_TYPES) {
       expect(CATALOGUE_TEMPLATE_IDS).toContain(t)
       expect(CATALOGUE_TEMPLATE_IDS).toContain(`${t}ProjectOwned`)
     }

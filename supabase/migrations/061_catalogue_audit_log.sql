@@ -5,7 +5,8 @@
 -- "table missing ⇒ log and continue" (src/lib/modules/catalogue/audit/writer.ts);
 -- (b) rehearse this file on the Abluo Sandbox; (c) Tom approves; (d) Tom
 -- applies it in the SQL Editor and records it in supabase/APPLIED.md.
--- Purely additive: one new table, no change to any existing object.
+-- Purely additive: one new table (+ its append-only trigger function), no
+-- change to any existing object.
 -- Number reserved by C10-6 (REVIEW E-15): 061 = catalogue_audit_log, then
 -- 062 = studio_break_glass (C9, not in R1).
 --
@@ -37,6 +38,10 @@
 -- Server-only: RLS on, no grants to anon/authenticated, no policies; written
 -- and read with the service role behind the dashboard's permission checks.
 --
+-- Append-only: service_role has SELECT, INSERT and DELETE only (DELETE is the
+-- §12.5 retention purge); UPDATE and TRUNCATE are revoked, and a trigger
+-- refuses them for any role except the foreign keys' set-null actions.
+--
 -- Retention (D-20): ok rows 5 years (platform audit default; longer allergen
 -- retention pending legal/privacy review — never a hard-coded literal);
 -- refused/failed and studio.write_outside_gate 12 months. Enforced by the
@@ -52,6 +57,7 @@
 --     end if;
 --   end $$;
 --   drop table public.catalogue_audit_log;
+--   drop function public.catalogue_audit_log_append_only();
 --   commit;
 -- The writer treats the missing table as "log and continue", so rolling back
 -- never breaks a dashboard action.
@@ -59,6 +65,8 @@
 -- Verify after apply (read-only):
 --   select to_regclass('public.catalogue_audit_log');            -- not null
 --   select count(*) from public.catalogue_audit_log;              -- 0
+--   select privilege_type from information_schema.role_table_grants
+--    where table_name = 'catalogue_audit_log' and grantee = 'service_role';  -- SELECT, INSERT, DELETE only
 -- ============================================================
 
 begin;
@@ -103,6 +111,45 @@ create unique index catalogue_audit_txn on public.catalogue_audit_log (transacti
 
 alter table public.catalogue_audit_log enable row level security;
 revoke all on public.catalogue_audit_log from anon, authenticated;
+-- Append-only for the service role (R1 review): Supabase's default privileges
+-- give service_role ALL on a new public table, so the grant below alone would
+-- leave UPDATE/TRUNCATE in place. Revoke everything, then grant back only what
+-- C12 needs: SELECT (Activity views), INSERT (the writer) and DELETE (the C12
+-- §12.5 retention purge — the only sanctioned removal). No UPDATE, no TRUNCATE.
+revoke all on public.catalogue_audit_log from service_role;
 grant select, insert, delete on public.catalogue_audit_log to service_role;
+
+-- Belt and braces for roles that bypass privileges (the table owner): a row is
+-- never rewritten. The only UPDATE allowed is the one the foreign keys perform
+-- (§12.5: actor_id / project_id set null on account / project deletion) —
+-- every other column unchanged and the changed reference going to null.
+create function public.catalogue_audit_log_append_only()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if tg_op = 'UPDATE' then
+    if (to_jsonb(new) - 'actor_id' - 'project_id') = (to_jsonb(old) - 'actor_id' - 'project_id')
+       and (new.actor_id is not distinct from old.actor_id or new.actor_id is null)
+       and (new.project_id is not distinct from old.project_id or new.project_id is null) then
+      return new;
+    end if;
+    raise exception 'catalogue_audit_log is append-only: rows are never updated' using errcode = '42501';
+  end if;
+  -- TRUNCATE: removal is row by row through the retention purge only.
+  raise exception 'catalogue_audit_log is append-only: truncate refused (retention deletes row by row)' using errcode = '42501';
+end;
+$$;
+
+revoke all on function public.catalogue_audit_log_append_only() from public, anon, authenticated, service_role;
+
+create trigger catalogue_audit_log_no_update
+  before update on public.catalogue_audit_log
+  for each row execute function public.catalogue_audit_log_append_only();
+
+create trigger catalogue_audit_log_no_truncate
+  before truncate on public.catalogue_audit_log
+  for each statement execute function public.catalogue_audit_log_append_only();
 
 commit;
