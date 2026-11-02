@@ -3235,7 +3235,8 @@
       },
       "checkout": {
         "success": "Thank you — your payment is being confirmed. This can take a moment.",
-        "cancel": "No payment was made. You can pay whenever you’re ready."
+        "cancel": "No payment was made. You can pay whenever you’re ready.",
+        "confirmed": "Thank you — your payment has been received."
       },
       "errors": {
         "forbidden": "Only the account Owner can do this.",

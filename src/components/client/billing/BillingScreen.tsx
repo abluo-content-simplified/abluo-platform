@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { Button, ButtonLink } from '@/components/app/ui/Button'
 import { BillingStatusPill } from '@/components/app/ui/BillingStatusPill'
@@ -28,6 +28,15 @@ export function BillingScreen({ projectSlug, view, checkout }: { projectSlug: st
   const [errorKey, setErrorKey] = useState<ReturnType<typeof billingErrorKey> | null>(null)
   const { current, access, profile } = view
   const actions = billingActions(current, access)
+  // Back from Stripe: once the payment is confirmed say so, not "being confirmed". The
+  // ?checkout= marker is dropped from the address so a reload does not repeat the message.
+  const confirmed = checkout === 'success' && current.status.reason === 'paid'
+  useEffect(() => {
+    if (!checkout) return
+    const url = new URL(window.location.href)
+    url.searchParams.delete('checkout')
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
+  }, [checkout])
 
   const go = (run: () => Promise<{ ok: true; url: string } | { ok: false; error: Parameters<typeof billingErrorKey>[0] }>) =>
     start(async () => {
@@ -45,7 +54,7 @@ export function BillingScreen({ projectSlug, view, checkout }: { projectSlug: st
     <div className="flex flex-col gap-6">
       <PageHeader title={t('title')} />
 
-      {checkout === 'success' ? <Notice tone="info">{t('checkout.success')}</Notice> : null}
+      {checkout === 'success' ? <Notice tone="info">{t(confirmed ? 'checkout.confirmed' : 'checkout.success')}</Notice> : null}
       {checkout === 'cancel' ? <Notice tone="neutral">{t('checkout.cancel')}</Notice> : null}
       {errorKey ? <Notice tone="error">{t(`errors.${errorKey}`)}</Notice> : null}
 

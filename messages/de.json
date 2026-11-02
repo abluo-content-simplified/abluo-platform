@@ -3235,7 +3235,8 @@
       },
       "checkout": {
         "success": "Danke — deine Zahlung wird gerade bestätigt. Das kann einen Moment dauern.",
-        "cancel": "Es wurde nichts bezahlt. Du kannst jederzeit zahlen, wenn du bereit bist."
+        "cancel": "Es wurde nichts bezahlt. Du kannst jederzeit zahlen, wenn du bereit bist.",
+        "confirmed": "Danke — deine Zahlung ist eingegangen."
       },
       "errors": {
         "forbidden": "Das kann nur der Inhaber des Kontos tun.",

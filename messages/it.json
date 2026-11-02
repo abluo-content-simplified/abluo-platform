@@ -3235,7 +3235,8 @@
       },
       "checkout": {
         "success": "Grazie — stiamo confermando il tuo pagamento. Può volerci qualche istante.",
-        "cancel": "Nessun pagamento effettuato. Puoi pagare quando vuoi."
+        "cancel": "Nessun pagamento effettuato. Puoi pagare quando vuoi.",
+        "confirmed": "Grazie — il pagamento è stato ricevuto."
       },
       "errors": {
         "forbidden": "Solo il proprietario dell’account può farlo.",
