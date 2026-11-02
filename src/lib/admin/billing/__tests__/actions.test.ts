@@ -46,8 +46,8 @@ const terms = (t: Record<string, unknown> = {}) => ({
   activationDueOn: '2099-01-01', activationExtensionReason: null, manualPaidThrough: null, ...t,
 })
 const profile = (t: Record<string, unknown> = {}) => ({
-  tenantId: TENANT, billingEmail: 'a@b.it', customerType: 'business' as const, legalName: 'Acme Srl', addressLine1: null, addressLine2: null,
-  postalCode: null, city: null, region: null, country: 'it', vatId: 'it 123 456 789 01', ...t,
+  tenantId: TENANT, billingEmail: 'a@b.it', customerType: 'business' as const, legalName: 'Acme Srl', contactName: 'Maria Rossi', addressLine1: null, addressLine2: null,
+  postalCode: null, city: null, region: null, country: 'it', vatId: 'it 123 456 789 01', taxCode: null, ...t,
 })
 
 beforeEach(() => {
@@ -204,6 +204,20 @@ describe('saveBillingProfileAction', () => {
     expect(await (await actions()).saveBillingProfileAction(profile())).toEqual({ ok: true })
     expect(writes()[0].payload).toMatchObject({ tenant_id: TENANT, livemode: false, country: 'IT', vat_id: 'IT12345678901', vat_verification: 'none', vat_verified_at: null })
     expect(recordAdminAudit).toHaveBeenCalledWith(expect.objectContaining({ action: 'billing.profile.set', projectId: null }))
+  })
+  it('stores the contact person of a business', async () => {
+    await (await actions()).saveBillingProfileAction(profile())
+    expect(writes()[0].payload).toMatchObject({ legal_name: 'Acme Srl', contact_name: 'Maria Rossi', tax_code: null })
+  })
+  it('an individual keeps no VAT number or contact person; in Italy the codice fiscale is stored upper-case', async () => {
+    const input = profile({ customerType: 'individual', legalName: 'Mario Rossi', taxCode: 'rssmra80a01 h501u' })
+    expect(await (await actions()).saveBillingProfileAction(input)).toEqual({ ok: true })
+    expect(writes()[0].payload).toMatchObject({ customer_type: 'individual', legal_name: 'Mario Rossi', vat_id: null, contact_name: null, tax_code: 'RSSMRA80A01H501U' })
+  })
+  it('a malformed codice fiscale is refused before the database', async () => {
+    const r = await (await actions()).saveBillingProfileAction(profile({ customerType: 'individual', legalName: 'Mario Rossi', taxCode: 'ABC' }))
+    expect(r).toEqual({ ok: false, error: 'invalid', fields: ['taxCode'] })
+    expect(calls).toEqual([])
   })
   it('keeps the verification when the VAT id is unchanged', async () => {
     handler = (c) => (c.table === 'tenants' ? { data: { id: TENANT } } : c.table === 'billing_profiles' && c.op === 'select' ? { data: { vat_id: 'IT12345678901' } } : { data: null })

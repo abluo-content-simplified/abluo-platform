@@ -31,7 +31,10 @@ export type ClientBillingSite = BillingSiteFacts & {
   intervalCount: number
 }
 
-export type ClientBillingProfile = Pick<BillingProfileView, 'legalName' | 'billingEmail' | 'country' | 'vatId' | 'vatVerification'>
+export type ClientBillingProfile = Pick<
+  BillingProfileView,
+  'customerType' | 'legalName' | 'contactName' | 'billingEmail' | 'country' | 'vatId' | 'vatVerification' | 'taxCode'
+>
 
 export type ClientBillingView = {
   livemode: boolean
@@ -117,7 +120,16 @@ export async function loadClientBillingView(ctx: TenantAuthorizationContext, pro
       current,
       others: sites.filter((s) => s.projectId !== grant.projectId),
       profile: profile
-        ? { legalName: profile.legalName, billingEmail: profile.billingEmail, country: profile.country, vatId: profile.vatId, vatVerification: profile.vatVerification }
+        ? {
+            customerType: profile.customerType,
+            legalName: profile.legalName,
+            contactName: profile.customerType === 'business' ? profile.contactName : null,
+            billingEmail: profile.billingEmail,
+            country: profile.country,
+            vatId: profile.customerType === 'individual' ? null : profile.vatId,
+            vatVerification: profile.vatVerification,
+            taxCode: profile.taxCode,
+          }
         : null,
     }
   })

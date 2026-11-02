@@ -9,6 +9,7 @@ import { Notice } from '@/components/app/ui/Notice'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { Panel } from '@/components/app/ui/Panel'
 import { SectionHeading } from '@/components/app/ui/SectionHeading'
+import { countryName } from '@/components/app/ui/country-model'
 import { ListRow } from '@/components/app/ui/list/ListRow'
 import { billingActions, billingErrorKey, billingSentence } from '@/lib/billing/client-access'
 import { openBillingPortalAction, startCheckoutAction } from '@/lib/billing/client-actions'
@@ -71,19 +72,23 @@ export function BillingScreen({ projectSlug, view, checkout }: { projectSlug: st
         <Panel>
           {profile ? (
             <dl>
-              <FactRow label={t('details.legalName')}>{profile.legalName || '—'}</FactRow>
+              <FactRow label={t(profile.customerType === 'individual' ? 'details.fullName' : 'details.companyName')}>{profile.legalName || '—'}</FactRow>
+              {profile.customerType === 'business' && profile.contactName ? <FactRow label={t('details.contactName')}>{profile.contactName}</FactRow> : null}
               <FactRow label={t('details.email')}>{profile.billingEmail || '—'}</FactRow>
-              <FactRow label={t('details.country')}>{profile.country || '—'}</FactRow>
-              <FactRow label={t('details.vat')}>
-                {profile.vatId ? (
-                  <>
-                    {profile.vatId}
-                    <span className="block text-sm text-muted-foreground">{t(`details.vatStatus.${profile.vatVerification}`)}</span>
-                  </>
-                ) : (
-                  '—'
-                )}
-              </FactRow>
+              <FactRow label={t('details.country')}>{profile.country ? countryName(profile.country, locale) : '—'}</FactRow>
+              {profile.customerType !== 'individual' ? (
+                <FactRow label={t('details.vat')}>
+                  {profile.vatId ? (
+                    <>
+                      {profile.vatId}
+                      <span className="block text-sm text-muted-foreground">{t(`details.vatStatus.${profile.vatVerification}`)}</span>
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                </FactRow>
+              ) : null}
+              {profile.taxCode ? <FactRow label={t('details.taxCode')}>{profile.taxCode}</FactRow> : null}
             </dl>
           ) : (
             <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('details.none')}</p>

@@ -3250,7 +3250,6 @@
       },
       "details": {
         "heading": "Abrechnungsdaten",
-        "legalName": "Firmenname",
         "email": "E-Mail für Rechnungen",
         "country": "Land",
         "vat": "USt-IdNr.",
@@ -3263,10 +3262,32 @@
         },
         "none": "Abluo hat noch keine Abrechnungsdaten für dein Konto erfasst.",
         "change": "Um diese Daten zu ändern, wende dich an den Abluo-Support.",
-        "contact": "Support kontaktieren"
+        "contact": "Support kontaktieren",
+        "companyName": "Firmenname",
+        "fullName": "Vollständiger Name",
+        "contactName": "Ansprechperson",
+        "taxCode": "Codice Fiscale"
       },
       "others": {
         "heading": "Deine Anderen Websites"
+      },
+      "attention": {
+        "title": {
+          "payNow": "Deine erste Zahlung ist bald fällig",
+          "paymentDue": "Zahlung fällig",
+          "paused": "Bearbeiten ist pausiert"
+        },
+        "body": {
+          "payNow": "{days, plural, =0 {Heute fällig.} =1 {Morgen fällig.} other {In # Tagen fällig.}} Zahl jetzt, damit du weiter bearbeiten kannst.",
+          "paymentDue": "{days, plural, =0 {Bearbeiten wird sehr bald pausiert.} =1 {Noch 1 Tag, bevor Bearbeiten pausiert wird.} other {Noch # Tage, bevor Bearbeiten pausiert wird.}}",
+          "paused": "Bearbeiten ist pausiert, bis die Zahlung eingegangen ist. Deine Website bleibt online."
+        },
+        "goToBilling": "Zur Abrechnung",
+        "badge": {
+          "payNow": "Zahlung bald fällig",
+          "paymentDue": "Zahlung fällig",
+          "paused": "Zahlung nötig, Bearbeiten pausiert"
+        }
       }
     },
     "billingNotice": {
@@ -3435,6 +3456,18 @@
         "done": "Fertig",
         "clear": "Löschen",
         "pickDay": "Wähle zuerst einen Tag."
+      },
+      "countryPicker": {
+        "placeholder": "Land wählen",
+        "search": "Länder suchen",
+        "groupEu": "Europäische Union",
+        "groupOther": "Andere Länder",
+        "noMatch": "Kein Land passt zu „{query}“.",
+        "clear": "Löschen"
+      },
+      "addressAutocomplete": {
+        "suggestions": "Adressvorschläge",
+        "attribution": "Powered by Google"
       }
     },
     "analytics": {
@@ -5175,7 +5208,6 @@
           "business": "Unternehmen",
           "individual": "Privatperson"
         },
-        "legalName": "Rechtlicher Name",
         "country": "Land",
         "vat": "USt-IdNr.",
         "vatNone": "Nicht angegeben",
@@ -5186,7 +5218,11 @@
           "verified": "Geprüft",
           "unverified": "Nicht bestätigt",
           "unavailable": "Prüfung nicht verfügbar"
-        }
+        },
+        "companyName": "Firmenname",
+        "fullName": "Vollständiger Name",
+        "contactName": "Ansprechperson",
+        "taxCode": "Codice Fiscale"
       },
       "terms": {
         "titleSetUp": "Abrechnung einrichten",
@@ -5213,17 +5249,22 @@
         "title": "Rechnungskontakt bearbeiten",
         "billingEmail": "Rechnungs-E-Mail",
         "customerType": "Kundenart",
-        "legalName": "Rechtlicher Name",
         "addressLine1": "Adresse",
         "addressLine2": "Adresszeile 2",
         "postalCode": "Postleitzahl",
         "city": "Ort",
         "region": "Region",
-        "country": "Ländercode",
-        "countryHint": "Zwei Buchstaben, zum Beispiel IT.",
+        "country": "Land",
         "vatId": "USt-IdNr.",
         "vatHint": "Wird mit VIES geprüft, sobald der Kunde mit Stripe verbunden ist.",
-        "save": "Kontakt speichern"
+        "save": "Kontakt speichern",
+        "companyName": "Firmenname",
+        "fullName": "Vollständiger Name",
+        "contactName": "Ansprechperson",
+        "contactNameHint": "Optional. Die Person, an die du dich im Unternehmen wendest.",
+        "addressHint": "Tippe los und wähle die Adresse aus den Vorschlägen.",
+        "taxCode": "Codice Fiscale",
+        "taxCodeHint": "Optional. Die italienische Steuernummer, 16 Zeichen."
       },
       "toast": {
         "terms": "Konditionen gespeichert.",
@@ -5259,14 +5300,16 @@
         "postalCode": "Prüfe die Postleitzahl.",
         "city": "Prüfe den Ort.",
         "region": "Prüfe die Region.",
-        "country": "Verwende einen zweistelligen Ländercode.",
+        "country": "Wähle ein Land.",
         "vatId": "Diese USt-IdNr. sieht ungültig aus.",
         "activationDueOn": "Gib ein gültiges Datum ein.",
         "activationExtensionReason": "Dieser Grund ist zu lang.",
         "untilOn": "Gib ein gültiges Datum ein.",
         "reason": "Dieser Grund ist zu lang.",
         "note": "Diese Notiz ist zu lang.",
-        "state": "Diese Website ist nicht mehr in Prüfung."
+        "state": "Diese Website ist nicht mehr in Prüfung.",
+        "contactName": "Dieser Name ist zu lang.",
+        "taxCode": "Prüfe den Codice Fiscale: 11 bis 16 Buchstaben und Ziffern."
       },
       "cancelPeriod": {
         "title": "Zum Ende der Periode kündigen?",

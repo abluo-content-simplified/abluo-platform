@@ -3250,7 +3250,6 @@
       },
       "details": {
         "heading": "Billing Details",
-        "legalName": "Legal name",
         "email": "Billing email",
         "country": "Country",
         "vat": "VAT number",
@@ -3263,10 +3262,32 @@
         },
         "none": "Abluo hasn’t recorded billing details for your account yet.",
         "change": "To change these details, contact Abluo support.",
-        "contact": "Contact support"
+        "contact": "Contact support",
+        "companyName": "Company name",
+        "fullName": "Full name",
+        "contactName": "Contact person",
+        "taxCode": "Codice fiscale"
       },
       "others": {
         "heading": "Your Other Sites"
+      },
+      "attention": {
+        "title": {
+          "payNow": "Your first payment is due soon",
+          "paymentDue": "Payment due",
+          "paused": "Editing is paused"
+        },
+        "body": {
+          "payNow": "{days, plural, =0 {It is due today.} =1 {It is due tomorrow.} other {It is due in # days.}} Pay now so editing stays open.",
+          "paymentDue": "{days, plural, =0 {Editing is paused very soon.} =1 {1 day left before editing is paused.} other {# days left before editing is paused.}}",
+          "paused": "Editing is paused until the payment is made. Your website stays online."
+        },
+        "goToBilling": "Go to Billing",
+        "badge": {
+          "payNow": "Payment due soon",
+          "paymentDue": "Payment due",
+          "paused": "Payment needed, editing is paused"
+        }
       }
     },
     "billingNotice": {
@@ -3435,6 +3456,18 @@
         "done": "Done",
         "clear": "Clear",
         "pickDay": "Pick a day first."
+      },
+      "countryPicker": {
+        "placeholder": "Choose a country",
+        "search": "Search countries",
+        "groupEu": "European Union",
+        "groupOther": "Other countries",
+        "noMatch": "No country matches “{query}”.",
+        "clear": "Clear"
+      },
+      "addressAutocomplete": {
+        "suggestions": "Address suggestions",
+        "attribution": "Powered by Google"
       }
     },
     "analytics": {
@@ -5175,7 +5208,6 @@
           "business": "Business",
           "individual": "Individual"
         },
-        "legalName": "Legal Name",
         "country": "Country",
         "vat": "VAT Number",
         "vatNone": "Not provided",
@@ -5186,7 +5218,11 @@
           "verified": "Verified",
           "unverified": "Could not be verified",
           "unavailable": "Check unavailable"
-        }
+        },
+        "companyName": "Company Name",
+        "fullName": "Full Name",
+        "contactName": "Contact Person",
+        "taxCode": "Codice Fiscale"
       },
       "terms": {
         "titleSetUp": "Set Up Billing",
@@ -5213,17 +5249,22 @@
         "title": "Edit Billing Contact",
         "billingEmail": "Billing Email",
         "customerType": "Customer Type",
-        "legalName": "Legal Name",
         "addressLine1": "Address",
         "addressLine2": "Address Line 2",
         "postalCode": "Postal Code",
         "city": "City",
         "region": "Region",
-        "country": "Country Code",
-        "countryHint": "Two letters, for example IT.",
+        "country": "Country",
         "vatId": "VAT Number",
         "vatHint": "Checked with VIES when the client is connected to Stripe.",
-        "save": "Save Contact"
+        "save": "Save Contact",
+        "companyName": "Company Name",
+        "fullName": "Full Name",
+        "contactName": "Contact Person",
+        "contactNameHint": "Optional. The person to address at the company.",
+        "addressHint": "Start typing to pick the address from suggestions.",
+        "taxCode": "Codice Fiscale",
+        "taxCodeHint": "Optional. The Italian tax code, 16 characters."
       },
       "toast": {
         "terms": "Billing terms saved.",
@@ -5259,14 +5300,16 @@
         "postalCode": "Check the postal code.",
         "city": "Check the city.",
         "region": "Check the region.",
-        "country": "Use a two-letter country code.",
+        "country": "Choose a country.",
         "vatId": "This VAT number looks invalid.",
         "activationDueOn": "Enter a valid date.",
         "activationExtensionReason": "This reason is too long.",
         "untilOn": "Enter a valid date.",
         "reason": "This reason is too long.",
         "note": "This note is too long.",
-        "state": "This site is no longer under review."
+        "state": "This site is no longer under review.",
+        "contactName": "This name is too long.",
+        "taxCode": "Check the codice fiscale: 11 to 16 letters and digits."
       },
       "cancelPeriod": {
         "title": "Cancel at the end of the period?",

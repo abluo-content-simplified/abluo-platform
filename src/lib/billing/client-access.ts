@@ -143,3 +143,58 @@ export function billingErrorKey(error: CheckoutErrorCode | PortalErrorCode): 'fo
       return 'failed'
   }
 }
+
+// ── Payment nudge (Home card + Billing nav badge) ───────────────────────────
+
+/** First-payment due within this many days → nudge before the due date. */
+export const PAY_NOW_NUDGE_DAYS = 7
+
+/** Reasons that mean "a Stripe payment is awaited" once the clock runs. */
+const AWAITING_PAYMENT = new Set(['awaiting_first_payment', 'payment_failed', 'subscription_ended'])
+
+/**
+ * Should THIS person be nudged to pay? Only someone who can manage billing
+ * (the Owner, never in a support visit), only for a Stripe arrangement that
+ * is awaiting payment:
+ *  - `payNow`: before the first due date, when it is ≤ 7 days away (daysLeft = whole days to it, 0 = today/past)
+ *  - `paymentDue`: the reminder clock runs (daysLeft = days before editing is paused)
+ *  - `paused`: locked or under review
+ * Paid, complimentary, manual, overrides, not billed → null. Independent of
+ * BILLING_ENFORCEMENT (which only governs locks and the all-member banner). PURE.
+ */
+export type BillingAttention = { kind: 'payNow' | 'paymentDue' | 'paused'; daysLeft?: number }
+
+export function billingAttention(
+  site: { status: Pick<BillingStatusView, 'state' | 'reason' | 'daysLeft'>; arrangement: BillingSiteFacts['arrangement']; dueAt: string | null } | null | undefined,
+  access: Pick<BillingAccess, 'canManage'> | null | undefined,
+  now: Date,
+): BillingAttention | null {
+  if (!site || !access?.canManage || site.arrangement !== 'stripe') return null
+  const { status } = site
+  if (status.reason === 'before_due') {
+    const due = site.dueAt ? Date.parse(site.dueAt) : NaN
+    if (Number.isNaN(due)) return null
+    const days = Math.max(0, Math.ceil((due - now.getTime()) / 86_400_000))
+    return days <= PAY_NOW_NUDGE_DAYS ? { kind: 'payNow', daysLeft: days } : null
+  }
+  if (!AWAITING_PAYMENT.has(status.reason)) return null
+  if (status.state === 'reminder') return { kind: 'paymentDue', daysLeft: Math.max(0, status.daysLeft ?? 0) }
+  if (status.state === 'locked' || status.state === 'review') return { kind: 'paused' }
+  return null
+}
+
+/**
+ * Is the enforcement banner (`BillingNotice`, BILLING_ENFORCEMENT observe/on)
+ * already on screen? Then Home does not repeat the nudge. PURE.
+ */
+export function billingNoticeShown(billing: { state: string } | null | undefined, support: unknown): boolean {
+  return Boolean(billing && billing.state !== 'ok' && !support)
+}
+
+/**
+ * The Billing nav badge for a nudge: always a count of 1 (one thing to do),
+ * its screen-reader text is `clientDashboard.billing.attention.badge.<kind>`. PURE.
+ */
+export function billingNavBadge(attention: BillingAttention | null | undefined): { count: 1; labelKey: BillingAttention['kind'] } | undefined {
+  return attention ? { count: 1, labelKey: attention.kind } : undefined
+}

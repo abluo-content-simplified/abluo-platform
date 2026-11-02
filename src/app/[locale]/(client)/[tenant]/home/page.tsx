@@ -28,6 +28,9 @@ import { getSiteStatus } from '@/lib/api/dashboard/site'
 import { readDismissal, SETUP_CHECKLIST_DISMISSAL } from '@/lib/api/dashboard/dismissals'
 import { buildSetupChecklist, setupFactsWanted, type SetupItemId } from '@/lib/client/setup-checklist'
 import { SetupChecklist } from '@/components/client/home/SetupChecklist'
+import { BillingAttentionCard } from '@/components/client/home/BillingAttentionCard'
+import { loadBillingAttention } from '@/lib/billing/attention.server'
+import { billingNoticeShown } from '@/lib/billing/client-access'
 import { buildTenantSurfaces, hasWidget } from '@/lib/client/surfaces'
 import { allowedAttentionRules, sortAttention, type AttentionItem } from '@/lib/client/attention'
 import { gallerySegments, navHref, percentChange, postDraftSegments, segmentsToProgress, timeAgo } from '@/lib/client/home-cards'
@@ -106,6 +109,9 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
   // Support requests that need this person (waiting for their reply, or news). Fail-safe: [] on any error.
   const supportAccess = show('attention') ? ticketAccess(ctx, projectSlug) : null
   const supportHref = link('support')
+
+  // Payment nudge for the person who pays — not when the enforcement banner already shows it (fails open: no card).
+  const billingAttentionPromise = billingNoticeShown(grant.billing, ctx.support) ? Promise.resolve(null) : loadBillingAttention(ctx, grant).catch(() => null)
 
   const [supportAttention, firstName, site, blog, forms, gallery, media, people, traffic, setupDismissal] = await Promise.all([
     supportAccess ? clientTicketAttention(supportAccess).catch(() => []) : [],
@@ -396,8 +402,11 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
   const nothingYet = posts !== null && posts.length === 0 && cards.length === 0
   const hasContinue = cards.length > 0
 
+  const billingAttention = await billingAttentionPromise
+
   return (
     <PageShell>
+      {billingAttention ? <BillingAttentionCard projectSlug={projectSlug} attention={billingAttention} /> : null}
       {/* Phone order (Tom, 2026-10-08): greeting, setup checklist, at a glance, needs your attention,
           continue editing, latest lists, view your site — set with phoneOrder because
           on desktop "Needs your attention" and the latest lists share the left column

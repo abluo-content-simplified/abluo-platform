@@ -1,12 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
+import { AddressAutocomplete } from '@/components/app/ui/AddressAutocomplete'
 import { BillingStatusPill } from '@/components/app/ui/BillingStatusPill'
 import { Button } from '@/components/app/ui/Button'
 import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
+import { CountryPicker } from '@/components/app/ui/CountryPicker'
+import { countryName } from '@/components/app/ui/country-model'
 import { DatePicker } from '@/components/app/ui/DatePicker'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { FactRow } from '@/components/app/ui/FactRow'
@@ -15,7 +18,6 @@ import { Notice } from '@/components/app/ui/Notice'
 import { Panel } from '@/components/app/ui/Panel'
 import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
-import { Select } from '@/components/app/ui/Select'
 import { SidePanel } from '@/components/app/ui/SidePanel'
 import { TextArea, TextInput } from '@/components/app/ui/TextInput'
 import { Toast } from '@/components/app/ui/Toast'
@@ -33,6 +35,7 @@ import {
   overrideFormFrom,
   priceAppliesLater,
   profileFieldErrors,
+  profileFieldsFor,
   profileFormFrom,
   removeOverrideInput,
   romeDate,
@@ -79,6 +82,7 @@ const ARRANGEMENTS: BillingArrangement[] = ['stripe', 'manual', 'complimentary']
  */
 export function BillingCardView({ view }: { view: ProjectBillingView }) {
   const t = useTranslations('admin.billing')
+  const locale = useLocale()
   const dateLocale = useDateLocale()
   const router = useRouter()
   const [dialog, setDialog] = useState<Dialog>(null)
@@ -235,22 +239,30 @@ export function BillingCardView({ view }: { view: ProjectBillingView }) {
           <dl>
             <FactRow label={t('contact.email')}>{profile.billingEmail ?? '—'}</FactRow>
             <FactRow label={t('contact.type')}>{profile.customerType ? t(`contact.types.${profile.customerType}`) : '—'}</FactRow>
-            <FactRow label={t('contact.legalName')}>{profile.legalName ?? '—'}</FactRow>
-            <FactRow label={t('contact.country')}>{profile.country ?? '—'}</FactRow>
-            <FactRow label={t('contact.vat')}>
-              {profile.vatId ? (
-                <>
-                  <span className="font-mono text-sm">{profile.vatId}</span>
-                  {muted(
-                    profile.vatVerification === 'verified' && profile.vatVerifiedAt
-                      ? t('contact.vatVerifiedOn', { date: stamp(profile.vatVerifiedAt) })
-                      : t(`contact.vatStatus.${profile.vatVerification}`),
-                  )}
-                </>
-              ) : (
-                <span className="text-muted-foreground">{t('contact.vatNone')}</span>
-              )}
-            </FactRow>
+            <FactRow label={t(profile.customerType === 'individual' ? 'contact.fullName' : 'contact.companyName')}>{profile.legalName ?? '—'}</FactRow>
+            {profile.customerType === 'business' ? <FactRow label={t('contact.contactName')}>{profile.contactName ?? '—'}</FactRow> : null}
+            <FactRow label={t('contact.country')}>{profile.country ? countryName(profile.country, locale) : '—'}</FactRow>
+            {profile.customerType === 'business' ? (
+              <FactRow label={t('contact.vat')}>
+                {profile.vatId ? (
+                  <>
+                    <span className="font-mono text-sm">{profile.vatId}</span>
+                    {muted(
+                      profile.vatVerification === 'verified' && profile.vatVerifiedAt
+                        ? t('contact.vatVerifiedOn', { date: stamp(profile.vatVerifiedAt) })
+                        : t(`contact.vatStatus.${profile.vatVerification}`),
+                    )}
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">{t('contact.vatNone')}</span>
+                )}
+              </FactRow>
+            ) : null}
+            {profile.taxCode ? (
+              <FactRow label={t('contact.taxCode')}>
+                <span className="font-mono text-sm">{profile.taxCode}</span>
+              </FactRow>
+            ) : null}
           </dl>
         </Panel>
       ) : (
@@ -539,13 +551,15 @@ function ProfilePanel({ open, view, onClose, onDone }: DialogProps & { view: Pro
   const t = useTranslations('admin.billing')
   const [form, setForm] = useState<ProfileForm>(() => profileFormFrom(view.profile))
   const s = useSubmit(profileFieldErrors, onDone)
+  const shown = profileFieldsFor(form.customerType, form.country)
   const set = <K extends keyof ProfileForm>(k: K, v: ProfileForm[K]) => {
     setForm((f) => ({ ...f, [k]: v }))
     s.reset()
   }
-  const text = (k: Exclude<keyof ProfileForm, 'customerType'>, extra?: { type?: string; autoComplete?: string; maxLength?: number }) => (
-    <Field label={t(`profile.${k}`)} hint={k === 'country' ? t('profile.countryHint') : k === 'vatId' ? t('profile.vatHint') : undefined} error={s.err(k)}>
-      {(p) => <TextInput {...p} {...extra} value={form[k]} onChange={(e) => set(k, e.target.value)} />}
+  type TextKey = Exclude<keyof ProfileForm, 'customerType' | 'country' | 'addressLine1'>
+  const text = (k: TextKey, extra?: { type?: string; autoComplete?: string; maxLength?: number; label?: string; hint?: string }) => (
+    <Field label={extra?.label ?? t(`profile.${k}`)} hint={extra?.hint} error={s.err(k)}>
+      {(p) => <TextInput {...p} type={extra?.type} autoComplete={extra?.autoComplete} maxLength={extra?.maxLength} value={form[k]} onChange={(e) => set(k, e.target.value)} />}
     </Field>
   )
   return (
@@ -567,23 +581,53 @@ function ProfilePanel({ open, view, onClose, onDone }: DialogProps & { view: Pro
           void s.run(() => saveBillingProfileAction(toProfileInput(view.tenantId, form)))
         }}
       >
-        {text('billingEmail', { type: 'email', autoComplete: 'off' })}
         <Field label={t('profile.customerType')} error={s.err('customerType')}>
-          {(p) => (
-            <Select {...p} value={form.customerType} onChange={(e) => set('customerType', e.target.value as ProfileForm['customerType'])}>
-              <option value="business">{t('contact.types.business')}</option>
-              <option value="individual">{t('contact.types.individual')}</option>
-            </Select>
+          {() => (
+            <SegmentedControl
+              label={t('profile.customerType')}
+              value={form.customerType}
+              onChange={(v) => set('customerType', v)}
+              options={[
+                { value: 'business', label: t('contact.types.business') },
+                { value: 'individual', label: t('contact.types.individual') },
+              ]}
+            />
           )}
         </Field>
-        {text('legalName')}
-        {text('addressLine1')}
-        {text('addressLine2')}
-        {text('postalCode')}
-        {text('city')}
-        {text('region')}
-        {text('country', { maxLength: 2, autoComplete: 'off' })}
-        {text('vatId', { autoComplete: 'off' })}
+        {text('legalName', { label: t(`profile.${shown.nameLabel}`), autoComplete: 'off', maxLength: 200 })}
+        {shown.contactName ? text('contactName', { hint: t('profile.contactNameHint'), autoComplete: 'off', maxLength: 200 }) : null}
+        {text('billingEmail', { type: 'email', autoComplete: 'off' })}
+        <Field label={t('profile.addressLine1')} hint={t('profile.addressHint')} error={s.err('addressLine1')}>
+          {(p) => (
+            <AddressAutocomplete
+              {...p}
+              maxLength={200}
+              value={form.addressLine1}
+              onChange={(v) => set('addressLine1', v)}
+              onSelect={(a) => {
+                // A picked place replaces the whole address; the country only when the place names one.
+                setForm((f) => ({
+                  ...f,
+                  addressLine1: a.addressLine1 ?? f.addressLine1,
+                  postalCode: a.postalCode ?? '',
+                  city: a.city ?? '',
+                  region: a.region ?? '',
+                  country: a.country ?? f.country,
+                }))
+                s.reset()
+              }}
+            />
+          )}
+        </Field>
+        {text('addressLine2', { autoComplete: 'off' })}
+        {text('postalCode', { autoComplete: 'off', maxLength: 20 })}
+        {text('city', { autoComplete: 'off' })}
+        {text('region', { autoComplete: 'off' })}
+        <Field label={t('profile.country')} error={s.err('country')}>
+          {(p) => <CountryPicker {...p} value={form.country} onChange={(code) => set('country', code)} clearable />}
+        </Field>
+        {shown.vatId ? text('vatId', { hint: t('profile.vatHint'), autoComplete: 'off' }) : null}
+        {shown.taxCode ? text('taxCode', { hint: t('profile.taxCodeHint'), autoComplete: 'off', maxLength: 16 }) : null}
         {s.general ? <Notice tone="error">{s.general}</Notice> : null}
         <Button variant="primary" size="lg" fullWidth type="submit" disabled={s.busy}>
           {s.busy ? t('saving') : t('profile.save')}

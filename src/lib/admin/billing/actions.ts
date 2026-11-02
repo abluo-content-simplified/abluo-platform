@@ -248,6 +248,7 @@ export async function saveBillingProfileAction(input: SaveBillingProfileInput): 
       billing_email: v.billingEmail,
       customer_type: v.customerType,
       legal_name: v.legalName,
+      contact_name: v.contactName,
       address_line1: v.addressLine1,
       address_line2: v.addressLine2,
       postal_code: v.postalCode,
@@ -255,6 +256,7 @@ export async function saveBillingProfileAction(input: SaveBillingProfileInput): 
       region: v.region,
       country: v.country,
       vat_id: v.vatId,
+      tax_code: v.taxCode,
     }
     // A new or changed VAT id is unverified until Stripe checks it (Phase 3).
     const vatChanged = !prev || prev.vat_id !== v.vatId

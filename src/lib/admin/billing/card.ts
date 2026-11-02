@@ -172,9 +172,9 @@ export const termsFieldErrors = (fields: string[] | undefined): FieldErrors => m
 const OVERRIDE_FIELD: Record<string, string> = { override: 'override', reasonRequired: 'reason', reason: 'reason', untilInPast: 'until', untilOn: 'until' }
 export const overrideFieldErrors = (fields: string[] | undefined): FieldErrors => mapCodes(fields, OVERRIDE_FIELD)
 
-export const PROFILE_FIELDS = ['billingEmail', 'customerType', 'legalName', 'addressLine1', 'addressLine2', 'postalCode', 'city', 'region', 'country', 'vatId'] as const
+export const PROFILE_FIELDS = ['billingEmail', 'customerType', 'legalName', 'contactName', 'addressLine1', 'addressLine2', 'postalCode', 'city', 'region', 'country', 'vatId', 'taxCode'] as const
 export type ProfileField = (typeof PROFILE_FIELDS)[number]
-const PROFILE_ALIASES: Record<string, ProfileField> = { email: 'billingEmail', name: 'legalName', vat: 'vatId', countryCode: 'country' }
+const PROFILE_ALIASES: Record<string, ProfileField> = { email: 'billingEmail', name: 'legalName', vat: 'vatId', countryCode: 'country', contact: 'contactName', fiscalCode: 'taxCode' }
 export function profileFieldErrors(fields: string[] | undefined): FieldErrors {
   const map: Record<string, string> = {}
   for (const f of PROFILE_FIELDS) map[f] = f
@@ -213,6 +213,7 @@ export function profileFormFrom(p: BillingProfileView | null): ProfileForm {
     billingEmail: p?.billingEmail ?? '',
     customerType: p?.customerType ?? 'business',
     legalName: p?.legalName ?? '',
+    contactName: p?.contactName ?? '',
     addressLine1: p?.addressLine1 ?? '',
     addressLine2: p?.addressLine2 ?? '',
     postalCode: p?.postalCode ?? '',
@@ -220,21 +221,43 @@ export function profileFormFrom(p: BillingProfileView | null): ProfileForm {
     region: p?.region ?? '',
     country: p?.country ?? '',
     vatId: p?.vatId ?? '',
+    taxCode: p?.taxCode ?? '',
+  }
+}
+
+/**
+ * Which fields the profile form shows for a customer type and country:
+ * business → contact person + VAT number; individual → neither, plus the
+ * optional codice fiscale when the country is Italy. The name field is the
+ * company name (business) or the full name (individual).
+ */
+export function profileFieldsFor(customerType: ProfileForm['customerType'], country: string): { contactName: boolean; vatId: boolean; taxCode: boolean; nameLabel: 'companyName' | 'fullName' } {
+  const business = customerType === 'business'
+  return {
+    contactName: business,
+    vatId: business,
+    taxCode: !business && country.trim().toUpperCase() === 'IT',
+    nameLabel: business ? 'companyName' : 'fullName',
   }
 }
 
 export function toProfileInput(tenantId: string, f: ProfileForm): SaveBillingProfileInput {
+  const country = orNull(f.country)?.toUpperCase() ?? null
+  const shown = profileFieldsFor(f.customerType, country ?? '')
   return {
     tenantId,
     billingEmail: orNull(f.billingEmail),
     customerType: f.customerType,
     legalName: orNull(f.legalName),
+    // Hidden fields are cleared, so switching type never leaves stale data behind.
+    contactName: shown.contactName ? orNull(f.contactName) : null,
     addressLine1: orNull(f.addressLine1),
     addressLine2: orNull(f.addressLine2),
     postalCode: orNull(f.postalCode),
     city: orNull(f.city),
     region: orNull(f.region),
-    country: orNull(f.country)?.toUpperCase() ?? null,
-    vatId: orNull(f.vatId)?.replace(/\s+/g, '') ?? null,
+    country,
+    vatId: shown.vatId ? (orNull(f.vatId)?.replace(/\s+/g, '') ?? null) : null,
+    taxCode: shown.taxCode ? (orNull(f.taxCode)?.replace(/\s+/g, '').toUpperCase() ?? null) : null,
   }
 }

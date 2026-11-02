@@ -6,6 +6,8 @@ import {
   overrideFieldErrors,
   priceAppliesLater,
   profileFieldErrors,
+  profileFieldsFor,
+  profileFormFrom,
   romeDate,
   romeEndDate,
   reviewFieldErrors,
@@ -17,6 +19,7 @@ import {
   toProfileInput,
   toTermsInput,
   visibleActions,
+  type ProfileForm,
 } from '../card'
 import type { BillingAgreementView, ProjectBillingView } from '../types'
 
@@ -117,8 +120,27 @@ describe('override and profile inputs', () => {
     expect(toOverrideInput('p', { mode: 'allow', untilOn: '', reason: '  Friend  ' })).toEqual({ projectId: 'p', override: 'allow', untilOn: null, reason: 'Friend' })
   })
   it('normalises country and VAT number', () => {
-    const f = { billingEmail: ' a@b.it ', customerType: 'business' as const, legalName: 'X', addressLine1: '', addressLine2: '', postalCode: '', city: '', region: '', country: 'it', vatId: 'IT 123 456' }
-    expect(toProfileInput('t', f)).toMatchObject({ tenantId: 't', billingEmail: 'a@b.it', country: 'IT', vatId: 'IT123456', addressLine1: null })
+    const f = { billingEmail: ' a@b.it ', customerType: 'business' as const, legalName: 'X', contactName: ' Maria ', addressLine1: '', addressLine2: '', postalCode: '', city: '', region: '', country: 'it', vatId: 'IT 123 456', taxCode: '' }
+    expect(toProfileInput('t', f)).toMatchObject({ tenantId: 't', billingEmail: 'a@b.it', country: 'IT', vatId: 'IT123456', addressLine1: null, contactName: 'Maria', taxCode: null })
+  })
+  const form = (over: Partial<ProfileForm> = {}): ProfileForm => ({
+    billingEmail: 'a@b.it', customerType: 'business', legalName: 'Acme Srl', contactName: 'Maria Rossi', addressLine1: 'Via Roma 1', addressLine2: '',
+    postalCode: '48015', city: 'Cervia', region: 'RA', country: 'IT', vatId: 'IT12345678901', taxCode: 'RSSMRA80A01H501U', ...over,
+  })
+  it('a business keeps contact person and VAT number but no codice fiscale', () => {
+    expect(toProfileInput('t', form())).toMatchObject({ contactName: 'Maria Rossi', vatId: 'IT12345678901', taxCode: null })
+  })
+  it('an individual clears VAT number and contact person; keeps the codice fiscale only in Italy', () => {
+    expect(toProfileInput('t', form({ customerType: 'individual', taxCode: 'rssmra80a01h501u' }))).toMatchObject({ contactName: null, vatId: null, taxCode: 'RSSMRA80A01H501U' })
+    expect(toProfileInput('t', form({ customerType: 'individual', country: 'DE' }))).toMatchObject({ contactName: null, vatId: null, taxCode: null })
+  })
+  it('profileFieldsFor shows the fields of the customer type', () => {
+    expect(profileFieldsFor('business', 'IT')).toEqual({ contactName: true, vatId: true, taxCode: false, nameLabel: 'companyName' })
+    expect(profileFieldsFor('individual', 'it')).toEqual({ contactName: false, vatId: false, taxCode: true, nameLabel: 'fullName' })
+    expect(profileFieldsFor('individual', 'DE')).toEqual({ contactName: false, vatId: false, taxCode: false, nameLabel: 'fullName' })
+  })
+  it('profileFormFrom reads the new fields', () => {
+    expect(profileFormFrom(null)).toMatchObject({ customerType: 'business', contactName: '', taxCode: '' })
   })
 })
 

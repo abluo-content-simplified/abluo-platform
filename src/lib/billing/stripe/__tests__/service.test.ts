@@ -48,8 +48,8 @@ vi.mock('../client', () => ({ getStripe: () => (stripeAvailable ? stripe : null)
 const svc = () => import('../service')
 
 const profile = (t: Record<string, unknown> = {}) => ({
-  billing_email: 'a@b.it', customer_type: 'business', legal_name: 'Acme Srl', address_line1: 'Via 1', address_line2: null,
-  postal_code: '48015', city: 'Cervia', region: null, country: 'IT', vat_id: 'IT12345678901', vat_verification: 'verified', ...t,
+  billing_email: 'a@b.it', customer_type: 'business', legal_name: 'Acme Srl', contact_name: null, address_line1: 'Via 1', address_line2: null,
+  postal_code: '48015', city: 'Cervia', region: null, country: 'IT', vat_id: 'IT12345678901', tax_code: null, vat_verification: 'verified', ...t,
 })
 const agreement = (t: Record<string, unknown> = {}) => ({
   arrangement: 'stripe', amount_cents: 24000, currency: 'eur', billing_interval: 'year', interval_count: 1, terms_version: 2,
@@ -153,9 +153,14 @@ describe('createCheckout refusals', () => {
     }
   })
 
-  it('an individual needs no company name or VAT', async () => {
-    setup({ billing_profiles: { data: profile({ customer_type: 'individual', legal_name: null, vat_id: null, vat_verification: 'none' }) } })
+  it('an individual needs a full name but no VAT', async () => {
+    setup({ billing_profiles: { data: profile({ customer_type: 'individual', legal_name: 'Mario Rossi', vat_id: null, vat_verification: 'none' }) } })
     expect(await code((await svc()).createCheckout(PROJECT, 'u1', 'it', 'https://x.y', NOW))).toBe('ok')
+  })
+
+  it('an individual without a full name -> profileIncomplete', async () => {
+    setup({ billing_profiles: { data: profile({ customer_type: 'individual', legal_name: null, vat_id: null, vat_verification: 'none' }) } })
+    expect(await code((await svc()).createCheckout(PROJECT, 'u1', 'it', 'https://x.y', NOW))).toBe('profileIncomplete')
   })
 
   it('stripe not configured -> unavailable', async () => {
@@ -240,10 +245,21 @@ describe('customer, product and price', () => {
     expect(writes().find((c) => c.table === 'billing_customers')?.payload).toMatchObject({ tenant_id: TENANT, issuer_id: ISSUER, livemode: false, stripe_customer_id: 'cus_NEW123456' })
   })
 
+  it('a business contact person goes into the customer metadata; the name stays the company', async () => {
+    setup({ billing_customers: (c) => (c.op === 'select' ? { data: null } : { data: null }), billing_profiles: { data: profile({ contact_name: 'Maria Rossi' }) } })
+    stripe.customers.create.mockResolvedValue({ id: 'cus_NEW123456' })
+    await (await svc()).ensureCustomer(TENANT, { id: ISSUER, key: 'tmz-de', legal_name: 'TMZ', country: 'DE' })
+    const [params] = stripe.customers.create.mock.calls[0]
+    expect(params.name).toBe('Acme Srl')
+    expect(params.metadata).toEqual({ abluo_tenant_id: TENANT, abluo_issuer: 'tmz-de', abluo_contact_name: 'Maria Rossi' })
+  })
+
   it('an existing customer is updated from the profile, not recreated', async () => {
     await (await svc()).ensureCustomer(TENANT, { id: ISSUER, key: 'tmz-de', legal_name: 'TMZ', country: 'DE' }, 'it')
     expect(stripe.customers.create).not.toHaveBeenCalled()
     expect(stripe.customers.update).toHaveBeenCalledWith('cus_ABCDEF123', expect.objectContaining({ email: 'a@b.it', name: 'Acme Srl' }))
+    // No contact person: an empty value removes a stale one from Stripe's metadata.
+    expect(stripe.customers.update.mock.calls[0][1].metadata).toEqual({ abluo_tenant_id: TENANT, abluo_issuer: 'tmz-de', abluo_contact_name: '' })
     expect(stripe.customers.createTaxId).not.toHaveBeenCalled()
   })
 

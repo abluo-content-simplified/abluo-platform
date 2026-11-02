@@ -50,7 +50,10 @@ export type BillingSubscriptionView = {
 export type BillingProfileView = {
   billingEmail: string | null
   customerType: 'business' | 'individual' | null
+  /** Company name (business) or the person's full name (individual). */
   legalName: string | null
+  /** Contact person at a business client (migration 060); null for individuals. */
+  contactName: string | null
   addressLine1: string | null
   addressLine2: string | null
   postalCode: string | null
@@ -58,6 +61,8 @@ export type BillingProfileView = {
   region: string | null
   country: string | null
   vatId: string | null
+  /** Italian codice fiscale of an individual (migration 060), optional. */
+  taxCode: string | null
   vatVerification: 'none' | 'pending' | 'verified' | 'unverified' | 'unavailable'
   vatVerifiedAt: string | null
 }
@@ -117,6 +122,7 @@ export type SaveBillingProfileInput = {
   billingEmail: string | null
   customerType: 'business' | 'individual' | null
   legalName: string | null
+  contactName: string | null
   addressLine1: string | null
   addressLine2: string | null
   postalCode: string | null
@@ -124,4 +130,5 @@ export type SaveBillingProfileInput = {
   region: string | null
   country: string | null
   vatId: string | null
+  taxCode: string | null
 }

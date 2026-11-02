@@ -3250,7 +3250,6 @@
       },
       "details": {
         "heading": "Dati di Fatturazione",
-        "legalName": "Ragione sociale",
         "email": "Email di fatturazione",
         "country": "Paese",
         "vat": "Partita IVA",
@@ -3263,10 +3262,32 @@
         },
         "none": "Abluo non ha ancora registrato i dati di fatturazione del tuo account.",
         "change": "Per modificare questi dati, contatta l’assistenza di Abluo.",
-        "contact": "Contatta l’assistenza"
+        "contact": "Contatta l’assistenza",
+        "companyName": "Ragione sociale",
+        "fullName": "Nome e cognome",
+        "contactName": "Persona di riferimento",
+        "taxCode": "Codice fiscale"
       },
       "others": {
         "heading": "I Tuoi Altri Siti"
+      },
+      "attention": {
+        "title": {
+          "payNow": "Il primo pagamento è in scadenza",
+          "paymentDue": "Pagamento in scadenza",
+          "paused": "Modifiche sospese"
+        },
+        "body": {
+          "payNow": "{days, plural, =0 {Scade oggi.} =1 {Scade domani.} other {Scade tra # giorni.}} Paga ora per continuare a modificare il sito.",
+          "paymentDue": "{days, plural, =0 {Le modifiche verranno sospese a breve.} =1 {Manca 1 giorno alla sospensione delle modifiche.} other {Mancano # giorni alla sospensione delle modifiche.}}",
+          "paused": "Le modifiche sono sospese fino al pagamento. Il tuo sito resta online."
+        },
+        "goToBilling": "Vai a Fatturazione",
+        "badge": {
+          "payNow": "Pagamento in scadenza",
+          "paymentDue": "Pagamento dovuto",
+          "paused": "Pagamento necessario, modifiche sospese"
+        }
       }
     },
     "billingNotice": {
@@ -3435,6 +3456,18 @@
         "done": "Fatto",
         "clear": "Cancella",
         "pickDay": "Scegli prima un giorno."
+      },
+      "countryPicker": {
+        "placeholder": "Scegli un paese",
+        "search": "Cerca un paese",
+        "groupEu": "Unione europea",
+        "groupOther": "Altri paesi",
+        "noMatch": "Nessun paese corrisponde a “{query}”.",
+        "clear": "Cancella"
+      },
+      "addressAutocomplete": {
+        "suggestions": "Indirizzi suggeriti",
+        "attribution": "Powered by Google"
       }
     },
     "analytics": {
@@ -5175,7 +5208,6 @@
           "business": "Azienda",
           "individual": "Privato"
         },
-        "legalName": "Ragione sociale",
         "country": "Paese",
         "vat": "Partita IVA",
         "vatNone": "Non indicata",
@@ -5186,7 +5218,11 @@
           "verified": "Verificata",
           "unverified": "Non verificabile",
           "unavailable": "Controllo non disponibile"
-        }
+        },
+        "companyName": "Ragione sociale",
+        "fullName": "Nome e cognome",
+        "contactName": "Persona di riferimento",
+        "taxCode": "Codice fiscale"
       },
       "terms": {
         "titleSetUp": "Imposta la fatturazione",
@@ -5213,17 +5249,22 @@
         "title": "Modifica contatto di fatturazione",
         "billingEmail": "Email di fatturazione",
         "customerType": "Tipo di cliente",
-        "legalName": "Ragione sociale",
         "addressLine1": "Indirizzo",
         "addressLine2": "Indirizzo (seconda riga)",
         "postalCode": "CAP",
         "city": "Città",
         "region": "Provincia o regione",
-        "country": "Codice paese",
-        "countryHint": "Due lettere, per esempio IT.",
+        "country": "Paese",
         "vatId": "Partita IVA",
         "vatHint": "Controllata con VIES quando il cliente è collegato a Stripe.",
-        "save": "Salva contatto"
+        "save": "Salva contatto",
+        "companyName": "Ragione sociale",
+        "fullName": "Nome e cognome",
+        "contactName": "Persona di riferimento",
+        "contactNameHint": "Facoltativo. La persona a cui rivolgersi in azienda.",
+        "addressHint": "Inizia a scrivere per scegliere l’indirizzo dai suggerimenti.",
+        "taxCode": "Codice fiscale",
+        "taxCodeHint": "Facoltativo. 16 caratteri."
       },
       "toast": {
         "terms": "Condizioni salvate.",
@@ -5259,14 +5300,16 @@
         "postalCode": "Controlla il CAP.",
         "city": "Controlla la città.",
         "region": "Controlla la provincia o regione.",
-        "country": "Usa un codice paese di due lettere.",
+        "country": "Scegli un paese.",
         "vatId": "Questa partita IVA sembra non valida.",
         "activationDueOn": "Inserisci una data valida.",
         "activationExtensionReason": "Questo motivo è troppo lungo.",
         "untilOn": "Inserisci una data valida.",
         "reason": "Questo motivo è troppo lungo.",
         "note": "Questa nota è troppo lunga.",
-        "state": "Questo sito non è più in verifica."
+        "state": "Questo sito non è più in verifica.",
+        "contactName": "Questo nome è troppo lungo.",
+        "taxCode": "Controlla il codice fiscale: da 11 a 16 lettere e cifre."
       },
       "cancelPeriod": {
         "title": "Annullare alla fine del periodo?",

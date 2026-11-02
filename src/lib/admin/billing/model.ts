@@ -87,14 +87,20 @@ export function validateOverride(input: OverrideInput, now: Date): OverrideError
 export type BillingProfileValue = {
   billingEmail: string | null
   customerType: 'business' | 'individual' | null
+  /** Company name (business) or full name (individual). */
   legalName: string | null
+  /** Contact person — business only. */
+  contactName: string | null
   addressLine1: string | null
   addressLine2: string | null
   postalCode: string | null
   city: string | null
   region: string | null
   country: string | null
+  /** VAT number — not kept for individuals. */
   vatId: string | null
+  /** Codice fiscale — kept only for an individual in Italy. */
+  taxCode: string | null
 }
 
 export type BillingProfileField = keyof BillingProfileValue
@@ -102,23 +108,33 @@ export type BillingProfileField = keyof BillingProfileValue
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const COUNTRY_RE = /^[A-Z]{2}$/
 const VAT_RE = /^[A-Z]{2}[A-Za-z0-9+*.]{2,14}$/
-const PROFILE_MAX: Record<'legalName' | 'addressLine1' | 'addressLine2' | 'postalCode' | 'city' | 'region', number> = {
-  legalName: 200, addressLine1: 200, addressLine2: 200, postalCode: 20, city: 100, region: 100,
+/** Migration 060: upper-case letters and digits, 11–16 characters (16 for a person's codice fiscale, 11 for the numeric form). */
+const TAX_CODE_RE = /^[A-Z0-9]{11,16}$/
+const PROFILE_MAX: Record<'legalName' | 'contactName' | 'addressLine1' | 'addressLine2' | 'postalCode' | 'city' | 'region', number> = {
+  legalName: 200, contactName: 200, addressLine1: 200, addressLine2: 200, postalCode: 20, city: 100, region: 100,
 }
 
 const clean = (v: unknown): string | null => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null)
 
+/** Does this profile keep a codice fiscale? Only an individual in Italy (Tom, 2026-11-02). */
+export const keepsTaxCode = (customerType: string | null | undefined, country: string | null | undefined): boolean =>
+  customerType === 'individual' && country === 'IT'
+
 /**
  * Normalise and validate a client's billing details (mirrors the table checks in
- * migration 058). Blank → null; email lower-cased; country and VAT id upper-cased
- * with spaces removed. Returns the normalised value, or the offending field names.
+ * migrations 058 and 060). Blank → null; email lower-cased; country, VAT id and
+ * tax code upper-cased with spaces removed. Fields that do not belong to the
+ * customer type are cleared, not refused: an individual keeps no VAT number or
+ * contact person, and only an individual in Italy keeps a codice fiscale.
+ * Business and individual both need a name (company name / full name).
+ * Returns the normalised value, or the offending field names.
  */
 export function validateBillingProfile(
   input: Partial<Record<BillingProfileField, unknown>>,
 ): { ok: true; value: BillingProfileValue } | { ok: false; fields: BillingProfileField[] } {
   const fields: BillingProfileField[] = []
   // Anything that is not text (or empty) is a field error, never a crash.
-  for (const key of ['billingEmail', 'legalName', 'addressLine1', 'addressLine2', 'postalCode', 'city', 'region', 'country', 'vatId'] as const) {
+  for (const key of ['billingEmail', 'legalName', 'contactName', 'addressLine1', 'addressLine2', 'postalCode', 'city', 'region', 'country', 'vatId', 'taxCode'] as const) {
     const v = input[key]
     if (v !== null && v !== undefined && typeof v !== 'string') fields.push(key)
   }
@@ -129,20 +145,24 @@ export function validateBillingProfile(
   const rawType = input.customerType
   const customerType = rawType === 'business' || rawType === 'individual' ? rawType : null
   if (rawType !== null && rawType !== undefined && rawType !== '' && customerType === null) fields.push('customerType')
+  const individual = customerType === 'individual'
 
   const text = {} as Record<keyof typeof PROFILE_MAX, string | null>
   for (const key of Object.keys(PROFILE_MAX) as (keyof typeof PROFILE_MAX)[]) {
-    text[key] = clean(input[key])
+    text[key] = key === 'contactName' && individual ? null : clean(input[key])
     if (text[key] !== null && text[key]!.length > PROFILE_MAX[key]) fields.push(key)
   }
-  if (customerType === 'business' && text.legalName === null && !fields.includes('legalName')) fields.push('legalName')
+  if (customerType !== null && text.legalName === null && !fields.includes('legalName')) fields.push('legalName')
 
   const country = clean(input.country)?.replace(/\s/g, '').toUpperCase() ?? null
   if (country !== null && !COUNTRY_RE.test(country)) fields.push('country')
 
-  const vatId = clean(input.vatId)?.replace(/\s/g, '').toUpperCase() ?? null
+  const vatId = individual ? null : (clean(input.vatId)?.replace(/\s/g, '').toUpperCase() ?? null)
   if (vatId !== null && !VAT_RE.test(vatId)) fields.push('vatId')
 
+  const taxCode = keepsTaxCode(customerType, country) ? (clean(input.taxCode)?.replace(/\s/g, '').toUpperCase() ?? null) : null
+  if (taxCode !== null && !TAX_CODE_RE.test(taxCode)) fields.push('taxCode')
+
   if (fields.length) return { ok: false, fields }
-  return { ok: true, value: { billingEmail: email, customerType, ...text, country, vatId } }
+  return { ok: true, value: { billingEmail: email, customerType, ...text, country, vatId, taxCode } }
 }

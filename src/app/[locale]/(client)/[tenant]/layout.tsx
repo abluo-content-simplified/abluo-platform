@@ -25,6 +25,7 @@ import { PresenceHeartbeat } from '@/components/system/PresenceHeartbeat'
 import { can } from '@/lib/authz/check'
 import { billingAccess, billingNavPermissions, hasAnyBillingGrant, tenantIdOfGrant } from '@/lib/billing/client-access'
 import { projectTenantId } from '@/lib/billing/project-tenant'
+import { loadBillingAttention } from '@/lib/billing/attention.server'
 import { SUPPORT_EDIT_MINUTES } from '@/lib/support/constants'
 import { listSupportNotices } from '@/lib/support/server'
 import { ticketAccess } from '@/lib/support-tickets/access'
@@ -153,6 +154,11 @@ async function ClientProjectLayoutInner({
     ? ((await getFormsDashboard(ctx, activeGrant.projectId, { attentionHref: null }).catch(() => null))?.glance?.open ?? 0)
     : 0
   lap('newRequestsCount')
+  // Payment nudge (Tom, 2026-11-02): a badge on Billing for the person who pays, whatever BILLING_ENFORCEMENT says.
+  // Only when the Billing entry is shown; one cached read shared with Home; fails open (no badge).
+  const billingAttention =
+    billingTenantId && navItems.some((i) => i.moduleId === 'billing') ? await loadBillingAttention(ctx, activeGrant, billingTenantId) : null
+  lap('billingAttention')
 
   return (
     <AddContentRoot
@@ -185,6 +191,7 @@ async function ClientProjectLayoutInner({
           whatsNewPopup={!support}
           supportUnread={supportUnread}
           newRequestsCount={newRequestsCount}
+          billingAttention={billingAttention}
           reportProblem={Boolean(ticketAccessForNav?.canWrite) && navItems.some((i) => i.moduleId === 'support')}
           profile={profile}
         />

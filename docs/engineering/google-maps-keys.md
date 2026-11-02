@@ -90,6 +90,7 @@ These were checked by calling Google directly with the public website key, sendi
 **Studio key:** not verifiable from a Claude session (absent from `.env.local`, Vercel env list not readable). Check in Vercel → Settings → Environment Variables that `NEXT_PUBLIC_GOOGLE_MAPS_STUDIO_KEY` exists in Production, Preview and Development.
 
 **Dashboard key (planned, ADR-038):** `NEXT_PUBLIC_GOOGLE_MAPS_DASHBOARD_KEY`.
+- First user (2026-11-02): address suggestions in the admin Billing details form (`src/components/app/ui/AddressAutocomplete.tsx`, Places API (New) `places:autocomplete` + place details with field mask `addressComponents`, session tokens). It reads this key and falls back to `NEXT_PUBLIC_GOOGLE_MAPS_KEY`; with neither key allowing Places (New), the address field is a plain text input.
 - APIs: Maps JavaScript, Geocoding, Places (New).
 - Referrers: `https://www.abluo.app/*`, `https://dev.abluo.app/*`, `https://preview.abluo.app/*`, `https://admin.abluo.app/*`, `http://localhost:3000/*`.
 - Per-API daily quota caps plus a billing budget alert.

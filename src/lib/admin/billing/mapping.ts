@@ -42,6 +42,7 @@ export type BillingProfileRow = {
   billing_email: string | null
   customer_type: 'business' | 'individual' | null
   legal_name: string | null
+  contact_name: string | null
   address_line1: string | null
   address_line2: string | null
   postal_code: string | null
@@ -49,6 +50,7 @@ export type BillingProfileRow = {
   region: string | null
   country: string | null
   vat_id: string | null
+  tax_code: string | null
   vat_verification: BillingProfileView['vatVerification']
   vat_verified_at: string | null
 }
@@ -57,7 +59,7 @@ export const PROJECT_BILLING_COLUMNS =
   'project_id, arrangement, amount_cents, currency, billing_interval, interval_count, starts_on, activation_due_at, activation_extension_reason, manual_paid_through, terms_version, billing_subscription_id, override, override_until, override_reason, override_set_at, review_acknowledged_at, review_note, updated_at'
 export const BILLING_SUBSCRIPTION_COLUMNS = 'id, status, first_paid_at, payment_failed_at, current_period_end, cancel_at_period_end, ended_at'
 export const BILLING_PROFILE_COLUMNS =
-  'billing_email, customer_type, legal_name, address_line1, address_line2, postal_code, city, region, country, vat_id, vat_verification, vat_verified_at'
+  'billing_email, customer_type, legal_name, contact_name, address_line1, address_line2, postal_code, city, region, country, vat_id, tax_code, vat_verification, vat_verified_at'
 
 /** A timestamp string → Date; null for null or unparseable input. */
 function date(v: string | null | undefined): Date | null {
@@ -130,6 +132,7 @@ export function toProfileView(row: BillingProfileRow): BillingProfileView {
     billingEmail: row.billing_email,
     customerType: row.customer_type,
     legalName: row.legal_name,
+    contactName: row.contact_name ?? null,
     addressLine1: row.address_line1,
     addressLine2: row.address_line2,
     postalCode: row.postal_code,
@@ -137,6 +140,7 @@ export function toProfileView(row: BillingProfileRow): BillingProfileView {
     region: row.region,
     country: row.country,
     vatId: row.vat_id,
+    taxCode: row.tax_code ?? null,
     vatVerification: row.vat_verification,
     vatVerifiedAt: iso(row.vat_verified_at),
   }

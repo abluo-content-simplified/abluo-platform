@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { isIsoDate } from '@/lib/billing/dates'
 import { romeDayEnd, romeDayStart, validateBillingProfile } from '../model'
-import { summarise, toFacts, toAgreementView, type ProjectBillingRow, type BillingSubscriptionRow } from '../mapping'
+import { summarise, toFacts, toAgreementView, toProfileView, type BillingProfileRow, type ProjectBillingRow, type BillingSubscriptionRow } from '../mapping'
 
 const row = (r: Partial<ProjectBillingRow> = {}): ProjectBillingRow => ({
   project_id: 'p1', arrangement: 'stripe', amount_cents: 24000, currency: 'eur', billing_interval: 'year', interval_count: 1, starts_on: null,
@@ -18,20 +18,50 @@ describe('validateBillingProfile', () => {
   it('normalises', () => {
     expect(validateBillingProfile(ok)).toEqual({
       ok: true,
-      value: { billingEmail: 'a@b.it', customerType: 'business', legalName: 'Acme', addressLine1: null, addressLine2: null, postalCode: null, city: null, region: null, country: 'IT', vatId: 'IT123456' },
+      value: { billingEmail: 'a@b.it', customerType: 'business', legalName: 'Acme', contactName: null, addressLine1: null, addressLine2: null, postalCode: null, city: null, region: null, country: 'IT', vatId: 'IT123456', taxCode: null },
     })
   })
   it('flags bad email, country, vat, type', () => {
     const r = validateBillingProfile({ billingEmail: 'x', country: 'ITA', vatId: '1234', customerType: 'company' })
     expect(r).toEqual({ ok: false, fields: ['billingEmail', 'customerType', 'country', 'vatId'] })
   })
-  it('business needs a legal name; individual does not; all blank is fine', () => {
+  it('business needs a company name, individual a full name; all blank is fine', () => {
     expect(validateBillingProfile({ customerType: 'business' })).toEqual({ ok: false, fields: ['legalName'] })
-    expect(validateBillingProfile({ customerType: 'individual' }).ok).toBe(true)
+    expect(validateBillingProfile({ customerType: 'individual' })).toEqual({ ok: false, fields: ['legalName'] })
+    expect(validateBillingProfile({ customerType: 'individual', legalName: 'Mario Rossi' }).ok).toBe(true)
     expect(validateBillingProfile({}).ok).toBe(true)
+  })
+  it('business keeps a contact person (≤ 200) and VAT; no codice fiscale', () => {
+    const r = validateBillingProfile({ ...ok, contactName: ' Maria Rossi ', taxCode: 'RSSMRA80A01H501U' })
+    expect(r).toMatchObject({ ok: true, value: { contactName: 'Maria Rossi', vatId: 'IT123456', taxCode: null } })
+    expect(validateBillingProfile({ ...ok, contactName: 'x'.repeat(201) })).toEqual({ ok: false, fields: ['contactName'] })
+  })
+  it('an individual keeps no VAT number or contact person', () => {
+    const r = validateBillingProfile({ customerType: 'individual', legalName: 'Mario Rossi', contactName: 'Someone', vatId: 'IT123456', country: 'DE' })
+    expect(r).toMatchObject({ ok: true, value: { contactName: null, vatId: null, taxCode: null } })
+  })
+  it('codice fiscale: individual in Italy only, normalised, 11–16 letters and digits', () => {
+    const it = (taxCode: string, country = 'IT') => validateBillingProfile({ customerType: 'individual', legalName: 'Mario Rossi', country, taxCode })
+    expect(it(' rssmra 80a01h501u ')).toMatchObject({ ok: true, value: { taxCode: 'RSSMRA80A01H501U' } })
+    expect(it('12345678901')).toMatchObject({ ok: true, value: { taxCode: '12345678901' } })
+    expect(it('ABC')).toEqual({ ok: false, fields: ['taxCode'] })
+    expect(it('RSSMRA80A01H501U-')).toEqual({ ok: false, fields: ['taxCode'] })
+    expect(it('RSSMRA80A01H501U', 'DE')).toMatchObject({ ok: true, value: { taxCode: null } })
+    expect(validateBillingProfile({ taxCode: 5 })).toEqual({ ok: false, fields: ['taxCode'] })
   })
   it('enforces column lengths', () => {
     expect(validateBillingProfile({ postalCode: '1'.repeat(21) })).toEqual({ ok: false, fields: ['postalCode'] })
+  })
+})
+
+describe('toProfileView', () => {
+  const base: BillingProfileRow = {
+    billing_email: 'a@b.it', customer_type: 'individual', legal_name: 'Mario Rossi', contact_name: null, address_line1: null, address_line2: null,
+    postal_code: null, city: null, region: null, country: 'IT', vat_id: null, tax_code: 'RSSMRA80A01H501U', vat_verification: 'none', vat_verified_at: null,
+  }
+  it('maps contact person and tax code', () => {
+    expect(toProfileView(base)).toMatchObject({ legalName: 'Mario Rossi', contactName: null, taxCode: 'RSSMRA80A01H501U' })
+    expect(toProfileView({ ...base, customer_type: 'business', contact_name: 'Maria', tax_code: null })).toMatchObject({ contactName: 'Maria', taxCode: null })
   })
 })
 

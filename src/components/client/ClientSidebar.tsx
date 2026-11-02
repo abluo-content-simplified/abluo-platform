@@ -6,6 +6,7 @@ import { usePathname, useRouter } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { ProjectSwitcher, type SwitcherProject } from './ProjectSwitcher'
+import { billingNavBadge, type BillingAttention } from '@/lib/billing/client-access'
 import type { AccountMenuProps } from '@/components/app/shell/AccountMenu'
 import { AppIcon, APP_ICONS } from '@/components/app/shell/AppIcon'
 import { TabBarButton } from '@/components/app/ui/TabBarButton'
@@ -67,6 +68,8 @@ export type ClientSidebarProps = {
   reportProblem?: boolean
   /** Contact requests nobody has answered yet (status `new`): badge on the Requests tab and the sidebar entry; 0 = none. */
   newRequestsCount?: number
+  /** Payment nudge for the person who pays (billingAttention): badge on Billing and on the phone's More tab; null = none. */
+  billingAttention?: BillingAttention | null
 }
 
 const ICONS = {
@@ -110,6 +113,7 @@ export function ClientSidebar({
   supportUnread = 0,
   reportProblem = false,
   newRequestsCount = 0,
+  billingAttention = null,
 }: ClientSidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -124,6 +128,10 @@ export function ClientSidebar({
   const labelOf = (i: ClientNavItem) => i.label ?? t(`nav.${i.moduleId}`)
   const requestsBadge = newRequestsCount > 0 ? { count: newRequestsCount, label: t('shell.requestsUnanswered', { count: newRequestsCount }) } : undefined
   const news = useWhatsNew(whatsNew, { popup: whatsNewPopup })
+  const billingNav = billingNavBadge(billingAttention)
+  const billingBadge = billingNav ? { count: billingNav.count, label: t(`billing.attention.badge.${billingNav.labelKey}`) } : undefined
+  // Billing lives in the phone's More drawer: the More tab carries its badge too.
+  const moreBadge = billingBadge && overflow.some((i) => i.moduleId === 'billing') ? billingBadge : undefined
   const liveSupportUnread = useLiveSupportCount(activeSlug, supportUnread, pathname, navItems.some((i) => i.moduleId === 'support'))
 
   // Home stands alone at the top. The modules' screens follow in their groups
@@ -144,7 +152,9 @@ export function ClientSidebar({
           ? { count: liveSupportUnread, label: t('supportTickets.list.unreadCount', { count: liveSupportUnread }) }
           : i.moduleId === 'forms'
             ? requestsBadge
-            : undefined,
+            : i.moduleId === 'billing'
+              ? billingBadge
+              : undefined,
     })),
   ]
   // The bottom group (Tom, 2026-10-29): Connected Apps, Settings, Support, What's New, More You Can Add.
@@ -246,8 +256,9 @@ export function ClientSidebar({
               icon={drawerOpen ? ICONS.close : ICONS.more}
               iconWidth={2.4}
               active={moreActive}
+              badge={drawerOpen ? undefined : moreBadge}
               onClick={() => setDrawerOpen(!drawerOpen)}
-              aria-label={drawerOpen ? t('shell.closeMenu') : t('nav.more')}
+              aria-label={drawerOpen ? t('shell.closeMenu') : moreBadge ? `${t('nav.more')} (${moreBadge.label})` : t('nav.more')}
               aria-expanded={drawerOpen}
               aria-controls="client-sidebar"
             >

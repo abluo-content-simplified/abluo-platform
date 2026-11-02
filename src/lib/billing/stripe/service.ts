@@ -53,6 +53,7 @@ type ProfileRow = {
   billing_email: string | null
   customer_type: 'business' | 'individual' | null
   legal_name: string | null
+  contact_name: string | null
   address_line1: string | null
   address_line2: string | null
   postal_code: string | null
@@ -60,10 +61,11 @@ type ProfileRow = {
   region: string | null
   country: string | null
   vat_id: string | null
+  tax_code: string | null
   vat_verification: 'none' | 'pending' | 'verified' | 'unverified' | 'unavailable'
 }
 const PROFILE_COLUMNS =
-  'billing_email, customer_type, legal_name, address_line1, address_line2, postal_code, city, region, country, vat_id, vat_verification'
+  'billing_email, customer_type, legal_name, contact_name, address_line1, address_line2, postal_code, city, region, country, vat_id, tax_code, vat_verification'
 
 type AgreementRow = {
   arrangement: 'stripe' | 'manual' | 'complimentary'
@@ -104,9 +106,10 @@ export async function activeIssuer(): Promise<Issuer> {
 }
 
 // ── Profile helpers ─────────────────────────────────────────────────────────
-/** Pure: is the profile complete enough to check out? (email, country; business: legal name + VAT) */
+/** Pure: is the profile complete enough to check out? (email, country, name — company name or full name; business: + VAT) */
 export function profileCompleteness(p: ProfileRow | null): 'ok' | 'profileIncomplete' | 'vatNotVerified' {
   if (!p || !p.billing_email || !p.country || !p.customer_type) return 'profileIncomplete'
+  if (p.customer_type === 'individual' && !p.legal_name) return 'profileIncomplete'
   if (p.customer_type === 'business') {
     if (!p.legal_name || !p.vat_id) return 'profileIncomplete'
     if (p.vat_verification !== 'verified') return 'vatNotVerified'
@@ -163,11 +166,14 @@ export async function ensureCustomer(tenantId: string, issuer: Issuer, locale: s
   if (error) throw new BillingError('failed', `customer read: ${error.message}`)
 
   const business = profile.customer_type === 'business' && profile.vat_id
-  const metadata = { abluo_tenant_id: tenantId, abluo_issuer: issuer.key }
+  const metadata: Record<string, string> = { abluo_tenant_id: tenantId, abluo_issuer: issuer.key }
+  const contact = profile.contact_name?.trim()
+  if (contact) metadata.abluo_contact_name = contact
 
   if (existing?.stripe_customer_id) {
     const id = existing.stripe_customer_id as string
-    await stripe.customers.update(id, { ...customerFields(profile, locale), metadata })
+    // Stripe merges metadata: an empty value removes a contact person that was taken off.
+    await stripe.customers.update(id, { ...customerFields(profile, locale), metadata: contact ? metadata : { ...metadata, abluo_contact_name: '' } })
     if (business) {
       const ids = await stripe.customers.listTaxIds(id, { limit: 100 })
       const held = ids.data.some((t) => t.type === 'eu_vat' && t.value.replace(/\s/g, '').toUpperCase() === profile.vat_id)
