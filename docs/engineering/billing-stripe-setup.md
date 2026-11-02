@@ -31,6 +31,7 @@ the key's request log for 403s or unused permissions and adjust.
 | Dashboard resource | Level | Calls that need it |
 |---|---|---|
 | Customers | Write | `customers.create`, `customers.update`, `customers.listTaxIds`, `customers.createTaxId` (tax IDs fall under Customers) |
+| Tax IDs | Write | `customers.listTaxIds`, `customers.createTaxId`, `taxIds.retrieve` (webhook `customer.tax_id.updated`). Separate from Customers in the current Dashboard — without it the VAT check never completes (seen 2026-11-02). |
 | Products | Write | `products.search` (read), `products.create`, `products.update` |
 | Prices | Write | `prices.retrieve`, `prices.create` |
 | Checkout Sessions | Write | `checkout.sessions.create`, `.expire`, `.retrieve` |
