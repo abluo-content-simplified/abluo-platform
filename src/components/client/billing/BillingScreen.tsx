@@ -50,7 +50,7 @@ export function BillingScreen({ projectSlug, view, checkout }: { projectSlug: st
 
       <SiteSummary site={current} testData={!view.livemode}>
         {actions.pay || actions.portal ? (
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="grid gap-2 sm:auto-cols-fr sm:grid-flow-col">
             {actions.pay ? (
               <Button variant="primary" fullWidth disabled={pending} onClick={() => go(() => startCheckoutAction({ projectSlug, locale }))}>
                 {t('actions.payNow')}

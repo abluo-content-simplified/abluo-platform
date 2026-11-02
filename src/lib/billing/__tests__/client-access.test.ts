@@ -63,11 +63,17 @@ describe('buttons', () => {
   const owner = { canManage: true, canView: true }
   const viewer = { canManage: false, canView: true }
   it('Pay Now: Owner, stripe arrangement, not yet paid', () => {
-    expect(billingActions(site({ status: status({ state: 'reminder', reason: 'awaiting_first_payment', daysLeft: 9 }) }), owner)).toEqual({ pay: true, portal: true })
+    expect(billingActions(site({ status: status({ state: 'reminder', reason: 'awaiting_first_payment', daysLeft: 9 }) }), owner)).toEqual({ pay: true, portal: false })
     expect(billingActions(site({ status: status({ state: 'ok', reason: 'before_due' }) }), owner).pay).toBe(true)
   })
   it('no Pay Now once paid, but the portal stays', () => {
     expect(billingActions(site({}), owner)).toEqual({ pay: false, portal: true })
+  })
+  it('the portal appears only once a subscription exists (nothing to show before the first payment)', () => {
+    const due = status({ state: 'reminder', reason: 'awaiting_first_payment', daysLeft: 9 })
+    expect(billingActions(site({ status: due }), owner).portal).toBe(false)
+    expect(billingActions(site({ status: due, paymentFailedAt: '2026-11-01T10:00:00Z' }), owner).portal).toBe(true)
+    expect(billingActions(site({ status: due, paidUntil: '2026-12-01' }), owner).portal).toBe(true)
   })
   it('no buttons for invoice access, manual, complimentary or not billed', () => {
     expect(billingActions(site({ status: status({ state: 'locked', reason: 'awaiting_first_payment' }) }), viewer)).toEqual({ pay: false, portal: false })

@@ -104,11 +104,16 @@ export function billingSentence(site: BillingSiteFacts): BillingSentence {
 }
 
 /** What the buttons for one site are. The server actions re-check everything. */
-export function billingActions(site: Pick<BillingSiteFacts, 'status' | 'arrangement'>, access: BillingAccess): { pay: boolean; portal: boolean } {
+export function billingActions(
+  site: Pick<BillingSiteFacts, 'status' | 'arrangement'> & Partial<Pick<BillingSiteFacts, 'paidUntil' | 'paymentFailedAt'>>,
+  access: BillingAccess,
+): { pay: boolean; portal: boolean } {
   const stripe = site.arrangement === 'stripe'
+  // The portal only has something to show once a subscription exists (paid now, paid before, or failed).
+  const hasSubscription = site.status.reason === 'paid' || Boolean(site.paidUntil) || Boolean(site.paymentFailedAt)
   return {
     pay: access.canManage && stripe && site.status.reason !== 'paid',
-    portal: access.canManage && stripe,
+    portal: access.canManage && stripe && hasSubscription,
   }
 }
 
