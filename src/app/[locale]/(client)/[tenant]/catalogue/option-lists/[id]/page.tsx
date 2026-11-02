@@ -7,6 +7,7 @@ import { isCatalogueId } from '@/lib/api/catalogue-lifecycle'
 import { OptionListEditor } from '@/components/client/catalogue/OptionListEditor'
 import { itemChoices } from '@/components/client/catalogue/choices'
 import { PageShell } from '@/components/app/ui/PageShell'
+import { catalogueListPath } from '@/lib/modules/catalogue-routes'
 
 /**
  * `/catalogue/option-lists/<id>` — an option list. Reads with catalogue.item.read (read-only
@@ -38,7 +39,7 @@ export default async function Page({ params }: { params: Promise<{ tenant: strin
         snapshot={snapshot}
         items={itemChoices(lists, site.defaultLocale).filter((i) => i.id !== id)}
         can={catalogueAbilities(grant).optionList}
-        listHref={`/${projectSlug}/catalogue?view=optionLists`}
+        listHref={catalogueListPath(projectSlug, 'optionLists')}
       />
     </PageShell>
   )

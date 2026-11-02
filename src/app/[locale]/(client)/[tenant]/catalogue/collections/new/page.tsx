@@ -8,6 +8,7 @@ import { catalogueAbilities, getCatalogueSite, listCatalogue } from '@/lib/api/c
 import { CollectionBuilder } from '@/components/client/catalogue/CollectionBuilder'
 import { itemChoices } from '@/components/client/catalogue/choices'
 import { PageShell } from '@/components/app/ui/PageShell'
+import { catalogueListPath } from '@/lib/modules/catalogue-routes'
 
 /**
  * `/catalogue/collections/new` — the collection builder, nothing created until it has a name
@@ -31,7 +32,7 @@ export default async function Page({ params }: { params: Promise<{ tenant: strin
   const [site, lists] = await Promise.all([getCatalogueSite(ctx, grant.projectId), listCatalogue(ctx, grant.projectId)])
   return (
     <PageShell>
-      <CollectionBuilder projectSlug={projectSlug} site={site} snapshot={null} items={itemChoices(lists, site.defaultLocale)} can={catalogueAbilities(grant).collection} listHref={`/${projectSlug}/catalogue?view=collections`} />
+      <CollectionBuilder projectSlug={projectSlug} site={site} snapshot={null} items={itemChoices(lists, site.defaultLocale)} can={catalogueAbilities(grant).collection} listHref={catalogueListPath(projectSlug, 'collections')} />
     </PageShell>
   )
 }

@@ -19,3 +19,23 @@ export function catalogueRedirectTarget(projectSlug: string, query: Record<strin
   const qs = carry.toString()
   return `/${projectSlug}/catalogue/${path}${qs ? `?${qs}` : ''}`
 }
+
+/** The list route of one Catalogue view — what back links point at (never `/catalogue?view=…`). */
+export function catalogueListPath(projectSlug: string, view: 'items' | 'collections' | 'optionLists'): string {
+  return `/${projectSlug}/catalogue/${VIEW_PATH[view]}`
+}
+
+/**
+ * The query string a list screen writes back while filtering: `status` and `sort` only (defaults
+ * removed). The route is the view, so a stale `view` parameter is dropped, never written.
+ */
+export function catalogueListSearch(search: string, status: string, sort: string | null): string {
+  const u = new URLSearchParams(search)
+  u.delete('view')
+  if (status === 'all') u.delete('status')
+  else u.set('status', status)
+  if (sort === null) u.delete('sort')
+  else u.set('sort', sort)
+  const qs = u.toString()
+  return qs ? `?${qs}` : ''
+}

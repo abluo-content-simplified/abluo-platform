@@ -51,6 +51,7 @@ import {
   type ListSortKey,
 } from '@/lib/modules/catalogue/list-model'
 import { CAT_ICONS, GapBadges, InUseNotice, catalogueHref, textIn, useCatalogueError } from './catalogue-ui'
+import { catalogueListSearch } from '@/lib/modules/catalogue-routes'
 import { UnpublishDateSheet } from '@/components/app/lifecycle/UnpublishDateSheet'
 import { Button, ButtonLink } from '@/components/app/ui/Button'
 
@@ -140,15 +141,11 @@ export function CatalogueBrowser({
   const d = site.defaultLocale
   const catLabel = useMemo(() => new Map(site.categories.map((c) => [c.value, textIn(c.label, ui, d) || c.value])), [site.categories, ui, d])
 
-  const syncUrl = (v: CatalogueView, s: CatalogueStatusFilter, so: ListSort = sort) => {
+  // The route is the view (ADR-042 N2a): only status and sort are synced, `?view=` is never written.
+  const syncUrl = (s: CatalogueStatusFilter, so: ListSort = sort) => {
     try {
-      const u = new URL(window.location.href)
-      u.searchParams.set('view', v)
-      if (s === 'all') u.searchParams.delete('status')
-      else u.searchParams.set('status', s)
-      if (so.key === 'name' && so.dir === 'asc') u.searchParams.delete('sort')
-      else u.searchParams.set('sort', formatListSort(so))
-      window.history.replaceState(window.history.state, '', u.pathname + u.search)
+      const search = catalogueListSearch(window.location.search, s, so.key === 'name' && so.dir === 'asc' ? null : formatListSort(so))
+      window.history.replaceState(window.history.state, '', window.location.pathname + search)
     } catch {
       /* ignore */
     }
@@ -353,7 +350,7 @@ export function CatalogueBrowser({
   const onSort = (key: ListSortKey) => {
     const next = nextListSort(sort, key)
     setSort(next)
-    syncUrl(view, status, next)
+    syncUrl(status, next)
   }
 
   const menuFor = (row: Row): CardMenuItem[] => {
@@ -436,7 +433,7 @@ export function CatalogueBrowser({
     setQuery('')
     setCategory('')
     setStatus('all')
-    syncUrl(view, 'all')
+    syncUrl('all')
   }
   const filtered = !!query.trim() || !!category || status !== 'all'
   const chips: FilterChip[] = [
@@ -446,7 +443,7 @@ export function CatalogueBrowser({
   const removeChip = (id: string) => {
     if (id === 'status') {
       setStatus('all')
-      syncUrl(view, 'all')
+      syncUrl('all')
     } else if (id === 'category') setCategory('')
   }
   const toolbarFilters: ListToolbarFilter[] = [
@@ -458,7 +455,7 @@ export function CatalogueBrowser({
       onChange: (v) => {
         const st = parseStatusFilter(v)
         setStatus(st)
-        syncUrl(view, st)
+        syncUrl(st)
       },
     },
     ...(view === 'items' && site.categories.length

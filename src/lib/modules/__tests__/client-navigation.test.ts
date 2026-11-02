@@ -298,3 +298,33 @@ describe('isNavItemActive', () => {
     expect(isNavItemActive('/livener/home', '/livener/posts')).toBe(false)
   })
 })
+
+describe('contentSheetSections (phone content sheet headings, R1 review)', () => {
+  const item = (moduleId: string, group: NavGroup) => ({ moduleId, labelKey: `clientDashboard.nav.${moduleId}`, href: `/p/${moduleId}`, group })
+
+  it('a single group renders no heading, so its section carries no aria-labelledby', async () => {
+    const { contentSheetSections } = await import('../client-nav-layout')
+    const s = contentSheetSections([item('blog', 'content'), item('gallery', 'content')])
+    expect(s.map((x) => [x.group, x.headingId, x.rows.length])).toEqual([['content', null, 2]])
+  })
+
+  it('two groups: each section is labelled by its rendered heading; empty groups are skipped', async () => {
+    const { contentSheetSections } = await import('../client-nav-layout')
+    const s = contentSheetSections([item('blog', 'content'), item('catalogueItems', 'catalogue'), item('catalogueCollections', 'catalogue')])
+    expect(s.map((x) => [x.group, x.headingId, x.rows.length])).toEqual([
+      ['content', 'content-sheet-content', 1],
+      ['catalogue', 'content-sheet-catalogue', 2],
+    ])
+    expect(contentSheetSectionsOnlyCatalogue()).toEqual([['catalogue', null]])
+    function contentSheetSectionsOnlyCatalogue() {
+      return contentSheetSections([item('catalogueItems', 'catalogue'), item('catalogueOptions', 'catalogue')]).map((x) => [x.group, x.headingId])
+    }
+  })
+
+  it('ClientSidebar takes aria-labelledby from headingId (never a hard-coded id)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const src = readFileSync(`${process.cwd()}/src/components/client/ClientSidebar.tsx`, 'utf8')
+    expect(src).toMatch(/aria-labelledby=\{headingId \?\? undefined\}/)
+    expect(src).not.toMatch(/aria-labelledby=\{`content-sheet-/)
+  })
+})

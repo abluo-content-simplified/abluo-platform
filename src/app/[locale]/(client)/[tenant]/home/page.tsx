@@ -324,7 +324,7 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
         label={tcat('label')}
         value={catalogue.published}
         sub={tcat('sub', { drafts: catalogue.drafts, noPrice: catalogue.noPrice })}
-        href={link('catalogue')}
+        href={link('catalogueItems')}
       />
     ) : null,
     show('glance.media') && media ? (

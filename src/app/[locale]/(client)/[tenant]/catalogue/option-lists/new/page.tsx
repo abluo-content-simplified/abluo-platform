@@ -8,6 +8,7 @@ import { catalogueAbilities, getCatalogueSite, listCatalogue } from '@/lib/api/c
 import { OptionListEditor } from '@/components/client/catalogue/OptionListEditor'
 import { itemChoices } from '@/components/client/catalogue/choices'
 import { PageShell } from '@/components/app/ui/PageShell'
+import { catalogueListPath } from '@/lib/modules/catalogue-routes'
 
 /**
  * `/catalogue/option-lists/new` — an option list, nothing created until it has a name
@@ -31,7 +32,7 @@ export default async function Page({ params }: { params: Promise<{ tenant: strin
   const [site, lists] = await Promise.all([getCatalogueSite(ctx, grant.projectId), listCatalogue(ctx, grant.projectId)])
   return (
     <PageShell>
-      <OptionListEditor projectSlug={projectSlug} site={site} snapshot={null} items={itemChoices(lists, site.defaultLocale)} can={catalogueAbilities(grant).optionList} listHref={`/${projectSlug}/catalogue?view=optionLists`} />
+      <OptionListEditor projectSlug={projectSlug} site={site} snapshot={null} items={itemChoices(lists, site.defaultLocale)} can={catalogueAbilities(grant).optionList} listHref={catalogueListPath(projectSlug, 'optionLists')} />
     </PageShell>
   )
 }

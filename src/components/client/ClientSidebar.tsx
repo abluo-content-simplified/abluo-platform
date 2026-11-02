@@ -16,7 +16,7 @@ import { CountBadge } from '@/components/app/ui/CountBadge'
 import { AppSidebar, type AppNavEntry, type AppNavItem } from '@/components/app/shell/AppSidebar'
 import { useSidebarState } from '@/components/app/shell/SidebarState'
 import type { ClientNavItem } from '@/lib/modules/client-navigation'
-import { groupOfNavId, isNavItemActive, PHONE_CONTENT_GROUPS, phoneNavLayout, resolveActiveNavId, sidebarGroups } from '@/lib/modules/client-nav-layout'
+import { contentSheetSections, groupOfNavId, isNavItemActive, phoneNavLayout, resolveActiveNavId, sidebarGroups } from '@/lib/modules/client-nav-layout'
 import { effectiveGroupOpen } from '@/lib/app-nav-preferences'
 import type { ClientProductUpdate } from '@/lib/whats-new/model'
 import { useWhatsNew } from './whats-new/WhatsNew'
@@ -141,7 +141,6 @@ export function ClientSidebar({
   const contentOpen = contentOpenOn === pathname
   const activeProjectName = projects.find((p) => p.projectSlug === activeSlug)?.name?.trim() || activeSlug
   const { content, requests, media, overflow } = phoneNavLayout(navItems)
-  const contentGroups = PHONE_CONTENT_GROUPS.filter((g) => content.some((i) => i.group === g)).length
   const labelOf = (i: ClientNavItem) => t(`nav.${i.moduleId}`)
   const requestsBadge = newRequestsCount > 0 ? { count: newRequestsCount, label: t('shell.requestsUnanswered', { count: newRequestsCount }) } : undefined
   const news = useWhatsNew(whatsNew, { popup: whatsNewPopup })
@@ -294,22 +293,19 @@ export function ClientSidebar({
     {content.length > 1 ? (
       <BottomSheet open={contentOpen} title={t('nav.content')} onClose={() => setContentOpenOn(null)}>
         <div className="flex flex-col gap-2">
-          {PHONE_CONTENT_GROUPS.map((group) => {
-            const rows = content.filter((i) => i.group === group)
-            if (rows.length === 0) return null
-            return (
-              <section key={group} aria-labelledby={`content-sheet-${group}`} className="flex flex-col gap-2">
-                {contentGroups > 1 ? (
-                  <h3 id={`content-sheet-${group}`} className="px-1 pt-2 text-[0.6875rem] font-medium tracking-wider text-muted-foreground uppercase">
-                    {t(`navGroups.${group}`)}
-                  </h3>
-                ) : null}
-                {rows.map((i) => (
-                  <LinkCard key={i.moduleId} href={i.href} icon={<AppIcon d={iconFor(i.moduleId)} size={20} />} title={labelOf(i)} />
-                ))}
-              </section>
-            )
-          })}
+          {contentSheetSections(content).map(({ group, headingId, rows }) => (
+            // aria-labelledby only when the heading it names is rendered (2+ groups).
+            <section key={group} aria-labelledby={headingId ?? undefined} className="flex flex-col gap-2">
+              {headingId ? (
+                <h3 id={headingId} className="px-1 pt-2 text-[0.6875rem] font-medium tracking-wider text-muted-foreground uppercase">
+                  {t(`navGroups.${group}`)}
+                </h3>
+              ) : null}
+              {rows.map((i) => (
+                <LinkCard key={i.moduleId} href={i.href} icon={<AppIcon d={iconFor(i.moduleId)} size={20} />} title={labelOf(i)} />
+              ))}
+            </section>
+          ))}
         </div>
       </BottomSheet>
     ) : null}

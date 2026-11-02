@@ -9,6 +9,7 @@ import { isCatalogueId } from '@/lib/api/catalogue-lifecycle'
 import { CollectionBuilder } from '@/components/client/catalogue/CollectionBuilder'
 import { itemChoices } from '@/components/client/catalogue/choices'
 import { PageShell } from '@/components/app/ui/PageShell'
+import { catalogueListPath } from '@/lib/modules/catalogue-routes'
 
 /**
  * `/catalogue/collections/<id>` — the collection builder. Reads with catalogue.item.read (read-only
@@ -40,7 +41,7 @@ async function PageInner({ params }: { params: Promise<{ tenant: string; id: str
         snapshot={snapshot}
         items={itemChoices(lists, site.defaultLocale).filter((i) => i.id !== id)}
         can={catalogueAbilities(grant).collection}
-        listHref={`/${projectSlug}/catalogue?view=collections`}
+        listHref={catalogueListPath(projectSlug, 'collections')}
       />
       {perfBeacon()}
     </PageShell>

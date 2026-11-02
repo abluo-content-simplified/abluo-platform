@@ -81,6 +81,20 @@ export type PhoneNavLayout = {
   overflow: ClientNavItem[]
 }
 
+export type ContentSheetSection = {
+  group: NavGroup
+  /** Id of the rendered group heading, or null when no heading is rendered (a single group) — then no `aria-labelledby`. */
+  headingId: string | null
+  rows: ClientNavItem[]
+}
+
+/** The phone content sheet's sections, in PHONE_CONTENT_GROUPS order; empty groups skipped; headings only when 2+ groups. */
+export function contentSheetSections(content: readonly ClientNavItem[]): ContentSheetSection[] {
+  const groups = PHONE_CONTENT_GROUPS.map((group) => ({ group, rows: content.filter((i) => i.group === group) })).filter((g) => g.rows.length > 0)
+  const headed = groups.length > 1
+  return groups.map((g) => ({ ...g, headingId: headed ? `content-sheet-${g.group}` : null }))
+}
+
 /** Splits the dashboard nav for phones into the fixed slots. Pure; keeps the input (menu) order. */
 export function phoneNavLayout(items: ClientNavItem[]): PhoneNavLayout {
   const content = items.filter((i) => PHONE_CONTENT_GROUPS.includes(i.group))
