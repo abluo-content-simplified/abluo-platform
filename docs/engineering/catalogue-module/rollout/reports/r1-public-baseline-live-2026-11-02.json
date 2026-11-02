@@ -1,0 +1,203 @@
+{
+ "books": {
+  "title": "Between the Lines — books",
+  "jsonld": [],
+  "text": "Between the Lines — books About Expertise Projects Clients Career Between the Lines Contact Language EN DE IT Appearance Light Dark System TMZ About Expertise Projects Clients Career Between the Lines Contact EN Between the Lines All Technology Literature Read Unveiled Yasmine Mohammed · 2019 A memoir of growing up under radical Islam and leaving it behind. Memoir Buy on Amazon The Boy, the Mole, the Fox and the Horse Charlie Mackesy · 2019 An illustrated story of friendship and kindness. Illustrated Inspirational Buy on Amazon Good Omens Terry Pratchett & Neil Gaiman · 1990 A comic novel about an angel and a demon trying to prevent the end of the world. Fantasy Humour Satire Buy on Amazon The Hitchhiker's Guide to the Galaxy Douglas Adams · 1979 This special 42nd Anniversary Edition features exclusive bonus material from the Douglas Adams archives, along with an introduction by Doctor Who showrunner Russell T Davies. An international sensation and beloved pop-culture classic, The Hitchhiker’s Guide to the Galaxy has taken many forms, from radio and television to novels, theatre, comics, and film. Following the extraordinary—and often hilariously chaotic—adventures of Arthur Dent across the galaxy, Douglas Adams’ iconic creation continues to entertain and inspire curious minds around the world. Fantasy Humour Satire Buy on Amazon The Hitchhiker's Guide to the Galaxy Douglas Adams · 1979 It’s an ordinary Thursday morning for Arthur Dent... until his house gets demolished. The Earth follows shortly after to make way for a new hyperspace express route, and Arthur’s best friend has just announced that he’s an alien. Fantasy Humour Satire Want to read Enshittification Cory Doctorow · 2025 Buy on Amazon Some links on this page are affiliate links. If you buy through them, we receive a small commission at no extra cost to you. As an Amazon Associate I earn from qualifying purchases. Want to recommend a book? Share a book that inspired you, or simply stayed with you. Recommend a book TMZ linkedin Site About Expertise Projects Clients Career Contact Between the Lines Between the Lines Projects ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Legal Privacy policy Cookie policy Legal notice I design how products think, not just how they look. © 2026 Thomas Marco Zimmermann ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Cookie settings English Deutsch Italiano × Cookies on this site We use technical cookies to make the site work. With your permission we also use the cookies below. You can change your choice at any time from “Cookie settings” at the bottom of the page. Cookie policy Statistics : Google Analytics (GA4) Reject all Accept all Customize"
+ },
+ "books_douglas-adams": {
+  "title": "Douglas Adams — TMZ",
+  "jsonld": [
+   {
+    "@context": "https://schema.org",
+    "@id": "https://www.tmz.it/en/books/douglas-adams#collection",
+    "url": "https://www.tmz.it/en/books/douglas-adams",
+    "name": "Douglas Adams",
+    "description": "One of my preferred authors",
+    "inLanguage": "en",
+    "@type": "ItemList",
+    "numberOfItems": 1,
+    "itemListElement": [
+     {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "The Hitchhiker's Guide to the Galaxy",
+      "description": "It’s an ordinary Thursday morning for Arthur Dent... until his house gets demolished. The Earth follows shortly after to make way for a new hyperspace express route, and Arthur’s best friend has just announced that he’s an alien.",
+      "image": [
+       "https://cdn.sanity.io/images/3n7t84j3/production/6c43e96604e127a3467b6cbf8a9796ae6db06c41-920x1500.jpg?w=1600&fm=jpg&q=85"
+      ],
+      "url": "https://www.tmz.it/en/books/the-hitchhiker-s-guide-to-the-galaxy"
+     }
+    ]
+   }
+  ],
+  "text": "Douglas Adams — TMZ About Expertise Projects Clients Career Between the Lines Contact Language EN DE IT Appearance Light Dark System TMZ About Expertise Projects Clients Career Between the Lines Contact EN Douglas Adams One of my preferred authors The Hitchhiker's Galaxy Editions The Hitchhiker's Guide to the Galaxy Douglas Adams · 1979 It’s an ordinary Thursday morning for Arthur Dent... until his house gets demolished. The Earth follows shortly after to make way for a new hyperspace express route, and Arthur’s best friend has just announced that he’s an alien. Fantasy Humour Satire TMZ linkedin Site About Expertise Projects Clients Career Contact Between the Lines Between the Lines Projects ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Legal Privacy policy Cookie policy Legal notice I design how products think, not just how they look. © 2026 Thomas Marco Zimmermann ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Cookie settings English Deutsch Italiano × Cookies on this site We use technical cookies to make the site work. With your permission we also use the cookies below. You can change your choice at any time from “Cookie settings” at the bottom of the page. Cookie policy Statistics : Google Analytics (GA4) Reject all Accept all Customize"
+ },
+ "books_enshittification": {
+  "title": "Enshittification — TMZ",
+  "jsonld": [
+   {
+    "@context": "https://schema.org",
+    "@type": "Book",
+    "@id": "https://www.tmz.it/en/books/enshittification#book",
+    "url": "https://www.tmz.it/en/books/enshittification",
+    "name": "Enshittification",
+    "image": [
+     "https://cdn.sanity.io/images/3n7t84j3/production/f2e0392cedfec6b7b5f6fcf7815a444ce1434c34-200x300.jpg?w=1600&fm=jpg&q=85"
+    ],
+    "author": {
+     "@type": "Person",
+     "name": "Cory Doctorow"
+    },
+    "publisher": {
+     "@type": "Organization",
+     "name": "Farrar, Straus and Giroux"
+    },
+    "isbn": "0374619328",
+    "datePublished": "2025",
+    "inLanguage": "en"
+   }
+  ],
+  "text": "Enshittification — TMZ About Expertise Projects Clients Career Between the Lines Contact Language EN DE IT Appearance Light Dark System TMZ About Expertise Projects Clients Career Between the Lines Contact EN Enshittification Why Everything Suddenly Got Worse and What to Do About It Farrar, Straus and Giroux · 2025 Buy Affiliate link Some links on this page are affiliate links. If you buy through them, we receive a small commission at no extra cost to you. As an Amazon Associate I earn from qualifying purchases. TMZ linkedin Site About Expertise Projects Clients Career Contact Between the Lines Between the Lines Projects ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Legal Privacy policy Cookie policy Legal notice I design how products think, not just how they look. © 2026 Thomas Marco Zimmermann ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Cookie settings English Deutsch Italiano × Cookies on this site We use technical cookies to make the site work. With your permission we also use the cookies below. You can change your choice at any time from “Cookie settings” at the bottom of the page. Cookie policy Statistics : Google Analytics (GA4) Reject all Accept all Customize"
+ },
+ "books_good-omens": {
+  "title": "Good Omens — TMZ",
+  "jsonld": [
+   {
+    "@context": "https://schema.org",
+    "@type": "Book",
+    "@id": "https://www.tmz.it/en/books/good-omens#book",
+    "url": "https://www.tmz.it/en/books/good-omens",
+    "name": "Good Omens",
+    "description": "A comic novel about an angel and a demon trying to prevent the end of the world.",
+    "image": [
+     "https://cdn.sanity.io/images/3n7t84j3/production/3053af019412f1b4a17cee1837bd3f91c648042f-321x500.jpg?w=1600&fm=jpg&q=85"
+    ],
+    "author": {
+     "@type": "Person",
+     "name": "Terry Pratchett & Neil Gaiman"
+    },
+    "publisher": {
+     "@type": "Organization",
+     "name": "Corgi"
+    },
+    "isbn": "0552171891",
+    "datePublished": "1990",
+    "inLanguage": "en"
+   }
+  ],
+  "text": "Good Omens — TMZ About Expertise Projects Clients Career Between the Lines Contact Language EN DE IT Appearance Light Dark System TMZ About Expertise Projects Clients Career Between the Lines Contact EN Good Omens Terry Pratchett & Neil Gaiman Corgi · 1990 A comic novel about an angel and a demon trying to prevent the end of the world. Fantasy Humour Satire Buy Affiliate link Some links on this page are affiliate links. If you buy through them, we receive a small commission at no extra cost to you. As an Amazon Associate I earn from qualifying purchases. TMZ linkedin Site About Expertise Projects Clients Career Contact Between the Lines Between the Lines Projects ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Legal Privacy policy Cookie policy Legal notice I design how products think, not just how they look. © 2026 Thomas Marco Zimmermann ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Cookie settings English Deutsch Italiano × Cookies on this site We use technical cookies to make the site work. With your permission we also use the cookies below. You can change your choice at any time from “Cookie settings” at the bottom of the page. Cookie policy Statistics : Google Analytics (GA4) Reject all Accept all Customize"
+ },
+ "books_the-boy-the-mole-the-fox-and-the-horse": {
+  "title": "The Boy, the Mole, the Fox and the Horse — TMZ",
+  "jsonld": [
+   {
+    "@context": "https://schema.org",
+    "@type": "Book",
+    "@id": "https://www.tmz.it/en/books/the-boy-the-mole-the-fox-and-the-horse#book",
+    "url": "https://www.tmz.it/en/books/the-boy-the-mole-the-fox-and-the-horse",
+    "name": "The Boy, the Mole, the Fox and the Horse",
+    "description": "An illustrated story of friendship and kindness.",
+    "image": [
+     "https://cdn.sanity.io/images/3n7t84j3/production/10d4d5d678580b7733237bae3b21ff2b5c9f781a-409x522.jpg?w=1600&fm=jpg&q=85"
+    ],
+    "author": {
+     "@type": "Person",
+     "name": "Charlie Mackesy"
+    },
+    "publisher": {
+     "@type": "Organization",
+     "name": "Ebury Press"
+    },
+    "isbn": "1529105102",
+    "datePublished": "2019",
+    "inLanguage": "en"
+   }
+  ],
+  "text": "The Boy, the Mole, the Fox and the Horse — TMZ About Expertise Projects Clients Career Between the Lines Contact Language EN DE IT Appearance Light Dark System TMZ About Expertise Projects Clients Career Between the Lines Contact EN The Boy, the Mole, the Fox and the Horse Charlie Mackesy Ebury Press · 2019 An illustrated story of friendship and kindness. Illustrated Inspirational Buy Affiliate link Some links on this page are affiliate links. If you buy through them, we receive a small commission at no extra cost to you. As an Amazon Associate I earn from qualifying purchases. TMZ linkedin Site About Expertise Projects Clients Career Contact Between the Lines Between the Lines Projects ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Legal Privacy policy Cookie policy Legal notice I design how products think, not just how they look. © 2026 Thomas Marco Zimmermann ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Cookie settings English Deutsch Italiano × Cookies on this site We use technical cookies to make the site work. With your permission we also use the cookies below. You can change your choice at any time from “Cookie settings” at the bottom of the page. Cookie policy Statistics : Google Analytics (GA4) Reject all Accept all Customize"
+ },
+ "books_the-hitchhiker-s-guide-to-the-galaxy-special-edition": {
+  "title": "The Hitchhiker's Guide to the Galaxy — TMZ",
+  "jsonld": [
+   {
+    "@context": "https://schema.org",
+    "@type": "Book",
+    "@id": "https://www.tmz.it/en/books/the-hitchhiker-s-guide-to-the-galaxy-special-edition#book",
+    "url": "https://www.tmz.it/en/books/the-hitchhiker-s-guide-to-the-galaxy-special-edition",
+    "name": "The Hitchhiker's Guide to the Galaxy",
+    "description": "This special 42nd Anniversary Edition features exclusive bonus material from the Douglas Adams archives, along with an introduction by Doctor Who showrunner Russell T Davies.\n\nAn international sensation and beloved pop-culture classic, The Hitchhiker’s Guide to the Galaxy has taken many forms, from radio and television to novels, theatre, comics, and film. Following the extraordinary—and often hilariously chaotic—adventures of Arthur Dent across the galaxy, Douglas Adams’ iconic creation continues to entertain and inspire curious minds around the world.",
+    "image": [
+     "https://cdn.sanity.io/images/3n7t84j3/production/27c97cc69915d86904cabd4f055d22543010e6aa-990x1500.jpg?w=1600&fm=jpg&q=85"
+    ],
+    "author": {
+     "@type": "Person",
+     "name": "Douglas Adams"
+    },
+    "publisher": {
+     "@type": "Organization",
+     "name": "Pan Macmillan"
+    },
+    "isbn": "1529034523",
+    "datePublished": "1979",
+    "inLanguage": "en"
+   }
+  ],
+  "text": "The Hitchhiker's Guide to the Galaxy — TMZ About Expertise Projects Clients Career Between the Lines Contact Language EN DE IT Appearance Light Dark System TMZ About Expertise Projects Clients Career Between the Lines Contact EN The Hitchhiker's Guide to the Galaxy The 42nd Anniversary Edition of Douglas Adams's International Bestseller Pan Macmillan · 1979 This special 42nd Anniversary Edition features exclusive bonus material from the Douglas Adams archives, along with an introduction by Doctor Who showrunner Russell T Davies. An international sensation and beloved pop-culture classic, The Hitchhiker’s Guide to the Galaxy has taken many forms, from radio and television to novels, theatre, comics, and film. Following the extraordinary—and often hilariously chaotic—adventures of Arthur Dent across the galaxy, Douglas Adams’ iconic creation continues to entertain and inspire curious minds around the world. Fantasy Humour Satire Buy Affiliate link Some links on this page are affiliate links. If you buy through them, we receive a small commission at no extra cost to you. As an Amazon Associate I earn from qualifying purchases. TMZ linkedin Site About Expertise Projects Clients Career Contact Between the Lines Between the Lines Projects ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Legal Privacy policy Cookie policy Legal notice I design how products think, not just how they look. © 2026 Thomas Marco Zimmermann ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Cookie settings English Deutsch Italiano × Cookies on this site We use technical cookies to make the site work. With your permission we also use the cookies below. You can change your choice at any time from “Cookie settings” at the bottom of the page. Cookie policy Statistics : Google Analytics (GA4) Reject all Accept all Customize"
+ },
+ "books_the-hitchhiker-s-guide-to-the-galaxy": {
+  "title": "The Hitchhiker's Guide to the Galaxy — TMZ",
+  "jsonld": [
+   {
+    "@context": "https://schema.org",
+    "@type": "Book",
+    "@id": "https://www.tmz.it/en/books/the-hitchhiker-s-guide-to-the-galaxy#book",
+    "url": "https://www.tmz.it/en/books/the-hitchhiker-s-guide-to-the-galaxy",
+    "name": "The Hitchhiker's Guide to the Galaxy",
+    "description": "It’s an ordinary Thursday morning for Arthur Dent... until his house gets demolished. The Earth follows shortly after to make way for a new hyperspace express route, and Arthur’s best friend has just announced that he’s an alien.",
+    "image": [
+     "https://cdn.sanity.io/images/3n7t84j3/production/6c43e96604e127a3467b6cbf8a9796ae6db06c41-920x1500.jpg?w=1600&fm=jpg&q=85"
+    ],
+    "author": {
+     "@type": "Person",
+     "name": "Douglas Adams"
+    },
+    "datePublished": "1979",
+    "inLanguage": "en"
+   }
+  ],
+  "text": "The Hitchhiker's Guide to the Galaxy — TMZ About Expertise Projects Clients Career Between the Lines Contact Language EN DE IT Appearance Light Dark System TMZ About Expertise Projects Clients Career Between the Lines Contact EN The Hitchhiker's Guide to the Galaxy A Trilogy in Four Parts It’s an ordinary Thursday morning for Arthur Dent... until his house gets demolished. The Earth follows shortly after to make way for a new hyperspace express route, and Arthur’s best friend has just announced that he’s an alien. Fantasy Humour Satire TMZ linkedin Site About Expertise Projects Clients Career Contact Between the Lines Between the Lines Projects ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Legal Privacy policy Cookie policy Legal notice I design how products think, not just how they look. © 2026 Thomas Marco Zimmermann ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Cookie settings English Deutsch Italiano × Cookies on this site We use technical cookies to make the site work. With your permission we also use the cookies below. You can change your choice at any time from “Cookie settings” at the bottom of the page. Cookie policy Statistics : Google Analytics (GA4) Reject all Accept all Customize"
+ },
+ "books_unveiled": {
+  "title": "Unveiled — TMZ",
+  "jsonld": [
+   {
+    "@context": "https://schema.org",
+    "@type": "Book",
+    "@id": "https://www.tmz.it/en/books/unveiled#book",
+    "url": "https://www.tmz.it/en/books/unveiled",
+    "name": "Unveiled",
+    "description": "A memoir of growing up under radical Islam and leaving it behind.",
+    "image": [
+     "https://cdn.sanity.io/images/3n7t84j3/production/070841e1d94a27ceed94f63274d558c79ee45104-348x522.jpg?w=1600&fm=jpg&q=85"
+    ],
+    "author": {
+     "@type": "Person",
+     "name": "Yasmine Mohammed"
+    },
+    "publisher": {
+     "@type": "Organization",
+     "name": "Free Hearts Free Minds"
+    },
+    "isbn": "1999240502",
+    "datePublished": "2019",
+    "inLanguage": "en"
+   }
+  ],
+  "text": "Unveiled — TMZ About Expertise Projects Clients Career Between the Lines Contact Language EN DE IT Appearance Light Dark System TMZ About Expertise Projects Clients Career Between the Lines Contact EN Unveiled How Western Liberals Empower Radical Islam Free Hearts Free Minds · 2019 A memoir of growing up under radical Islam and leaving it behind. Memoir Buy Affiliate link Some links on this page are affiliate links. If you buy through them, we receive a small commission at no extra cost to you. As an Amazon Associate I earn from qualifying purchases. TMZ linkedin Site About Expertise Projects Clients Career Contact Between the Lines Between the Lines Projects ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Legal Privacy policy Cookie policy Legal notice I design how products think, not just how they look. © 2026 Thomas Marco Zimmermann ART4ART GoRow No!Logo Abluo, the tiny CMS Livener Cookie settings English Deutsch Italiano × Cookies on this site We use technical cookies to make the site work. With your permission we also use the cookies below. You can change your choice at any time from “Cookie settings” at the bottom of the page. Cookie policy Statistics : Google Analytics (GA4) Reject all Accept all Customize"
+ },
+ "llms.txt": {
+  "raw": "# TMZ\n\nThis site is published in en, de, it.\n\n## Pages\n\n- [Thomas Marco Zimmermann — Product Designer & Digital Product Strategist](https://tmz.it/en): Product Designer and Digital Product Strategist with 30+ years experience building digital platforms across Europe. Founder of GoRow, No!Logo and Nimito. Former Oracle and Reply consultant.\n- [Cookie Policy](https://tmz.it/en/cookie-policy)\n- [Legal notice](https://tmz.it/en/legal-notice)\n- [Privacy Policy](https://tmz.it/en/privacy)\n\n## Pages (de)\n\n- [Thomas Marco Zimmermann — Product Designer & Digital Product Strategist](https://tmz.it/de): Product Designer und Digital Product Strategist mit über 30 Jahren Erfahrung im Aufbau digitaler Plattformen in ganz Europa. Gründer von GoRow, No!Logo und Nimito. Ehemals Berater bei Oracle und Reply.\n- [Cookie-Richtlinie](https://tmz.it/de/cookie-richtlinie)\n- [Impressum](https://tmz.it/de/impressum)\n- [Datenschutzerklärung](https://tmz.it/de/datenschutz)\n\n## Pages (it)\n\n- [Thomas Marco Zimmermann — Product Designer & Stratega di prodotti digitali](https://tmz.it/it): Product Designer e stratega di prodotti digitali, oltre 30 anni a costruire piattaforme digitali in tutta Europa. Fondatore di GoRow, No!Logo e Nimito. Già consulente in Oracle e Reply.\n- [Cookie policy](https://tmz.it/it/cookie-policy)\n- [Note legali](https://tmz.it/it/note-legali)\n- [Informativa sulla privacy](https://tmz.it/it/privacy)\n\n## Blog\n\n- [Question: This is a question. ](https://tmz.it/en/blog/question-this-is-a-question)\n- [Work at 22:21. ](https://tmz.it/en/blog/work-at-22-21)\n- [Title of my test story 01](https://tmz.it/en/blog/title-of-my-test-story-01)\n\n## Catalogue\n\n- [Douglas Adams](https://tmz.it/en/books/douglas-adams): One of my preferred authors\n- [The Hitchhiker's Guide to the Galaxy](https://tmz.it/en/books/the-hitchhiker-s-guide-to-the-galaxy): It’s an ordinary Thursday morning for Arthur Dent... until his house gets demolished. The Earth follows shortly after to make way for a new hyperspace express route, and Arthur’s best friend has just announced that he’s an alien.\n- [The Hitchhiker's Guide to the Galaxy](https://tmz.it/en/books/the-hitchhiker-s-guide-to-the-galaxy-special-edition): This special 42nd Anniversary Edition features exclusive bonus material from the Douglas Adams archives, along with an introduction by Doctor Who showrunner Russell T Davies.\n\nAn international sensation and beloved pop-culture classic, The Hitchhiker’s Guide to the Galaxy has taken many forms, from radio and television to novels, theatre, comics, and film. Following the extraordinary—and often hilariously chaotic—adventures of Arthur Dent across the galaxy, Douglas Adams’ iconic creation continues to entertain and inspire curious minds around the world.\n- [Good Omens](https://tmz.it/en/books/good-omens): A comic novel about an angel and a demon trying to prevent the end of the world.\n- [The Boy, the Mole, the Fox and the Horse](https://tmz.it/en/books/the-boy-the-mole-the-fox-and-the-horse): An illustrated story of friendship and kindness.\n- [Unveiled](https://tmz.it/en/books/unveiled): A memoir of growing up under radical Islam and leaving it behind.\n- [Enshittification](https://tmz.it/en/books/enshittification)\n\n## Machine-readable\n\n- [Sitemap](https://tmz.it/sitemap.xml)\n"
+ },
+ "sitemap.xml": {
+  "raw": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\" xmlns:image=\"http://www.google.com/schemas/sitemap-image/1.1\">\n<url>\n<loc>https://www.tmz.it/en</loc>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>weekly</changefreq>\n<priority>1</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/de</loc>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>weekly</changefreq>\n<priority>0.9</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/it</loc>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>weekly</changefreq>\n<priority>0.9</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/en/cookie-policy</loc>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>weekly</changefreq>\n<priority>0.8</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/de/cookie-richtlinie</loc>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>weekly</changefreq>\n<priority>0.7</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/it/cookie-policy</loc>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>weekly</changefreq>\n<priority>0.7</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/en/legal-notice</loc>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>weekly</changefreq>\n<priority>0.8</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/de/impressum</loc>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>weekly</changefreq>\n<priority>0.7</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/it/note-legali</loc>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>weekly</changefreq>\n<priority>0.7</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/en/privacy</loc>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>weekly</changefreq>\n<priority>0.8</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/de/datenschutz</loc>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>weekly</changefreq>\n<priority>0.7</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/it/privacy</loc>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>weekly</changefreq>\n<priority>0.7</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/en/blog/question-this-is-a-question</loc>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>monthly</changefreq>\n<priority>0.6</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/en/blog/title-of-my-test-story-01</loc>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>monthly</changefreq>\n<priority>0.6</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/en/blog/work-at-22-21</loc>\n<image:image>\n<image:loc>https://cdn.sanity.io/images/3n7t84j3/production/7a465be35a3aeaecda9061b2b2c9c466ce13850c-1920x2560.jpg</image:loc>\n</image:image>\n<image:image>\n<image:loc>https://cdn.sanity.io/images/3n7t84j3/production/6c43e96604e127a3467b6cbf8a9796ae6db06c41-920x1500.jpg</image:loc>\n</image:image>\n<image:image>\n<image:loc>https://cdn.sanity.io/images/3n7t84j3/production/27c97cc69915d86904cabd4f055d22543010e6aa-990x1500.jpg</image:loc>\n</image:image>\n<image:image>\n<image:loc>https://cdn.sanity.io/images/3n7t84j3/production/dfbf04525c4ff9c7465a908cf6c79f4fcd6fd186-1536x1024.png</image:loc>\n</image:image>\n<image:image>\n<image:loc>https://cdn.sanity.io/images/3n7t84j3/production/a6015dac37420490619fa218b9f00c2458bc0aab-1920x2560.jpg</image:loc>\n</image:image>\n<image:image>\n<image:loc>https://cdn.sanity.io/images/3n7t84j3/production/867f487f128a7da6c5cdf79316aceb99662bcc87-1920x2560.jpg</image:loc>\n</image:image>\n<lastmod>2026-11-02T21:13:13.876Z</lastmod>\n<changefreq>monthly</changefreq>\n<priority>0.6</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/en/books</loc>\n<changefreq>weekly</changefreq>\n<priority>0.7</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/de/books</loc>\n<changefreq>weekly</changefreq>\n<priority>0.6</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/it/books</loc>\n<changefreq>weekly</changefreq>\n<priority>0.6</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/en/books/douglas-adams</loc>\n<changefreq>weekly</changefreq>\n<priority>0.7</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/en/books/the-boy-the-mole-the-fox-and-the-horse</loc>\n<image:image>\n<image:loc>https://cdn.sanity.io/images/3n7t84j3/production/10d4d5d678580b7733237bae3b21ff2b5c9f781a-409x522.jpg</image:loc>\n</image:image>\n<changefreq>weekly</changefreq>\n<priority>0.6</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/en/books/enshittification</loc>\n<image:image>\n<image:loc>https://cdn.sanity.io/images/3n7t84j3/production/f2e0392cedfec6b7b5f6fcf7815a444ce1434c34-200x300.jpg</image:loc>\n</image:image>\n<changefreq>weekly</changefreq>\n<priority>0.6</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/en/books/good-omens</loc>\n<image:image>\n<image:loc>https://cdn.sanity.io/images/3n7t84j3/production/3053af019412f1b4a17cee1837bd3f91c648042f-321x500.jpg</image:loc>\n</image:image>\n<changefreq>weekly</changefreq>\n<priority>0.6</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/en/books/the-hitchhiker-s-guide-to-the-galaxy</loc>\n<image:image>\n<image:loc>https://cdn.sanity.io/images/3n7t84j3/production/6c43e96604e127a3467b6cbf8a9796ae6db06c41-920x1500.jpg</image:loc>\n</image:image>\n<changefreq>weekly</changefreq>\n<priority>0.6</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/en/books/the-hitchhiker-s-guide-to-the-galaxy-special-edition</loc>\n<image:image>\n<image:loc>https://cdn.sanity.io/images/3n7t84j3/production/27c97cc69915d86904cabd4f055d22543010e6aa-990x1500.jpg</image:loc>\n</image:image>\n<changefreq>weekly</changefreq>\n<priority>0.6</priority>\n</url>\n<url>\n<loc>https://www.tmz.it/en/books/unveiled</loc>\n<image:image>\n<image:loc>https://cdn.sanity.io/images/3n7t84j3/production/070841e1d94a27ceed94f63274d558c79ee45104-348x522.jpg</image:loc>\n</image:image>\n<changefreq>weekly</changefreq>\n<priority>0.6</priority>\n</url>\n</urlset>\n"
+ }
+}
