@@ -22,6 +22,9 @@ import { StubPane } from './src/lib/sanity/studio/StubPane'
 // ADR-014 Phase B — Integrations & Privacy panes
 import { IntegrationsPane } from './src/lib/sanity/studio/IntegrationsPane'
 import { PrivacyPane } from './src/lib/sanity/studio/PrivacyPane'
+import { CATALOGUE_TEMPLATE_IDS, catalogueDocumentActions, isCatalogueStudioDoc } from './src/lib/sanity/studio/catalogue-posture'
+import { postureStore } from './src/lib/sanity/studio/catalogue-posture-store'
+import { applyCataloguePosture } from './src/lib/sanity/studio/catalogue-posture-schema'
 // ADR-033 Amendment J slice 6 — Categories & Tags (taxonomyTerm), superadmin only
 import { NewTermPane } from './src/sanity/components/NewTermPane'
 import { TermUsageView } from './src/sanity/components/TermUsageView'
@@ -797,7 +800,8 @@ export default defineConfig({
   },
 
   schema: {
-    types: schemaTypes,
+    // C9 layer 1: every Catalogue document type is read-only (posture store, fails closed).
+    types: applyCataloguePosture(schemaTypes),
     templates: initialValueTemplates,
   },
 
@@ -805,6 +809,12 @@ export default defineConfig({
   document: {
     // Export / Import / Duplicate actions — scoped to designSystem documents only.
     actions: (prev, context) => {
+      // C9 layer 2 (K-7) — FIRST, before every other branch: a Catalogue document
+      // has no built-in publish/unpublish/delete/duplicate/restore in any state.
+      // R1: no break-glass yet, so no gate action and no grant — no action at all.
+      if (isCatalogueStudioDoc(context.schemaType)) {
+        return catalogueDocumentActions(prev, { state: postureStore.get(), now: new Date() })
+      }
       if (context.schemaType === 'designSystem') {
         // Remove the built-in Duplicate — our custom one always creates unassigned copies.
         const filtered = prev.filter((action) => action.action !== 'duplicate')
@@ -834,7 +844,8 @@ export default defineConfig({
     // Plus menu: hide legacy/internal types.
     // Note: Sanity always re-sorts the menu alphabetically in the UI layer —
     // custom ordering via newDocumentOptions is not possible. Filter only.
+    // C9 layer 3: Catalogue documents are created by the dashboard only (CATALOGUE_TEMPLATE_IDS).
     newDocumentOptions: (prev) =>
-      prev.filter((opt) => !['blogCategory', 'newsCategory', 'eventCategory', 'blogCategoryProjectOwned', 'newsCategoryProjectOwned', 'eventCategoryProjectOwned', 'homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned', 'blogPageProjectOwned', 'newsPageProjectOwned', 'cataloguePageProjectOwned', 'callToActionProjectOwned', 'taxonomyTerm', 'taxonomyTermProjectOwned', 'internalTagList'].includes(opt.templateId)),
+      prev.filter((opt) => !CATALOGUE_TEMPLATE_IDS.includes(opt.templateId)).filter((opt) => !['blogCategory', 'newsCategory', 'eventCategory', 'blogCategoryProjectOwned', 'newsCategoryProjectOwned', 'eventCategoryProjectOwned', 'homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned', 'blogPageProjectOwned', 'newsPageProjectOwned', 'cataloguePageProjectOwned', 'callToActionProjectOwned', 'taxonomyTerm', 'taxonomyTermProjectOwned', 'internalTagList'].includes(opt.templateId)),
   },
 })
