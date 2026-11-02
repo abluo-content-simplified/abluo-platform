@@ -48,15 +48,29 @@ export function useSheetDialog(open: boolean, onClose: () => void) {
     return () => window.clearTimeout(id)
   }, [open, target])
 
-  const dialogProps = {
-    ref,
+  const dialogProps = { ref, ...sheetDialogHandlers(onClose, closingByUs) }
+  return { target, dialogProps }
+}
+
+/**
+ * The cancel/close handlers of a sheet dialog. Pure (exported for tests).
+ *
+ * React bubbles synthetic events through portals along the COMPONENT tree, so a
+ * sheet opened from inside a panel (a DatePicker in a SidePanel) would hand its
+ * own cancel/close to the panel too and close both (Tom, 2026-11-02). Only
+ * events whose target is THIS dialog count.
+ */
+export function sheetDialogHandlers(onClose: () => void, closingByUs: { current: boolean }) {
+  return {
     // Escape: animate out like any other close, instead of the browser's instant close.
-    onCancel: (e: SyntheticEvent<HTMLDialogElement>) => {
+    onCancel: (e: Pick<SyntheticEvent<HTMLDialogElement>, 'target' | 'currentTarget' | 'preventDefault'>) => {
+      if (e.target !== e.currentTarget) return
       e.preventDefault()
       onClose()
     },
     // A close we did not start (e.g. a form with method="dialog") still tells the owner.
-    onClose: () => {
+    onClose: (e: Pick<SyntheticEvent<HTMLDialogElement>, 'target' | 'currentTarget'>) => {
+      if (e.target !== e.currentTarget) return
       if (closingByUs.current) {
         closingByUs.current = false
         return
@@ -64,5 +78,4 @@ export function useSheetDialog(open: boolean, onClose: () => void) {
       onClose()
     },
   }
-  return { target, dialogProps }
 }
