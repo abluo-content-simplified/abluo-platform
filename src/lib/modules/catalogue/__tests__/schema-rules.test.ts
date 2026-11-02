@@ -77,7 +77,8 @@ describe('catalogueOption allergens (D-3a)', () => {
   it('an explicit-state object without a note, starting notReviewed; hidden for remove and linked choices', () => {
     const f = decl()
     expect(f.type).toBe('object')
-    expect(f.fields!.map((x) => x.name)).toEqual(['status', 'allergens', 'mayContain', 'confirmed'])
+    // C13 evidence fields (review, invalidation, declarationVersion) are registered read-only in R1; still no note.
+    expect(f.fields!.map((x) => x.name)).toEqual(['status', 'allergens', 'mayContain', 'confirmed', 'review', 'invalidation', 'declarationVersion'])
     expect(f.initialValue).toEqual({ status: 'notReviewed' })
     expect(f.hidden({ parent: { kind: 'remove' } })).toBe(true)
     expect(f.hidden({ parent: { kind: 'add', item: { _ref: 'x' } } })).toBe(true)

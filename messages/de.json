@@ -6060,7 +6060,10 @@
           "allergens": {
             "notReviewed": "Prüfe die Allergene: Gib an, was enthalten ist, oder dass keine enthalten sind.",
             "noAllergens": "Wähle die enthaltenen Allergene aus oder ändere deine Angabe.",
-            "notConfirmed": "Bestätige, dass keines der aufgeführten Allergene enthalten ist."
+            "notConfirmed": "Bestätige, dass keines der aufgeführten Allergene enthalten ist.",
+            "reviewShape": "Die gespeicherte Allergenprüfung ist unvollständig. Prüfe die Allergene erneut.",
+            "mayContainNotAssessed": "„Kann enthalten“ braucht eine bestätigte Risikobewertung. Prüfe die Allergene erneut.",
+            "editedOutsideReview": "Die Allergene wurden nach der Prüfung geändert. Prüfe sie erneut."
           },
           "pageAddress": "Die Seite braucht eine Adresse. Ändere den Namen oder schreibe die Adresse selbst.",
           "strayAddress": "Die Seitenadresse auf {language} hat keinen Namen auf {language}. Füge den Namen hinzu oder entferne die Adresse.",

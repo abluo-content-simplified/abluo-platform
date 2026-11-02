@@ -57,10 +57,60 @@ export type AllergenDeclarationStatus = (typeof ALLERGEN_DECLARATION_STATUSES)[n
 /** Localized text as stored (Sanity localizedText: `_type` plus locale keys). */
 export type AllergenNote = Record<string, string>
 
+// ── Review evidence (C13 §13.1) — READ tolerantly from R1, written by the allergen slice ──
+//
+// `review` is optional ONLY for legacy declarations (stored before C13): a
+// reviewed status without `review` stays publishable (nothing is unpublished,
+// no data migration) and is reported by the recommended readiness rule
+// `allergenEvidenceMissing` once the allergen slice activates it. Nothing in
+// R1 writes any of these fields (C10-6 R1 row, C13 §13.7).
+
+export const REVIEW_BASES = ['recipe', 'supplierLabel', 'technicalSheet', 'riskAssessment', 'other'] as const
+export type ReviewBasis = (typeof REVIEW_BASES)[number]
+
+export type AllergenReview = {
+  reviewedBy: string
+  reviewedAt: string
+  basis: ReviewBasis
+  basisNote?: string
+  mayContainRiskAssessment?: { confirmed: true; confirmedBy: string; confirmedAt: string }
+  declarationVersion: number
+  contentFingerprint: string
+  linked?: ReadonlyArray<{ choiceKey: string; itemId: string; fingerprint: string }>
+}
+
+/** D-16 "Reset when", one cause per clause (C13 §13.1). */
+export const ALLERGEN_INVALIDATION_CAUSES = [
+  'profileChangedToFood',
+  'optionListAttached',
+  'freeTextChoiceAdded',
+  'freeTextChoiceEdited',
+  'choiceChangedToAdd',
+  'linkedChoiceTargetChanged',
+  'linkedItemChanged',
+  'declarationStatusChanged',
+  'reviewBasisDataChanged',
+] as const
+export type AllergenInvalidationCause = (typeof ALLERGEN_INVALIDATION_CAUSES)[number]
+
 export type AllergenDeclaration =
-  | { status: 'notReviewed' }
-  | { status: 'containsListedAllergens'; allergens: AllergenKey[]; mayContain?: AllergenKey[]; note?: AllergenNote }
-  | { status: 'noneDeclared'; confirmed: true; mayContain?: AllergenKey[]; note?: AllergenNote }
+  | { status: 'notReviewed'; invalidation?: { cause: AllergenInvalidationCause; at: string } }
+  | { status: 'containsListedAllergens'; allergens: AllergenKey[]; mayContain?: AllergenKey[]; note?: AllergenNote; review?: AllergenReview }
+  | { status: 'noneDeclared'; confirmed: true; mayContain?: AllergenKey[]; note?: AllergenNote; review?: AllergenReview }
+
+/** C13 §13.1 — a system-created compliance task on the item (`catalogueItem.complianceTasks`). Read-only in R1. */
+export type ComplianceTask = {
+  _key: string
+  taskId: string
+  kind: 'allergenReview'
+  reason: 'linkedItemChanged'
+  linkedItemId: string
+  choiceKeys: string[]
+  createdAt: string
+  createdBy: 'system'
+  carriedDraft: boolean
+  resolvedAt?: string
+}
 
 export type AllergenDeclarationIssue =
   | 'missing'
@@ -70,6 +120,10 @@ export type AllergenDeclarationIssue =
   | 'noAllergens'
   | 'notConfirmed'
   | 'unexpectedField'
+  // C13 §13.5 — only ever reported for a declaration that HAS a `review` block:
+  | 'reviewShape' // the review evidence itself is malformed (gate: integrity.declarationShape)
+  | 'mayContainNotAssessed' // "may contain" without the risk-assessment confirmation
+  | 'editedOutsideReview' // content changed after the review (fingerprint mismatch)
 
 /**
  * Every key the declaration type knows. A key of ANOTHER status (left behind
@@ -77,7 +131,10 @@ export type AllergenDeclarationIssue =
  * rebuilds the object with only the status's own fields, and the website reads
  * only those; a key the type does not know at all is refused.
  */
-const DECLARATION_FIELDS: ReadonlySet<string> = new Set(['status', 'allergens', 'mayContain', 'confirmed', 'note'])
+// C13 (§13.1, C10-6 R1): `review`, `invalidation` and `declarationVersion` are
+// known keys — tolerated on any status, like the other status's fields.
+const DECLARATION_FIELDS: ReadonlySet<string> = new Set(['status', 'allergens', 'mayContain', 'confirmed', 'note', 'review', 'invalidation', 'declarationVersion'])
+const REVIEW_FIELDS: ReadonlySet<string> = new Set(['reviewedBy', 'reviewedAt', 'basis', 'basisNote', 'mayContainRiskAssessment', 'declarationVersion', 'contentFingerprint', 'linked'])
 
 /**
  * Everything wrong with a stored declaration, for Studio validation and the
@@ -85,7 +142,7 @@ const DECLARATION_FIELDS: ReadonlySet<string> = new Set(['status', 'allergens', 
  * DRAFT state but never a publishable one. Sanity's own keys (`_type`,
  * `_key`) are ignored; any other unknown key is refused.
  */
-export function allergenDeclarationIssues(value: unknown, opts: { note?: boolean } = {}): AllergenDeclarationIssue[] {
+export function allergenDeclarationIssues(value: unknown, opts: { note?: boolean; defaultLocale?: string } = {}): AllergenDeclarationIssue[] {
   const allowNote = opts.note !== false
   if (value == null) return ['missing']
   if (typeof value !== 'object' || Array.isArray(value)) return ['unknownStatus']
@@ -110,7 +167,75 @@ export function allergenDeclarationIssues(value: unknown, opts: { note?: boolean
     if (!may || unknownAllergenKeys(may).length) out.push('unknownKey')
     if (v.confirmed !== true) out.push('notConfirmed')
   }
+  // C13 — the evidence, judged only when present. Legacy declarations carry
+  // none and are judged exactly as before (no new issue can appear for them).
+  if (v.declarationVersion != null && !isPositiveInt(v.declarationVersion)) out.push('reviewShape')
+  if (status !== 'notReviewed' && v.review != null) {
+    const review = v.review
+    if (!isReviewShape(review)) out.push('reviewShape')
+    else {
+      const may = Array.isArray(v.mayContain) ? v.mayContain : []
+      if (may.length > 0 && review.mayContainRiskAssessment?.confirmed !== true) out.push('mayContainNotAssessed')
+      // Needs the site's default locale (the note's reviewed language); callers that do not know it skip this check.
+      if (opts.defaultLocale && contentFingerprint(v, { defaultLocale: opts.defaultLocale }) !== review.contentFingerprint) out.push('editedOutsideReview')
+    }
+  }
   return [...new Set(out)]
+}
+
+const isPositiveInt = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 1
+const isIso = (s: unknown): s is string => typeof s === 'string' && s.length <= 40 && !Number.isNaN(Date.parse(s))
+const isId = (s: unknown): s is string => typeof s === 'string' && s.length > 0 && s.length <= 128
+
+/** C13 §13.5 `reviewShape`: reviewer id, server date, basis, version and fingerprint as the review service writes them. */
+function isReviewShape(value: unknown): value is AllergenReview {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const r = value as Record<string, unknown>
+  for (const k of Object.keys(r)) if (!k.startsWith('_') && !REVIEW_FIELDS.has(k)) return false
+  if (!isId(r.reviewedBy) || !isIso(r.reviewedAt) || !isPositiveInt(r.declarationVersion) || !isId(r.contentFingerprint)) return false
+  if (!(REVIEW_BASES as readonly unknown[]).includes(r.basis)) return false
+  if (r.basisNote != null && (r.basis !== 'other' || typeof r.basisNote !== 'string' || r.basisNote.length > 120)) return false
+  if (r.mayContainRiskAssessment != null) {
+    const m = r.mayContainRiskAssessment as Record<string, unknown>
+    if (typeof m !== 'object' || m.confirmed !== true || !isId(m.confirmedBy) || !isIso(m.confirmedAt)) return false
+  }
+  if (r.linked != null) {
+    if (!Array.isArray(r.linked)) return false
+    for (const l of r.linked as Array<Record<string, unknown> | null>) if (!l || !isId(l.choiceKey) || !isId(l.itemId) || !isId(l.fingerprint)) return false
+  }
+  return true
+}
+
+/**
+ * C13 §13.2 — the fingerprint of the declaration CONTENT as reviewed: status,
+ * sorted "contains", sorted "may contain", the "none" confirmation and the
+ * default-locale note. Other locales of the note are not part of it
+ * (translation-only edits never reset). Pure and synchronous, so Studio, the
+ * browser and the server compute the same value; the review service (allergen
+ * slice) writes it, the reader compares it.
+ */
+export function contentFingerprint(decl: unknown, opts: { defaultLocale: string }): string {
+  const v = (decl && typeof decl === 'object' ? decl : {}) as Record<string, unknown>
+  const sorted = (x: unknown) => (Array.isArray(x) ? [...new Set(x.filter((k): k is string => typeof k === 'string'))].sort() : [])
+  const note = v.note && typeof v.note === 'object' ? (v.note as Record<string, unknown>)[opts.defaultLocale] : undefined
+  const canonical = JSON.stringify([
+    typeof v.status === 'string' ? v.status : null,
+    v.status === 'containsListedAllergens' ? sorted(v.allergens) : [],
+    sorted(v.mayContain),
+    v.status === 'noneDeclared' ? v.confirmed === true : null,
+    typeof note === 'string' ? note.trim() : '',
+  ])
+  return `fp1-${fnv1a(canonical, 0x811c9dc5)}${fnv1a(canonical, 0x050c5d1f)}`
+}
+
+/** 32-bit FNV-1a over UTF-16 code units, as 8 hex digits. Not a security hash: an edit detector. */
+function fnv1a(text: string, seed: number): string {
+  let h = seed >>> 0
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(16).padStart(8, '0')
 }
 
 /** The declaration a publish may carry: valid and reviewed. */
@@ -134,6 +259,12 @@ export function describeDeclarationIssue(issue: AllergenDeclarationIssue): strin
       return '"None of the fourteen EU allergens" must be confirmed explicitly.'
     case 'unexpectedField':
       return 'This declaration has a field the allergen declaration does not know.'
+    case 'reviewShape':
+      return 'The recorded allergen review is incomplete or malformed. Review the allergens again.'
+    case 'mayContainNotAssessed':
+      return '"May contain" needs a confirmed risk assessment. Review the allergens again.'
+    case 'editedOutsideReview':
+      return 'The allergens were changed after they were reviewed. Review them again.'
   }
 }
 
@@ -153,13 +284,13 @@ export function orderedAllergens(values: readonly unknown[] | null | undefined):
 // uses the list; on a product or service it is irrelevant.
 
 export type OptionAllergenDeclaration =
-  | { status: 'notReviewed' }
-  | { status: 'containsListedAllergens'; allergens: AllergenKey[]; mayContain?: AllergenKey[] }
-  | { status: 'noneDeclared'; confirmed: true; mayContain?: AllergenKey[] }
+  | { status: 'notReviewed'; invalidation?: { cause: AllergenInvalidationCause; at: string } }
+  | { status: 'containsListedAllergens'; allergens: AllergenKey[]; mayContain?: AllergenKey[]; review?: AllergenReview }
+  | { status: 'noneDeclared'; confirmed: true; mayContain?: AllergenKey[]; review?: AllergenReview }
 
 /** As allergenDeclarationIssues, for a choice: there is no note. */
-export function optionDeclarationIssues(value: unknown): AllergenDeclarationIssue[] {
-  return allergenDeclarationIssues(value, { note: false })
+export function optionDeclarationIssues(value: unknown, opts: { defaultLocale?: string } = {}): AllergenDeclarationIssue[] {
+  return allergenDeclarationIssues(value, { ...opts, note: false })
 }
 
 type RawChoice = { _key?: unknown; kind?: unknown; item?: unknown; label?: unknown; allergenDeclaration?: unknown }

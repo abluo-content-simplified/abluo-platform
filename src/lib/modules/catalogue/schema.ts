@@ -7,6 +7,7 @@ import { linkUrlIssue } from './links'
 import { FOOD_PROFILE_GROQ, PROFILES, PROFILE_ORDER, can, profileOf } from './profiles'
 import { BOOK_YEAR_MIN, bookYearMax } from './isbn'
 import { EDITION_LANGUAGES } from './editions'
+import { allergenEvidenceFields, catalogueItemR1Fields } from '@/lib/sanity/studio/catalogue-evidence-fields'
 import { ALLERGENS, allergenDeclarationIssues, describeDeclarationIssue, optionDeclarationIssues, unreviewedChoices, unknownAllergenKeys } from './allergens'
 
 // ── Catalogue module — Sanity schema types ────────────────────────────────────
@@ -360,7 +361,7 @@ export const catalogueOption = defineType({
       title: 'Allergens of this choice',
       description: 'Needed when a food or drink item uses this list.',
       type: 'object',
-      fields: allergenDeclarationFields.filter((f) => f.name !== 'note'),
+      fields: [...allergenDeclarationFields.filter((f) => f.name !== 'note'), ...allergenEvidenceFields()],
       initialValue: { status: 'notReviewed' },
       hidden: ({ parent }) => {
         const p = parent as { kind?: string; item?: { _ref?: string } } | undefined
@@ -649,7 +650,7 @@ export const catalogueItem = defineType({
       name: 'allergenDeclaration',
       title: 'Allergens',
       type: 'object',
-      fields: allergenDeclarationFields,
+      fields: [...allergenDeclarationFields, ...allergenEvidenceFields()],
       group: 'content',
       initialValue: { status: 'notReviewed' },
       hidden: ({ document }) => !can(profileOf(document?.itemProfile), 'foodInformation'),
@@ -746,6 +747,8 @@ export const catalogueItem = defineType({
     }),
     visibilityField,
     ...lifecycleFields(),
+    // C10-6 R1: registered, readOnly, written by later slices only (C6 §6.9, C13).
+    ...catalogueItemR1Fields(),
   ],
   preview: {
     select: { title: 'name.en', type: 'itemProfile', slug: 'projectSlug', media: 'images.0.image' },

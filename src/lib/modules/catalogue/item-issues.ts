@@ -15,9 +15,15 @@
 //                  check out). Shown beside the field; a quiet dot on its tab;
 //                  NEVER disables a button and NEVER in the publish blocker list.
 
-import { PROFILES, can } from './profiles'
-import { isValidIsbn } from './isbn'
-import { declarationIssues, attachmentIssues, isBlockingAttachmentIssue, offerFormIssues, slugFromName, type ItemState, type ItemStep } from './dashboard-form'
+//
+// Since R1 (C6 §6.6) this file is a THIN ADAPTER over the readiness engine
+// (`readiness/`): the rules live there once, and `itemIssues` projects the
+// website-context result onto `ItemIssue` so the editor is unchanged.
+
+import type { ItemState, ItemStep } from './dashboard-form'
+import { WEBSITE, evaluateItem } from './readiness/engine'
+import { itemReadinessInputFromState } from './readiness/facts-client'
+import type { Finding, ReadinessCode } from './readiness/types'
 
 /** The editor's tab ids (ItemEditor). */
 export type ItemTab = 'content' | 'photos' | 'prices' | 'details' | 'options' | 'page' | 'languages' | 'publishing'
@@ -52,69 +58,58 @@ export type ItemIssueContext = {
 export type ItemIssueState = Pick<ItemState, 'itemProfile' | 'name' | 'bookDetails' | 'offers' | 'options' | 'allergenDeclaration' | 'hasPage' | 'slug'>
 
 /**
+ * C6 §6.6 legacy id of each projected finding (tests pin it). Only these codes
+ * ever reach the editor through `itemIssues`.
+ */
+export const LEGACY_ID: Partial<Record<ReadinessCode, string>> = Object.freeze({
+  profileMissing: 'profile',
+  nameMissing: 'name',
+  'price.invalid': 'price',
+  'price.times': 'priceTimes',
+  'price.overlap': 'priceOverlap',
+  'price.channel': 'priceChannel',
+  optionsMinMax: 'optionsMinMax',
+  allergenReview: 'allergens',
+  optionListMissing: 'optionList',
+  pageAddressInvalid: 'pageAddress',
+  strayAddress: 'strayAddress',
+  isbnInvalid: 'isbn',
+})
+
+/**
+ * The order the editor has always listed issues in. It equals the engine's
+ * registry order except for the ISBN hint, which the editor shows right after
+ * the allergens (registry row 21 comes after the page rows 11–12). Kept so the
+ * adapter's output is byte-identical (G-03).
+ */
+const LEGACY_ORDER: readonly string[] = ['profile', 'name', 'price', 'priceTimes', 'priceOverlap', 'priceChannel', 'optionsMinMax', 'allergens', 'isbn', 'optionList', 'pageAddress', 'strayAddress']
+
+/** Pure, 1:1: severity from level + gate; step/tab/focus from the fix target; legacy id. Null when the finding has no editor form. */
+export function findingToItemIssue(f: Finding): ItemIssue | null {
+  if (f.fix.surface !== 'item') return null
+  const severity: ItemIssueSeverity = f.level === 'required' ? (f.gate === 'advance' ? 'blocksNext' : 'blocksPublish') : 'advice'
+  return {
+    id: LEGACY_ID[f.code] ?? f.code,
+    severity,
+    step: f.fix.step,
+    tab: f.fix.tab,
+    messageKey: f.messageKey,
+    ...(f.values && { values: f.values }),
+    ...(f.fix.focus !== undefined && { focus: f.fix.focus }),
+  }
+}
+
+/**
  * Everything the person should know about this item, in the order they would
  * fix it. Pure: same input, same output.
  */
 export function itemIssues(s: ItemIssueState, ctx: ItemIssueContext): ItemIssue[] {
-  const out: ItemIssue[] = []
-  const d = ctx.defaultLocale
-  const multi = ctx.locales.length > 1
-
-  // ── The minimum to exist ──
-  if (s.itemProfile === null || s.itemProfile === undefined) {
-    out.push({ id: 'profile', severity: 'blocksNext', step: 'profile', tab: 'content', messageKey: 'profile' })
-  }
-  if (!s.name[d]?.trim()) {
-    out.push({ id: 'name', severity: 'blocksNext', step: 'name', tab: 'content', messageKey: s.itemProfile && PROFILES[s.itemProfile].nameLabelKey === 'title' ? 'bookTitle' : 'name', values: { locale: d }, focus: `[data-name-locale="${d}"]` })
-  }
-
-  // ── Input that cannot be saved as typed ──
-  const offerIssues = offerFormIssues(s.offers, ctx.channels)
-  if (offerIssues.length) {
-    const kinds = new Set(offerIssues.map((i) => i.kind))
-    const firstKey = (pred: (k: string) => boolean) => {
-      const hit = offerIssues.find((i) => pred(i.kind) && 'key' in i)
-      return hit && 'key' in hit ? `[data-offer-key="${hit.key}"]` : undefined
-    }
-    const add = (id: string, messageKey: string, focus?: string) => out.push({ id, severity: 'blocksNext', step: 'price', tab: 'prices', messageKey, focus })
-    if (kinds.has('invalidPrice') || kinds.has('negativePrice') || kinds.has('tooManyDecimals')) add('price', 'invalidPrice', firstKey((k) => k === 'invalidPrice' || k === 'negativePrice' || k === 'tooManyDecimals'))
-    if (kinds.has('invalidTime') || kinds.has('zeroLength') || kinds.has('incompleteWindow')) add('priceTimes', 'priceTimes', firstKey((k) => k === 'invalidTime' || k === 'zeroLength' || k === 'incompleteWindow'))
-    if (kinds.has('overlappingOffers')) add('priceOverlap', 'priceOverlap')
-    if (kinds.has('unknownChannel')) add('priceChannel', 'priceChannel', firstKey((k) => k === 'unknownChannel'))
-  }
-  const attIssues = attachmentIssues(s.options, ctx.optionCounts)
-  const minMax = attIssues.find(isBlockingAttachmentIssue)
-  if (minMax) out.push({ id: 'optionsMinMax', severity: 'blocksNext', step: 'options', tab: 'options', messageKey: 'optionsMinMax', focus: `[data-attachment-key="${minMax.key}"]` })
-
-  // ── What publishing needs (a draft does not) ──
-  if (s.itemProfile && can(s.itemProfile, 'foodInformation')) {
-    const first = declarationIssues(s.allergenDeclaration)[0]
-    if (first) out.push({ id: 'allergens', severity: 'blocksPublish', step: 'details', tab: 'details', messageKey: `allergens.${first}` })
-  }
-  // ── Advice: never blocks anything ──
-  if (s.itemProfile && can(s.itemProfile, 'bookDetails') && s.bookDetails.isbn.trim() && !isValidIsbn(s.bookDetails.isbn)) {
-    out.push({ id: 'isbn', severity: 'advice', step: 'name', tab: 'content', messageKey: 'isbn', focus: '[data-book-isbn]' })
-  }
-  if (attIssues.some((i) => i.kind === 'missingList')) out.push({ id: 'optionList', severity: 'blocksPublish', step: 'options', tab: 'options', messageKey: 'optionListMissing' })
-  if (s.hasPage) {
-    const base = s.slug[d]?.trim() ? s.slug[d] : (s.name[d] ?? '')
-    if (s.name[d]?.trim() && !slugFromName(base)) out.push({ id: 'pageAddress', severity: 'blocksPublish', step: 'page', tab: 'page', messageKey: 'pageAddress', focus: '[data-slug-locale]' })
-    // E-3: an address in a language where the name is empty.
-    const stray = ctx.locales.find((l) => s.slug[l]?.trim() && !s.name[l]?.trim())
-    if (stray) {
-      const inMain = stray === d
-      out.push({
-        id: 'strayAddress',
-        severity: 'blocksPublish',
-        step: inMain || !multi ? 'name' : 'languages',
-        tab: inMain || !multi ? 'content' : 'languages',
-        messageKey: 'strayAddress',
-        values: { locale: stray },
-        focus: `[data-name-locale="${stray}"]`,
-      })
-    }
-  }
-  return out
+  const result = evaluateItem(itemReadinessInputFromState(s, ctx), WEBSITE, { families: ['standard'] })
+  // Advice stays advice: only non-overridable recommended findings (data hints) are projected; the
+  // other recommended findings (photo, description, translation …) belong to the readiness panel.
+  const findings = [...result.required, ...result.recommended.filter((f) => f.overridable === false)].filter((f) => LEGACY_ID[f.code] !== undefined)
+  const issues = findings.map(findingToItemIssue).filter((i): i is ItemIssue => i !== null)
+  return issues.map((issue, i) => ({ issue, i })).sort((a, b) => LEGACY_ORDER.indexOf(a.issue.id) - LEGACY_ORDER.indexOf(b.issue.id) || a.i - b.i).map((x) => x.issue)
 }
 
 export const blocksNextOn = (issues: readonly ItemIssue[], step: ItemStep) => issues.filter((i) => i.severity === 'blocksNext' && i.step === step)

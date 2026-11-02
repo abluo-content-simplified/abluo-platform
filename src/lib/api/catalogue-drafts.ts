@@ -59,29 +59,25 @@ import {
   isCatalogueId,
 } from '@/lib/api/catalogue-lifecycle'
 import type { Referrer } from '@/lib/lifecycle/service'
-import { isPublishableDeclaration, unreviewedChoices } from '@/lib/modules/catalogue/allergens'
+import { KIND_OF_TYPE, SYSTEM_FIELDS, catalogueSlugNamespace, cataloguePublishGate, localized, slugMap } from '@/lib/api/catalogue-publish-gate'
 import {
   CATALOGUE_LIMITS,
   CATALOGUE_TYPE,
   CatalogueError,
   assertAllowedPaths,
   cleanCatalogueSet,
-  slugsForPublish,
-  slugLocalesWithoutName,
   type CatalogueKind,
 } from '@/lib/modules/catalogue/dashboard-patch'
 import { initialItemProfile, type ItemProfile } from '@/lib/modules/catalogue/dashboard-form'
 import { can, isItemProfile, profileOf } from '@/lib/modules/catalogue/profiles'
 import { catalogueCategoryVocabulary, tagVocabulary, type CategoryTermRow } from '@/lib/taxonomy/vocabulary'
-import { SLUG_NAMESPACE_QUERY, namedSlugConflicts, toSlugOwners, type NamedSlugConflict, type SlugRow } from '@/lib/modules/catalogue/validation'
+import { namedSlugConflicts, type NamedSlugConflict } from '@/lib/modules/catalogue/validation'
 import {
   CATALOGUE_COUNT_QUERY,
   CATALOGUE_DASHBOARD_LIST_QUERY,
   CATALOGUE_GLANCE_QUERY,
   CATALOGUE_MEDIA_EXIST_QUERY,
   CATALOGUE_NAV_LABEL_QUERY,
-  CATALOGUE_FOOD_USERS_COUNT_QUERY,
-  CATALOGUE_OPTION_LIST_CHOICES_QUERY,
   CATALOGUE_REF_TARGETS_QUERY,
   CATALOGUE_REUSE_COUNT_QUERY,
   CATALOGUE_SITE_QUERY,
@@ -116,9 +112,6 @@ type Client = Pick<typeof sanityWriteClient, 'getDocument' | 'fetch' | 'create' 
 export type CatalogueDeps = { client?: Client; now?: () => Date; uuid?: () => string; audit?: ContentAuditWriter }
 type Doc = Record<string, unknown> & { _id?: string; _type?: string; _rev?: string; projectSlug?: string }
 
-const SYSTEM_FIELDS = new Set(['_id', '_rev', '_createdAt', '_updatedAt'])
-/** Lifecycle fields live on the published version only (ADR-032): never copied from a draft on publish. */
-const LIFECYCLE_FIELDS = new Set(['publishedAt', 'expiresAt', 'archivedAt', 'archivedBy'])
 const MAX_SCHEDULE_MS = 2 * 366 * 24 * 60 * 60 * 1000
 const RAW = { perspective: 'raw' } as const
 
@@ -159,24 +152,10 @@ async function commit(client: Client, projectSlug: string, run: () => Promise<un
 
 const newKey = () => randomUUID().replace(/-/g, '').slice(0, 12)
 
-export function localized(value: unknown): Record<string, string> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
-  const out: Record<string, string> = {}
-  for (const [k, v] of Object.entries(value as Record<string, unknown>)) if (!k.startsWith('_') && typeof v === 'string' && v.trim()) out[k] = v
-  return out
-}
+export { localized }
 const pick = (value: unknown, locale: string) => {
   const v = localized(value)
   return v[locale] ?? Object.values(v)[0] ?? ''
-}
-const slugMap = (value: unknown): Record<string, string> => {
-  const out: Record<string, string> = {}
-  if (!value || typeof value !== 'object') return out
-  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-    const c = (v as { current?: unknown } | null)?.current
-    if (!k.startsWith('_') && typeof c === 'string' && c) out[k] = c
-  }
-  return out
 }
 
 // ── Site + module configuration ──────────────────────────────────────────────
@@ -583,10 +562,7 @@ export async function openCatalogueForEdit(ctx: TenantAuthorizationContext, proj
 
 // ── Slug namespace (D11) ──────────────────────────────────────────────────────
 
-async function namespace(client: Client, projectSlug: string) {
-  const rows = await span('sanity.namespace', () => client.fetch<SlugRow[] | null>(SLUG_NAMESPACE_QUERY, { projectSlug }, RAW))
-  return toSlugOwners(rows ?? [])
-}
+const namespace = (client: Client, projectSlug: string) => catalogueSlugNamespace(client, projectSlug)
 
 /** Conflicts of these slugs with any OTHER item or collection, each naming its owner. */
 export async function checkCatalogueSlugs(
@@ -769,99 +745,8 @@ function parseIso(value: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
-const KIND_OF_TYPE: Record<string, CatalogueKind> = { catalogueItem: 'item', catalogueCollection: 'collection', catalogueOptionList: 'optionList' }
-
 /** Which descriptors take part in a catalogue publish (the landing page is Studio's). */
 const PUBLISH_DESCRIPTORS = CATALOGUE_LIFECYCLES.filter((d) => d.type in KIND_OF_TYPE)
-
-/** The module's validation of one document of a publish; returns the published version to write. */
-function cataloguePrepare(site: CatalogueSite, uuid: () => string) {
-  const taken = new Map<string, Set<string>>()
-  let owners: Awaited<ReturnType<typeof namespace>> | null = null
-  return async (node: lifecycle.PublishNode, x: { client: lifecycle.LifecycleClient; projectSlug: string }): Promise<lifecycle.Doc> => {
-    const kind = KIND_OF_TYPE[node.d.type]
-    const draft = node.draft
-    const named = (e: CatalogueError) =>
-      node.isRoot || e.detail?.dependencies ? e : new CatalogueError(e.code, e.message, { ...e.detail, dependencies: [{ id: node.id, type: node.d.type, label: node.d.label?.(draft) ?? node.id }] })
-    try {
-      const d = site.defaultLocale
-      const names = localized(draft.name)
-      if (!names[d]?.trim()) throw new CatalogueError('missing_name', 'Add a name in the main language first.')
-      if (kind === 'optionList' && !(Array.isArray(draft.options) && draft.options.length > 0)) throw new CatalogueError('no_options', 'Add at least one option.')
-      // D-3: a food item publishes only with a reviewed, complete allergen declaration.
-      if (kind === 'item' && can(profileOf(draft.itemProfile), 'foodInformation') && !isPublishableDeclaration(draft.allergenDeclaration)) {
-        throw new CatalogueError('allergens_not_reviewed', 'Review the allergens first.')
-      }
-      // D-3a: every free-text "add" choice a food item offers must be reviewed.
-      if (kind === 'item' && can(profileOf(draft.itemProfile), 'foodInformation')) {
-        const ids = [...new Set((Array.isArray(draft.optionLists) ? draft.optionLists : []).map((a) => (a as { list?: { _ref?: unknown } })?.list?._ref).filter((r): r is string => typeof r === 'string'))]
-        const blocking = await unreviewedChoicesOf(x.client as Client, x.projectSlug, ids)
-        if (blocking.length) throw new CatalogueError('option_allergens_not_reviewed', 'Review the allergens of the extras first.', { dependencies: blocking })
-      }
-      // …and an option list used by a food item cannot go live with an unreviewed one either.
-      if (kind === 'optionList' && unreviewedChoices(draft.options as never[]).length) {
-        const users = await x.client.fetch<number | null>(CATALOGUE_FOOD_USERS_COUNT_QUERY, { id: node.id, projectSlug: x.projectSlug }, RAW)
-        if ((users ?? 0) > 0) throw new CatalogueError('option_allergens_not_reviewed', 'Review the allergens of the extras first.', { dependencies: choiceRefs(node.id, draft) })
-      }
-      const doc: Record<string, unknown> = {}
-      for (const [k, v] of Object.entries(draft)) if (!SYSTEM_FIELDS.has(k) && !LIFECYCLE_FIELDS.has(k)) doc[k] = v
-      if (kind === 'item' && !can(profileOf(draft.itemProfile), 'foodInformation')) delete doc.allergenDeclaration
-      if (kind !== 'optionList') {
-        // publicId is set once (AC 29): the published one wins, a missing one is created.
-        doc.publicId = (typeof node.published?.publicId === 'string' && node.published.publicId) || (typeof draft.publicId === 'string' && draft.publicId) || uuid()
-        if (typeof doc.visibility !== 'string') doc.visibility = 'public'
-      }
-      if (kind !== 'optionList' && draft.hasPage === true) {
-        owners ??= (await namespace(x.client as Client, x.projectSlug))
-        const others = owners.filter((o) => o.id !== node.id)
-        // D-7 / E-3: an address exists only in the languages the name is written in.
-        // Publishing never rewrites editorial data — a stray address refuses, naming the language.
-        const explicit = slugMap(draft.slug)
-        const stray = slugLocalesWithoutName(explicit, names)
-        if (stray.length) throw new CatalogueError('slug_without_name', 'An address has no name in its language.', { locales: stray })
-        const conflicts = namedSlugConflicts({ id: node.id, hasPage: true, slugs: explicit }, others)
-        if (conflicts.length) throw new CatalogueError('slug_taken', 'This address is already used.', { conflicts })
-        const slugs = slugsForPublish({
-          names,
-          slugs: explicit,
-          locales: site.locales,
-          // Also what this same publish already gave away (two new items named alike).
-          taken: (l) => new Set([...others.map((o) => o.slugs[l]).filter((v): v is string => typeof v === 'string'), ...(taken.get(l) ?? [])]),
-          fallback: node.id.slice(0, 8),
-        })
-        if (!slugs[d]) throw new CatalogueError('missing_slug', 'The page needs an address in the main language.')
-        for (const [l, v] of Object.entries(slugs)) taken.set(l, new Set([...(taken.get(l) ?? []), v]))
-        doc.slug = { _type: 'localizedSlug', ...Object.fromEntries(Object.entries(slugs).map(([l, v]) => [l, { _type: 'slug', current: v }])) }
-      }
-      return doc
-    } catch (e) {
-      throw e instanceof CatalogueError ? named(e) : e
-    }
-  }
-}
-
-const textOf = (v: unknown, fallback: string) => {
-  const t = localized(v)
-  return Object.values(t)[0] ?? fallback
-}
-
-/** "Extra · Mozzarella" refs for the unreviewed free-text add choices of one list (links go to the list). */
-function choiceRefs(listId: string, list: Record<string, unknown>): Referrer[] {
-  const name = textOf(list.name, 'Option list')
-  return unreviewedChoices(list.options as never[]).map((c) => ({ id: listId, type: 'catalogueOptionList', label: `${name} · ${textOf((c as { label?: unknown }).label, 'Untitled option')}` }))
-}
-
-/** D-3a: unreviewed free-text add choices of these lists — the published version, else the draft (a list published together). */
-async function unreviewedChoicesOf(client: Client, projectSlug: string, ids: string[]): Promise<Referrer[]> {
-  if (!ids.length) return []
-  const rows = await client.fetch<Array<Record<string, unknown> & { _id: string }> | null>(CATALOGUE_OPTION_LIST_CHOICES_QUERY, { projectSlug, ids, draftIds: ids.map((i) => `drafts.${i}`) }, RAW)
-  const out: Referrer[] = []
-  for (const id of ids) {
-    const row = (rows ?? []).find((r) => r._id === id) ?? (rows ?? []).find((r) => r._id === `drafts.${id}`)
-    if (row) out.push(...choiceRefs(id, row))
-  }
-  return out
-}
 
 /** Lifecycle-service refusals → the dashboard's CatalogueError, keeping what they name. */
 function asCatalogueError(error: unknown): unknown {
@@ -910,7 +795,7 @@ export async function publishCatalogueDraft(
         withDependencies: input.withDependencies === true,
         timing: (root, now) => publishTiming(input, root.published, now),
       },
-      cataloguePrepare(site, deps.uuid ?? randomUUID),
+      cataloguePublishGate(site, deps.uuid ?? randomUUID),
       { client: client as lifecycle.LifecycleClient, now: deps.now, audit: deps.audit }
     ))
     return { id: input.id, publishedAt: r.root.publishedAt as string, slugs: slugsOf(r.root), published: r.published, notLive: r.notLive }
@@ -981,7 +866,7 @@ export async function previewCataloguePublish(
       liveAt: at && at.getTime() > now.getTime() ? at : now,
       withDependencies: true,
     })
-    const prepare = cataloguePrepare(site, () => 'preview')
+    const prepare = cataloguePublishGate(site, () => 'preview')
     const blocked: CataloguePublishPreview['blocked'] = []
     const nodes = [plan.root, ...plan.dependencies]
     for (const n of nodes) {

@@ -6060,7 +6060,10 @@
           "allergens": {
             "notReviewed": "Review the allergens: say what it contains, or that it contains none.",
             "noAllergens": "Pick the allergens it contains, or change your answer.",
-            "notConfirmed": "Confirm that it contains none of the listed allergens."
+            "notConfirmed": "Confirm that it contains none of the listed allergens.",
+            "reviewShape": "The saved allergen review is incomplete. Review the allergens again.",
+            "mayContainNotAssessed": "“May contain” needs a confirmed risk assessment. Review the allergens again.",
+            "editedOutsideReview": "The allergens changed after they were reviewed. Review them again."
           },
           "pageAddress": "Its page needs an address. Change the name or write the address yourself.",
           "strayAddress": "The {language} page address has no {language} name. Add the name, or remove the address.",

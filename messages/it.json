@@ -6060,7 +6060,10 @@
           "allergens": {
             "notReviewed": "Controlla gli allergeni: indica cosa contiene, oppure che non ne contiene.",
             "noAllergens": "Scegli gli allergeni che contiene, oppure cambia la risposta.",
-            "notConfirmed": "Conferma che non contiene nessuno degli allergeni elencati."
+            "notConfirmed": "Conferma che non contiene nessuno degli allergeni elencati.",
+            "reviewShape": "La verifica degli allergeni salvata è incompleta. Verifica di nuovo gli allergeni.",
+            "mayContainNotAssessed": "“Può contenere” richiede una valutazione del rischio confermata. Verifica di nuovo gli allergeni.",
+            "editedOutsideReview": "Gli allergeni sono cambiati dopo la verifica. Verificali di nuovo."
           },
           "pageAddress": "La sua pagina ha bisogno di un indirizzo. Cambia il nome o scrivi tu l'indirizzo.",
           "strayAddress": "L'indirizzo della pagina in {language} non ha un nome in {language}. Aggiungi il nome, oppure rimuovi l'indirizzo.",
