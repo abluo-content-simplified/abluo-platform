@@ -1,6 +1,6 @@
 # ADR-033 — Amendment K: Catalogue redesign — settled decisions
 
-**Status: Accepted — Tom, 2026-11-02 (decisions K-1 … K-10; clarifications of the same day applied).** Nothing implemented.
+**Status: Accepted — Tom, 2026-11-02 (decisions K-1 … K-10; clarifications and the step-2 decisions D-1…D-21 of the same day applied).** Nothing implemented. Step-2 decisions: `docs/engineering/catalogue-module/contracts/DECISIONS-step2-final-2026-11-02.md`.
 Date: 2026-11-02.
 Authority: the *Abluo Catalogue — Product and implementation brief* of 2026-11-02 (the "brief"), as corrected by Tom's decisions of the same day, which win wherever they differ from the brief. Assessment that preceded it: project doc `claude/catalogue-redesign-assessment-2026-11-02.md`.
 Related: **ADR-042** (dashboard navigation foundation — the platform part of K-1), ADR-032 (lifecycle), ADR-014 (one configuration surface), ADR-028 (roles & permissions).
@@ -29,7 +29,7 @@ The navigation foundation (whole-sidebar collapse, group collapse, per-user memo
 - The dashboard name is fixed: **Catalogue**, translated by the interface dictionaries like every other module name. No tenant setting renames it.
 - A tenant may set a separate **public name** (Menu, Books, Wine List, Services…). It is content localization: used on the website (landing page, page titles, breadcrumbs, structured data where a name is wanted) — never in the dashboard.
 - Starters may *suggest* a public name; they never touch the dashboard name.
-- Migration — **preserve the current public name.** When a project has a `navLabel` **and no public name yet**, the migration copies the `navLabel` (every locale) into the new localized public-name field **automatically**, and records the copy in the audit log (project, old value, new field, actor = migration, timestamp). When a public name already exists, it is left untouched and `navLabel` is dropped. Either way the website keeps the name it shows today, `navLabel` is then removed, and the dashboard always says Catalogue. The same equivalence principle as K-3 applies: a test compares the public name each website resolves before and after. Code that reads it today: `lib/client/surfaces.ts`, `catalogue/page.tsx`, `taxonomy/page.tsx`, `CatalogueBrowser`, `catalogue-drafts.ts` (`navLabel`), `CATALOGUE_NAV_LABEL_QUERY`.
+- Migration — **preserve the current public name.** When a project has a `navLabel` **and no public name yet**, the migration copies the `navLabel` (every locale) into the new localized public-name field **automatically**, and records the copy in the audit log (project, old value, new field, actor = migration, timestamp). When a public name already exists, it is left untouched and `navLabel` is dropped. Either way the website keeps the name it shows today, `navLabel` is then removed, and the dashboard always says Catalogue. The same equivalence principle as K-3 applies: a test compares the public name each website resolves before and after. *(D-12, 2026-11-02: the website showed no `navLabel`; the proofs are C11.5 `public-name.preserved` and `website-output.unchanged`; the two public uses — landing-page title fallback and `llms.txt` heading — are approved.)* Code that reads it today: `lib/client/surfaces.ts`, `catalogue/page.tsx`, `taxonomy/page.tsx`, `CatalogueBrowser`, `catalogue-drafts.ts` (`navLabel`), `CATALOGUE_NAV_LABEL_QUERY`.
 
 ## K-3 Price and availability are separate
 
@@ -53,17 +53,23 @@ Rules:
 9. **Price windows choose a price; they never decide availability.** A window says *which* price applies at a given time. Outside a channel-specific price window, resolution falls back to the applicable standard price.
 10. **An available item with no applicable price stays available** and carries a *missing price* readiness issue (K-11 C6). The system never interprets "no applicable price" as "unavailable" — not in resolvers, listings, structured data, exports or partner output.
 11. Overlapping windows in one scope are refused; ambiguous data (two prices at the same precedence and instant) is an error, never a pick — unchanged from A3/A4.
+12. **Time-based availability is in scope (D-6), separate from price windows.** Each channel rule (channel default, category, item, format) is a baseline state plus optional weekly scheduled overrides, in an extensible discriminated schedule shape (dated exceptions later, without migrating rules). Existing time-zone, DST and overnight semantics apply. **Schedules replace rather than merge, per channel:** the most specific non-inherited rule supplies the complete rule and schedule for that channel; "Use category default" restores the complete upstream rule. Overlapping overrides at equal precedence are invalid.
+13. **Collections never determine operational availability**; time never hides an item page (presence = lifecycle + visibility, D-4); structured data carries no schedule.
+14. **"Available now" invariant:** evaluation always receives an explicit instant and the project time zone; a cached result never survives the next availability transition; if a current result cannot be guaranteed, the schedule is shown instead of an "available now" claim. Automatic listings keep a real "available now / at this time" filter and must pass a boundary test.
+15. Website presence when unavailable on every channel: unchanged — the item still appears (D-4). Hiding is a future explicit opt-in website rule only. The channel's `defaultAvailability` is the only default (D-5).
 
-**Migration (non-negotiable): existing public behaviour must not change.** For every item, the migrated availability must resolve, on every channel and in the no-channel website context, to exactly what the old offer resolution showed. The migration is verified by running the old and new resolvers over the same documents and fixed instants before and after (diff must be empty). Production today: 16 items, all `tmz`, no channel-scoped offers — the mapping is one implicit format, one standard price, no channels.
+**Migration (non-negotiable): existing public behaviour must not change.** For every item, the migrated availability must resolve, on every channel and in the no-channel website context, to exactly what the old offer resolution showed. The migration is verified by comparing old and new **visitor-visible outcomes** by item, context, channel and fixed instant (D-7, C10-5); price-window gap cases are reported separately; production's diff must be empty. Production today: 16 items, all `tmz`, no channel-scoped offers — the mapping is one implicit format, one standard price, no channels.
 
 ## K-4 Catalogue categories and tags live only in Catalogue → Setup
 
 **Supersedes J-4 for the Catalogue** (dashboard editing of Catalogue terms in Categories & Tags) and retires the dual-read of the legacy `categories` module-config list.
 
-- Catalogue categories (hierarchical, primary + additional, ordered, carrying availability rules) and Catalogue tags are edited **only** in Catalogue → Setup.
+- Catalogue categories (hierarchical, primary + additional, ordered, carrying availability rules) and Catalogue tags are edited **only** through the Catalogue taxonomy service, whose normal editing area is Catalogue → Setup → Categories & Tags. **Amended (D-3, 2026-11-02):** inline category creation while editing an item is an approved *contextual entry point* calling the same service (parent choice and full path shown) — not a second implementation.
+- **Who may do what (D-3).** Editors (`catalogue.taxonomy.write`): create inline, rename and translate, reorder siblings, delete **unused** leaf categories, manage tags. Setup permission (`catalogue.setup.manage`): move between parents, reassign items during deletion, delete categories in use, edit channel-availability rules and schedules, apply packs. *Unused* = no assigned items (drafts included), no child categories, no automatic-listing references, no publication-standard or availability-policy references outside the category itself, no other stored Catalogue reference that deletion would break. Setup → Categories & Tags is visible with either permission.
+- **Storage (D-1, D-2):** one Catalogue taxonomy document per project (arrays, revision-guarded, atomic tree operations, immutable keys, cycle prevention, explicit concurrent-edit handling). This supersedes Amendment J's one-record-per-term **for the Catalogue only**.
 - The platform Categories & Tags area keeps Posts, News, Events, Media, Galleries and other editorial modules. Its Catalogue tab is removed. A future global overview may **link** to Catalogue Setup; it never edits Catalogue terms.
 - There are never two editable surfaces for the same terms (ADR-014). A test enforces that no dashboard surface other than Setup writes Catalogue terms.
-- Whether Catalogue terms stay `taxonomyTerm` records (with a parent and availability rules added) or become their own type is decided in K-11; either way J's guarantees hold: deterministic ids, immutable keys, labels per locale, `projectSlug` scoping, unknown key resolves to nothing.
+- *(Decided D-2: one Catalogue taxonomy document per project — see the storage bullet above.)*
 
 ## K-5 Editing includes publishing — no Catalogue publish permission
 
@@ -71,7 +77,7 @@ Rules:
 
 Brief §24 changes accordingly: "Publish/schedule items" and "Bulk publish" are **not** separate capabilities. An author/approver workflow, if ever needed, is a **shared platform approval capability** for all modules, designed separately.
 
-New capabilities that *are* needed (exact ids in K-11): manage Catalogue setup (incl. starters, channels, categories, tags, publication standards), import, export, review allergen declarations, override a recommended readiness warning. Setup, starters and standards default to owner/admin-equivalent roles.
+New capabilities that *are* needed (exact ids in K-11): manage Catalogue setup (incl. starters, channels, categories, tags, publication standards) — categories and tags split between `catalogue.taxonomy.write` and `catalogue.setup.manage` per D-3 (K-4), import, export, review allergen declarations, override a recommended readiness warning. Setup, starters and standards default to owner/admin-equivalent roles.
 
 ## K-6 Starter structures are additive packs, usable after installation
 
@@ -124,20 +130,23 @@ A new manager can configure the business, add several items, organise them, see 
 
 ---
 
-## K-11 Step-2 contracts (to be written next; each blocks the slices listed)
+## K-11 Step-2 contracts — Accepted (Tom, 2026-11-02; final consistency review applied)
+
+The contracts are in `docs/engineering/catalogue-module/contracts/`: `C2-C5-C10-…` (channels, formats, prices, availability incl. C5a schedules, migration and the single rollout plan C10-6), `C1-C7-C11-…` (categories & tags, packs, public name), `C6-C8-C9-C12-…` (readiness, permissions, Studio, audit, C13 allergen evidence). Final consistency review: `REVIEW-step3-final-consistency.md`. Specification: `catalogue-module-v2-spec.md`. The table below records what each contract settled.
 
 | Contract | Settles | Blocks |
 |---|---|---|
 | C1 Category & tag model | storage type (extend `taxonomyTerm` vs own type), parent, order, primary/additional on item, cycle rule, delete/reassign, availability rules on category | model, Setup, starters, creation, import |
-| C2 Channel model | channel object (key, labels, active, order, default-for-new-items), where stored, deactivation semantics | model, Setup, availability |
+| C2 Channel model | channel object (key, labels, active, order, `defaultAvailability` + `defaultSchedule` — D-5, no default-for-new-items), stored in module config, deactivation/deletion semantics | model, Setup, availability |
 | C3 Format model | embedded on item, implicit default format, identifiers, order, per-format overrides; project-level format suggestions for starters | model, pricing UI, import/export |
 | C4 Price model | standard + channel prices per format, windows, overlap/ambiguity, effective price service | model, preview, PDF, export |
-| C5 Availability resolver | inputs, precedence, source explanation, impact calculation for rule changes | Setup, creation, readiness, listings |
-| C6 Readiness engine | contexts (website, channel, export, print, marketplace), rule types, required/recommended, override, aggregate | creation, bulk, standards, media policy |
+| C5 Availability resolver | inputs, precedence, source explanation, impact calculation; weekly schedules (C5a), next transition, cache contract and boundary test (D-6) | Setup, creation, readiness, listings |
+| C6 Readiness engine | contexts (website, channel, export, print, marketplace), rule types, required/recommended (D-8/D-9), override (D-17), aggregate; time-independent (D-6); re-exposure safety subset (D-15) | creation, bulk, standards, media policy |
 | C7 Pack format | declaration, validation, preview diff, equivalence, application record | starters |
 | C8 Permissions | new capability ids and default roles (K-5) | Setup, import/export, allergen review |
 | C9 Studio posture | read-only mechanism, break-glass switch, critical rule set | model rollout |
-| C10 Migration | old → new mapping, equivalence test, rollback | step 3 |
+| C10 Migration | old → new mapping, equivalence test (D-7), rollback; **the single rollout plan C10-6** (D-11) | step 3 |
+| C13 Allergen evidence | review fields, reset/no-reset rules, linked-item timing, compliance tasks, retention (D-16, D-20) | allergen slice |
 | C11 Public name | field, locales, where used, `navLabel` hand-over | navigation, website |
 | C12 Audit events | new activity kinds and payload shape | all |
 
@@ -151,7 +160,7 @@ A new manager can configure the business, add several items, organise them, see 
 | 4.2 "label always Catalogue" | Confirmed; public name separate (K-2) |
 | 4.3 / 9 | Global project categories & tags **lose the Catalogue tab** (K-4) |
 | 7.2 / 6 | Packs are additive and usable after installation (K-6) |
-| 13 | Adds K-3 rules 7–11 (no channels; one channel; price windows never decide availability; missing price ≠ unavailable) and the migration equivalence requirement |
+| 13 | Adds K-3 rules 7–15 (no channels; one channel; price windows never decide availability; missing price ≠ unavailable) and the migration equivalence requirement |
 | 7.1 | Seven packs: six restaurant starters + Bookshop; Empty seeds nothing (K-6) |
 | 24 | No publish capability; approval workflow is a future platform capability (K-5) |
 | 29 AC-16, 34 DoD | Studio parity replaced by K-7 |
@@ -163,3 +172,5 @@ A new manager can configure the business, add several items, organise them, see 
 - `applied-preset-guard.test.ts` generalises to applied packs.
 - Studio Catalogue schema validation shrinks to the critical set (K-7) once documents are read-only; until then it stays as is.
 - The sidebar's PLAT-3 grouping is replaced (ADR-042); Studio's module order is unaffected.
+- Storage (D-1): module config holds short settings (channels, currency, segment, public name, defaults, `setupCompletedAt`/`setupSource`); per-project documents hold the taxonomy, pack history and publication standards. ADR-033 D3's "channel becomes a document type" trigger is superseded: channels remain module config entries with richer attributes.
+- Option-item picker: the internal result `offered` is renamed `hasPrice` (D-21); "offered" is never a synonym for "priced".

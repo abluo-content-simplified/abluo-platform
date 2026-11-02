@@ -123,6 +123,8 @@ Scheduled, unpublished, archived and deleted URLs return **404** and render the 
 ### D14 — Studio
 Studio is an Abluo-staff surface and can't be permission-restricted on Growth, so its safeguards are guardrails: for lifecycle types `document.actions` replaces Delete with Archive and Unpublish with Abluo Unpublish, and offers Delete only on archived or never-published documents. Studio lifecycle changes reach the Activity log via a Sanity webhook. The security boundary remains Sanity membership.
 
+> **Status correction (Tom, 2026-11-02 — ADR-033 Amendment K, D-18):** the Studio activity webhook and the lifecycle `document.actions` guardrails described above are **designed and documented, not yet implemented** for every lifecycle type (Catalogue types are not covered today). Until implemented, Studio writes do not reach the Activity log. Studio read-only behaviour is a UI control, not a security boundary; the Catalogue adds restricted seats/tokens, a detective webhook, daily reconciliation, audit events for writes outside the authorised gate and explicit break-glass (contract C9).
+
 ## 3. Migration and compatibility
 - Additive only; no document is rewritten. Absent `archivedAt` = active; absent window fields on non-post types = live; posts keep their semantics.
 - Reading code ships first (dev → preview → main); Studio fields/actions after. **Nothing is archived in production until Phase 1 is on `main`** — older code ignores `archivedAt`.

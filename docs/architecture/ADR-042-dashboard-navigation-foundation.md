@@ -31,7 +31,7 @@ The sidebar today is one flat list split by group headings (PLAT-3), with Home a
 - Expanded sidebar: the **Catalogue group heading opens or closes** its destinations (it is a disclosure control, not a link).
 - Rail mode: activating Catalogue opens the **destination flyout**.
 - Nested item routes (an item's editor, the new-item flow) highlight **Catalogue → Items**; likewise collection and option routes their own destinations.
-- **Setup** is shown only to people with the Setup permission (ADR-033 K-5 / C8); a direct link without it is refused like any other permission failure.
+- **Setup** is shown to people with the Setup permission; **Setup → Categories & Tags** is also shown to people with the category permission (`catalogue.taxonomy.write`), who see only that section and only the operations their permission allows (ADR-033 K-4 as amended by D-3, contract C8). Other Setup sections stay Setup-permission-only; a direct link without the needed permission is refused like any other permission failure.
 
 **N6 — One definition.** Groups, order, icons, sub-destinations and permissions are declared once (in `src/lib/client/surfaces.ts` and the module manifests) and consumed by desktop sidebar, rail, drawer, bottom bar and Home. No surface keeps its own list.
 
