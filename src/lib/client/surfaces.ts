@@ -106,8 +106,12 @@ export const CONFIGURATION_PERMISSIONS: readonly string[] = [
   'forms.definition.manage',
 ]
 
-/** Feature controls Tom has explicitly approved for the tenant UI. Empty on purpose. */
-export const FEATURE_CONTROL_ALLOWLIST: readonly string[] = []
+/** Feature controls (and the configuration permissions a surface may be gated on) Tom has explicitly approved for the tenant UI. */
+export const FEATURE_CONTROL_ALLOWLIST: readonly string[] = [
+  // Tom, 2026-11-02: client Billing page (ADR-041 Phase 5). The one tenant surface that may be gated on
+  // a configuration permission: the Owner pays for the site there (the page re-checks at tenant scope).
+  'billing.manage',
+]
 
 /**
  * The modules' own screens. Listed in any order: their sidebar order and group
@@ -174,6 +178,10 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   // The affiliate programs live only in Connected Apps (`connections`) since 2026-10-26.
   // Never technical configuration: gated on its own content-style permission, NOT `settings.manage`.
   { kind: 'nav', id: 'settings', segment: 'settings', group: 'support', requires: { permission: 'site.details.read' } },
+  // Billing (ADR-041 Phase 5; Tom, 2026-11-02): the Owner pays here; a member granted invoice access can look.
+  // Both are TENANT permissions: the layout adds them to the grant it builds the sidebar from
+  // (`billingNavPermissions`). Allowlisted in FEATURE_CONTROL_ALLOWLIST.
+  { kind: 'nav', id: 'billing', segment: 'billing', group: 'support', requires: { anyPermission: ['billing.manage', 'billing.invoice.read'] } },
 
   // ── Home widgets (ADR-029 §5) ───────────────────────────────────────────
   { kind: 'widget', id: 'siteStatus', slot: 'header', requires: {} },

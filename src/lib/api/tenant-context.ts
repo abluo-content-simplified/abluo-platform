@@ -75,6 +75,9 @@ import { tenantClient } from '@/lib/sanity/client'
 import { enabledModuleIdsQuery } from '@/lib/sanity/queries'
 import { asSupabaseProjectSlug, type SupabaseProjectSlug } from '@/lib/tenancy/ids'
 import { stopwatch } from '@/lib/perf/timing'
+import { applyBillingEnforcement } from '@/lib/billing/enforcement'
+import { loadProjectBillingStatuses } from '@/lib/billing/state'
+import type { ProjectBillingStatus } from '@/lib/billing/lifecycle'
 
 // ── Types (ADR-017 Decision 3, shape reproduced exactly) ───────────────────────
 
@@ -99,6 +102,8 @@ export type ProjectGrant = {
   role: ProjectRole
   permissions: string[]
   enabledModuleIds: string[]
+  /** Billing status (ADR-041), attached only when BILLING_ENFORCEMENT is observe/on and the project is billed. For banners. */
+  billing?: ProjectBillingStatus
 }
 
 /** The caller's standing on a client (tenant) itself — invoices, people (ADR-028). */
@@ -377,9 +382,10 @@ const resolveForRequest = cache(async (purpose: SupportPurpose, project: string 
   // holding a forged cookie gets exactly their own access.
   const support = await resolveSupportContext(supabase, actor, purpose)
   lap('supportCheck')
-  if (support) return support
+  // Billing locks (ADR-041 D8) are the LAST step, for support visits and normal requests alike.
+  if (support) return applyBillingEnforcement(support, loadProjectBillingStatuses)
 
-  return loadTenantAuthorizationContext(supabase, actor, { project })
+  return applyBillingEnforcement(await loadTenantAuthorizationContext(supabase, actor, { project }), loadProjectBillingStatuses)
 })
 
 /**

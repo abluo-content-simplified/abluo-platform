@@ -57,6 +57,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   // ── Admin dashboard (ADR-030) — live and retired segments ─────────────────
   'analytics',
   'backlog',
+  'billing',   // the client's Billing page (/<tenant>/billing, ADR-041)
   'clients',
   'content',
   'dashboard',

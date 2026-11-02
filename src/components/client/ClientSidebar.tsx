@@ -79,6 +79,7 @@ const ICONS = {
   analytics: 'M3 3v18h18M7 16v-4M12 16V8M17 16v-7',
   people: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   connections: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8',
+  billing: 'M2 6h20v12H2zM2 10h20M6 15h4',
   settings: 'M4 7h10M18 7h2M4 17h2M10 17h10M16 4v6M8 14v6',
   catalogue: 'M4 6h16M4 12h16M4 18h10M18 16v4M16 18h4',
   faq: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12zM9.6 9.5a2.5 2.5 0 0 1 4.9.8c0 1.7-2.5 2.2-2.5 2.2M12 15.5h.01',
@@ -147,7 +148,7 @@ export function ClientSidebar({
     })),
   ]
   // The bottom group (Tom, 2026-10-29): Connected Apps, Settings, Support, What's New, More You Can Add.
-  const SUPPORT_ORDER = ['connections', 'settings', 'support']
+  const SUPPORT_ORDER = ['connections', 'settings', 'billing', 'support']
   const supportRank = (key: string) => SUPPORT_ORDER.indexOf(key)
   const supportRows = links.filter((i) => i.group === 'support').sort((x, y) => supportRank(x.key) - supportRank(y.key))
   const discover: AppNavEntry & { group: string } = { key: 'discover', href: `/${activeSlug}/discover`, label: t('nav.discover'), icon: ICONS.discover, group: 'support' }

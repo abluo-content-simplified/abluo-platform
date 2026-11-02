@@ -85,7 +85,8 @@
       "documents": "Documents",
       "content": "Content",
       "requests": "Requests",
-      "discover": "More You Can Add"
+      "discover": "More You Can Add",
+      "billing": "Billing"
     },
     "navGroups": {
       "publish": "Publish",
@@ -3209,6 +3210,70 @@
         "translate": "Offer your site in more languages, with a first translation ready for you to check.",
         "brand-hub": "Keep your logo, colours and fonts in one place for you and anyone who works with you."
       }
+    },
+    "billing": {
+      "title": "Billing",
+      "ownerOnly": "Only the account Owner can pay or open payment methods and invoices.",
+      "price": "{amount} per {interval, select, year {year} month {month} other {period}}, excl. VAT",
+      "priceEvery": "{amount} every {interval, select, year {{count, plural, one {# year} other {# years}}} month {{count, plural, one {# month} other {# months}}} other {{count} periods}}, excl. VAT",
+      "paymentFailed": "The last payment didn’t go through on {date}. Please update your payment method.",
+      "sentence": {
+        "notBilled": "Not billed",
+        "complimentary": "This site is complimentary. There is nothing to pay.",
+        "open": "Editing stays open.",
+        "paid": "Paid",
+        "paidUntil": "Paid until {date}",
+        "firstPaymentDue": "First payment due {date}",
+        "notDue": "No payment due yet",
+        "checking": "Abluo is checking your billing details.",
+        "paymentDue": "Payment due — {daysLeft, plural, one {# day left} other {# days left}}",
+        "paused": "Editing is paused until payment"
+      },
+      "actions": {
+        "payNow": "Pay Now",
+        "portal": "Payment Methods & Invoices"
+      },
+      "checkout": {
+        "success": "Thank you — your payment is being confirmed. This can take a moment.",
+        "cancel": "No payment was made. You can pay whenever you’re ready."
+      },
+      "errors": {
+        "forbidden": "Only the account Owner can do this.",
+        "unavailable": "Payments aren’t available right now. Please try again later.",
+        "notBilled": "This site isn’t billed, so there is nothing to pay.",
+        "detailsCheck": "Your billing details need a check — Abluo will contact you.",
+        "alreadySubscribed": "This site already has a subscription. Reload the page to see its latest status.",
+        "contactAbluo": "Something needs a check on our side — Abluo will contact you.",
+        "noCustomer": "Payment methods and invoices appear here after your first payment.",
+        "failed": "Something went wrong. Please try again.",
+        "vatPending": "Your VAT number is being checked with the EU VIES service. Please try again in a few minutes, or contact support if this persists."
+      },
+      "details": {
+        "heading": "Billing Details",
+        "legalName": "Legal name",
+        "email": "Billing email",
+        "country": "Country",
+        "vat": "VAT number",
+        "vatStatus": {
+          "none": "Not checked",
+          "pending": "Being checked",
+          "verified": "Verified",
+          "unverified": "Could not be verified",
+          "unavailable": "Check not available right now"
+        },
+        "none": "Abluo hasn’t recorded billing details for your account yet.",
+        "change": "To change these details, contact Abluo support.",
+        "contact": "Contact support"
+      },
+      "others": {
+        "heading": "Your Other Sites"
+      }
+    },
+    "billingNotice": {
+      "reminder": "{days, plural, =0 {Payment due — editing is paused very soon.} =1 {Payment due — 1 day left before editing is paused.} other {Payment due — # days left before editing is paused.}}",
+      "paused": "Editing is paused until the payment is made. Your website stays online.",
+      "payNow": "Pay now",
+      "contactOwner": "Please contact the owner of this site."
     }
   },
   "app": {
@@ -3364,6 +3429,12 @@
         "zone": "{city} time ({offset})",
         "gap": "That time doesn’t exist that day (clocks go forward) — it will be {date}.",
         "overlap": "That time happens twice that day (clocks go back) — the first one is used: {date} ({offset})."
+      },
+      "datePicker": {
+        "placeholder": "Pick a date",
+        "done": "Done",
+        "clear": "Clear",
+        "pickDay": "Pick a day first."
       }
     },
     "analytics": {
@@ -3614,6 +3685,11 @@
         "billingLocked": {
           "title": "Site locked for billing · {project}",
           "detail": "{day, plural, =0 {Billing hasn’t been settled} other {Billing hasn’t been settled after # days}}",
+          "action": "Open billing"
+        },
+        "billingAlert": {
+          "title": "Payment alert · {project}",
+          "detail": "{count, plural, one {# open alert (dispute, refund or fraud warning) needs a look} other {# open alerts (disputes, refunds or fraud warnings) need a look}}",
           "action": "Open billing"
         }
       }
@@ -5024,7 +5100,9 @@
         "override": "Override…",
         "removeOverride": "Remove Override",
         "review": "Mark as Reviewed",
-        "editContact": "Edit Billing Contact"
+        "editContact": "Edit Billing Contact",
+        "cancelAtPeriodEnd": "Cancel at Period End",
+        "keepSubscription": "Keep Subscription"
       },
       "facts": {
         "arrangement": "Arrangement",
@@ -5152,7 +5230,9 @@
         "override": "Override saved.",
         "overrideRemoved": "Override removed.",
         "reviewed": "Marked as reviewed.",
-        "profile": "Billing contact saved."
+        "profile": "Billing contact saved.",
+        "cancelScheduled": "Subscription will end at the end of the period.",
+        "subscriptionKept": "Subscription will renew as usual."
       },
       "errors": {
         "forbidden": "You don’t have permission to change billing.",
@@ -5187,6 +5267,48 @@
         "reason": "This reason is too long.",
         "note": "This note is too long.",
         "state": "This site is no longer under review."
+      },
+      "cancelPeriod": {
+        "title": "Cancel at the end of the period?",
+        "body": "The subscription stays active until the current period ends and then stops. No further payments are taken.",
+        "confirm": "Cancel at Period End"
+      },
+      "keepSubscription": {
+        "title": "Keep the subscription?",
+        "body": "The subscription will renew as usual at the end of the current period.",
+        "confirm": "Keep Subscription"
+      },
+      "alerts": {
+        "heading": "Payment alerts",
+        "body": "Stripe reported something about this client's payments. Nothing changes on the website automatically; look into it, then resolve it with a note.",
+        "kind": {
+          "dispute": "Dispute opened",
+          "refund": "Refund issued",
+          "early_fraud_warning": "Early fraud warning"
+        },
+        "status": {
+          "open": "Open",
+          "acknowledged": "Acknowledged"
+        },
+        "detected": "Reported {date}",
+        "acknowledgedOn": "acknowledged {date}",
+        "acknowledge": "Acknowledge",
+        "resolve": "Resolve",
+        "resolveTitle": "Resolve this alert?",
+        "resolveBody": "Write down what happened or what you did. The note stays in the record.",
+        "note": "Note",
+        "noteRequired": "Add a note to resolve the alert.",
+        "resolveConfirm": "Resolve",
+        "toast": {
+          "acknowledged": "Alert acknowledged.",
+          "resolved": "Alert resolved."
+        },
+        "errors": {
+          "forbidden": "Only billing admins can do this.",
+          "invalid": "Check the note and try again.",
+          "notFound": "This alert no longer exists.",
+          "failed": "Couldn't save. Please try again."
+        }
       }
     }
   },

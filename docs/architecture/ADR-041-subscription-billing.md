@@ -204,7 +204,7 @@ Per project, and therefore locked with their project:
 **D15 — Risk events** (Tom, 2026-11-02).
 - `charge.dispute.created`, `charge.refunded` and `radar.early_fraud_warning.created` are recorded and shown to billing admins as **actionable alerts**, on Admin Home and on the project Billing card.
 - **They never change project access automatically.**
-- An alert stays open until a billing admin **acknowledges** it, then **resolves** it with a note. It does not disappear because the webhook was processed. Storage is a small `billing_alerts` table in migration 058, delivered with Phase 3; it is not part of 057.
+- An alert stays open until a billing admin **acknowledges** it, then **resolves** it with a note. It does not disappear because the webhook was processed. Storage is a small `billing_alerts` table in migration **059**, delivered with Phase 3; it is not part of 057 or 058.
 
 ## 3. Data model — migrations 057 + 058
 
@@ -325,3 +325,19 @@ The migration is additive and unread, so it can go before or after any code rele
    - How Stripe invoices relate to your bookkeeping (export, DATEV).
 8. **Future Italian entity.** What changes on the switch: Italian VAT registration, SDI/FatturaPA obligation (separate integration), handling of existing subscriptions, and the cut-over date.
 9. **Refunds and credit notes.** The required form for corrections (Stripe credit notes vs. the accounting system).
+
+## 8. Phase 3–5 implementation notes (2026-11-02)
+
+Decisions made while building, within the settled architecture:
+
+- **Migration 059** = `billing_alerts` (D15) **plus** one change to `billing_sync_subscription`: a project whose linked subscription has ended (`canceled` / `incomplete_expired`) may take a new, non-ended one. Without it a client who re-subscribes after a cancellation would pay without the project being linked. An ended snapshot never takes over a link. Rollback restores 058's function exactly.
+- **Unlinkable live subscription = failure, not "ignored".** If a paid Checkout's subscription cannot be linked, the webhook event is marked `failed` and retried (Stripe + nightly), so it is visible in the logs instead of silently dropped.
+- **VAT check before first checkout (D14) unchanged — order fixed.** VIES runs in Stripe on the customer's tax id, so on a business checkout with an unverified VAT number Abluo first pushes the customer + tax id, copies Stripe's current result to the profile, then decides. While Stripe reports `pending` the client sees "being checked, try again in a few minutes"; the `customer.tax_id.updated` webhook keeps the result current.
+- **Zero-amount paid invoices** are recorded as settled but never count as the first payment (never activate).
+- **Enforcement flag** `BILLING_ENFORCEMENT` = `off` (default, no reads) | `observe` (banners only) | `on` (locks). Fails open.
+- **Return URLs** for Checkout / Portal are only Abluo hosts (`abluo.app`, `*.abluo.app`, this Vercel deployment, `localhost` in dev).
+- **Admin cancel-at-period-end** is audited also when it fails after Stripe may already have changed.
+- **Nightly reconcile** retries stuck events first, then sweeps subscriptions within a 240 s budget (oldest first, so the next run continues).
+- **Client Billing page** `/<project>/billing` stays reachable during a lock (tenant-scoped permissions, never stripped). Visible to `billing.manage` (pay) and `billing.invoice.read` (view).
+
+Known limits (accepted for v1, healed by the next event or the nightly reconcile): two events for one subscription processed at the same moment can store the older snapshot; a webhook delivered twice at the same moment can run twice (handlers are idempotent); if storing a new Checkout session fails after Stripe created it, retries fail until that session expires (≤ 24 h). An old VAT id is not removed from the Stripe customer when the number changes.

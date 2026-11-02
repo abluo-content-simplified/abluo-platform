@@ -68,6 +68,10 @@ export type AdminAuditAction =
   | 'billing.override.set'
   | 'billing.review.ack'
   | 'billing.profile.set'
+  // Risk alerts (ADR-041 D15): `detail` = alertId, kind, tenantId (never the note).
+  | 'billing.alert.ack'
+  | 'billing.alert.resolve'
+  | 'billing.subscription.cancel_at_period_end'
 
 export const ADMIN_AUDIT_ACTION_PATTERN = /^[a-z][a-z0-9_.]{2,63}$/
 

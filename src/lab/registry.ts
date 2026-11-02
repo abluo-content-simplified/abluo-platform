@@ -1150,6 +1150,23 @@ export const LAB_REGISTRY: LabEntry[] = [
     demo: () => import('./demos/date-time-picker.demo'),
   },
   {
+    id: 'date-picker',
+    name: 'DatePicker',
+    exports: ['DatePicker', 'DatePickerSheet'],
+    source: 'src/components/app/ui/DatePicker.tsx',
+    group: 'inputs',
+    status: 'canonical',
+    traits: ['sheet', 'keyboard'],
+    summary: 'A calendar day (no time): a field that opens a sheet with the Calendar and Done. The date-only sibling of DateTimePicker.',
+    rules: [
+      'Values are ISO days (YYYY-MM-DD); empty string or null means no date.',
+      'min / max switch days off; clearable adds Clear to the sheet for optional dates.',
+      'Spread Field\'s control props onto it. Never a native <input type="date"> for a day in the dashboard.',
+    ],
+    replaces: ['<input type="date"> / DateInput type="date"'],
+    demo: () => import('./demos/date-picker.demo'),
+  },
+  {
     id: 'field',
     name: 'Field',
     exports: ['Field'],

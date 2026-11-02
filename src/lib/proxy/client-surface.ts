@@ -46,6 +46,8 @@ export const CLIENT_USER_SEGMENTS = new Set(['account', 'sites', 'connect'])
  */
 export const CLIENT_PROJECT_SEGMENTS = new Set([
   'home',
+  // ADR-041 Phase 5: the client's Billing page (`/{project}/billing`).
+  'billing',
   'posts',
   'submissions',
   'galleries',

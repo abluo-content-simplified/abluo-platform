@@ -85,7 +85,8 @@
       "documents": "Dokumente",
       "content": "Inhalte",
       "requests": "Anfragen",
-      "discover": "Mehr zum Hinzufügen"
+      "discover": "Mehr zum Hinzufügen",
+      "billing": "Abrechnung"
     },
     "navGroups": {
       "publish": "Veröffentlichen",
@@ -3209,6 +3210,70 @@
         "translate": "Biete deine Website in mehr Sprachen an, mit einer ersten Übersetzung, die du nur noch prüfst.",
         "brand-hub": "Halte Logo, Farben und Schriften an einem Ort, für dich und alle, die mit dir arbeiten."
       }
+    },
+    "billing": {
+      "title": "Abrechnung",
+      "ownerOnly": "Nur der Inhaber des Kontos kann bezahlen oder Zahlungsmethoden und Rechnungen öffnen.",
+      "price": "{amount} pro {interval, select, year {Jahr} month {Monat} other {Zeitraum}}, zzgl. MwSt.",
+      "priceEvery": "{amount} alle {interval, select, year {{count, plural, one {# Jahre} other {# Jahre}}} month {{count, plural, one {# Monate} other {# Monate}}} other {{count} Zeiträume}}, zzgl. MwSt.",
+      "paymentFailed": "Die letzte Zahlung ist am {date} nicht durchgegangen. Bitte aktualisiere deine Zahlungsmethode.",
+      "sentence": {
+        "notBilled": "Nicht abgerechnet",
+        "complimentary": "Diese Website ist kostenlos. Es ist nichts zu zahlen.",
+        "open": "Das Bearbeiten bleibt möglich.",
+        "paid": "Bezahlt",
+        "paidUntil": "Bezahlt bis {date}",
+        "firstPaymentDue": "Erste Zahlung fällig am {date}",
+        "notDue": "Noch keine Zahlung fällig",
+        "checking": "Abluo prüft deine Abrechnungsdaten.",
+        "paymentDue": "Zahlung fällig — {daysLeft, plural, one {# Tag übrig} other {# Tage übrig}}",
+        "paused": "Das Bearbeiten ist bis zur Zahlung pausiert"
+      },
+      "actions": {
+        "payNow": "Jetzt Bezahlen",
+        "portal": "Zahlungsmethoden & Rechnungen"
+      },
+      "checkout": {
+        "success": "Danke — deine Zahlung wird gerade bestätigt. Das kann einen Moment dauern.",
+        "cancel": "Es wurde nichts bezahlt. Du kannst jederzeit zahlen, wenn du bereit bist."
+      },
+      "errors": {
+        "forbidden": "Das kann nur der Inhaber des Kontos tun.",
+        "unavailable": "Zahlungen sind gerade nicht verfügbar. Bitte versuche es später noch einmal.",
+        "notBilled": "Diese Website wird nicht abgerechnet, es ist also nichts zu zahlen.",
+        "detailsCheck": "Deine Abrechnungsdaten müssen geprüft werden — Abluo meldet sich bei dir.",
+        "alreadySubscribed": "Diese Website hat bereits ein Abonnement. Lade die Seite neu, um den aktuellen Stand zu sehen.",
+        "contactAbluo": "Bei uns ist eine Prüfung nötig — Abluo meldet sich bei dir.",
+        "noCustomer": "Zahlungsmethoden und Rechnungen erscheinen hier nach deiner ersten Zahlung.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal.",
+        "vatPending": "Deine USt-IdNr. wird gerade über den EU-Dienst VIES geprüft. Versuch es in ein paar Minuten noch einmal oder kontaktiere den Support, falls es dabei bleibt."
+      },
+      "details": {
+        "heading": "Abrechnungsdaten",
+        "legalName": "Firmenname",
+        "email": "E-Mail für Rechnungen",
+        "country": "Land",
+        "vat": "USt-IdNr.",
+        "vatStatus": {
+          "none": "Nicht geprüft",
+          "pending": "Wird geprüft",
+          "verified": "Geprüft",
+          "unverified": "Konnte nicht geprüft werden",
+          "unavailable": "Prüfung gerade nicht verfügbar"
+        },
+        "none": "Abluo hat noch keine Abrechnungsdaten für dein Konto erfasst.",
+        "change": "Um diese Daten zu ändern, wende dich an den Abluo-Support.",
+        "contact": "Support kontaktieren"
+      },
+      "others": {
+        "heading": "Deine Anderen Websites"
+      }
+    },
+    "billingNotice": {
+      "reminder": "{days, plural, =0 {Zahlung fällig — das Bearbeiten wird in Kürze pausiert.} =1 {Zahlung fällig — noch 1 Tag, bis das Bearbeiten pausiert wird.} other {Zahlung fällig — noch # Tage, bis das Bearbeiten pausiert wird.}}",
+      "paused": "Das Bearbeiten ist pausiert, bis die Zahlung erfolgt ist. Deine Website bleibt online.",
+      "payNow": "Jetzt bezahlen",
+      "contactOwner": "Bitte wende dich an den Inhaber dieser Website."
     }
   },
   "app": {
@@ -3364,6 +3429,12 @@
         "zone": "Zeit in {city} ({offset})",
         "gap": "Diese Uhrzeit gibt es an dem Tag nicht (Umstellung auf Sommerzeit) – es wird {date}.",
         "overlap": "Diese Uhrzeit gibt es an dem Tag zweimal (Umstellung auf Winterzeit) – die erste gilt: {date} ({offset})."
+      },
+      "datePicker": {
+        "placeholder": "Datum wählen",
+        "done": "Fertig",
+        "clear": "Löschen",
+        "pickDay": "Wähle zuerst einen Tag."
       }
     },
     "analytics": {
@@ -3614,6 +3685,11 @@
         "billingLocked": {
           "title": "Seite wegen Abrechnung gesperrt · {project}",
           "detail": "{day, plural, =0 {Die Abrechnung wurde nicht geklärt} one {Die Abrechnung wurde auch nach # Tag nicht geklärt} other {Die Abrechnung wurde auch nach # Tagen nicht geklärt}}",
+          "action": "Abrechnung öffnen"
+        },
+        "billingAlert": {
+          "title": "Zahlungshinweis · {project}",
+          "detail": "{count, plural, one {# offener Hinweis (Zahlungsstreit, Erstattung oder Betrugswarnung) braucht einen Blick} other {# offene Hinweise (Zahlungsstreite, Erstattungen oder Betrugswarnungen) brauchen einen Blick}}",
           "action": "Abrechnung öffnen"
         }
       }
@@ -5024,7 +5100,9 @@
         "override": "Ausnahme…",
         "removeOverride": "Ausnahme entfernen",
         "review": "Als geprüft markieren",
-        "editContact": "Rechnungskontakt bearbeiten"
+        "editContact": "Rechnungskontakt bearbeiten",
+        "cancelAtPeriodEnd": "Zum Periodenende Kündigen",
+        "keepSubscription": "Abo Behalten"
       },
       "facts": {
         "arrangement": "Zahlungsart",
@@ -5152,7 +5230,9 @@
         "override": "Ausnahme gespeichert.",
         "overrideRemoved": "Ausnahme entfernt.",
         "reviewed": "Als geprüft markiert.",
-        "profile": "Rechnungskontakt gespeichert."
+        "profile": "Rechnungskontakt gespeichert.",
+        "cancelScheduled": "Das Abo endet zum Ende der Periode.",
+        "subscriptionKept": "Das Abo verlängert sich wie gewohnt."
       },
       "errors": {
         "forbidden": "Du hast keine Berechtigung, die Abrechnung zu ändern.",
@@ -5187,6 +5267,48 @@
         "reason": "Dieser Grund ist zu lang.",
         "note": "Diese Notiz ist zu lang.",
         "state": "Diese Website ist nicht mehr in Prüfung."
+      },
+      "cancelPeriod": {
+        "title": "Zum Ende der Periode kündigen?",
+        "body": "Das Abo bleibt bis zum Ende der aktuellen Periode aktiv und endet dann. Es werden keine weiteren Zahlungen eingezogen.",
+        "confirm": "Zum Periodenende Kündigen"
+      },
+      "keepSubscription": {
+        "title": "Abo behalten?",
+        "body": "Das Abo verlängert sich am Ende der aktuellen Periode wie gewohnt.",
+        "confirm": "Abo Behalten"
+      },
+      "alerts": {
+        "heading": "Zahlungshinweise",
+        "body": "Stripe hat etwas zu den Zahlungen dieses Kunden gemeldet. Auf der Website ändert sich nichts automatisch. Sieh dir den Fall an und schließe ihn dann mit einer Notiz ab.",
+        "kind": {
+          "dispute": "Zahlungsstreit eröffnet",
+          "refund": "Erstattung ausgestellt",
+          "early_fraud_warning": "Frühe Betrugswarnung"
+        },
+        "status": {
+          "open": "Offen",
+          "acknowledged": "Zur Kenntnis genommen"
+        },
+        "detected": "Gemeldet am {date}",
+        "acknowledgedOn": "zur Kenntnis genommen am {date}",
+        "acknowledge": "Zur Kenntnis nehmen",
+        "resolve": "Abschließen",
+        "resolveTitle": "Diesen Hinweis abschließen?",
+        "resolveBody": "Schreib auf, was passiert ist oder was du getan hast. Die Notiz bleibt im Verlauf.",
+        "note": "Notiz",
+        "noteRequired": "Füge eine Notiz hinzu, um den Hinweis abzuschließen.",
+        "resolveConfirm": "Abschließen",
+        "toast": {
+          "acknowledged": "Hinweis zur Kenntnis genommen.",
+          "resolved": "Hinweis abgeschlossen."
+        },
+        "errors": {
+          "forbidden": "Das können nur Abrechnungs-Admins.",
+          "invalid": "Prüf die Notiz und versuch es noch einmal.",
+          "notFound": "Diesen Hinweis gibt es nicht mehr.",
+          "failed": "Speichern nicht möglich. Versuch es noch einmal."
+        }
       }
     }
   },

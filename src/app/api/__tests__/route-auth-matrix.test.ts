@@ -1009,6 +1009,8 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   'cron/support-tickets-sweep': 'machine', // CRON_SECRET bearer (ADR-039 D13)
   'cron/site-access-sweep': 'machine', // CRON_SECRET bearer (ADR-040 B2.4)
   'webhooks/form-events': 'machine',
+  'webhooks/stripe': 'machine', // Stripe webhook signature (ADR-041 D11)
+  'cron/billing-sync': 'machine', // CRON_SECRET bearer (ADR-041 D11)
   // ADR-031: partner apps authenticate with client id + secret (src/lib/connections; own suites).
   'oauth/token': 'machine',
   'oauth/revoke': 'machine',

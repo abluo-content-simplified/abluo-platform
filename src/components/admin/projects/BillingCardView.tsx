@@ -7,7 +7,7 @@ import { BillingStatusPill } from '@/components/app/ui/BillingStatusPill'
 import { Button } from '@/components/app/ui/Button'
 import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
-import { DateInput } from '@/components/app/ui/DateInput'
+import { DatePicker } from '@/components/app/ui/DatePicker'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { FactRow } from '@/components/app/ui/FactRow'
 import { Field } from '@/components/app/ui/Field'
@@ -25,6 +25,7 @@ import {
   saveBillingTermsAction,
   setBillingOverrideAction,
 } from '@/lib/admin/billing/actions'
+import { setCancelAtPeriodEndAction } from '@/lib/admin/billing/stripe-actions'
 import {
   formatMoney,
   needsExtensionReason,
@@ -56,7 +57,7 @@ import { ACTIVATION_MAX_DAYS as ACTIVATION_DAYS } from '@/lib/billing/lifecycle'
 import { formatDateTime } from '@/lib/i18n/date-locale'
 import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
-type Dialog = null | 'terms' | 'override' | 'removeOverride' | 'review' | 'profile'
+type Dialog = null | 'terms' | 'override' | 'removeOverride' | 'review' | 'profile' | 'cancelPeriod'
 
 const icon = (d: ReactNode) => (
   <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -87,6 +88,7 @@ export function BillingCardView({ view }: { view: ProjectBillingView }) {
 
   const { agreement, subscription, profile, status } = view
   const can = visibleActions(view)
+  const canCancelPeriod = view.canEdit && agreement?.arrangement === 'stripe' && subscription !== null
 
   const day = (ymd: string | null) => {
     const d = ymd ? new Date(`${ymd}T00:00:00Z`) : null
@@ -191,7 +193,7 @@ export function BillingCardView({ view }: { view: ProjectBillingView }) {
         </Panel>
       )}
 
-      {agreement !== null && (can.editTerms || can.override || can.removeOverride || can.review) ? (
+      {agreement !== null && (can.editTerms || can.override || can.removeOverride || can.review || canCancelPeriod) ? (
         <div className="flex flex-wrap gap-2">
           {can.editTerms ? (
             <Button variant="secondary" onClick={() => setDialog('terms')}>
@@ -206,6 +208,11 @@ export function BillingCardView({ view }: { view: ProjectBillingView }) {
           {can.removeOverride ? (
             <Button variant="secondary" onClick={() => setDialog('removeOverride')}>
               {t('actions.removeOverride')}
+            </Button>
+          ) : null}
+          {canCancelPeriod ? (
+            <Button variant="secondary" onClick={() => setDialog('cancelPeriod')}>
+              {t(subscription?.cancelAtPeriodEnd ? 'actions.keepSubscription' : 'actions.cancelAtPeriodEnd')}
             </Button>
           ) : null}
           {can.review ? (
@@ -261,6 +268,15 @@ export function BillingCardView({ view }: { view: ProjectBillingView }) {
       {can.override ? <OverrideDialog key={`o-${agreement?.updatedAt ?? 'none'}`} open={dialog === 'override'} view={view} onClose={close} onDone={() => done(t('toast.override'))} /> : null}
       {can.removeOverride ? <RemoveOverrideDialog open={dialog === 'removeOverride'} projectId={view.projectId} onClose={close} onDone={() => done(t('toast.overrideRemoved'))} /> : null}
       {can.review ? <ReviewDialog open={dialog === 'review'} projectId={view.projectId} onClose={close} onDone={() => done(t('toast.reviewed'))} /> : null}
+      {canCancelPeriod && subscription ? (
+        <CancelPeriodDialog
+          open={dialog === 'cancelPeriod'}
+          projectId={view.projectId}
+          cancel={!subscription.cancelAtPeriodEnd}
+          onClose={close}
+          onDone={() => done(t(subscription.cancelAtPeriodEnd ? 'toast.subscriptionKept' : 'toast.cancelScheduled'))}
+        />
+      ) : null}
       {can.editContact ? <ProfilePanel key={`p-${JSON.stringify(profile)}`} open={dialog === 'profile'} view={view} onClose={close} onDone={() => done(t('toast.profile'))} /> : null}
 
       <Toast message={toast} />
@@ -379,12 +395,12 @@ function TermsPanel({ open, view, onClose, onDone }: DialogProps & { view: Proje
         ) : null}
 
         <Field label={t('terms.startsOn')} error={s.err('startsOn')}>
-          {(p) => <DateInput {...p} value={form.startsOn} onChange={(e) => set('startsOn', e.target.value)} />}
+          {(p) => <DatePicker {...p} clearable value={form.startsOn} onChange={(v) => set('startsOn', v)} />}
         </Field>
 
         {shown.dueDate ? (
           <Field label={t('terms.activationDue')} hint={t('terms.activationDueHint')} error={s.err('activationDueOn')}>
-            {(p) => <DateInput {...p} value={form.activationDueOn} onChange={(e) => set('activationDueOn', e.target.value)} />}
+            {(p) => <DatePicker {...p} clearable value={form.activationDueOn} onChange={(v) => set('activationDueOn', v)} />}
           </Field>
         ) : null}
         {reasonNeeded ? (
@@ -395,7 +411,7 @@ function TermsPanel({ open, view, onClose, onDone }: DialogProps & { view: Proje
 
         {shown.paidThrough ? (
           <Field label={t('terms.paidThrough')} hint={t('terms.paidThroughHint')} error={s.err('paidThrough')}>
-            {(p) => <DateInput {...p} value={form.paidThrough} onChange={(e) => set('paidThrough', e.target.value)} />}
+            {(p) => <DatePicker {...p} clearable value={form.paidThrough} onChange={(v) => set('paidThrough', v)} />}
           </Field>
         ) : null}
 
@@ -445,7 +461,7 @@ function OverrideDialog({ open, view, onClose, onDone }: DialogProps & { view: P
           )}
         </Field>
         <Field label={t('override.untilLabel')} error={s.err('until')}>
-          {(p) => <DateInput {...p} value={form.untilOn} onChange={(e) => set('untilOn', e.target.value)} />}
+          {(p) => <DatePicker {...p} clearable value={form.untilOn} onChange={(v) => set('untilOn', v)} />}
         </Field>
         <Field label={t('override.reason')} error={s.err('reason')}>
           {(p) => <TextArea {...p} rows={3} value={form.reason} onChange={(e) => set('reason', e.target.value)} />}
@@ -467,6 +483,27 @@ function RemoveOverrideDialog({ open, projectId, onClose, onDone }: DialogProps 
       busy={s.busy}
       error={s.general}
       onConfirm={() => void s.run(() => setBillingOverrideAction(removeOverrideInput(projectId)))}
+      onCancel={() => {
+        onClose()
+        s.reset()
+      }}
+    />
+  )
+}
+
+function CancelPeriodDialog({ open, projectId, cancel, onClose, onDone }: DialogProps & { projectId: string; cancel: boolean }) {
+  const t = useTranslations('admin.billing')
+  const s = useSubmit(reviewFieldErrors, onDone)
+  const k = cancel ? 'cancelPeriod' : 'keepSubscription'
+  return (
+    <ConfirmDialog
+      open={open}
+      title={t(`${k}.title`)}
+      body={t(`${k}.body`)}
+      confirmLabel={t(`${k}.confirm`)}
+      busy={s.busy}
+      error={s.general}
+      onConfirm={() => void s.run(() => setCancelAtPeriodEndAction({ projectId, cancel }))}
       onCancel={() => {
         onClose()
         s.reset()

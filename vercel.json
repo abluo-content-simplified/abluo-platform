@@ -27,6 +27,10 @@
     {
       "path": "/api/cron/site-access-sweep",
       "schedule": "50 7 * * *"
+    },
+    {
+      "path": "/api/cron/billing-sync",
+      "schedule": "40 3 * * *"
     }
   ]
 }

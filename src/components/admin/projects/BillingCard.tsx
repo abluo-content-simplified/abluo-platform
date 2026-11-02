@@ -3,6 +3,7 @@ import { Notice } from '@/components/app/ui/Notice'
 import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { loadProjectBilling } from '@/lib/admin/billing/queries'
 import type { ProjectBillingView } from '@/lib/admin/billing/types'
+import { BillingAlertsPanel } from '@/components/admin/projects/BillingAlertsPanel'
 import { BillingCardView } from './BillingCardView'
 
 /**
@@ -28,6 +29,9 @@ export async function BillingCard({ projectId }: { projectId: string }) {
       <Notice tone="error">{t('loadError')}</Notice>
     </section>
   ) : (
-    <BillingCardView view={view} />
+    <>
+      <BillingCardView view={view} />
+      <BillingAlertsPanel projectId={projectId} />
+    </>
   )
 }

@@ -36,8 +36,15 @@ export type ProjectsBrowserRow = ProjectListRow & { id: string; owners: { userId
 /** The pill's status from a list summary (no clock or days-left on the list). */
 const billingView = (b: NonNullable<ProjectsBrowserRow['billing']>): BillingStatusView => ({ state: b.state, reason: b.reason, day: b.day, daysLeft: null, clockStartedAt: null })
 
+/**
+ * "Not Billed" is the resting state of most rows: plain muted text, so it sits
+ * flush with the column header (a faint pill read as indented — Tom, 2026-11-02).
+ * Every real billing state keeps its pill.
+ */
 function BillingCell({ p }: { p: ProjectsBrowserRow }) {
-  return <BillingStatusPill status={p.billing ? billingView(p.billing) : null} billed={p.billing?.billed} />
+  const t = useTranslations('app.billingStatus')
+  if (!p.billing) return <span className="text-sm text-muted-foreground">{t('notBilled')}</span>
+  return <CellPill><BillingStatusPill status={billingView(p.billing)} billed={p.billing.billed} /></CellPill>
 }
 
 /** Owners shown in a cell before "+N more". */
@@ -149,7 +156,7 @@ export function ProjectsBrowser({
         </CellPill>
       ),
     },
-    ...(billingKnown ? [{ key: 'billing', header: t('columns.billing'), width: 'w-36', render: (p: ProjectsBrowserRow) => <CellPill><BillingCell p={p} /></CellPill> }] : []),
+    ...(billingKnown ? [{ key: 'billing', header: t('columns.billing'), width: 'w-36', render: (p: ProjectsBrowserRow) => <BillingCell p={p} /> }] : []),
     {
       key: 'domain',
       header: t('columns.domain'),

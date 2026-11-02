@@ -10,7 +10,7 @@
 import type { AttentionSeverity } from '@/lib/client/attention'
 import type { ProjectBillingSummary } from '@/lib/admin/billing/types'
 
-export type AdminAttentionRuleId = 'noOwner' | 'billingReview' | 'billingLocked' | 'supportNew' | 'supportReplied' | 'activityIssues' | 'requestsWaiting' | 'invitationExpired' | 'invitationExpiring' | 'longPreview'
+export type AdminAttentionRuleId = 'noOwner' | 'billingAlert' | 'billingReview' | 'billingLocked' | 'supportNew' | 'supportReplied' | 'activityIssues' | 'requestsWaiting' | 'invitationExpired' | 'invitationExpiring' | 'longPreview'
 
 export type AdminAttentionItem = {
   id: string
@@ -41,15 +41,16 @@ export const REQUEST_WAITING_HOURS = 48
 /** Rule priority inside a severity (lower first). */
 const RULE_ORDER: Record<AdminAttentionRuleId, number> = {
   noOwner: 0,
-  billingReview: 1,
-  billingLocked: 2,
-  supportNew: 3,
-  supportReplied: 4,
-  activityIssues: 5,
-  requestsWaiting: 6,
-  invitationExpired: 7,
-  invitationExpiring: 8,
-  longPreview: 9,
+  billingAlert: 1,
+  billingReview: 2,
+  billingLocked: 3,
+  supportNew: 4,
+  supportReplied: 5,
+  activityIssues: 6,
+  requestsWaiting: 7,
+  invitationExpired: 8,
+  invitationExpiring: 9,
+  longPreview: 10,
 }
 
 const keys = (rule: AdminAttentionRuleId) => ({
@@ -125,6 +126,40 @@ export function billingRules(
     } else if (s.state === 'locked' && s.reason !== 'override_restrict') {
       out.push({ id: `billingLocked:${p.id}`, rule: 'billingLocked', severity: 'info', ...keys('billingLocked'), ...base })
     }
+  }
+  return out
+}
+
+export type AttentionBillingAlert = { id: string; projectId: string | null }
+
+/**
+ * ADR-041 D15 — open billing risk alerts (dispute, refund, early fraud warning)
+ * wait for a billing admin. One item per project with how many are open; an
+ * alert that could not be tied to a project is grouped under "—" and links to
+ * the project list. Acknowledged and resolved alerts are not passed in. Never
+ * affects access.
+ */
+export function billingAlertRule(
+  alerts: readonly AttentionBillingAlert[],
+  projects: readonly Pick<AttentionProject, 'id' | 'slug' | 'name' | 'status'>[],
+): AdminAttentionItem[] {
+  const byId = new Map(projects.map((p) => [p.id, p]))
+  const counts = new Map<string, number>()
+  for (const a of alerts) {
+    const key = a.projectId && byId.has(a.projectId) ? a.projectId : ''
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  const out: AdminAttentionItem[] = []
+  for (const [key, count] of counts) {
+    const p = key ? byId.get(key) : undefined
+    out.push({
+      id: `billingAlert:${key || 'unassigned'}`,
+      rule: 'billingAlert',
+      severity: 'warn',
+      ...keys('billingAlert'),
+      params: { project: p?.name ?? '—', count },
+      href: p ? adminProjectBillingHref(p.slug) : '/projects',
+    })
   }
   return out
 }
@@ -311,11 +346,13 @@ export function buildAdminAttention(
     requests: readonly AttentionRequest[] | null
     activityIssues?: readonly AttentionActivityIssue[] | null
     billing?: readonly ProjectBillingSummary[] | null
+    billingAlerts?: readonly AttentionBillingAlert[] | null
   },
   now = Date.now(),
 ): AdminAttentionItem[] {
   return sortAdminAttention([
     ...noOwnerRule(input.projects),
+    ...(input.billingAlerts ? billingAlertRule(input.billingAlerts, input.projects) : []),
     ...(input.billing ? billingRules(input.billing, input.projects) : []),
     ...(input.activityIssues ? activityIssuesRule(input.activityIssues, input.projects, now) : []),
     ...(input.requests ? requestsWaitingRule(input.requests, input.projects, now) : []),

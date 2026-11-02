@@ -85,7 +85,8 @@
       "documents": "Documenti",
       "content": "Contenuti",
       "requests": "Richieste",
-      "discover": "Altro da aggiungere"
+      "discover": "Altro da aggiungere",
+      "billing": "Fatturazione"
     },
     "navGroups": {
       "publish": "Pubblica",
@@ -3209,6 +3210,70 @@
         "translate": "Offri il tuo sito in più lingue, con una prima traduzione pronta da controllare.",
         "brand-hub": "Tieni logo, colori e font in un unico posto, per te e per chi lavora con te."
       }
+    },
+    "billing": {
+      "title": "Fatturazione",
+      "ownerOnly": "Solo il proprietario dell’account può pagare o aprire metodi di pagamento e fatture.",
+      "price": "{amount} all’{interval, select, year {anno} month {mese} other {periodo}}, IVA esclusa",
+      "priceEvery": "{amount} ogni {interval, select, year {{count, plural, one {# anno} other {# anni}}} month {{count, plural, one {# mese} other {# mesi}}} other {{count} periodi}}, IVA esclusa",
+      "paymentFailed": "L’ultimo pagamento non è andato a buon fine il {date}. Aggiorna il metodo di pagamento.",
+      "sentence": {
+        "notBilled": "Non fatturato",
+        "complimentary": "Questo sito è in omaggio. Non c’è nulla da pagare.",
+        "open": "Le modifiche restano attive.",
+        "paid": "Pagato",
+        "paidUntil": "Pagato fino al {date}",
+        "firstPaymentDue": "Primo pagamento entro il {date}",
+        "notDue": "Nessun pagamento in scadenza",
+        "checking": "Abluo sta controllando i tuoi dati di fatturazione.",
+        "paymentDue": "Pagamento in scadenza — {daysLeft, plural, one {# giorno rimasto} other {# giorni rimasti}}",
+        "paused": "Le modifiche sono sospese fino al pagamento"
+      },
+      "actions": {
+        "payNow": "Paga Ora",
+        "portal": "Metodi di Pagamento e Fatture"
+      },
+      "checkout": {
+        "success": "Grazie — stiamo confermando il tuo pagamento. Può volerci qualche istante.",
+        "cancel": "Nessun pagamento effettuato. Puoi pagare quando vuoi."
+      },
+      "errors": {
+        "forbidden": "Solo il proprietario dell’account può farlo.",
+        "unavailable": "I pagamenti non sono disponibili al momento. Riprova più tardi.",
+        "notBilled": "Questo sito non è fatturato, quindi non c’è nulla da pagare.",
+        "detailsCheck": "I tuoi dati di fatturazione vanno controllati — Abluo ti contatterà.",
+        "alreadySubscribed": "Questo sito ha già un abbonamento. Ricarica la pagina per vedere lo stato aggiornato.",
+        "contactAbluo": "Serve un controllo da parte nostra — Abluo ti contatterà.",
+        "noCustomer": "Metodi di pagamento e fatture compariranno qui dopo il primo pagamento.",
+        "failed": "Qualcosa è andato storto. Riprova.",
+        "vatPending": "Stiamo verificando la tua partita IVA con il servizio VIES dell'UE. Riprova tra qualche minuto o contatta l'assistenza se il problema persiste."
+      },
+      "details": {
+        "heading": "Dati di Fatturazione",
+        "legalName": "Ragione sociale",
+        "email": "Email di fatturazione",
+        "country": "Paese",
+        "vat": "Partita IVA",
+        "vatStatus": {
+          "none": "Non verificata",
+          "pending": "In verifica",
+          "verified": "Verificata",
+          "unverified": "Non è stato possibile verificarla",
+          "unavailable": "Verifica non disponibile al momento"
+        },
+        "none": "Abluo non ha ancora registrato i dati di fatturazione del tuo account.",
+        "change": "Per modificare questi dati, contatta l’assistenza di Abluo.",
+        "contact": "Contatta l’assistenza"
+      },
+      "others": {
+        "heading": "I Tuoi Altri Siti"
+      }
+    },
+    "billingNotice": {
+      "reminder": "{days, plural, =0 {Pagamento in scadenza — la modifica verrà sospesa a breve.} =1 {Pagamento in scadenza — manca 1 giorno alla sospensione delle modifiche.} other {Pagamento in scadenza — mancano # giorni alla sospensione delle modifiche.}}",
+      "paused": "Le modifiche sono sospese finché il pagamento non viene effettuato. Il tuo sito resta online.",
+      "payNow": "Paga ora",
+      "contactOwner": "Contatta il proprietario del sito."
     }
   },
   "app": {
@@ -3364,6 +3429,12 @@
         "zone": "Ora di {city} ({offset})",
         "gap": "Quell’ora non esiste quel giorno (si passa all’ora legale): sarà {date}.",
         "overlap": "Quell’ora capita due volte quel giorno (si torna all’ora solare): si usa la prima, {date} ({offset})."
+      },
+      "datePicker": {
+        "placeholder": "Scegli una data",
+        "done": "Fatto",
+        "clear": "Cancella",
+        "pickDay": "Scegli prima un giorno."
       }
     },
     "analytics": {
@@ -3614,6 +3685,11 @@
         "billingLocked": {
           "title": "Sito bloccato per fatturazione · {project}",
           "detail": "{day, plural, =0 {La fatturazione non è stata regolarizzata} one {La fatturazione non è stata regolarizzata dopo # giorno} other {La fatturazione non è stata regolarizzata dopo # giorni}}",
+          "action": "Apri fatturazione"
+        },
+        "billingAlert": {
+          "title": "Avviso di pagamento · {project}",
+          "detail": "{count, plural, one {# avviso aperto (contestazione, rimborso o frode) da controllare} other {# avvisi aperti (contestazioni, rimborsi o frodi) da controllare}}",
           "action": "Apri fatturazione"
         }
       }
@@ -5024,7 +5100,9 @@
         "override": "Eccezione…",
         "removeOverride": "Rimuovi eccezione",
         "review": "Segna come verificato",
-        "editContact": "Modifica contatto di fatturazione"
+        "editContact": "Modifica contatto di fatturazione",
+        "cancelAtPeriodEnd": "Annulla a Fine Periodo",
+        "keepSubscription": "Mantieni Abbonamento"
       },
       "facts": {
         "arrangement": "Modalità",
@@ -5152,7 +5230,9 @@
         "override": "Eccezione salvata.",
         "overrideRemoved": "Eccezione rimossa.",
         "reviewed": "Segnato come verificato.",
-        "profile": "Contatto di fatturazione salvato."
+        "profile": "Contatto di fatturazione salvato.",
+        "cancelScheduled": "L’abbonamento terminerà alla fine del periodo.",
+        "subscriptionKept": "L’abbonamento si rinnoverà come al solito."
       },
       "errors": {
         "forbidden": "Non hai il permesso di modificare la fatturazione.",
@@ -5187,6 +5267,48 @@
         "reason": "Questo motivo è troppo lungo.",
         "note": "Questa nota è troppo lunga.",
         "state": "Questo sito non è più in verifica."
+      },
+      "cancelPeriod": {
+        "title": "Annullare alla fine del periodo?",
+        "body": "L’abbonamento resta attivo fino alla fine del periodo corrente e poi si interrompe. Non verranno addebitati altri pagamenti.",
+        "confirm": "Annulla a Fine Periodo"
+      },
+      "keepSubscription": {
+        "title": "Mantenere l’abbonamento?",
+        "body": "L’abbonamento si rinnoverà come al solito alla fine del periodo corrente.",
+        "confirm": "Mantieni Abbonamento"
+      },
+      "alerts": {
+        "heading": "Avvisi di pagamento",
+        "body": "Stripe ha segnalato qualcosa sui pagamenti di questo cliente. Il sito non cambia in automatico: verifica, poi risolvi l'avviso con una nota.",
+        "kind": {
+          "dispute": "Contestazione aperta",
+          "refund": "Rimborso emesso",
+          "early_fraud_warning": "Avviso preventivo di frode"
+        },
+        "status": {
+          "open": "Aperto",
+          "acknowledged": "Preso in carico"
+        },
+        "detected": "Segnalato il {date}",
+        "acknowledgedOn": "preso in carico il {date}",
+        "acknowledge": "Prendi in carico",
+        "resolve": "Risolvi",
+        "resolveTitle": "Risolvere questo avviso?",
+        "resolveBody": "Scrivi cosa è successo o cosa hai fatto. La nota resta nella cronologia.",
+        "note": "Nota",
+        "noteRequired": "Aggiungi una nota per risolvere l'avviso.",
+        "resolveConfirm": "Risolvi",
+        "toast": {
+          "acknowledged": "Avviso preso in carico.",
+          "resolved": "Avviso risolto."
+        },
+        "errors": {
+          "forbidden": "Solo gli amministratori della fatturazione possono farlo.",
+          "invalid": "Controlla la nota e riprova.",
+          "notFound": "Questo avviso non esiste più.",
+          "failed": "Impossibile salvare. Riprova."
+        }
       }
     }
   },

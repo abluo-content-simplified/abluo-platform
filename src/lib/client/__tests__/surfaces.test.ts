@@ -54,6 +54,8 @@ describe('registry shape', () => {
   it('no entry is gated on a configuration permission', () => {
     for (const s of TENANT_SURFACES) {
       for (const p of requirementPermissions(s.requires)) {
+        // Only a permission Tom approved by name (FEATURE_CONTROL_ALLOWLIST) may gate a surface: billing.manage → Billing.
+        if (FEATURE_CONTROL_ALLOWLIST.includes(p)) continue
         expect(CONFIGURATION_PERMISSIONS, `${s.kind}:${s.id} requires ${p}`).not.toContain(p)
       }
     }
@@ -62,12 +64,31 @@ describe('registry shape', () => {
   it('every feature control is on the allowlist; the allowlist has no stale ids', () => {
     const controls = TENANT_SURFACES.filter((s): s is FeatureControlSurface => s.kind === 'featureControl')
     for (const c of controls) expect(FEATURE_CONTROL_ALLOWLIST).toContain(c.id)
-    for (const id of FEATURE_CONTROL_ALLOWLIST) expect(controls.map((c) => c.id)).toContain(id)
+    // An entry is a feature control id, or a configuration permission some surface is approved to be gated on.
+    const gating = TENANT_SURFACES.flatMap((s) => requirementPermissions(s.requires))
+    for (const id of FEATURE_CONTROL_ALLOWLIST) expect([...controls.map((c) => c.id), ...gating]).toContain(id)
   })
 
   it('buildTenantSurfaces drops a feature control that is not allowlisted', () => {
     const rogue: TenantSurface = { kind: 'featureControl', id: 'rogue', requires: {} }
     expect(buildTenantSurfaces({ permissions: [], enabledModuleIds: [] }, [rogue]).featureControls).toEqual([])
+  })
+})
+
+describe('billing surface (ADR-041 Phase 5)', () => {
+  const billing = TENANT_SURFACES.find((s) => s.kind === 'nav' && s.id === 'billing')
+
+  it('is a nav entry on the Owner permission or invoice access, and the Owner permission is allowlisted', () => {
+    expect(billing).toBeDefined()
+    expect(billing?.requires).toEqual({ anyPermission: ['billing.manage', 'billing.invoice.read'] })
+    expect(FEATURE_CONTROL_ALLOWLIST).toContain('billing.manage')
+  })
+
+  it('shows for either billing permission and for nobody else', () => {
+    const ids = (permissions: string[]) => buildTenantSurfaces({ permissions, enabledModuleIds: [] }).nav.map((n) => n.id)
+    expect(ids(['billing.manage'])).toContain('billing')
+    expect(ids(['billing.invoice.read'])).toContain('billing')
+    expect(ids(['site.details.read', 'users.manage', 'modules.manage'])).not.toContain('billing')
   })
 })
 

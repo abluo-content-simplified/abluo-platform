@@ -23,6 +23,8 @@ import { AnnouncementBanners } from '@/components/client/whats-new/AnnouncementB
 import { NewVersionNotice } from '@/components/system/NewVersionNotice'
 import { PresenceHeartbeat } from '@/components/system/PresenceHeartbeat'
 import { can } from '@/lib/authz/check'
+import { billingAccess, billingNavPermissions, hasAnyBillingGrant, tenantIdOfGrant } from '@/lib/billing/client-access'
+import { projectTenantId } from '@/lib/billing/project-tenant'
 import { SUPPORT_EDIT_MINUTES } from '@/lib/support/constants'
 import { listSupportNotices } from '@/lib/support/server'
 import { ticketAccess } from '@/lib/support-tickets/access'
@@ -31,6 +33,7 @@ import { SupportBanner } from '@/components/client/support/SupportBanner'
 import { SupportReplyNotice } from '@/components/client/support/SupportReplyNotice'
 import { getFormsDashboard } from '@/lib/api/dashboard/forms'
 import { SupportAccessNotice } from '@/components/client/support/SupportAccessNotice'
+import { BillingNotice } from '@/components/client/billing/BillingNotice'
 import { loadCatalogueNavLabel } from '@/lib/api/catalogue-drafts'
 
 /**
@@ -86,7 +89,9 @@ async function ClientProjectLayoutInner({
   // ADR-033 D12: the catalogue's tenant-chosen dashboard name (presentation only).
   const catalogueLabel = activeGrant.enabledModuleIds.includes('catalogue') ? await loadCatalogueNavLabel(activeGrant.projectSlug, uiLocale) : null
   lap('catalogueLabel')
-  const navItems = buildClientNavItems(activeGrant).map((i) => (i.moduleId === 'catalogue' && catalogueLabel ? { ...i, label: catalogueLabel } : i))
+  // Billing is tenant-scoped: resolve this project's own client (only for people holding a billing permission).
+  const billingTenantId = hasAnyBillingGrant(ctx) ? (tenantIdOfGrant(activeGrant) ?? (await projectTenantId(activeGrant.projectId))) : null
+  const navItems = buildClientNavItems({ ...activeGrant, permissions: [...activeGrant.permissions, ...billingNavPermissions(ctx, activeGrant, billingTenantId)] }).map((i) => (i.moduleId === 'catalogue' && catalogueLabel ? { ...i, label: catalogueLabel } : i))
   const viewer = await getViewerAccount(ctx.userId)
   lap('viewer')
   const summaries = await loadProjectSummaries(ctx.projects.map((grant) => grant.projectId))
@@ -200,6 +205,15 @@ async function ClientProjectLayoutInner({
             />
           ) : null}
           {/* Bottom room, set here only: phones clear the fixed tab bar (5.25rem) + the floating "+" (3.5rem + 1rem gap above the bar); md+ only when the "+" is shown. */}
+          {/* Payment reminder / pause (ADR-041 D8): only with a billing status (BILLING_ENFORCEMENT observe/on). */}
+          {activeGrant.billing && !support ? (
+            <BillingNotice
+              projectSlug={activeGrant.projectSlug}
+              billing={activeGrant.billing}
+              canPay={billingTenantId ? billingAccess(ctx, billingTenantId).canManage : false}
+              className="mx-4 mt-4 md:mx-6 md:mt-6"
+            />
+          ) : null}
           <main className={`p-4 pb-[calc(9.75rem+env(safe-area-inset-bottom))] md:p-6 ${quickAdd ? 'md:pb-[calc(6rem+env(safe-area-inset-bottom))]' : ''}`}>
             <SupportReplyNotice projectSlug={activeGrant.projectSlug} count={supportUnread} className="mb-4" />
             {supportNotices.length ? (
