@@ -16,6 +16,7 @@ function query(rows: unknown[]) {
 vi.mock('@/lib/supabase/admin', () => ({
   runAsTrustedSystemOperation: async (_reason: string, fn: (db: unknown) => unknown) => fn({ from: (t: string) => query(tables[t] ?? []) }),
 }))
+vi.mock('../stripe/service', () => ({ listInvoices: async () => [] }))
 vi.mock('@/lib/people/ownership', () => ({ tenantOfProject: async () => ({ tenantId: 't-1', slug: 'main' }) }))
 
 import { loadClientBillingView } from '../client-view'
@@ -64,5 +65,14 @@ describe('loadClientBillingView', () => {
     expect(view?.current.status.reason).toBe('before_due')
     expect(view?.others.map((s) => [s.slug, s.arrangement])).toEqual([['shop', null]])
     expect(view?.profile).toMatchObject({ legalName: 'Acme Srl', country: 'IT', vatVerification: 'verified' })
+  })
+  it('lists this site’s invoices; a Stripe failure leaves them unavailable (null), never breaks the page', async () => {
+    const invoice = { id: 'in_1', number: 'A-1', date: '2026-11-01T00:00:00.000Z', amountCents: 24000, currency: 'eur', status: 'paid' as const, hostedUrl: null, pdfUrl: null }
+    const listInvoices = async (projectId: string) => (projectId === 'p1' ? [invoice] : [])
+    expect((await loadClientBillingView(ctx(['billing.invoice.read']), 'main', new Date(), { listInvoices }))?.invoices).toEqual([invoice])
+    const failing = async () => {
+      throw new Error('stripe down')
+    }
+    expect((await loadClientBillingView(ctx(['billing.manage']), 'main', new Date(), { listInvoices: failing }))?.invoices).toBeNull()
   })
 })

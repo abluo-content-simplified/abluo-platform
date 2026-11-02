@@ -20,6 +20,7 @@ import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import { tenantOfProject } from '@/lib/people/ownership'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { billingAccess, type BillingAccess, type BillingSiteFacts } from './client-access'
+import { listInvoices, type InvoiceSummary } from './stripe/service'
 
 export type ClientBillingSite = BillingSiteFacts & {
   projectId: string
@@ -31,10 +32,8 @@ export type ClientBillingSite = BillingSiteFacts & {
   intervalCount: number
 }
 
-export type ClientBillingProfile = Pick<
-  BillingProfileView,
-  'customerType' | 'legalName' | 'contactName' | 'billingEmail' | 'country' | 'vatId' | 'vatVerification' | 'taxCode'
->
+/** The client's billing details as the client sees them (all of them: the Owner edits them here). */
+export type ClientBillingProfile = BillingProfileView
 
 export type ClientBillingView = {
   livemode: boolean
@@ -43,6 +42,8 @@ export type ClientBillingView = {
   others: ClientBillingSite[]
   /** null = Abluo has not recorded billing details for the client yet. */
   profile: ClientBillingProfile | null
+  /** This site's invoices from Stripe, newest first; null = could not be read right now. */
+  invoices: InvoiceSummary[] | null
 }
 
 function siteOf(
@@ -74,12 +75,17 @@ function siteOf(
  * (no grant on the project, or neither `billing.manage` nor `billing.invoice.read` on its client)
  * — the caller answers with a 404 either way.
  */
-export async function loadClientBillingView(ctx: TenantAuthorizationContext, projectSlug: string, now: Date = new Date()): Promise<ClientBillingView | null> {
+export async function loadClientBillingView(
+  ctx: TenantAuthorizationContext,
+  projectSlug: string,
+  now: Date = new Date(),
+  deps: { listInvoices?: (projectId: string) => Promise<InvoiceSummary[]> } = {},
+): Promise<ClientBillingView | null> {
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
   if (!grant) return null
   const livemode = billingLivemode()
 
-  return runAsTrustedSystemOperation('client billing page: billing reads for the signed-in client, after the billing permission check (ADR-041 Phase 5)', async (db) => {
+  const view = await runAsTrustedSystemOperation('client billing page: billing reads for the signed-in client, after the billing permission check (ADR-041 Phase 5)', async (db) => {
     const tenant = await tenantOfProject(db, grant.projectId)
     if (!tenant) return null
     const access = billingAccess(ctx, tenant.tenantId)
@@ -121,16 +127,23 @@ export async function loadClientBillingView(ctx: TenantAuthorizationContext, pro
       others: sites.filter((s) => s.projectId !== grant.projectId),
       profile: profile
         ? {
-            customerType: profile.customerType,
-            legalName: profile.legalName,
+            ...profile,
             contactName: profile.customerType === 'business' ? profile.contactName : null,
-            billingEmail: profile.billingEmail,
-            country: profile.country,
             vatId: profile.customerType === 'individual' ? null : profile.vatId,
-            vatVerification: profile.vatVerification,
-            taxCode: profile.taxCode,
           }
         : null,
+      invoices: null as InvoiceSummary[] | null,
     }
   })
+  if (!view) return null
+  // Invoices come from Stripe, only for people who may see the page (checked above); fail soft.
+  if (view.access.canView) {
+    try {
+      view.invoices = await (deps.listInvoices ?? listInvoices)(grant.projectId)
+    } catch (e) {
+      console.error('[billing] invoices unavailable', e instanceof Error ? e.message : e)
+      view.invoices = null
+    }
+  }
+  return view
 }

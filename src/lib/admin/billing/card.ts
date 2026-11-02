@@ -242,10 +242,14 @@ export function profileFieldsFor(customerType: ProfileForm['customerType'], coun
 }
 
 export function toProfileInput(tenantId: string, f: ProfileForm): SaveBillingProfileInput {
+  return { tenantId, ...toProfileFields(f) }
+}
+
+/** The form → what the server takes (without the client id: the client's own page never sends one). */
+export function toProfileFields(f: ProfileForm): Omit<SaveBillingProfileInput, 'tenantId'> {
   const country = orNull(f.country)?.toUpperCase() ?? null
   const shown = profileFieldsFor(f.customerType, country ?? '')
   return {
-    tenantId,
     billingEmail: orNull(f.billingEmail),
     customerType: f.customerType,
     legalName: orNull(f.legalName),

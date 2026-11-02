@@ -68,6 +68,8 @@ export type AdminAuditAction =
   | 'billing.override.set'
   | 'billing.review.ack'
   | 'billing.profile.set'
+  /** The client's Owner edits their own billing details on the client Billing page (actor = that user, `detail.by = 'client'`). */
+  | 'billing.profile.update_by_client'
   // Risk alerts (ADR-041 D15): `detail` = alertId, kind, tenantId (never the note).
   | 'billing.alert.ack'
   | 'billing.alert.resolve'

@@ -3231,7 +3231,7 @@
       },
       "actions": {
         "payNow": "Jetzt Bezahlen",
-        "portal": "Zahlungsmethoden & Rechnungen"
+        "portal": "Zahlungsmethode ändern"
       },
       "checkout": {
         "success": "Danke — deine Zahlung wird gerade bestätigt. Das kann einen Moment dauern.",
@@ -3247,7 +3247,8 @@
         "contactAbluo": "Bei uns ist eine Prüfung nötig — Abluo meldet sich bei dir.",
         "noCustomer": "Zahlungsmethoden und Rechnungen erscheinen hier nach deiner ersten Zahlung.",
         "failed": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal.",
-        "vatPending": "Deine USt-IdNr. wird gerade über den EU-Dienst VIES geprüft. Versuch es in ein paar Minuten noch einmal oder kontaktiere den Support, falls es dabei bleibt."
+        "vatPending": "Deine USt-IdNr. wird gerade über den EU-Dienst VIES geprüft. Versuch es in ein paar Minuten noch einmal oder kontaktiere den Support, falls es dabei bleibt.",
+        "vatInvalid": "Deine USt-IdNr. konnte über den EU-Dienst VIES nicht bestätigt werden. Bitte prüfe sie in deinen Abrechnungsdaten."
       },
       "details": {
         "heading": "Abrechnungsdaten",
@@ -3267,7 +3268,10 @@
         "companyName": "Firmenname",
         "fullName": "Vollständiger Name",
         "contactName": "Ansprechperson",
-        "taxCode": "Codice Fiscale"
+        "taxCode": "Codice Fiscale",
+        "editTitle": "Abrechnungsdaten bearbeiten",
+        "edit": "Bearbeiten",
+        "saved": "Abrechnungsdaten gespeichert."
       },
       "others": {
         "heading": "Deine Anderen Websites"
@@ -3288,6 +3292,21 @@
           "payNow": "Zahlung bald fällig",
           "paymentDue": "Zahlung fällig",
           "paused": "Zahlung nötig, Bearbeiten pausiert"
+        }
+      },
+      "invoices": {
+        "heading": "Rechnungen",
+        "empty": "Rechnungen erscheinen hier nach deiner ersten Zahlung.",
+        "unavailable": "Rechnungen können gerade nicht angezeigt werden. Bitte versuch es später noch einmal.",
+        "pdf": "PDF",
+        "pdfLabel": "Rechnung {number} als PDF herunterladen (öffnet in einem neuen Tab)",
+        "view": "Ansehen",
+        "noNumber": "Rechnung",
+        "status": {
+          "paid": "Bezahlt",
+          "open": "Offen",
+          "void": "Storniert",
+          "uncollectible": "Uneinbringlich"
         }
       }
     },
@@ -3620,6 +3639,55 @@
       "needsReview": "Prüfung nötig",
       "checkData": "Daten prüfen",
       "testData": "Testdaten"
+    },
+    "billingProfile": {
+      "types": {
+        "business": "Unternehmen",
+        "individual": "Privatperson"
+      },
+      "billingEmail": "Rechnungs-E-Mail",
+      "customerType": "Kundenart",
+      "companyName": "Firmenname",
+      "fullName": "Vollständiger Name",
+      "contactName": "Ansprechperson",
+      "contactNameHint": "Optional. Die Person, an die du dich im Unternehmen wendest.",
+      "addressLine1": "Adresse",
+      "addressHint": "Tippe los und wähle die Adresse aus den Vorschlägen.",
+      "addressLine2": "Adresszeile 2",
+      "postalCode": "Postleitzahl",
+      "city": "Ort",
+      "region": "Region",
+      "country": "Land",
+      "vatId": "USt-IdNr.",
+      "taxCode": "Codice Fiscale",
+      "taxCodeHint": "Optional. Die italienische Steuernummer, 16 Zeichen.",
+      "save": "Kontakt speichern",
+      "vatHint": {
+        "admin": "Wird mit VIES geprüft, sobald der Kunde mit Stripe verbunden ist.",
+        "client": "Wird vor deiner ersten Zahlung mit dem EU-Dienst VIES geprüft."
+      },
+      "saving": "Wird gespeichert…",
+      "close": "Schließen",
+      "fieldErrors": {
+        "billingEmail": "Gib eine gültige E-Mail-Adresse ein.",
+        "customerType": "Wähle eine Kundenart.",
+        "legalName": "Gib einen Namen ein.",
+        "contactName": "Dieser Name ist zu lang.",
+        "addressLine1": "Prüfe die Adresse.",
+        "addressLine2": "Prüfe diese Zeile.",
+        "postalCode": "Prüfe die Postleitzahl.",
+        "city": "Prüfe den Ort.",
+        "region": "Prüfe die Region.",
+        "country": "Wähle ein Land.",
+        "vatId": "Diese USt-IdNr. sieht ungültig aus.",
+        "taxCode": "Prüfe den Codice Fiscale: 11 bis 16 Buchstaben und Ziffern."
+      },
+      "errors": {
+        "forbidden": "Du darfst diese Rechnungsdaten nicht ändern.",
+        "invalid": "Prüfe die markierten Felder.",
+        "notFound": "Dieser Kunde wurde nicht gefunden.",
+        "failed": "Speichern fehlgeschlagen. Bitte versuch es noch einmal."
+      }
     }
   },
   "admin": {
@@ -5247,25 +5315,7 @@
         "save": "Konditionen speichern"
       },
       "profile": {
-        "title": "Rechnungskontakt bearbeiten",
-        "billingEmail": "Rechnungs-E-Mail",
-        "customerType": "Kundenart",
-        "addressLine1": "Adresse",
-        "addressLine2": "Adresszeile 2",
-        "postalCode": "Postleitzahl",
-        "city": "Ort",
-        "region": "Region",
-        "country": "Land",
-        "vatId": "USt-IdNr.",
-        "vatHint": "Wird mit VIES geprüft, sobald der Kunde mit Stripe verbunden ist.",
-        "save": "Kontakt speichern",
-        "companyName": "Firmenname",
-        "fullName": "Vollständiger Name",
-        "contactName": "Ansprechperson",
-        "contactNameHint": "Optional. Die Person, an die du dich im Unternehmen wendest.",
-        "addressHint": "Tippe los und wähle die Adresse aus den Vorschlägen.",
-        "taxCode": "Codice Fiscale",
-        "taxCodeHint": "Optional. Die italienische Steuernummer, 16 Zeichen."
+        "title": "Rechnungskontakt bearbeiten"
       },
       "toast": {
         "terms": "Konditionen gespeichert.",
@@ -5293,24 +5343,12 @@
         "override": "Wähle erlauben oder einschränken.",
         "reasonRequired": "Ein Grund ist erforderlich.",
         "untilInPast": "Das Enddatum muss in der Zukunft liegen.",
-        "billingEmail": "Gib eine gültige E-Mail-Adresse ein.",
-        "customerType": "Wähle eine Kundenart.",
-        "legalName": "Gib einen Namen ein.",
-        "addressLine1": "Prüfe die Adresse.",
-        "addressLine2": "Prüfe diese Zeile.",
-        "postalCode": "Prüfe die Postleitzahl.",
-        "city": "Prüfe den Ort.",
-        "region": "Prüfe die Region.",
-        "country": "Wähle ein Land.",
-        "vatId": "Diese USt-IdNr. sieht ungültig aus.",
         "activationDueOn": "Gib ein gültiges Datum ein.",
         "activationExtensionReason": "Dieser Grund ist zu lang.",
         "untilOn": "Gib ein gültiges Datum ein.",
         "reason": "Dieser Grund ist zu lang.",
         "note": "Diese Notiz ist zu lang.",
-        "state": "Diese Website ist nicht mehr in Prüfung.",
-        "contactName": "Dieser Name ist zu lang.",
-        "taxCode": "Prüfe den Codice Fiscale: 11 bis 16 Buchstaben und Ziffern."
+        "state": "Diese Website ist nicht mehr in Prüfung."
       },
       "cancelPeriod": {
         "title": "Zum Ende der Periode kündigen?",

@@ -3231,7 +3231,7 @@
       },
       "actions": {
         "payNow": "Pay Now",
-        "portal": "Payment Methods & Invoices"
+        "portal": "Change Payment Method"
       },
       "checkout": {
         "success": "Thank you — your payment is being confirmed. This can take a moment.",
@@ -3247,7 +3247,8 @@
         "contactAbluo": "Something needs a check on our side — Abluo will contact you.",
         "noCustomer": "Payment methods and invoices appear here after your first payment.",
         "failed": "Something went wrong. Please try again.",
-        "vatPending": "Your VAT number is being checked with the EU VIES service. Please try again in a few minutes, or contact support if this persists."
+        "vatPending": "Your VAT number is being checked with the EU VIES service. Please try again in a few minutes, or contact support if this persists.",
+        "vatInvalid": "Your VAT number could not be confirmed with the EU VIES service. Please check it in your billing details."
       },
       "details": {
         "heading": "Billing Details",
@@ -3267,7 +3268,10 @@
         "companyName": "Company name",
         "fullName": "Full name",
         "contactName": "Contact person",
-        "taxCode": "Codice fiscale"
+        "taxCode": "Codice fiscale",
+        "editTitle": "Edit Billing Details",
+        "edit": "Edit",
+        "saved": "Billing details saved."
       },
       "others": {
         "heading": "Your Other Sites"
@@ -3288,6 +3292,21 @@
           "payNow": "Payment due soon",
           "paymentDue": "Payment due",
           "paused": "Payment needed, editing is paused"
+        }
+      },
+      "invoices": {
+        "heading": "Invoices",
+        "empty": "Invoices appear here after your first payment.",
+        "unavailable": "Invoices can’t be shown right now. Please try again later.",
+        "pdf": "PDF",
+        "pdfLabel": "Download invoice {number} as PDF (opens in a new tab)",
+        "view": "View",
+        "noNumber": "Invoice",
+        "status": {
+          "paid": "Paid",
+          "open": "Open",
+          "void": "Void",
+          "uncollectible": "Uncollectible"
         }
       }
     },
@@ -3620,6 +3639,55 @@
       "needsReview": "Needs Review",
       "checkData": "Check Data",
       "testData": "Test Data"
+    },
+    "billingProfile": {
+      "types": {
+        "business": "Business",
+        "individual": "Individual"
+      },
+      "billingEmail": "Billing Email",
+      "customerType": "Customer Type",
+      "companyName": "Company Name",
+      "fullName": "Full Name",
+      "contactName": "Contact Person",
+      "contactNameHint": "Optional. The person to address at the company.",
+      "addressLine1": "Address",
+      "addressHint": "Start typing to pick the address from suggestions.",
+      "addressLine2": "Address Line 2",
+      "postalCode": "Postal Code",
+      "city": "City",
+      "region": "Region",
+      "country": "Country",
+      "vatId": "VAT Number",
+      "taxCode": "Codice Fiscale",
+      "taxCodeHint": "Optional. The Italian tax code, 16 characters.",
+      "save": "Save Contact",
+      "vatHint": {
+        "admin": "Checked with VIES when the client is connected to Stripe.",
+        "client": "Checked with the EU VIES service before your first payment."
+      },
+      "saving": "Saving…",
+      "close": "Close",
+      "fieldErrors": {
+        "billingEmail": "Enter a valid email address.",
+        "customerType": "Choose a customer type.",
+        "legalName": "Enter a name.",
+        "contactName": "This name is too long.",
+        "addressLine1": "Check the address.",
+        "addressLine2": "Check this line.",
+        "postalCode": "Check the postal code.",
+        "city": "Check the city.",
+        "region": "Check the region.",
+        "country": "Choose a country.",
+        "vatId": "This VAT number looks invalid.",
+        "taxCode": "Check the codice fiscale: 11 to 16 letters and digits."
+      },
+      "errors": {
+        "forbidden": "You don’t have permission to change these billing details.",
+        "invalid": "Please check the highlighted fields.",
+        "notFound": "This client could not be found.",
+        "failed": "Couldn’t save. Please try again."
+      }
     }
   },
   "admin": {
@@ -5247,25 +5315,7 @@
         "save": "Save Terms"
       },
       "profile": {
-        "title": "Edit Billing Contact",
-        "billingEmail": "Billing Email",
-        "customerType": "Customer Type",
-        "addressLine1": "Address",
-        "addressLine2": "Address Line 2",
-        "postalCode": "Postal Code",
-        "city": "City",
-        "region": "Region",
-        "country": "Country",
-        "vatId": "VAT Number",
-        "vatHint": "Checked with VIES when the client is connected to Stripe.",
-        "save": "Save Contact",
-        "companyName": "Company Name",
-        "fullName": "Full Name",
-        "contactName": "Contact Person",
-        "contactNameHint": "Optional. The person to address at the company.",
-        "addressHint": "Start typing to pick the address from suggestions.",
-        "taxCode": "Codice Fiscale",
-        "taxCodeHint": "Optional. The Italian tax code, 16 characters."
+        "title": "Edit Billing Contact"
       },
       "toast": {
         "terms": "Billing terms saved.",
@@ -5293,24 +5343,12 @@
         "override": "Choose allow or restrict.",
         "reasonRequired": "A reason is required.",
         "untilInPast": "The end date must be in the future.",
-        "billingEmail": "Enter a valid email address.",
-        "customerType": "Choose a customer type.",
-        "legalName": "Enter a name.",
-        "addressLine1": "Check the address.",
-        "addressLine2": "Check this line.",
-        "postalCode": "Check the postal code.",
-        "city": "Check the city.",
-        "region": "Check the region.",
-        "country": "Choose a country.",
-        "vatId": "This VAT number looks invalid.",
         "activationDueOn": "Enter a valid date.",
         "activationExtensionReason": "This reason is too long.",
         "untilOn": "Enter a valid date.",
         "reason": "This reason is too long.",
         "note": "This note is too long.",
-        "state": "This site is no longer under review.",
-        "contactName": "This name is too long.",
-        "taxCode": "Check the codice fiscale: 11 to 16 letters and digits."
+        "state": "This site is no longer under review."
       },
       "cancelPeriod": {
         "title": "Cancel at the end of the period?",

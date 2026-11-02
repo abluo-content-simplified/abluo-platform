@@ -117,11 +117,11 @@ export function billingActions(
   }
 }
 
-export type CheckoutErrorCode = 'forbidden' | 'unavailable' | 'notBilled' | 'profileIncomplete' | 'vatNotVerified' | 'alreadySubscribed' | 'noIssuer' | 'failed'
+export type CheckoutErrorCode = 'forbidden' | 'unavailable' | 'notBilled' | 'profileIncomplete' | 'vatNotVerified' | 'vatInvalid' | 'alreadySubscribed' | 'noIssuer' | 'failed'
 export type PortalErrorCode = 'forbidden' | 'unavailable' | 'noCustomer' | 'failed'
 
 /** Key under `clientDashboard.billing.errors` for a failed action — always a calm, human message. */
-export function billingErrorKey(error: CheckoutErrorCode | PortalErrorCode): 'forbidden' | 'unavailable' | 'notBilled' | 'detailsCheck' | 'vatPending' | 'alreadySubscribed' | 'contactAbluo' | 'noCustomer' | 'failed' {
+export function billingErrorKey(error: CheckoutErrorCode | PortalErrorCode): 'forbidden' | 'unavailable' | 'notBilled' | 'detailsCheck' | 'vatPending' | 'vatInvalid' | 'alreadySubscribed' | 'contactAbluo' | 'noCustomer' | 'failed' {
   switch (error) {
     case 'forbidden':
       return 'forbidden'
@@ -133,6 +133,8 @@ export function billingErrorKey(error: CheckoutErrorCode | PortalErrorCode): 'fo
       return 'detailsCheck'
     case 'vatNotVerified':
       return 'vatPending'
+    case 'vatInvalid':
+      return 'vatInvalid'
     case 'alreadySubscribed':
       return 'alreadySubscribed'
     case 'noIssuer':

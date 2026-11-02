@@ -36,7 +36,7 @@ the key's request log for 403s or unused permissions and adjust.
 | Checkout Sessions | Write | `checkout.sessions.create`, `.expire`, `.retrieve` |
 | Subscriptions | Write | `subscriptions.update` (cancel at period end), `subscriptions.retrieve` |
 | Customer portal | Write | `billingPortal.sessions.create`; `billingPortal.configurations.create` (only for the one-off script — use a separate, temporary key if you prefer) |
-| Invoices | Read | Phase 3b (re-fetch on `invoice.*` events); not used in 3a |
+| Invoices | Read | `invoices.list` (the client Billing page's invoice list, `listInvoices`); Phase 3b re-fetch on `invoice.*` events |
 | Events | Read | Phase 3b |
 | Disputes, Charges and Refunds, Radar early fraud warnings | Read | Phase 3b alerts |
 | Tax settings, Tax registrations | Read | later (Stripe Tax) |

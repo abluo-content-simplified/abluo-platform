@@ -36,6 +36,8 @@ export type BillingErrorCode =
   | 'notBilled'
   | 'profileIncomplete'
   | 'vatNotVerified'
+  /** VIES answered: the VAT number could not be confirmed (Stripe `unverified`). */
+  | 'vatInvalid'
   | 'alreadySubscribed'
   | 'noCustomer'
   | 'failed'
@@ -347,6 +349,8 @@ export async function createCheckout(
     await refreshVatVerification(project.tenant_id, await activeIssuer(), locale)
     profile = await readProfile(project.tenant_id, livemode)
     completeness = profileCompleteness(profile)
+    // VIES gave a definite "no": say so (pending / unavailable / none stay vatNotVerified).
+    if (completeness === 'vatNotVerified' && profile?.vat_verification === 'unverified') throw new BillingError('vatInvalid')
   }
   if (completeness !== 'ok') throw new BillingError(completeness)
 
@@ -431,6 +435,91 @@ export async function createCheckout(
   })
   if (insertError) throw new BillingError('failed', `session store: ${insertError.message}`)
   return { url: session.url }
+}
+
+/**
+ * After the client's billing details changed: push them to the Stripe customer
+ * of the active issuer and mode — only when that customer already exists
+ * (nothing is created here; Checkout creates it). Returns whether it pushed.
+ */
+export async function syncCustomerIfExists(tenantId: string, locale: string | null = null): Promise<boolean> {
+  if (!getStripe()) return false
+  const livemode = billingLivemode()
+  const issuer = await activeIssuer()
+  const { data, error } = await createAdminClient()
+    .from('billing_customers')
+    .select('stripe_customer_id')
+    .eq('tenant_id', tenantId)
+    .eq('issuer_id', issuer.id)
+    .eq('livemode', livemode)
+    .maybeSingle()
+  if (error) throw new BillingError('failed', `customer read: ${error.message}`)
+  if (!data?.stripe_customer_id) return false
+  await ensureCustomer(tenantId, issuer, locale)
+  return true
+}
+
+// ── Invoices ────────────────────────────────────────────────────────────────
+export type InvoiceStatus = 'paid' | 'open' | 'void' | 'uncollectible'
+export type InvoiceSummary = {
+  id: string
+  number: string | null
+  /** ISO: when it was paid, else when it was created. */
+  date: string
+  amountCents: number
+  currency: string
+  status: InvoiceStatus
+  hostedUrl: string | null
+  pdfUrl: string | null
+}
+
+const INVOICE_STATUSES = new Set<InvoiceStatus>(['paid', 'open', 'void', 'uncollectible'])
+
+/** Pure: Stripe invoice → the summary the client Billing page lists; null for drafts / unknown states. */
+export function invoiceSummary(inv: Pick<Stripe.Invoice, 'id' | 'number' | 'created' | 'total' | 'currency' | 'status' | 'hosted_invoice_url' | 'invoice_pdf'> & {
+  status_transitions?: { paid_at?: number | null } | null
+}): InvoiceSummary | null {
+  const status = inv.status as InvoiceStatus | null
+  if (!inv.id || !status || !INVOICE_STATUSES.has(status)) return null
+  const at = inv.status_transitions?.paid_at || inv.created
+  return {
+    id: inv.id,
+    number: inv.number ?? null,
+    date: new Date(at * 1000).toISOString(),
+    amountCents: inv.total,
+    currency: inv.currency,
+    status,
+    hostedUrl: inv.hosted_invoice_url ?? null,
+    pdfUrl: inv.invoice_pdf ?? null,
+  }
+}
+
+/**
+ * The invoices of the project's linked subscription (newest first, at most 24,
+ * drafts left out). [] when the project has no linked subscription. Throws
+ * (BillingError) when Stripe or the database cannot answer — callers fail soft.
+ */
+export async function listInvoices(projectId: string): Promise<InvoiceSummary[]> {
+  const livemode = billingLivemode()
+  const db = createAdminClient()
+  const { data: pb, error } = await db
+    .from('project_billing')
+    .select('billing_subscription_id')
+    .eq('project_id', projectId)
+    .eq('livemode', livemode)
+    .maybeSingle()
+  if (error) throw new BillingError('failed', `agreement read: ${error.message}`)
+  if (!pb?.billing_subscription_id) return []
+  const { data: row, error: subError } = await db
+    .from('billing_subscriptions')
+    .select('stripe_subscription_id')
+    .eq('id', pb.billing_subscription_id)
+    .maybeSingle()
+  if (subError) throw new BillingError('failed', `subscription read: ${subError.message}`)
+  if (!row?.stripe_subscription_id) return []
+  const stripe = stripeOrThrow()
+  const list = await stripe.invoices.list({ subscription: row.stripe_subscription_id as string, limit: 24 })
+  return list.data.map((inv) => invoiceSummary(inv)).filter((i): i is InvoiceSummary => i !== null)
 }
 
 // ── Customer Portal ─────────────────────────────────────────────────────────

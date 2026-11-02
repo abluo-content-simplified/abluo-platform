@@ -7,12 +7,14 @@ import { can } from '@/lib/authz/check'
 import { LOCALE_CODES } from '@/lib/i18n/locales'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { BillingError, createCheckout, createPortalSession } from './stripe/service'
+import type { BillingActionResult } from '@/lib/admin/billing/types'
+import { BillingError, createCheckout, createPortalSession, syncCustomerIfExists } from './stripe/service'
+import { writeBillingProfile, type BillingProfileFields } from './profile-save'
 import { trustedReturnOrigin } from './return-origin'
 
 export type StartCheckoutResult =
   | { ok: true; url: string }
-  | { ok: false; error: 'forbidden' | 'unavailable' | 'notBilled' | 'profileIncomplete' | 'vatNotVerified' | 'alreadySubscribed' | 'noIssuer' | 'failed' }
+  | { ok: false; error: 'forbidden' | 'unavailable' | 'notBilled' | 'profileIncomplete' | 'vatNotVerified' | 'vatInvalid' | 'alreadySubscribed' | 'noIssuer' | 'failed' }
 export type OpenPortalResult = { ok: true; url: string } | { ok: false; error: 'forbidden' | 'unavailable' | 'noCustomer' | 'failed' }
 
 type Caller = { userId: string; projectId: string; projectSlug: string; tenantId: string }
@@ -63,6 +65,7 @@ export async function startCheckoutAction(input: { projectSlug: string; locale: 
         case 'notBilled':
         case 'profileIncomplete':
         case 'vatNotVerified':
+        case 'vatInvalid':
         case 'alreadySubscribed':
         case 'noIssuer':
           return { ok: false, error: e.code }
@@ -90,4 +93,32 @@ export async function openBillingPortalAction(input: { projectSlug: string; loca
     console.error('[billing] openPortal failed', e instanceof Error ? e.message : e)
     return { ok: false, error: 'failed' }
   }
+}
+
+/**
+ * The Owner edits the client's own billing details (Tom, 2026-11-02). The client
+ * is resolved server-side from the project (never from the browser); the same
+ * validation, normalisation and VAT rule as the admin card (`writeBillingProfile`).
+ * When a Stripe customer already exists, the new details are pushed to it — a
+ * Stripe failure is logged and never fails the save (Abluo is the source of truth).
+ */
+export async function saveOwnBillingProfileAction(input: { projectSlug: string; locale?: string; profile: BillingProfileFields }): Promise<BillingActionResult> {
+  const caller = await authorizeBillingManager(input?.projectSlug)
+  if (!caller) return { ok: false, error: 'forbidden' }
+  if (typeof input.profile !== 'object' || input.profile === null) return { ok: false, error: 'invalid', fields: [] }
+  const r = await writeBillingProfile({
+    tenantId: caller.tenantId,
+    input: input.profile,
+    actorId: caller.userId,
+    action: 'billing.profile.update_by_client',
+    projectId: caller.projectId,
+    by: 'client',
+  })
+  if (!r.ok) return r
+  try {
+    await syncCustomerIfExists(caller.tenantId, knownLocale(input.locale) ? input.locale : null)
+  } catch (e) {
+    console.error('[billing] own profile saved; Stripe customer update failed', e instanceof Error ? e.message : e)
+  }
+  return { ok: true }
 }

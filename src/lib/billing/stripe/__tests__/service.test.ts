@@ -41,6 +41,7 @@ const stripe = {
   checkout: { sessions: { create: vi.fn(), expire: vi.fn(), retrieve: vi.fn() } },
   billingPortal: { sessions: { create: vi.fn() } },
   subscriptions: { update: vi.fn(), retrieve: vi.fn() },
+  invoices: { list: vi.fn() },
 }
 let stripeAvailable = true
 vi.mock('../client', () => ({ getStripe: () => (stripeAvailable ? stripe : null) }))
@@ -138,6 +139,27 @@ describe('createCheckout refusals', () => {
     expect(await code((await svc()).createCheckout(PROJECT, 'u1', 'it', 'https://x.y', NOW))).toBe('vatNotVerified')
     expect(stored.vat_verification).toBe('pending')
     expect(stripe.checkout.sessions.create).not.toHaveBeenCalled()
+  })
+
+  it('VAT rejected by VIES (unverified): checkout refused with vatInvalid', async () => {
+    let stored = profile({ vat_verification: 'none', vat_id: 'DE111111111' })
+    setup({ billing_profiles: (c) => {
+      if (c.op === 'update') { stored = { ...stored, ...(c.payload as Record<string, unknown>) }; return { data: null } }
+      return { data: stored }
+    } })
+    stripe.customers.listTaxIds.mockResolvedValue({ data: [{ type: 'eu_vat', value: 'DE111111111', verification: { status: 'unverified', verified_name: null } }] })
+    expect(await code((await svc()).createCheckout(PROJECT, 'u1', 'it', 'https://x.y', NOW))).toBe('vatInvalid')
+    expect(stored.vat_verification).toBe('unverified')
+    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled()
+  })
+  it('VAT check unavailable stays vatNotVerified', async () => {
+    let stored = profile({ vat_verification: 'none' })
+    setup({ billing_profiles: (c) => {
+      if (c.op === 'update') { stored = { ...stored, ...(c.payload as Record<string, unknown>) }; return { data: null } }
+      return { data: stored }
+    } })
+    stripe.customers.listTaxIds.mockResolvedValue({ data: [{ type: 'eu_vat', value: 'IT12345678901', verification: { status: 'unavailable', verified_name: null } }] })
+    expect(await code((await svc()).createCheckout(PROJECT, 'u1', 'it', 'https://x.y', NOW))).toBe('vatNotVerified')
   })
 
   it('a project linked to a live subscription is refused; a terminal one is not', async () => {
@@ -362,5 +384,50 @@ describe('setCancelAtPeriodEnd', () => {
     })
     expect(await code((await svc()).setCancelAtPeriodEnd(PROJECT, true))).toBe('failed')
     expect(stripe.subscriptions.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('invoices', () => {
+  const inv = (t: Record<string, unknown> = {}) => ({
+    id: 'in_1', number: 'ABL-0001', created: 1_793_000_000, total: 29280, currency: 'eur', status: 'paid',
+    hosted_invoice_url: 'https://invoice.stripe.com/i/1', invoice_pdf: 'https://pay.stripe.com/invoice/1/pdf', status_transitions: { paid_at: 1_793_000_600 }, ...t,
+  })
+  it('invoiceSummary: paid date when paid, else created; drafts skipped', async () => {
+    const { invoiceSummary } = await svc()
+    expect(invoiceSummary(inv() as never)).toEqual({
+      id: 'in_1', number: 'ABL-0001', date: new Date(1_793_000_600_000).toISOString(), amountCents: 29280, currency: 'eur', status: 'paid',
+      hostedUrl: 'https://invoice.stripe.com/i/1', pdfUrl: 'https://pay.stripe.com/invoice/1/pdf',
+    })
+    expect(invoiceSummary(inv({ status: 'open', status_transitions: { paid_at: null } }) as never)?.date).toBe(new Date(1_793_000_000_000).toISOString())
+    expect(invoiceSummary(inv({ status: 'draft' }) as never)).toBeNull()
+  })
+  it('listInvoices: the linked subscription, at most 24, drafts left out', async () => {
+    setup({
+      project_billing: { data: { billing_subscription_id: 'sub-row' } },
+      billing_subscriptions: { data: { stripe_subscription_id: 'sub_STRIPE1' } },
+    })
+    stripe.invoices.list.mockResolvedValue({ data: [inv(), inv({ id: 'in_2', status: 'draft' }), inv({ id: 'in_3', status: 'open', number: null })] })
+    const list = await (await svc()).listInvoices(PROJECT)
+    expect(stripe.invoices.list).toHaveBeenCalledWith({ subscription: 'sub_STRIPE1', limit: 24 })
+    expect(list.map((i) => [i.id, i.status, i.number])).toEqual([['in_1', 'paid', 'ABL-0001'], ['in_3', 'open', null]])
+  })
+  it('listInvoices: no linked subscription → [] without asking Stripe', async () => {
+    setup({ project_billing: { data: { billing_subscription_id: null } } })
+    expect(await (await svc()).listInvoices(PROJECT)).toEqual([])
+    expect(stripe.invoices.list).not.toHaveBeenCalled()
+  })
+})
+
+describe('syncCustomerIfExists', () => {
+  it('pushes the profile to an existing customer', async () => {
+    expect(await (await svc()).syncCustomerIfExists(TENANT, 'it')).toBe(true)
+    expect(stripe.customers.update).toHaveBeenCalledWith('cus_ABCDEF123', expect.objectContaining({ name: 'Acme Srl' }))
+    expect(stripe.customers.create).not.toHaveBeenCalled()
+  })
+  it('creates nothing when there is no customer yet', async () => {
+    setup({ billing_customers: { data: null } })
+    expect(await (await svc()).syncCustomerIfExists(TENANT)).toBe(false)
+    expect(stripe.customers.create).not.toHaveBeenCalled()
+    expect(stripe.customers.update).not.toHaveBeenCalled()
   })
 })

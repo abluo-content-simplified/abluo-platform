@@ -18,6 +18,9 @@ vi.mock('@/lib/supabase/admin', () => ({
 vi.mock('next/headers', () => ({ headers: async () => new Headers({ host: 'www.abluo.app' }) }))
 const createCheckout = vi.fn()
 const createPortalSession = vi.fn()
+const syncCustomerIfExists = vi.fn()
+const writeBillingProfile = vi.fn()
+vi.mock('../profile-save', () => ({ writeBillingProfile: (...a: unknown[]) => writeBillingProfile(...a) }))
 class BillingError extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -25,6 +28,7 @@ vi.mock('../stripe/service', () => ({
   BillingError,
   createCheckout: (...a: unknown[]) => createCheckout(...a),
   createPortalSession: (...a: unknown[]) => createPortalSession(...a),
+  syncCustomerIfExists: (...a: unknown[]) => syncCustomerIfExists(...a),
   setCancelAtPeriodEnd: vi.fn(),
 }))
 
@@ -40,6 +44,9 @@ beforeEach(() => {
   getCtx.mockClear()
   createCheckout.mockReset()
   createPortalSession.mockReset()
+  syncCustomerIfExists.mockReset()
+  writeBillingProfile.mockReset()
+  writeBillingProfile.mockResolvedValue({ ok: true, vatChanged: false })
   dbCalls.length = 0
 })
 
@@ -86,7 +93,7 @@ describe.each(['startCheckoutAction', 'openBillingPortalAction'] as const)('%s a
 })
 
 describe('error mapping', () => {
-  it.each(['notBilled', 'profileIncomplete', 'vatNotVerified', 'alreadySubscribed', 'noIssuer', 'unavailable'])('checkout %s', async (c) => {
+  it.each(['notBilled', 'profileIncomplete', 'vatNotVerified', 'vatInvalid', 'alreadySubscribed', 'noIssuer', 'unavailable'])('checkout %s', async (c) => {
     createCheckout.mockRejectedValue(new BillingError(c))
     expect(await (await actions()).startCheckoutAction({ projectSlug: 'acme', locale: 'it' })).toEqual({ ok: false, error: c })
   })
@@ -106,5 +113,40 @@ describe('error mapping', () => {
   it('unknown locale -> failed without Stripe', async () => {
     expect(await (await actions()).startCheckoutAction({ projectSlug: 'acme', locale: 'xx' })).toEqual({ ok: false, error: 'failed' })
     expect(createCheckout).not.toHaveBeenCalled()
+  })
+})
+
+describe('saveOwnBillingProfileAction', () => {
+  const fields = {
+    billingEmail: 'a@b.it', customerType: 'business' as const, legalName: 'Acme Srl', contactName: null, addressLine1: null, addressLine2: null,
+    postalCode: null, city: null, region: null, country: 'IT', vatId: 'IT12345678901', taxCode: null,
+  }
+  const save = async (over: Record<string, unknown> = {}) => (await actions()).saveOwnBillingProfileAction({ projectSlug: 'acme', locale: 'it', profile: fields, ...over } as never)
+
+  it('without billing.manage, in support mode or anonymous -> forbidden, nothing written', async () => {
+    for (const c of [null, context({ tenants: [{ tenantId: TENANT, role: 'member', permissions: ['billing.invoice.read'] }] }), context({ support: { sessionId: 's', projectId: PROJECT, writesAllowed: true, role: 'admin' } })]) {
+      ctx = c
+      expect(await save()).toEqual({ ok: false, error: 'forbidden' })
+    }
+    expect(writeBillingProfile).not.toHaveBeenCalled()
+    expect(syncCustomerIfExists).not.toHaveBeenCalled()
+  })
+  it('writes for the project’s own client (resolved server-side), as the client, then pushes to Stripe', async () => {
+    expect(await save({ tenantId: 'someone-else' })).toEqual({ ok: true })
+    expect(writeBillingProfile).toHaveBeenCalledWith(expect.objectContaining({ tenantId: TENANT, actorId: 'u1', action: 'billing.profile.update_by_client', projectId: PROJECT, by: 'client', input: fields }))
+    expect(syncCustomerIfExists).toHaveBeenCalledWith(TENANT, 'it')
+  })
+  it('invalid fields come back as-is and Stripe is not touched', async () => {
+    writeBillingProfile.mockResolvedValue({ ok: false, error: 'invalid', fields: ['vatId'] })
+    expect(await save()).toEqual({ ok: false, error: 'invalid', fields: ['vatId'] })
+    expect(syncCustomerIfExists).not.toHaveBeenCalled()
+  })
+  it('a Stripe failure does not fail the save', async () => {
+    syncCustomerIfExists.mockRejectedValue(new Error('stripe down'))
+    expect(await save()).toEqual({ ok: true })
+  })
+  it('a missing profile object -> invalid', async () => {
+    expect(await save({ profile: null })).toEqual({ ok: false, error: 'invalid', fields: [] })
+    expect(writeBillingProfile).not.toHaveBeenCalled()
   })
 })

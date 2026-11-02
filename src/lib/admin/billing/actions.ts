@@ -8,7 +8,8 @@ import { resolveProjectBilling } from '@/lib/billing/lifecycle'
 import { requireBillingAdmin } from './access'
 import { BILLING_SUBSCRIPTION_COLUMNS, PROJECT_BILLING_COLUMNS, toFacts, type BillingSubscriptionRow, type ProjectBillingRow } from './mapping'
 import { billingLivemode } from './queries'
-import { BILLING_CURRENCY, parseEuroToCents, romeDayEnd, romeDayStart, validateBillingProfile, validateBillingTerms, validateOverride } from './model'
+import { BILLING_CURRENCY, parseEuroToCents, romeDayEnd, romeDayStart, validateBillingTerms, validateOverride } from './model'
+import { writeBillingProfile } from '@/lib/billing/profile-save'
 import type {
   AcknowledgeBillingReviewInput,
   BillingActionResult,
@@ -224,58 +225,9 @@ export async function saveBillingProfileAction(input: SaveBillingProfileInput): 
   if (!isObject(input)) return invalid()
   if (!isUuid(input.tenantId)) return notFound
 
-  const checked = validateBillingProfile(input)
-  if (!checked.ok) return invalid(...checked.fields)
-  const v = checked.value
-
-  try {
-    const db = createAdminClient()
-    const livemode = billingLivemode()
-    const { data: tenant, error: tenantError } = await db.from('tenants').select('id').eq('id', input.tenantId).maybeSingle()
-    if (tenantError) return failed
-    if (!tenant) return notFound
-
-    const { data: existing, error: readError } = await db
-      .from('billing_profiles')
-      .select('vat_id')
-      .eq('tenant_id', input.tenantId)
-      .eq('livemode', livemode)
-      .maybeSingle()
-    if (readError) return failed
-    const prev = (existing as { vat_id: string | null } | null) ?? null
-
-    const values = {
-      billing_email: v.billingEmail,
-      customer_type: v.customerType,
-      legal_name: v.legalName,
-      contact_name: v.contactName,
-      address_line1: v.addressLine1,
-      address_line2: v.addressLine2,
-      postal_code: v.postalCode,
-      city: v.city,
-      region: v.region,
-      country: v.country,
-      vat_id: v.vatId,
-      tax_code: v.taxCode,
-    }
-    // A new or changed VAT id is unverified until Stripe checks it (Phase 3).
-    const vatChanged = !prev || prev.vat_id !== v.vatId
-    const verification = vatChanged ? { vat_verification: 'none', vat_verified_at: null, vat_verified_name: null } : {}
-
-    const { error } = prev
-      ? await db.from('billing_profiles').update({ ...values, ...verification }).eq('tenant_id', input.tenantId).eq('livemode', livemode)
-      : await db.from('billing_profiles').insert({ ...values, ...verification, tenant_id: input.tenantId, livemode })
-    if (error) return failed
-
-    await recordAdminAudit({
-      actorId: actor.userId,
-      action: 'billing.profile.set',
-      projectId: null,
-      detail: { tenantId: input.tenantId, livemode, created: !prev, vatChanged, fields: Object.keys(values).filter((k) => values[k as keyof typeof values] !== null) },
-    })
-    refresh()
-    return { ok: true }
-  } catch {
-    return failed
-  }
+  const { tenantId, ...fields } = input
+  const r = await writeBillingProfile({ tenantId, input: fields, actorId: actor.userId, action: 'billing.profile.set', by: 'admin' })
+  if (!r.ok) return r
+  refresh()
+  return { ok: true }
 }

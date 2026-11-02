@@ -1,8 +1,13 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { Button, ButtonLink } from '@/components/app/ui/Button'
+import { buttonClass } from '@/components/app/ui/button-styles'
+import { Toast } from '@/components/app/ui/Toast'
+import { Pill } from '@/components/app/ui/list/cells'
+import { BillingProfilePanel } from '@/components/billing/BillingProfilePanel'
+import { useRouter } from '@/i18n/navigation'
 import { BillingStatusPill } from '@/components/app/ui/BillingStatusPill'
 import { FactRow } from '@/components/app/ui/FactRow'
 import { Notice } from '@/components/app/ui/Notice'
@@ -12,14 +17,16 @@ import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { countryName } from '@/components/app/ui/country-model'
 import { ListRow } from '@/components/app/ui/list/ListRow'
 import { billingActions, billingErrorKey, billingSentence } from '@/lib/billing/client-access'
-import { openBillingPortalAction, startCheckoutAction } from '@/lib/billing/client-actions'
+import { openBillingPortalAction, saveOwnBillingProfileAction, startCheckoutAction } from '@/lib/billing/client-actions'
 import type { ClientBillingSite, ClientBillingView } from '@/lib/billing/client-view'
+import type { InvoiceSummary } from '@/lib/billing/stripe/service'
 
 /**
  * Client dashboard — Billing (ADR-041 Phase 5). What this site costs and whether it is paid, the
- * client's billing details (read-only: Abluo keeps them, D14), the client's other sites, and — for
- * the Owner only — "Pay Now" and the Stripe portal for payment methods and invoices. The server
- * actions re-check every permission; the buttons only mirror what the person may do.
+ * client's billing details (the Owner edits them here, Tom 2026-11-02; invoice readers see them),
+ * this site's invoices, the client's other sites, and — for the Owner only — "Pay Now" and the
+ * Stripe portal for the payment method. The server actions re-check every permission; the buttons
+ * only mirror what the person may do.
  */
 export function BillingScreen({ projectSlug, view, checkout }: { projectSlug: string; view: ClientBillingView; checkout: 'success' | 'cancel' | null }) {
   const t = useTranslations('clientDashboard.billing')
@@ -28,6 +35,19 @@ export function BillingScreen({ projectSlug, view, checkout }: { projectSlug: st
   const [errorKey, setErrorKey] = useState<ReturnType<typeof billingErrorKey> | null>(null)
   const { current, access, profile } = view
   const actions = billingActions(current, access)
+  const router = useRouter()
+  const [editing, setEditing] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => void (toastTimer.current && clearTimeout(toastTimer.current)), [])
+  const saved = () => {
+    setEditing(false)
+    setErrorKey(null)
+    setToast(t('details.saved'))
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(null), 4000)
+    router.refresh()
+  }
   // Back from Stripe: once the payment is confirmed say so, not "being confirmed". The
   // ?checkout= marker is dropped from the address so a reload does not repeat the message.
   const confirmed = checkout === 'success' && current.status.reason === 'paid'
@@ -77,7 +97,14 @@ export function BillingScreen({ projectSlug, view, checkout }: { projectSlug: st
       </SiteSummary>
 
       <section aria-labelledby="billing-details" className="flex flex-col gap-3">
-        <SectionHeading id="billing-details" title={t('details.heading')} />
+        <div className="flex items-center justify-between gap-3">
+          <SectionHeading id="billing-details" title={t('details.heading')} />
+          {access.canManage ? (
+            <Button variant="secondary" onClick={() => setEditing(true)}>
+              {t('details.edit')}
+            </Button>
+          ) : null}
+        </div>
         <Panel>
           {profile ? (
             <dl>
@@ -102,14 +129,19 @@ export function BillingScreen({ projectSlug, view, checkout }: { projectSlug: st
           ) : (
             <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('details.none')}</p>
           )}
-          <p className="mt-3 text-sm leading-5 text-muted-foreground">
-            {t('details.change')}{' '}
-            <ButtonLink variant="link" href={`/${projectSlug}/support`}>
-              {t('details.contact')}
-            </ButtonLink>
-          </p>
+          {/* Invoice readers cannot edit: they ask. The Owner has Edit above. */}
+          {!access.canManage ? (
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">
+              {t('details.change')}{' '}
+              <ButtonLink variant="link" href={`/${projectSlug}/support`}>
+                {t('details.contact')}
+              </ButtonLink>
+            </p>
+          ) : null}
         </Panel>
       </section>
+
+      <Invoices invoices={view.invoices} />
 
       {view.others.length ? (
         <section aria-labelledby="billing-others" className="flex flex-col gap-3">
@@ -121,7 +153,82 @@ export function BillingScreen({ projectSlug, view, checkout }: { projectSlug: st
           </ul>
         </section>
       ) : null}
+
+      {access.canManage ? (
+        <BillingProfilePanel
+          key={`p-${JSON.stringify(profile)}`}
+          open={editing}
+          profile={profile}
+          title={t('details.editTitle')}
+          audience="client"
+          onClose={() => setEditing(false)}
+          onSave={(fields) => saveOwnBillingProfileAction({ projectSlug, locale, profile: fields })}
+          onDone={saved}
+        />
+      ) : null}
+      <Toast message={toast} />
     </div>
+  )
+}
+
+const INVOICE_TONE: Record<InvoiceSummary['status'], 'success' | 'highlight' | 'muted' | 'outline'> = {
+  paid: 'success',
+  open: 'highlight',
+  void: 'muted',
+  uncollectible: 'outline',
+}
+
+/** This site's invoices (from Stripe): date, number, amount, status, PDF. null = could not be read right now. */
+function Invoices({ invoices }: { invoices: InvoiceSummary[] | null }) {
+  const t = useTranslations('clientDashboard.billing.invoices')
+  const format = useFormatter()
+  return (
+    <section aria-labelledby="billing-invoices" className="flex flex-col gap-3">
+      <SectionHeading id="billing-invoices" title={t('heading')} />
+      {invoices === null ? (
+        <Notice tone="neutral">{t('unavailable')}</Notice>
+      ) : invoices.length === 0 ? (
+        <Panel>
+          <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('empty')}</p>
+        </Panel>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {invoices.map((inv) => {
+            const name = inv.number ?? t('noNumber')
+            const amount = format.number(inv.amountCents / 100, { style: 'currency', currency: inv.currency.toUpperCase() })
+            const date = format.dateTime(new Date(inv.date), { dateStyle: 'medium', timeZone: 'Europe/Rome' })
+            const hosted = inv.hostedUrl
+            return (
+              <ListRow
+                key={inv.id}
+                onOpen={hosted ? () => window.open(hosted, '_blank', 'noopener,noreferrer') : undefined}
+                label={hosted ? `${t('view')}: ${name}` : undefined}
+                trailing={
+                  inv.pdfUrl ? (
+                    <a
+                      href={inv.pdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={t('pdfLabel', { number: name })}
+                      className={buttonClass({ variant: 'secondary' })}
+                    >
+                      {t('pdf')}
+                    </a>
+                  ) : undefined
+                }
+              >
+                <span className="text-base leading-6 font-semibold">{date}</span>
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-[0.9375rem] leading-6 tabular-nums">{amount}</span>
+                  <Pill tone={INVOICE_TONE[inv.status]}>{t(`status.${inv.status}`)}</Pill>
+                </span>
+                <span className="text-sm leading-5 text-muted-foreground">{name}</span>
+              </ListRow>
+            )
+          })}
+        </ul>
+      )}
+    </section>
   )
 }
 

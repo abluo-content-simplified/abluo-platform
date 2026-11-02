@@ -101,6 +101,7 @@ describe('error messages', () => {
   it('maps every checkout and portal error to a calm message', () => {
     expect(billingErrorKey('profileIncomplete')).toBe('detailsCheck')
     expect(billingErrorKey('vatNotVerified')).toBe('vatPending')
+    expect(billingErrorKey('vatInvalid')).toBe('vatInvalid')
     expect(billingErrorKey('noIssuer')).toBe('contactAbluo')
     expect(billingErrorKey('noCustomer')).toBe('noCustomer')
     expect(billingErrorKey('alreadySubscribed')).toBe('alreadySubscribed')

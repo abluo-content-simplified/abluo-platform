@@ -3,12 +3,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
-import { AddressAutocomplete } from '@/components/app/ui/AddressAutocomplete'
 import { BillingStatusPill } from '@/components/app/ui/BillingStatusPill'
+import { BillingProfilePanel } from '@/components/billing/BillingProfilePanel'
 import { Button } from '@/components/app/ui/Button'
 import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
-import { CountryPicker } from '@/components/app/ui/CountryPicker'
 import { countryName } from '@/components/app/ui/country-model'
 import { DatePicker } from '@/components/app/ui/DatePicker'
 import { EmptyState } from '@/components/app/ui/EmptyState'
@@ -34,9 +33,6 @@ import {
   overrideFieldErrors,
   overrideFormFrom,
   priceAppliesLater,
-  profileFieldErrors,
-  profileFieldsFor,
-  profileFormFrom,
   removeOverrideInput,
   romeDate,
   romeEndDate,
@@ -45,12 +41,10 @@ import {
   termsFieldsFor,
   termsFormFrom,
   toOverrideInput,
-  toProfileInput,
   toTermsInput,
   visibleActions,
   type FieldErrors,
   type OverrideForm,
-  type ProfileForm,
   type TermsForm,
 } from '@/lib/admin/billing/card'
 import { parseEuroToCents } from '@/lib/admin/billing/model'
@@ -289,7 +283,19 @@ export function BillingCardView({ view }: { view: ProjectBillingView }) {
           onDone={() => done(t(subscription.cancelAtPeriodEnd ? 'toast.subscriptionKept' : 'toast.cancelScheduled'))}
         />
       ) : null}
-      {can.editContact ? <ProfilePanel key={`p-${JSON.stringify(profile)}`} open={dialog === 'profile'} view={view} onClose={close} onDone={() => done(t('toast.profile'))} /> : null}
+      {can.editContact ? (
+        <BillingProfilePanel
+          key={`p-${JSON.stringify(profile)}`}
+          open={dialog === 'profile'}
+          profile={view.profile}
+          title={t('profile.title')}
+          subtitle={t('contact.shared')}
+          audience="admin"
+          onClose={close}
+          onSave={(fields) => saveBillingProfileAction({ tenantId: view.tenantId, ...fields })}
+          onDone={() => done(t('toast.profile'))}
+        />
+      ) : null}
 
       <Toast message={toast} />
     </section>
@@ -544,95 +550,5 @@ function ReviewDialog({ open, projectId, onClose, onDone }: DialogProps & { proj
     >
       <Field label={t('review.note')} error={s.err('note')}>{(p) => <TextArea {...p} rows={3} value={note} onChange={(e) => setNote(e.target.value)} />}</Field>
     </ConfirmDialog>
-  )
-}
-
-function ProfilePanel({ open, view, onClose, onDone }: DialogProps & { view: ProjectBillingView }) {
-  const t = useTranslations('admin.billing')
-  const [form, setForm] = useState<ProfileForm>(() => profileFormFrom(view.profile))
-  const s = useSubmit(profileFieldErrors, onDone)
-  const shown = profileFieldsFor(form.customerType, form.country)
-  const set = <K extends keyof ProfileForm>(k: K, v: ProfileForm[K]) => {
-    setForm((f) => ({ ...f, [k]: v }))
-    s.reset()
-  }
-  type TextKey = Exclude<keyof ProfileForm, 'customerType' | 'country' | 'addressLine1'>
-  const text = (k: TextKey, extra?: { type?: string; autoComplete?: string; maxLength?: number; label?: string; hint?: string }) => (
-    <Field label={extra?.label ?? t(`profile.${k}`)} hint={extra?.hint} error={s.err(k)}>
-      {(p) => <TextInput {...p} type={extra?.type} autoComplete={extra?.autoComplete} maxLength={extra?.maxLength} value={form[k]} onChange={(e) => set(k, e.target.value)} />}
-    </Field>
-  )
-  return (
-    <SidePanel
-      open={open}
-      title={t('profile.title')}
-      subtitle={t('contact.shared')}
-      closeLabel={t('close')}
-      onClose={() => {
-        onClose()
-        setForm(profileFormFrom(view.profile))
-        s.reset()
-      }}
-    >
-      <form
-        className="flex flex-col gap-5"
-        onSubmit={(e) => {
-          e.preventDefault()
-          void s.run(() => saveBillingProfileAction(toProfileInput(view.tenantId, form)))
-        }}
-      >
-        <Field label={t('profile.customerType')} error={s.err('customerType')}>
-          {() => (
-            <SegmentedControl
-              label={t('profile.customerType')}
-              value={form.customerType}
-              onChange={(v) => set('customerType', v)}
-              options={[
-                { value: 'business', label: t('contact.types.business') },
-                { value: 'individual', label: t('contact.types.individual') },
-              ]}
-            />
-          )}
-        </Field>
-        {text('legalName', { label: t(`profile.${shown.nameLabel}`), autoComplete: 'off', maxLength: 200 })}
-        {shown.contactName ? text('contactName', { hint: t('profile.contactNameHint'), autoComplete: 'off', maxLength: 200 }) : null}
-        {text('billingEmail', { type: 'email', autoComplete: 'off' })}
-        <Field label={t('profile.addressLine1')} hint={t('profile.addressHint')} error={s.err('addressLine1')}>
-          {(p) => (
-            <AddressAutocomplete
-              {...p}
-              maxLength={200}
-              value={form.addressLine1}
-              onChange={(v) => set('addressLine1', v)}
-              onSelect={(a) => {
-                // A picked place replaces the whole address; the country only when the place names one.
-                setForm((f) => ({
-                  ...f,
-                  addressLine1: a.addressLine1 ?? f.addressLine1,
-                  postalCode: a.postalCode ?? '',
-                  city: a.city ?? '',
-                  region: a.region ?? '',
-                  country: a.country ?? f.country,
-                }))
-                s.reset()
-              }}
-            />
-          )}
-        </Field>
-        {text('addressLine2', { autoComplete: 'off' })}
-        {text('postalCode', { autoComplete: 'off', maxLength: 20 })}
-        {text('city', { autoComplete: 'off' })}
-        {text('region', { autoComplete: 'off' })}
-        <Field label={t('profile.country')} error={s.err('country')}>
-          {(p) => <CountryPicker {...p} value={form.country} onChange={(code) => set('country', code)} clearable />}
-        </Field>
-        {shown.vatId ? text('vatId', { hint: t('profile.vatHint'), autoComplete: 'off' }) : null}
-        {shown.taxCode ? text('taxCode', { hint: t('profile.taxCodeHint'), autoComplete: 'off', maxLength: 16 }) : null}
-        {s.general ? <Notice tone="error">{s.general}</Notice> : null}
-        <Button variant="primary" size="lg" fullWidth type="submit" disabled={s.busy}>
-          {s.busy ? t('saving') : t('profile.save')}
-        </Button>
-      </form>
-    </SidePanel>
   )
 }
