@@ -1,6 +1,6 @@
 /** Contract C2-9 — channel model fixtures. */
 import { describe, expect, it } from 'vitest'
-import { channelListIssues, channelUsage, publicContexts, readChannels } from '../channels'
+import { channelListIssues, channelUsage, publicContexts, readChannelEntry, readChannels } from '../channels'
 import { resolvePrice } from '../prices'
 import { ck, channel, format, price } from './fixtures'
 
@@ -53,10 +53,20 @@ describe('C2 channels', () => {
     const r = resolvePrice(format('f', { prices: [price('c', 9, { scope: 'default' }), price('s', 12)] }), { kind: 'general' }, new Date(), null, channels, { currency: 'EUR' })
     expect(r).toMatchObject({ kind: 'price', price: { key: 's' }, source: { kind: 'standard' } })
   })
-  it('C2-F8 malformed — {value: "Dine In"} dropped with channel.malformedEntry', () => {
-    const { channels, issues } = readChannels([{ value: 'Dine In' }])
+  it('C2-F8 malformed — a MIGRATED {value: "Dine In"} is dropped with channel.malformedEntry', () => {
+    const { channels, issues } = readChannels([{ value: 'Dine In', defaultAvailability: 'available' }])
     expect(channels.all).toEqual([])
     expect(issues.map((i) => i.code)).toEqual(['channel.malformedEntry'])
+  })
+  it('R1 dual-read — an UNMIGRATED set keeps legacy values that fail the key rule (any non-empty value); empty values still drop', () => {
+    const { channels, issues } = readChannels([{ value: 'Dine In' }, { value: 'takeAway' }, { value: '  ' }, { value: 'dine-in' }])
+    expect(channels.unmigrated).toBe(true)
+    expect(channels.all.map((c) => c.key)).toEqual(['Dine In', 'takeAway', 'dine-in'])
+    expect(issues.map((i) => [i.code, i.index])).toEqual([['channel.malformedEntry', 2]])
+    // The strict rule still applies to migrated entries and to save-time validation.
+    expect(readChannelEntry({ value: 'takeAway', defaultAvailability: 'unavailable' }, { legacy: true })).toBeNull()
+    expect(readChannelEntry({ value: 'takeAway' })).toBeNull()
+    expect(channelListIssues(channels.all, [], { defaultLocale: 'en' }).map((i) => i.code)).toContain('channel.keyInvalid')
   })
   it('validation: invalid key, duplicate, missing label, limit, schedule codes', () => {
     const many = Array.from({ length: 13 }, (_, i) => channel(`c${i}`, 'available'))

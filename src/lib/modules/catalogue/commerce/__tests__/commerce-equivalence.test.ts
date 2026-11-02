@@ -22,6 +22,17 @@ const CH = [
   { _key: 'k1', value: 'dine-in', label: { en: 'Dine-in', it: 'Al tavolo' } },
   { _key: 'k2', value: 'takeaway', label: { en: 'Takeaway' } },
 ]
+/** Legacy config as stored before C2: `takeAway` does not match CHANNEL_KEY_PATTERN, no explicit defaults. */
+const LEGACY_CH = [
+  { _key: 'k1', value: 'dine-in', label: { en: 'Dine-in', it: 'Al tavolo' } },
+  { _key: 'k2', value: 'takeAway', label: { en: 'Takeaway', it: 'Asporto' } },
+]
+const LEGACY_OFFERS = [
+  { _key: 'd', _type: 'catalogueOffer', channel: 'dine-in', price: 14 },
+  { _key: 't', _type: 'catalogueOffer', channel: 'takeAway', price: 11, priceNote: { it: 'ritiro', en: 'pick-up' } },
+  { _key: 'g', _type: 'catalogueOffer', channel: 'ghost', price: 9 },
+  { _key: 'u', _type: 'catalogueOffer', price: 12 },
+]
 const doc = (id: string, offers: unknown[] | undefined, extra: Record<string, unknown> = {}): Doc => ({ _id: id, name: { en: id }, itemProfile: 'product', visibility: 'public', publishedAt: '2026-01-01T00:00:00Z', offers: offers as Doc['offers'], ...extra })
 
 /** R1: the AFTER document is the BEFORE document read through the dual-read. */
@@ -141,6 +152,11 @@ describe('C10-5 synthetic fixtures', () => {
     expect(rep.refusals).toEqual([{ id: 'e9', refusal: { kind: 'unknownChannel', key: 'x', channel: 'ghost' } }])
     expect(rep.pass).toBe(false)
   })
+  it('R1 review: unmigrated legacy channels [dine-in, takeAway] + offers [dine-in, takeAway, ghost, unscoped] → no diffs (only the pre-flight refusal for ghost)', () => {
+    const r = r1([doc('L', LEGACY_OFFERS)], { ...NO_CHANNELS, channelsBefore: LEGACY_CH, channelsAfter: LEGACY_CH })
+    expect(r.diffs).toEqual([])
+    expect(r.refusals.map((x) => x.id)).toEqual(['L'])
+  })
   it('F-E10 an offer with currency USD → pre-flight refuses (REVIEW X-14)', () => {
     expect(legacyOfferRefusals([{ _key: 'x', price: 3, currency: 'USD' }], [])).toEqual([{ kind: 'reservedField', key: 'x', field: 'currency' }])
   })
@@ -217,6 +233,8 @@ describe('R1 website output for legacy data is byte-identical (DTO + JSON-LD)', 
     { name: 'no offers', offers: [] },
     { name: 'note + windows + invalid rows dropped the same way', offers: [{ _key: 'a', price: 8, priceNote: { it: 'all’etto', en: 'per 100 g' }, availability: [{ _key: 'w', days: ['fri'], from: '18:00', to: '02:00' }] }, { _key: 'bad', price: -1 }, { price: 3 }, { _key: 'b', price: 12.5 }] },
     { name: 'channel project (unmigrated), scoped + unscoped', channels: CH, offers: [{ _key: 's', price: 12 }, { _key: 't', channel: 'takeaway', price: 10 }] },
+    // R1 review: a legacy value that fails the new key rule (`takeAway`) and an offer on a channel no longer configured.
+    { name: 'channel project (unmigrated): dine-in, takeAway (legacy key), ghost channel, unscoped', channels: LEGACY_CH, offers: LEGACY_OFFERS },
   ]
   for (const c of cases) {
     it(c.name, async () => {

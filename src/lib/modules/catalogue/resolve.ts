@@ -25,7 +25,7 @@ import { allergenDeclarationIssues, orderedAllergens } from './allergens'
 import { evaluate, WEEKDAYS, type AvailabilityState, type Weekday } from './availability'
 import { effectiveCurrency, type Offer } from './offers'
 import { CATEGORY_RULES, availabilityInputsOf, type CategoryRuleLookup } from './commerce/channel-availability'
-import { channelSetOf, readChannelEntry, type Channel, type ChannelSet } from './commerce/channels'
+import { channelSetOf, rawChannelsUnmigrated, readChannelEntry, type Channel, type ChannelSet } from './commerce/channels'
 import { commerceOf } from './commerce/legacy-commerce'
 import { publicCommerce } from './commerce/offering'
 import type { Price } from './commerce/prices'
@@ -441,8 +441,10 @@ export function resolveCatalogueConfig(
 function channelModelOf(rows: readonly (RawChannelTerm | null)[] | null | undefined, locale: string, defaultLocale?: string | null): Channel[] {
   const out: Channel[] = []
   const seen = new Set<string>()
+  // R1 dual-read: an unmigrated set keeps legacy entries with any non-empty value (see readChannelEntry).
+  const legacy = rawChannelsUnmigrated(rows)
   for (const r of rows ?? []) {
-    const c = readChannelEntry(r ? { ...r, label: text(r.label, locale, defaultLocale) ?? r.value ?? '' } : r)
+    const c = readChannelEntry(r ? { ...r, label: text(r.label, locale, defaultLocale) ?? r.value ?? '' } : r, { legacy })
     if (!c || seen.has(c.key)) continue
     seen.add(c.key)
     out.push(c)
@@ -456,7 +458,7 @@ export function channelSetOfConfig(config: CatalogueConfigDTO): ChannelSet {
   const hit = channelSets.get(config)
   if (hit) return hit
   // A config without a channel model (hand-built) reads its vocabulary terms as legacy entries.
-  const model = config.channelModel ?? config.channels.map((t) => readChannelEntry({ value: t.value, label: t.label })).filter((c): c is Channel => c !== null)
+  const model = config.channelModel ?? config.channels.map((t) => readChannelEntry({ value: t.value, label: t.label }, { legacy: true })).filter((c): c is Channel => c !== null)
   const set = channelSetOf(model)
   channelSets.set(config, set)
   return set

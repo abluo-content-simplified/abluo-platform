@@ -81,11 +81,28 @@ export const EMPTY_CHANNELS: ChannelSet = channelSetOf([])
 
 export const isValidChannelKey = (k: unknown): k is string => typeof k === 'string' && k.length <= CHANNEL_KEY_MAX && CHANNEL_KEY_PATTERN.test(k)
 
-/** One stored/projected entry → Channel, or null when malformed. */
-export function readChannelEntry(raw: unknown): Channel | null {
+/**
+ * True when the raw `serviceChannels` list is UNMIGRATED (C10-4): some entry lacks an explicit
+ * `defaultAvailability`. Same rule as ChannelSet.unmigrated, decided on the raw entries so the
+ * reader knows which key rule applies before any entry is read.
+ */
+export function rawChannelsUnmigrated(raw: unknown): boolean {
+  return (Array.isArray(raw) ? raw : []).some((e) => !!e && typeof e === 'object' && !isChannelAvailabilityState((e as Record<string, unknown>).defaultAvailability))
+}
+
+/**
+ * One stored/projected entry → Channel, or null when malformed.
+ *
+ * Key rule: migrated / new data must match CHANNEL_KEY_PATTERN. While the channel set is UNMIGRATED
+ * (`legacy: true`, R1 dual-read) an entry without an explicit default keeps ANY non-empty `value`,
+ * exactly as the pre-R1 vocabulary reader did — R1 is byte-identical for legacy data, and the D2
+ * preflight refuses non-conforming values before the migration writes explicit defaults.
+ */
+export function readChannelEntry(raw: unknown, opts: { legacy?: boolean } = {}): Channel | null {
   if (!raw || typeof raw !== 'object') return null
   const e = raw as Record<string, unknown>
-  if (!isValidChannelKey(e.value)) return null
+  const legacyValue = opts.legacy === true && !isChannelAvailabilityState(e.defaultAvailability) && typeof e.value === 'string' && e.value.trim() !== ''
+  if (!legacyValue && !isValidChannelKey(e.value)) return null
   const label: LocalizedText =
     typeof e.label === 'string'
       ? e.label
@@ -94,7 +111,7 @@ export function readChannelEntry(raw: unknown): Channel | null {
         : {}
   const explicitDefault = isChannelAvailabilityState(e.defaultAvailability)
   return {
-    key: asChannelKey(e.value),
+    key: asChannelKey(e.value as string),
     label,
     active: e.active !== false,
     defaultAvailability: explicitDefault ? (e.defaultAvailability as ChannelAvailabilityState) : 'unavailable',
@@ -109,8 +126,9 @@ export function readChannels(raw: unknown): { channels: ChannelSet; issues: Chan
   const issues: ChannelIssue[] = []
   const out: Channel[] = []
   const seen = new Set<string>()
+  const legacy = rawChannelsUnmigrated(raw)
   ;(Array.isArray(raw) ? raw : []).forEach((entry, index) => {
-    const c = readChannelEntry(entry)
+    const c = readChannelEntry(entry, { legacy })
     if (!c || seen.has(c.key)) {
       issues.push({ code: 'channel.malformedEntry', level: 'warning', index, ...(c ? { key: c.key } : {}) })
       return

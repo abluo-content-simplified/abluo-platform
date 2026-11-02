@@ -101,8 +101,14 @@ export function resolvePrice(
  *     (always true when ChannelSet.none — the general context is constant available);
  *   - a channel price iff its channel is active AND the format is available on it at some time.
  * A breakfast-only dish keeps its listed price at 16:00 (D-6). Windows are carried, not rendered in R1 (REVIEW C-2).
+ *
+ * R1 dual-read (C10-5 E6): while the channel set is UNMIGRATED every stored price is listed, in stored
+ * order — exactly the pre-R1 website (`resolveOffers` listed every valid offer, whatever its channel,
+ * including one scoped to a channel no longer configured). The rules above apply once the data
+ * migration has written explicit channel defaults.
  */
 export function displayPrices(format: Pick<Format, 'prices'>, availability: FormatAvailabilityMap, channels: ChannelSet): readonly Price[] {
+  if (channels.unmigrated) return format.prices
   const sometime = (ctx: 'general' | ChannelKey) => {
     const e = availability.get(ctx)
     return e ? availableSometime(e.rule) : false
