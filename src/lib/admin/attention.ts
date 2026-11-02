@@ -8,8 +8,9 @@
  * ICU placeholders. Severity uses the shared AttentionList vocabulary.
  */
 import type { AttentionSeverity } from '@/lib/client/attention'
+import type { ProjectBillingSummary } from '@/lib/admin/billing/types'
 
-export type AdminAttentionRuleId = 'noOwner' | 'supportNew' | 'supportReplied' | 'activityIssues' | 'requestsWaiting' | 'invitationExpired' | 'invitationExpiring' | 'longPreview'
+export type AdminAttentionRuleId = 'noOwner' | 'billingReview' | 'billingLocked' | 'supportNew' | 'supportReplied' | 'activityIssues' | 'requestsWaiting' | 'invitationExpired' | 'invitationExpiring' | 'longPreview'
 
 export type AdminAttentionItem = {
   id: string
@@ -40,13 +41,15 @@ export const REQUEST_WAITING_HOURS = 48
 /** Rule priority inside a severity (lower first). */
 const RULE_ORDER: Record<AdminAttentionRuleId, number> = {
   noOwner: 0,
-  supportNew: 1,
-  supportReplied: 2,
-  activityIssues: 3,
-  requestsWaiting: 4,
-  invitationExpired: 5,
-  invitationExpiring: 6,
-  longPreview: 7,
+  billingReview: 1,
+  billingLocked: 2,
+  supportNew: 3,
+  supportReplied: 4,
+  activityIssues: 5,
+  requestsWaiting: 6,
+  invitationExpired: 7,
+  invitationExpiring: 8,
+  longPreview: 9,
 }
 
 const keys = (rule: AdminAttentionRuleId) => ({
@@ -95,6 +98,35 @@ export function longPreviewRule(projects: readonly AttentionProject[], now = Dat
       params: { project: p.name, days },
       href: adminProjectHref(p.slug),
     }))
+}
+
+/** The admin project page's Billing section (ADR-041). */
+export const adminProjectBillingHref = (slug: string) => `${adminProjectHref(slug)}#billing`
+
+/**
+ * ADR-041 Phase 2 — billing needs Tom. `summaries` are the per-project billing
+ * summaries; retired projects and projects without a summary are skipped.
+ * - billingReview: the day-29 review is due and not yet acknowledged (high → "warn").
+ * - billingLocked: the site is locked, unless Tom locked it on purpose with a
+ *   "restrict" override (medium → "info", the shared vocabulary has two levels).
+ */
+export function billingRules(
+  summaries: readonly ProjectBillingSummary[],
+  projects: readonly Pick<AttentionProject, 'id' | 'slug' | 'name' | 'status'>[],
+): AdminAttentionItem[] {
+  const byId = new Map(projects.map((p) => [p.id, p]))
+  const out: AdminAttentionItem[] = []
+  for (const s of summaries) {
+    const p = byId.get(s.projectId)
+    if (!p || p.status === 'inactive') continue
+    const base = { params: { project: p.name, day: s.day ?? 0 }, href: adminProjectBillingHref(p.slug) }
+    if (s.state === 'review' && !s.reviewAcknowledged) {
+      out.push({ id: `billingReview:${p.id}`, rule: 'billingReview', severity: 'warn', ...keys('billingReview'), ...base })
+    } else if (s.state === 'locked' && s.reason !== 'override_restrict') {
+      out.push({ id: `billingLocked:${p.id}`, rule: 'billingLocked', severity: 'info', ...keys('billingLocked'), ...base })
+    }
+  }
+  return out
 }
 
 export type AttentionInvitation = {
@@ -278,11 +310,13 @@ export function buildAdminAttention(
     invitations: readonly AttentionInvitation[] | null
     requests: readonly AttentionRequest[] | null
     activityIssues?: readonly AttentionActivityIssue[] | null
+    billing?: readonly ProjectBillingSummary[] | null
   },
   now = Date.now(),
 ): AdminAttentionItem[] {
   return sortAdminAttention([
     ...noOwnerRule(input.projects),
+    ...(input.billing ? billingRules(input.billing, input.projects) : []),
     ...(input.activityIssues ? activityIssuesRule(input.activityIssues, input.projects, now) : []),
     ...(input.requests ? requestsWaitingRule(input.requests, input.projects, now) : []),
     ...(input.invitations ? invitationRules(input.invitations, now) : []),

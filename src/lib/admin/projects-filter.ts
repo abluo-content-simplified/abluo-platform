@@ -6,6 +6,8 @@
  * (retired sites stay reachable with "Inactive" or "All").
  */
 
+import type { ProjectBillingSummary } from '@/lib/admin/billing/types'
+
 export type ProjectStatus = 'active' | 'preview' | 'draft' | 'inactive'
 
 /** The fields the list needs from a project (see `AdminProject` in the admin providers). */
@@ -18,19 +20,24 @@ export type ProjectListRow = {
   createdAt: string
   client: { name: string; slug: string } | null
   owners: { name: string; email: string }[]
+  /** Billing summary (ADR-041); null/absent = not billed (or billing unavailable). */
+  billing?: Pick<ProjectBillingSummary, 'state' | 'reason' | 'day' | 'billed'> | null
 }
 
 export const PROJECT_STATUS_FILTERS = ['current', 'active', 'preview', 'draft', 'inactive', 'all'] as const
 export type ProjectStatusFilter = (typeof PROJECT_STATUS_FILTERS)[number]
+export const PROJECT_BILLING_FILTERS = ['all', 'review', 'locked', 'reminder', 'notBilled'] as const
+export type ProjectBillingFilter = (typeof PROJECT_BILLING_FILTERS)[number]
 export type ProjectSortColumn = 'name' | 'status' | 'client' | 'created'
 
 export type ProjectFilters = {
   q: string
   status: ProjectStatusFilter
+  billing: ProjectBillingFilter
   sort: { column: ProjectSortColumn; dir: 'asc' | 'desc' }
 }
 
-export const DEFAULT_PROJECT_FILTERS: ProjectFilters = { q: '', status: 'current', sort: { column: 'name', dir: 'asc' } }
+export const DEFAULT_PROJECT_FILTERS: ProjectFilters = { q: '', status: 'current', billing: 'all', sort: { column: 'name', dir: 'asc' } }
 
 /** Lifecycle order for sorting by status: live first, retired last; unknown statuses after draft. */
 const STATUS_ORDER: Record<string, number> = { active: 0, preview: 1, draft: 2, inactive: 4 }
@@ -43,6 +50,17 @@ export function projectStatusMatches(status: string, filter: ProjectStatusFilter
   if (filter === 'all') return true
   if (filter === 'current') return status !== 'inactive'
   return status === filter
+}
+
+export function isProjectBillingFilter(value: unknown): value is ProjectBillingFilter {
+  return typeof value === 'string' && (PROJECT_BILLING_FILTERS as readonly string[]).includes(value)
+}
+
+/** Not Billed = no billing summary at all; the other filters match the summary's state. */
+export function projectBillingMatches(billing: ProjectListRow['billing'], filter: ProjectBillingFilter): boolean {
+  if (filter === 'all') return true
+  if (filter === 'notBilled') return !billing
+  return billing?.state === filter
 }
 
 /** Lower-case, accent-free (so "citta" finds "Città"). */
@@ -61,6 +79,7 @@ export function applyProjectFilters<T extends ProjectListRow>(projects: readonly
   const terms = foldText(f.q).split(/\s+/).filter(Boolean)
   const rows = projects.filter((p) => {
     if (!projectStatusMatches(p.status, f.status)) return false
+    if (!projectBillingMatches(p.billing, f.billing)) return false
     if (!terms.length) return true
     const text = projectSearchText(p)
     return terms.every((t) => text.includes(t))
@@ -87,7 +106,7 @@ export function applyProjectFilters<T extends ProjectListRow>(projects: readonly
 }
 
 export function isDefaultProjectFilters(f: ProjectFilters): boolean {
-  return !f.q.trim() && f.status === DEFAULT_PROJECT_FILTERS.status
+  return !f.q.trim() && f.status === DEFAULT_PROJECT_FILTERS.status && f.billing === DEFAULT_PROJECT_FILTERS.billing
 }
 
 export function nextProjectSort(column: ProjectSortColumn, current: ProjectFilters['sort']): ProjectFilters['sort'] {

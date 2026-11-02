@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import type { ProjectBillingSummary } from '@/lib/admin/billing/types'
 import {
   adminProjectHref,
+  billingRules,
   buildAdminAttention,
   invitationRules,
   longPreviewRule,
@@ -134,5 +136,64 @@ describe('support ticket attention rules', () => {
     )
     expect(items.map((i) => i.id)).toEqual(['supportNew:high', 'supportNew:new', 'supportNew:old', 'supportReplied:rep'])
     expect(items[0].severity).toBe('warn')
+  })
+})
+
+describe('billing attention rules (ADR-041)', () => {
+  const sum = (over: Partial<ProjectBillingSummary> & { projectId: string }): ProjectBillingSummary => ({
+    state: 'ok',
+    reason: 'subscription_active' as ProjectBillingSummary['reason'],
+    day: 10,
+    reviewAcknowledged: false,
+    billed: true,
+    ...over,
+  })
+  const projects = [project({ id: 'a' }), project({ id: 'b' }), project({ id: 'c' }), project({ id: 'd', status: 'inactive' })]
+
+  it('flags an unacknowledged review as high ("warn") and links to the Billing section', () => {
+    const items = billingRules([sum({ projectId: 'a', state: 'review', day: 29 }), sum({ projectId: 'b', state: 'review', reviewAcknowledged: true })], projects)
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({
+      id: 'billingReview:a',
+      rule: 'billingReview',
+      severity: 'warn',
+      href: '/projects/a#billing',
+      titleKey: 'attention.billingReview.title',
+      params: { project: 'A', day: 29 },
+    })
+  })
+
+  it('flags locked sites unless Tom restricted them on purpose', () => {
+    const items = billingRules(
+      [
+        sum({ projectId: 'a', state: 'locked', reason: 'clock_expired' as ProjectBillingSummary['reason'], day: 40 }),
+        sum({ projectId: 'b', state: 'locked', reason: 'override_restrict' }),
+      ],
+      projects,
+    )
+    expect(items.map((i) => i.id)).toEqual(['billingLocked:a'])
+    expect(items[0]).toMatchObject({ severity: 'info', href: '/projects/a#billing', params: { project: 'A', day: 40 } })
+  })
+
+  it('ignores ok/reminder states, retired projects, unknown projects and a missing day', () => {
+    const items = billingRules(
+      [
+        sum({ projectId: 'a', state: 'reminder' }),
+        sum({ projectId: 'b' }),
+        sum({ projectId: 'd', state: 'locked' }),
+        sum({ projectId: 'zzz', state: 'locked' }),
+        sum({ projectId: 'c', state: 'locked', day: null }),
+      ],
+      projects,
+    )
+    expect(items.map((i) => i.id)).toEqual(['billingLocked:c'])
+    expect(items[0].params.day).toBe(0)
+  })
+
+  it('joins buildAdminAttention only when billing was read, after noOwner, same severity', () => {
+    const base = { projects, invitations: null, requests: null }
+    expect(buildAdminAttention(base, NOW)).toEqual([])
+    const withBilling = buildAdminAttention({ ...base, projects: [project({ id: 'a', ownerCount: 0 }), project({ id: 'b' })], billing: [sum({ projectId: 'b', state: 'review' })] }, NOW)
+    expect(withBilling.map((i) => i.id)).toEqual(['noOwner:a', 'billingReview:b'])
   })
 })

@@ -11,6 +11,7 @@ import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToo
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
 import { ListRow } from '@/components/app/ui/list/ListRow'
 import { CellDate, CellPill, CellText } from '@/components/app/ui/list/cells'
+import { BillingStatusPill } from '@/components/app/ui/BillingStatusPill'
 import { ProjectStatusPill } from '@/components/admin/projects/ProjectStatusPill'
 import {
   applyProjectFilters,
@@ -19,15 +20,25 @@ import {
   liveSiteUrl,
   nextProjectSort,
   previewSiteUrl,
+  PROJECT_BILLING_FILTERS,
   PROJECT_STATUS_FILTERS,
+  type ProjectBillingFilter,
   type ProjectFilters,
   type ProjectListRow,
   type ProjectSortColumn,
   type ProjectStatusFilter,
 } from '@/lib/admin/projects-filter'
 import { adminProjectHref } from '@/lib/admin/attention'
+import type { BillingStatusView } from '@/lib/admin/billing/types'
 
 export type ProjectsBrowserRow = ProjectListRow & { id: string; owners: { userId: string; name: string; email: string }[] }
+
+/** The pill's status from a list summary (no clock or days-left on the list). */
+const billingView = (b: NonNullable<ProjectsBrowserRow['billing']>): BillingStatusView => ({ state: b.state, reason: b.reason, day: b.day, daysLeft: null, clockStartedAt: null })
+
+function BillingCell({ p }: { p: ProjectsBrowserRow }) {
+  return <BillingStatusPill status={p.billing ? billingView(p.billing) : null} billed={p.billing?.billed} />
+}
 
 /** Owners shown in a cell before "+N more". */
 const OWNERS_SHOWN = 2
@@ -43,15 +54,20 @@ const openTab = (url: string) => window.open(url, '_blank', 'noopener,noreferrer
 export function ProjectsBrowser({
   projects,
   ownersKnown,
+  billingKnown,
   initialStatus,
+  initialBilling,
 }: {
   projects: ProjectsBrowserRow[]
   ownersKnown: boolean
+  /** False when the billing read failed: no billing column data or filter. */
+  billingKnown: boolean
   initialStatus: ProjectStatusFilter
+  initialBilling: ProjectBillingFilter
 }) {
   const t = useTranslations('admin.projects')
   const router = useRouter()
-  const start: ProjectFilters = { ...DEFAULT_PROJECT_FILTERS, status: initialStatus }
+  const start: ProjectFilters = { ...DEFAULT_PROJECT_FILTERS, status: initialStatus, billing: billingKnown ? initialBilling : DEFAULT_PROJECT_FILTERS.billing }
   const [filters, setFilters] = useState<ProjectFilters>(start)
   const update = (patch: Partial<ProjectFilters>) => setFilters((f) => ({ ...f, ...patch }))
   const reset = () => setFilters((f) => ({ ...DEFAULT_PROJECT_FILTERS, sort: f.sort }))
@@ -66,8 +82,25 @@ export function ProjectsBrowser({
       options: PROJECT_STATUS_FILTERS.map((s) => ({ value: s, label: `${t(`statusFilters.${s}`)} (${count(s)})` })),
       onChange: (v) => update({ status: v as ProjectStatusFilter }),
     },
+    ...(billingKnown
+      ? [
+          {
+            key: 'billing',
+            label: t('billingFilter'),
+            value: filters.billing,
+            options: PROJECT_BILLING_FILTERS.map((b) => ({
+              value: b,
+              label: `${t(`billingFilters.${b}`)} (${applyProjectFilters(projects, { ...filters, q: '', billing: b }).length})`,
+            })),
+            onChange: (v: string) => update({ billing: v as ProjectBillingFilter }),
+          } satisfies ListToolbarFilter,
+        ]
+      : []),
   ]
-  const chips: FilterChip[] = filters.status !== DEFAULT_PROJECT_FILTERS.status ? [{ id: 'status', label: t(`statusFilters.${filters.status}`) }] : []
+  const chips: FilterChip[] = [
+    ...(filters.status !== DEFAULT_PROJECT_FILTERS.status ? [{ id: 'status', label: t(`statusFilters.${filters.status}`) }] : []),
+    ...(filters.billing !== DEFAULT_PROJECT_FILTERS.billing ? [{ id: 'billing', label: `${t('billingFilter')}: ${t(`billingFilters.${filters.billing}`)}` }] : []),
+  ]
   const isDefault = isDefaultProjectFilters(filters)
 
   const menuFor = (p: ProjectsBrowserRow): CardMenuItem[] => {
@@ -116,6 +149,7 @@ export function ProjectsBrowser({
         </CellPill>
       ),
     },
+    ...(billingKnown ? [{ key: 'billing', header: t('columns.billing'), width: 'w-36', render: (p: ProjectsBrowserRow) => <CellPill><BillingCell p={p} /></CellPill> }] : []),
     {
       key: 'domain',
       header: t('columns.domain'),
@@ -147,7 +181,7 @@ export function ProjectsBrowser({
         filters={selects}
         summary={t('showing', { shown: shown.length, total: projects.length })}
         clear={{ label: t('clear'), onClear: reset, visible: !isDefault }}
-        sheet={{ activeCount: chips.length, resultCount: shown.length, chips, onRemoveChip: () => update({ status: DEFAULT_PROJECT_FILTERS.status }) }}
+        sheet={{ activeCount: chips.length, resultCount: shown.length, chips, onRemoveChip: (id) => update(id === 'billing' ? { billing: DEFAULT_PROJECT_FILTERS.billing } : { status: DEFAULT_PROJECT_FILTERS.status }) }}
       />
 
       {shown.length === 0 ? (
@@ -181,6 +215,7 @@ export function ProjectsBrowser({
                 </span>
                 <span className="flex flex-wrap items-center gap-2">
                   <ProjectStatusPill status={p.status} />
+                  {billingKnown ? <BillingCell p={p} /> : null}
                   {ownersKnown && !p.owners.length ? <span className="text-sm leading-5 font-medium text-destructive">{t('noOwner')}</span> : null}
                 </span>
               </ListRow>

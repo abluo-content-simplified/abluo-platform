@@ -10,6 +10,8 @@
  * Not wired into the application yet (ADR-041 §4 step 2).
  */
 
+import { romeDayEnd } from './dates'
+
 /** Days 1–14 after the clock starts: reminders only. */
 export const BILLING_REMINDER_LAST_DAY = 14
 /** Days 15–28: the project is locked for editing. Day 29 onwards: Super Admin review. */
@@ -105,11 +107,9 @@ export function clockState(start: Date, now: Date, reason: BillingReason, before
   return { state: 'review', reason, clockStartedAt: start, day, daysLeft: null }
 }
 
-/** `YYYY-MM-DD` paid-through date → the first instant NOT covered (next day, 00:00 UTC). */
+/** `YYYY-MM-DD` paid-through date → the first instant NOT covered (next day, 00:00 Europe/Rome). */
 function dayAfter(isoDate: string): Date | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate)
-  if (!m) return null
-  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + 1))
+  return romeDayEnd(isoDate)
 }
 
 function overrideActive(facts: ProjectBillingFacts, now: Date): boolean {

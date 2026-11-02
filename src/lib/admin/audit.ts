@@ -63,6 +63,11 @@ export type AdminAuditAction =
   // "Make owner" (PLAT-2) on the admin project page: a Super Admin transfers ownership.
   // `detail`: tenantId, newOwner / steppedDown (user ids), emailsSent (or the error) — never an email.
   | 'owner.transfer'
+  // Billing (ADR-041 Phase 2): `detail` = the changed fields, never secrets.
+  | 'billing.terms.set'
+  | 'billing.override.set'
+  | 'billing.review.ack'
+  | 'billing.profile.set'
 
 export const ADMIN_AUDIT_ACTION_PATTERN = /^[a-z][a-z0-9_.]{2,63}$/
 

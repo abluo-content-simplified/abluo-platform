@@ -144,6 +144,18 @@ export const LAB_REGISTRY: LabEntry[] = [
     demo: () => import('./demos/pill.demo'),
   },
   {
+    id: 'billing-status-pill',
+    name: 'BillingStatusPill',
+    exports: ['BillingStatusPill'],
+    source: 'src/components/app/ui/BillingStatusPill.tsx',
+    group: 'data',
+    status: 'canonical',
+    summary: 'A project\'s billing state as one Pill: Paid, Complimentary, Payment Due · N Days Left, Locked · Day N, Needs Review, Not Billed; optional Test Data marker.',
+    rules: ['Pass the resolved BillingStatusView (or null); the state → text and tone mapping lives in billing-status-model.ts (billingPillModel), not in the screen.'],
+    replaces: ['hand-built billing status badges'],
+    demo: () => import('./demos/billing-status-pill.demo'),
+  },
+  {
     id: 'checkbox',
     name: 'Checkbox',
     exports: ['Checkbox'],

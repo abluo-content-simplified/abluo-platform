@@ -3500,6 +3500,21 @@
     "quickAdd": {
       "label": "Schnell-Hinzufügen-Button anzeigen",
       "hint": "Der runde +-Button in der Ecke, auf iPad und Computer. Auf dem Handy ist er immer da."
+    },
+    "billingStatus": {
+      "notBilled": "Nicht abgerechnet",
+      "paid": "Bezahlt",
+      "complimentary": "Kostenfrei",
+      "notDue": "Noch nicht fällig",
+      "overrideAllowed": "Ausnahme: erlaubt",
+      "overrideRestricted": "Ausnahme: eingeschränkt",
+      "paymentDue": "Zahlung fällig · {daysLeft, plural, one {# Tag übrig} other {# Tage übrig}}",
+      "paymentDueNoDays": "Zahlung fällig",
+      "locked": "Gesperrt · Tag {day}",
+      "lockedNoDay": "Gesperrt",
+      "needsReview": "Prüfung nötig",
+      "checkData": "Daten prüfen",
+      "testData": "Testdaten"
     }
   },
   "admin": {
@@ -3590,6 +3605,16 @@
           "title": "Kunde hat geantwortet",
           "detail": "{reference} · {project} · {title}",
           "action": "Anfrage öffnen"
+        },
+        "billingReview": {
+          "title": "Abrechnungsprüfung fällig · {project}",
+          "detail": "{day, plural, =0 {Die Abrechnungsprüfung wurde noch nicht bestätigt} other {Tag # der Abrechnungsfrist: Die Prüfung wurde noch nicht bestätigt}}",
+          "action": "Abrechnung öffnen"
+        },
+        "billingLocked": {
+          "title": "Seite wegen Abrechnung gesperrt · {project}",
+          "detail": "{day, plural, =0 {Die Abrechnung wurde nicht geklärt} one {Die Abrechnung wurde auch nach # Tag nicht geklärt} other {Die Abrechnung wurde auch nach # Tagen nicht geklärt}}",
+          "action": "Abrechnung öffnen"
         }
       }
     },
@@ -3629,7 +3654,8 @@
         "client": "Kunde",
         "owners": "Inhaber",
         "created": "Erstellt",
-        "actions": "Aktionen"
+        "actions": "Aktionen",
+        "billing": "Abrechnung"
       },
       "noOwner": "Noch kein Inhaber",
       "ownersUnknown": "Inhaber konnten nicht geladen werden",
@@ -3641,7 +3667,15 @@
         "liveSite": "Live-Website ansehen",
         "openStudio": "Studio öffnen"
       },
-      "newProject": "Neues Projekt"
+      "newProject": "Neues Projekt",
+      "billingFilter": "Abrechnung",
+      "billingFilters": {
+        "all": "Alle Abrechnungen",
+        "review": "Prüfung nötig",
+        "locked": "Gesperrt",
+        "reminder": "Erinnerung",
+        "notBilled": "Nicht abgerechnet"
+      }
     },
     "analytics": {
       "title": "Statistiken",
@@ -4972,6 +5006,187 @@
           "archive": "Zugriff archiviert",
           "restore": "Zugriff wiederhergestellt ({role})"
         }
+      }
+    },
+    "billing": {
+      "heading": "Abrechnung",
+      "body": "Was der Kunde für diese Website zahlen will und ob der Zugriff betroffen ist.",
+      "loadError": "Die Abrechnung dieser Website konnte nicht geladen werden.",
+      "close": "Schließen",
+      "saving": "Wird gespeichert…",
+      "notBilled": {
+        "title": "Nicht abgerechnet",
+        "body": "Für diese Website gibt es keine Abrechnungsvereinbarung, der Zugriff wird also nie eingeschränkt."
+      },
+      "actions": {
+        "setUp": "Abrechnung einrichten",
+        "editTerms": "Konditionen bearbeiten",
+        "override": "Ausnahme…",
+        "removeOverride": "Ausnahme entfernen",
+        "review": "Als geprüft markieren",
+        "editContact": "Rechnungskontakt bearbeiten"
+      },
+      "facts": {
+        "arrangement": "Zahlungsart",
+        "price": "Preis",
+        "startsOn": "Startdatum",
+        "activationDue": "Zahlung fällig",
+        "paidThrough": "Bezahlt bis",
+        "firstPayment": "Erste Zahlung",
+        "paymentFailed": "Zahlung fehlgeschlagen",
+        "nextRenewal": "Nächste Verlängerung",
+        "endsOn": "Endet am",
+        "override": "Ausnahme",
+        "reviewed": "Geprüft",
+        "lastChange": "Letzte Änderung"
+      },
+      "lastChangeBy": "Letzte Änderung von {actor} am {date}",
+      "lastChangeOn": "Letzte Änderung am {date}",
+      "arrangement": {
+        "stripe": {
+          "label": "Stripe",
+          "hint": "Karte oder Lastschrift"
+        },
+        "manual": {
+          "label": "Überweisung",
+          "hint": "Rechnung, per Überweisung bezahlt"
+        },
+        "complimentary": {
+          "label": "Kostenlos",
+          "hint": "Keine Kosten"
+        }
+      },
+      "price": {
+        "month": "{amount} pro Monat",
+        "year": "{amount} pro Jahr",
+        "none": "Keine Kosten"
+      },
+      "exclVat": "Zzgl. MwSt.",
+      "override": {
+        "state": {
+          "allow": "Zugriff erlaubt",
+          "restrict": "Zugriff eingeschränkt"
+        },
+        "until": "Bis {date}",
+        "title": "Zugriff überschreiben",
+        "body": "Ersetzt das automatische Ergebnis für diese Website, bis du die Ausnahme entfernst.",
+        "mode": "Zugriff",
+        "allow": "Zugriff erlauben",
+        "restrict": "Zugriff einschränken",
+        "untilLabel": "Endet am (optional)",
+        "reason": "Grund",
+        "confirm": "Ausnahme speichern",
+        "removeTitle": "Ausnahme entfernen",
+        "removeBody": "Die Abrechnung entscheidet wieder über den Zugriff auf diese Website.",
+        "removeConfirm": "Ausnahme entfernen"
+      },
+      "review": {
+        "title": "Als geprüft markieren",
+        "body": "Bestätigt, dass du die Abrechnung dieser Website angesehen hast. Die Website bleibt in Prüfung, bis die Zahlung eingeht.",
+        "note": "Notiz (optional)",
+        "confirm": "Als geprüft markieren"
+      },
+      "contact": {
+        "heading": "Rechnungskontakt",
+        "shared": "Gilt für alle Websites dieses Kunden.",
+        "alsoUsedBy": "Wird auch verwendet von {names}.",
+        "none": "Für diesen Kunden wurde noch kein Rechnungskontakt erfasst.",
+        "email": "E-Mail",
+        "type": "Kundenart",
+        "types": {
+          "business": "Unternehmen",
+          "individual": "Privatperson"
+        },
+        "legalName": "Rechtlicher Name",
+        "country": "Land",
+        "vat": "USt-IdNr.",
+        "vatNone": "Nicht angegeben",
+        "vatVerifiedOn": "Geprüft am {date}",
+        "vatStatus": {
+          "none": "Nicht geprüft",
+          "pending": "Prüfung läuft",
+          "verified": "Geprüft",
+          "unverified": "Nicht bestätigt",
+          "unavailable": "Prüfung nicht verfügbar"
+        }
+      },
+      "terms": {
+        "titleSetUp": "Abrechnung einrichten",
+        "titleEdit": "Konditionen bearbeiten",
+        "arrangement": "Zahlungsart",
+        "amount": "Betrag",
+        "amountHint": "Netto, ohne MwSt.",
+        "interval": "Abrechnungszeitraum",
+        "intervals": {
+          "month": "Monat",
+          "year": "Jahr"
+        },
+        "priceLater": "Gilt ab der nächsten Verlängerung.",
+        "startsOn": "Startdatum",
+        "activationDue": "Zahlung fällig am",
+        "activationDueHint": "Die erste Zahlung ist zu Beginn dieses Tages fällig.",
+        "reason": "Grund",
+        "reasonHint": "Warum liegt das Fälligkeitsdatum mehr als {days} Tage in der Zukunft?",
+        "paidThrough": "Bezahlt bis",
+        "paidThroughHint": "Der letzte Tag, der durch eingegangene Überweisungen gedeckt ist.",
+        "save": "Konditionen speichern"
+      },
+      "profile": {
+        "title": "Rechnungskontakt bearbeiten",
+        "billingEmail": "Rechnungs-E-Mail",
+        "customerType": "Kundenart",
+        "legalName": "Rechtlicher Name",
+        "addressLine1": "Adresse",
+        "addressLine2": "Adresszeile 2",
+        "postalCode": "Postleitzahl",
+        "city": "Ort",
+        "region": "Region",
+        "country": "Ländercode",
+        "countryHint": "Zwei Buchstaben, zum Beispiel IT.",
+        "vatId": "USt-IdNr.",
+        "vatHint": "Wird mit VIES geprüft, sobald der Kunde mit Stripe verbunden ist.",
+        "save": "Kontakt speichern"
+      },
+      "toast": {
+        "terms": "Konditionen gespeichert.",
+        "override": "Ausnahme gespeichert.",
+        "overrideRemoved": "Ausnahme entfernt.",
+        "reviewed": "Als geprüft markiert.",
+        "profile": "Rechnungskontakt gespeichert."
+      },
+      "errors": {
+        "forbidden": "Du hast keine Berechtigung, die Abrechnung zu ändern.",
+        "invalid": "Bitte prüfe die markierten Felder.",
+        "notFound": "Diese Website oder dieser Kunde wurde nicht gefunden.",
+        "failed": "Speichern fehlgeschlagen. Bitte versuche es erneut."
+      },
+      "fieldErrors": {
+        "arrangement": "Wähle, wie der Kunde zahlt.",
+        "amount": "Gib einen gültigen Betrag ein, zum Beispiel 240 oder 1200,50.",
+        "interval": "Wähle Monat oder Jahr.",
+        "startsOn": "Gib ein gültiges Startdatum ein.",
+        "activationDueRequired": "Für Stripe ist ein Fälligkeitsdatum nötig.",
+        "activationReasonRequired": "Gib einen Grund für ein so weit entferntes Datum an.",
+        "manualPaidThrough": "Gib ein gültiges Datum ein.",
+        "override": "Wähle erlauben oder einschränken.",
+        "reasonRequired": "Ein Grund ist erforderlich.",
+        "untilInPast": "Das Enddatum muss in der Zukunft liegen.",
+        "billingEmail": "Gib eine gültige E-Mail-Adresse ein.",
+        "customerType": "Wähle eine Kundenart.",
+        "legalName": "Gib einen Namen ein.",
+        "addressLine1": "Prüfe die Adresse.",
+        "addressLine2": "Prüfe diese Zeile.",
+        "postalCode": "Prüfe die Postleitzahl.",
+        "city": "Prüfe den Ort.",
+        "region": "Prüfe die Region.",
+        "country": "Verwende einen zweistelligen Ländercode.",
+        "vatId": "Diese USt-IdNr. sieht ungültig aus.",
+        "activationDueOn": "Gib ein gültiges Datum ein.",
+        "activationExtensionReason": "Dieser Grund ist zu lang.",
+        "untilOn": "Gib ein gültiges Datum ein.",
+        "reason": "Dieser Grund ist zu lang.",
+        "note": "Diese Notiz ist zu lang.",
+        "state": "Diese Website ist nicht mehr in Prüfung."
       }
     }
   },

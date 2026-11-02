@@ -3500,6 +3500,21 @@
     "quickAdd": {
       "label": "Show quick add button",
       "hint": "The round + button in the corner, on iPad and computers. On phones it is always shown."
+    },
+    "billingStatus": {
+      "notBilled": "Not Billed",
+      "paid": "Paid",
+      "complimentary": "Complimentary",
+      "notDue": "Not Due Yet",
+      "overrideAllowed": "Override: Allowed",
+      "overrideRestricted": "Override: Restricted",
+      "paymentDue": "Payment Due · {daysLeft, plural, one {# Day Left} other {# Days Left}}",
+      "paymentDueNoDays": "Payment Due",
+      "locked": "Locked · Day {day}",
+      "lockedNoDay": "Locked",
+      "needsReview": "Needs Review",
+      "checkData": "Check Data",
+      "testData": "Test Data"
     }
   },
   "admin": {
@@ -3590,6 +3605,16 @@
           "title": "Client replied",
           "detail": "{reference} · {project} · {title}",
           "action": "Open ticket"
+        },
+        "billingReview": {
+          "title": "Billing review due · {project}",
+          "detail": "{day, plural, =0 {The billing review hasn’t been acknowledged yet} other {Day # of the billing clock: the review hasn’t been acknowledged yet}}",
+          "action": "Open billing"
+        },
+        "billingLocked": {
+          "title": "Site locked for billing · {project}",
+          "detail": "{day, plural, =0 {Billing hasn’t been settled} other {Billing hasn’t been settled after # days}}",
+          "action": "Open billing"
         }
       }
     },
@@ -3629,7 +3654,8 @@
         "client": "Client",
         "owners": "Owners",
         "created": "Created",
-        "actions": "Actions"
+        "actions": "Actions",
+        "billing": "Billing"
       },
       "noOwner": "No owner yet",
       "ownersUnknown": "Couldn’t load owners",
@@ -3641,7 +3667,15 @@
         "liveSite": "View live site",
         "openStudio": "Open Studio"
       },
-      "newProject": "New project"
+      "newProject": "New project",
+      "billingFilter": "Billing",
+      "billingFilters": {
+        "all": "All Billing",
+        "review": "Needs Review",
+        "locked": "Locked",
+        "reminder": "Reminder",
+        "notBilled": "Not Billed"
+      }
     },
     "analytics": {
       "title": "Analytics",
@@ -4972,6 +5006,187 @@
           "archive": "Access archived",
           "restore": "Access restored ({role})"
         }
+      }
+    },
+    "billing": {
+      "heading": "Billing",
+      "body": "What this client agrees to pay for this site, and whether access is affected.",
+      "loadError": "Couldn’t load billing for this site.",
+      "close": "Close",
+      "saving": "Saving…",
+      "notBilled": {
+        "title": "Not Billed",
+        "body": "No billing agreement is set for this site, so access is never affected."
+      },
+      "actions": {
+        "setUp": "Set Up Billing",
+        "editTerms": "Edit Terms",
+        "override": "Override…",
+        "removeOverride": "Remove Override",
+        "review": "Mark as Reviewed",
+        "editContact": "Edit Billing Contact"
+      },
+      "facts": {
+        "arrangement": "Arrangement",
+        "price": "Price",
+        "startsOn": "Start Date",
+        "activationDue": "Payment Due",
+        "paidThrough": "Paid Through",
+        "firstPayment": "First Payment",
+        "paymentFailed": "Payment Failed",
+        "nextRenewal": "Next Renewal",
+        "endsOn": "Ends On",
+        "override": "Override",
+        "reviewed": "Reviewed",
+        "lastChange": "Last Change"
+      },
+      "lastChangeBy": "Last change by {actor} on {date}",
+      "lastChangeOn": "Last change on {date}",
+      "arrangement": {
+        "stripe": {
+          "label": "Stripe",
+          "hint": "Card or direct debit"
+        },
+        "manual": {
+          "label": "Bank Transfer",
+          "hint": "Invoiced, paid by transfer"
+        },
+        "complimentary": {
+          "label": "Complimentary",
+          "hint": "No charge"
+        }
+      },
+      "price": {
+        "month": "{amount} per month",
+        "year": "{amount} per year",
+        "none": "No charge"
+      },
+      "exclVat": "Excl. VAT",
+      "override": {
+        "state": {
+          "allow": "Access Allowed",
+          "restrict": "Access Restricted"
+        },
+        "until": "Until {date}",
+        "title": "Override Access",
+        "body": "This replaces the automatic result for this site until you remove it.",
+        "mode": "Access",
+        "allow": "Allow Access",
+        "restrict": "Restrict Access",
+        "untilLabel": "Ends On (Optional)",
+        "reason": "Reason",
+        "confirm": "Save Override",
+        "removeTitle": "Remove Override",
+        "removeBody": "Billing will decide this site’s access again.",
+        "removeConfirm": "Remove Override"
+      },
+      "review": {
+        "title": "Mark as Reviewed",
+        "body": "Confirms that you have looked at this site’s billing. It stays under review until payment arrives.",
+        "note": "Note (Optional)",
+        "confirm": "Mark as Reviewed"
+      },
+      "contact": {
+        "heading": "Billing Contact",
+        "shared": "Shared by all of this client’s sites.",
+        "alsoUsedBy": "Also used by {names}.",
+        "none": "No billing contact has been recorded for this client yet.",
+        "email": "Email",
+        "type": "Customer Type",
+        "types": {
+          "business": "Business",
+          "individual": "Individual"
+        },
+        "legalName": "Legal Name",
+        "country": "Country",
+        "vat": "VAT Number",
+        "vatNone": "Not provided",
+        "vatVerifiedOn": "Verified on {date}",
+        "vatStatus": {
+          "none": "Not checked",
+          "pending": "Check pending",
+          "verified": "Verified",
+          "unverified": "Could not be verified",
+          "unavailable": "Check unavailable"
+        }
+      },
+      "terms": {
+        "titleSetUp": "Set Up Billing",
+        "titleEdit": "Edit Terms",
+        "arrangement": "Arrangement",
+        "amount": "Amount",
+        "amountHint": "Net, excluding VAT",
+        "interval": "Billing Interval",
+        "intervals": {
+          "month": "Month",
+          "year": "Year"
+        },
+        "priceLater": "Applies from the next renewal.",
+        "startsOn": "Start Date",
+        "activationDue": "Payment Due Date",
+        "activationDueHint": "The first payment is due at the start of this day.",
+        "reason": "Reason",
+        "reasonHint": "Why is the due date more than {days} days away?",
+        "paidThrough": "Paid Through",
+        "paidThroughHint": "The last day covered by transfers received.",
+        "save": "Save Terms"
+      },
+      "profile": {
+        "title": "Edit Billing Contact",
+        "billingEmail": "Billing Email",
+        "customerType": "Customer Type",
+        "legalName": "Legal Name",
+        "addressLine1": "Address",
+        "addressLine2": "Address Line 2",
+        "postalCode": "Postal Code",
+        "city": "City",
+        "region": "Region",
+        "country": "Country Code",
+        "countryHint": "Two letters, for example IT.",
+        "vatId": "VAT Number",
+        "vatHint": "Checked with VIES when the client is connected to Stripe.",
+        "save": "Save Contact"
+      },
+      "toast": {
+        "terms": "Billing terms saved.",
+        "override": "Override saved.",
+        "overrideRemoved": "Override removed.",
+        "reviewed": "Marked as reviewed.",
+        "profile": "Billing contact saved."
+      },
+      "errors": {
+        "forbidden": "You don’t have permission to change billing.",
+        "invalid": "Please check the highlighted fields.",
+        "notFound": "This site or client could not be found.",
+        "failed": "Couldn’t save. Please try again."
+      },
+      "fieldErrors": {
+        "arrangement": "Choose how the client pays.",
+        "amount": "Enter a valid amount, for example 240 or 1200,50.",
+        "interval": "Choose month or year.",
+        "startsOn": "Enter a valid start date.",
+        "activationDueRequired": "A payment due date is required for Stripe.",
+        "activationReasonRequired": "Add a reason for a due date this far ahead.",
+        "manualPaidThrough": "Enter a valid date.",
+        "override": "Choose allow or restrict.",
+        "reasonRequired": "A reason is required.",
+        "untilInPast": "The end date must be in the future.",
+        "billingEmail": "Enter a valid email address.",
+        "customerType": "Choose a customer type.",
+        "legalName": "Enter a name.",
+        "addressLine1": "Check the address.",
+        "addressLine2": "Check this line.",
+        "postalCode": "Check the postal code.",
+        "city": "Check the city.",
+        "region": "Check the region.",
+        "country": "Use a two-letter country code.",
+        "vatId": "This VAT number looks invalid.",
+        "activationDueOn": "Enter a valid date.",
+        "activationExtensionReason": "This reason is too long.",
+        "untilOn": "Enter a valid date.",
+        "reason": "This reason is too long.",
+        "note": "This note is too long.",
+        "state": "This site is no longer under review."
       }
     }
   },

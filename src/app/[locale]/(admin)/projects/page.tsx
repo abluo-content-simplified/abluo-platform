@@ -7,7 +7,8 @@ import { PageHeader } from '@/components/app/ui/PageHeader'
 import { PageShell } from '@/components/app/ui/PageShell'
 import { ProjectsBrowser } from '@/components/admin/projects/ProjectsBrowser'
 import { listAdminProjects } from '@/lib/api/admin-dashboard/projects'
-import { DEFAULT_PROJECT_FILTERS, isProjectStatusFilter } from '@/lib/admin/projects-filter'
+import { loadBillingSummaries } from '@/lib/admin/billing/queries'
+import { DEFAULT_PROJECT_FILTERS, isProjectBillingFilter, isProjectStatusFilter } from '@/lib/admin/projects-filter'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,11 +19,20 @@ export const dynamic = 'force-dynamic'
  * through `listAdminProjects`, which checks `requireAbluoAdmin()` itself on
  * top of the `(admin)` layout gate.
  */
-export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ status?: string | string[] }> }) {
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ status?: string | string[]; billing?: string | string[] }> }) {
   const t = await getTranslations('admin.projects')
-  const { status } = await searchParams
+  const { status, billing } = await searchParams
   const initialStatus = isProjectStatusFilter(status) ? status : DEFAULT_PROJECT_FILTERS.status
+  const initialBilling = isProjectBillingFilter(billing) ? billing : DEFAULT_PROJECT_FILTERS.billing
   const { projects, ownersKnown, error } = await listAdminProjects()
+  // Billing is optional information: a failing read hides the column's data and filter, never the page.
+  let summaries: Awaited<ReturnType<typeof loadBillingSummaries>> | null = null
+  try {
+    summaries = await loadBillingSummaries()
+  } catch (e) {
+    console.error('[admin.projects] billing summaries failed', e)
+  }
+  const rows = projects.map((p) => ({ ...p, billing: summaries?.get(p.id) ?? null }))
 
   return (
     <PageShell>
@@ -44,7 +54,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
       ) : projects.length === 0 ? (
         <EmptyState title={t('emptyTitle')} />
       ) : (
-        <ProjectsBrowser key={initialStatus /* a Home tile link to another ?status= resets the filter */} projects={projects} ownersKnown={ownersKnown} initialStatus={initialStatus} />
+        <ProjectsBrowser key={`${initialStatus}:${initialBilling}` /* a Home tile link to another ?status= resets the filter */} projects={rows} ownersKnown={ownersKnown} billingKnown={summaries !== null} initialStatus={initialStatus} initialBilling={initialBilling} />
       )}
     </PageShell>
   )

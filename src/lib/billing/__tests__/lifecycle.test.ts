@@ -117,11 +117,18 @@ describe('resolveProjectBilling — cancellation (D3)', () => {
 
 describe('resolveProjectBilling — manual (bank transfer)', () => {
   const manual = (f: Partial<ProjectBillingFacts>) => stripe({ arrangement: 'manual', subscription: null, activationDueAt: null, ...f })
-  it('paid through a date → ok through that whole day, ladder from the next day (UTC)', () => {
+  it('paid through a date → ok through that whole day, ladder from the next day (00:00 Europe/Rome)', () => {
     const f = manual({ manualPaidThrough: '2027-02-28' })
-    expect(resolveProjectBilling(f, new Date('2027-02-28T23:59:59Z'))).toMatchObject({ state: 'ok', reason: 'paid' })
-    expect(resolveProjectBilling(f, new Date('2027-03-01T00:00:00Z'))).toMatchObject({ state: 'reminder', reason: 'manual_overdue', day: 1 })
+    expect(resolveProjectBilling(f, new Date('2027-02-28T22:59:59Z'))).toMatchObject({ state: 'ok', reason: 'paid' })
+    expect(resolveProjectBilling(f, new Date('2027-02-28T23:00:00Z'))).toMatchObject({ state: 'reminder', reason: 'manual_overdue', day: 1 })
+    // summer time: Rome is UTC+2, so the next day starts at 22:00Z
+    const summer = manual({ manualPaidThrough: '2027-06-30' })
+    expect(resolveProjectBilling(summer, new Date('2027-06-30T21:59:59Z')).state).toBe('ok')
+    expect(resolveProjectBilling(summer, new Date('2027-06-30T22:00:00Z'))).toMatchObject({ state: 'reminder', day: 1 })
     expect(resolveProjectBilling(f, new Date('2027-03-15T00:00:00Z')).state).toBe('locked')
+  })
+  it('a calendar-invalid paid-through date is an invalid record', () => {
+    expect(resolveProjectBilling(manual({ manualPaidThrough: '2027-02-31' }), at(20))).toMatchObject({ state: 'ok', reason: 'invalid_record' })
   })
   it('never paid, with a due date → ladder from the due date; with neither → ok', () => {
     expect(resolveProjectBilling(manual({ activationDueAt: T0 }), at(20)).state).toBe('locked')

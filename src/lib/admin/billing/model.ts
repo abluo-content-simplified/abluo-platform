@@ -5,6 +5,9 @@
  * activation-window trigger).
  */
 import { ACTIVATION_MAX_DAYS, type BillingArrangement } from '@/lib/billing/lifecycle'
+import { isIsoDate } from '@/lib/billing/dates'
+
+export { romeDayStart, romeDayEnd } from '@/lib/billing/dates'
 
 /** v1 bills in euro only (Tom, 2026-11-02); the column keeps other currencies possible. */
 export const BILLING_CURRENCY = 'eur'
@@ -31,8 +34,6 @@ export type BillingTermsError =
   | 'activationReasonRequired'
   | 'manualPaidThrough'
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-const isIsoDate = (s: string) => ISO_DATE.test(s) && !Number.isNaN(Date.parse(`${s}T00:00:00Z`))
 const DAY_MS = 86_400_000
 const blank = (s: string | null | undefined) => !s || s.trim() === ''
 
@@ -79,4 +80,69 @@ export function validateOverride(input: OverrideInput, now: Date): OverrideError
   if (blank(input.reason)) errors.push('reasonRequired')
   if (input.until && input.until.getTime() <= now.getTime()) errors.push('untilInPast')
   return errors
+}
+
+// ── Billing profile (ADR-041 D9, D14) ───────────────────────────────────────
+
+export type BillingProfileValue = {
+  billingEmail: string | null
+  customerType: 'business' | 'individual' | null
+  legalName: string | null
+  addressLine1: string | null
+  addressLine2: string | null
+  postalCode: string | null
+  city: string | null
+  region: string | null
+  country: string | null
+  vatId: string | null
+}
+
+export type BillingProfileField = keyof BillingProfileValue
+
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+const COUNTRY_RE = /^[A-Z]{2}$/
+const VAT_RE = /^[A-Z]{2}[A-Za-z0-9+*.]{2,14}$/
+const PROFILE_MAX: Record<'legalName' | 'addressLine1' | 'addressLine2' | 'postalCode' | 'city' | 'region', number> = {
+  legalName: 200, addressLine1: 200, addressLine2: 200, postalCode: 20, city: 100, region: 100,
+}
+
+const clean = (v: unknown): string | null => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null)
+
+/**
+ * Normalise and validate a client's billing details (mirrors the table checks in
+ * migration 058). Blank → null; email lower-cased; country and VAT id upper-cased
+ * with spaces removed. Returns the normalised value, or the offending field names.
+ */
+export function validateBillingProfile(
+  input: Partial<Record<BillingProfileField, unknown>>,
+): { ok: true; value: BillingProfileValue } | { ok: false; fields: BillingProfileField[] } {
+  const fields: BillingProfileField[] = []
+  // Anything that is not text (or empty) is a field error, never a crash.
+  for (const key of ['billingEmail', 'legalName', 'addressLine1', 'addressLine2', 'postalCode', 'city', 'region', 'country', 'vatId'] as const) {
+    const v = input[key]
+    if (v !== null && v !== undefined && typeof v !== 'string') fields.push(key)
+  }
+  if (fields.length) return { ok: false, fields }
+  const email = clean(input.billingEmail)?.toLowerCase() ?? null
+  if (email !== null && (email.length > 320 || !EMAIL_RE.test(email))) fields.push('billingEmail')
+
+  const rawType = input.customerType
+  const customerType = rawType === 'business' || rawType === 'individual' ? rawType : null
+  if (rawType !== null && rawType !== undefined && rawType !== '' && customerType === null) fields.push('customerType')
+
+  const text = {} as Record<keyof typeof PROFILE_MAX, string | null>
+  for (const key of Object.keys(PROFILE_MAX) as (keyof typeof PROFILE_MAX)[]) {
+    text[key] = clean(input[key])
+    if (text[key] !== null && text[key]!.length > PROFILE_MAX[key]) fields.push(key)
+  }
+  if (customerType === 'business' && text.legalName === null && !fields.includes('legalName')) fields.push('legalName')
+
+  const country = clean(input.country)?.replace(/\s/g, '').toUpperCase() ?? null
+  if (country !== null && !COUNTRY_RE.test(country)) fields.push('country')
+
+  const vatId = clean(input.vatId)?.replace(/\s/g, '').toUpperCase() ?? null
+  if (vatId !== null && !VAT_RE.test(vatId)) fields.push('vatId')
+
+  if (fields.length) return { ok: false, fields }
+  return { ok: true, value: { billingEmail: email, customerType, ...text, country, vatId } }
 }

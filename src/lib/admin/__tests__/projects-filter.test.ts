@@ -5,7 +5,9 @@ import {
   DEFAULT_PROJECT_FILTERS,
   foldText,
   isDefaultProjectFilters,
+  isProjectBillingFilter,
   isProjectStatusFilter,
+  projectBillingMatches,
   liveSiteUrl,
   nextProjectSort,
   previewSiteUrl,
@@ -88,5 +90,42 @@ describe('admin projects filter', () => {
     expect(liveSiteUrl('not a domain')).toBeNull()
     expect(liveSiteUrl(null)).toBeNull()
     expect(foldText('Città')).toBe('citta')
+  })
+})
+
+describe('billing filter', () => {
+  const b = (state: 'ok' | 'reminder' | 'locked' | 'review') => ({ state, reason: 'subscription_active' as never, day: 5, billed: true })
+  const rows: ProjectListRow[] = [
+    row({ slug: 'ok', billing: b('ok') }),
+    row({ slug: 'rev', billing: b('review') }),
+    row({ slug: 'lock', billing: b('locked') }),
+    row({ slug: 'rem', billing: b('reminder') }),
+    row({ slug: 'none' }),
+    row({ slug: 'nul', billing: null }),
+  ]
+  const f = (billing: ProjectFilters['billing']): ProjectFilters => ({ ...DEFAULT_PROJECT_FILTERS, billing })
+  const slugs = (billing: ProjectFilters['billing']) => applyProjectFilters(rows, f(billing)).map((r) => r.slug).sort()
+
+  it('validates the value', () => {
+    expect(isProjectBillingFilter('review')).toBe(true)
+    expect(isProjectBillingFilter('notBilled')).toBe(true)
+    expect(isProjectBillingFilter('ok')).toBe(false)
+    expect(isProjectBillingFilter(undefined)).toBe(false)
+  })
+
+  it('filters by state; Not Billed means no summary', () => {
+    expect(slugs('all')).toHaveLength(6)
+    expect(slugs('review')).toEqual(['rev'])
+    expect(slugs('locked')).toEqual(['lock'])
+    expect(slugs('reminder')).toEqual(['rem'])
+    expect(slugs('notBilled')).toEqual(['none', 'nul'])
+    expect(projectBillingMatches(undefined, 'notBilled')).toBe(true)
+  })
+
+  it('is not default when set, and combines with the status filter', () => {
+    expect(isDefaultProjectFilters(f('locked'))).toBe(false)
+    expect(isDefaultProjectFilters(DEFAULT_PROJECT_FILTERS)).toBe(true)
+    const mixed = [row({ slug: 'x', status: 'inactive', billing: b('locked') }), row({ slug: 'y', billing: b('locked') })]
+    expect(applyProjectFilters(mixed, f('locked')).map((r) => r.slug)).toEqual(['y'])
   })
 })

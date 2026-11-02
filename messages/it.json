@@ -3500,6 +3500,21 @@
     "quickAdd": {
       "label": "Mostra il pulsante di aggiunta rapida",
       "hint": "Il pulsante rotondo + nell’angolo, su iPad e computer. Sui telefoni è sempre visibile."
+    },
+    "billingStatus": {
+      "notBilled": "Non fatturato",
+      "paid": "Pagato",
+      "complimentary": "Omaggio",
+      "notDue": "Non ancora dovuto",
+      "overrideAllowed": "Eccezione: consentito",
+      "overrideRestricted": "Eccezione: limitato",
+      "paymentDue": "Pagamento dovuto · {daysLeft, plural, one {# giorno rimasto} other {# giorni rimasti}}",
+      "paymentDueNoDays": "Pagamento dovuto",
+      "locked": "Bloccato · Giorno {day}",
+      "lockedNoDay": "Bloccato",
+      "needsReview": "Da verificare",
+      "checkData": "Controlla i dati",
+      "testData": "Dati di test"
     }
   },
   "admin": {
@@ -3590,6 +3605,16 @@
           "title": "Il cliente ha risposto",
           "detail": "{reference} · {project} · {title}",
           "action": "Apri richiesta"
+        },
+        "billingReview": {
+          "title": "Revisione fatturazione in scadenza · {project}",
+          "detail": "{day, plural, =0 {La revisione della fatturazione non è ancora stata confermata} other {Giorno # del conteggio: la revisione non è ancora stata confermata}}",
+          "action": "Apri fatturazione"
+        },
+        "billingLocked": {
+          "title": "Sito bloccato per fatturazione · {project}",
+          "detail": "{day, plural, =0 {La fatturazione non è stata regolarizzata} one {La fatturazione non è stata regolarizzata dopo # giorno} other {La fatturazione non è stata regolarizzata dopo # giorni}}",
+          "action": "Apri fatturazione"
         }
       }
     },
@@ -3629,7 +3654,8 @@
         "client": "Cliente",
         "owners": "Proprietari",
         "created": "Creato",
-        "actions": "Azioni"
+        "actions": "Azioni",
+        "billing": "Fatturazione"
       },
       "noOwner": "Ancora nessun proprietario",
       "ownersUnknown": "Impossibile caricare i proprietari",
@@ -3641,7 +3667,15 @@
         "liveSite": "Vedi il sito online",
         "openStudio": "Apri Studio"
       },
-      "newProject": "Nuovo progetto"
+      "newProject": "Nuovo progetto",
+      "billingFilter": "Fatturazione",
+      "billingFilters": {
+        "all": "Tutta la fatturazione",
+        "review": "Da rivedere",
+        "locked": "Bloccati",
+        "reminder": "Promemoria",
+        "notBilled": "Non fatturati"
+      }
     },
     "analytics": {
       "title": "Statistiche",
@@ -4972,6 +5006,187 @@
           "archive": "Accesso archiviato",
           "restore": "Accesso ripristinato ({role})"
         }
+      }
+    },
+    "billing": {
+      "heading": "Fatturazione",
+      "body": "Cosa il cliente ha concordato di pagare per questo sito e se l’accesso ne risente.",
+      "loadError": "Impossibile caricare la fatturazione di questo sito.",
+      "close": "Chiudi",
+      "saving": "Salvataggio…",
+      "notBilled": {
+        "title": "Non fatturato",
+        "body": "Per questo sito non è impostato alcun accordo di fatturazione, quindi l’accesso non è mai limitato."
+      },
+      "actions": {
+        "setUp": "Imposta la fatturazione",
+        "editTerms": "Modifica condizioni",
+        "override": "Eccezione…",
+        "removeOverride": "Rimuovi eccezione",
+        "review": "Segna come verificato",
+        "editContact": "Modifica contatto di fatturazione"
+      },
+      "facts": {
+        "arrangement": "Modalità",
+        "price": "Prezzo",
+        "startsOn": "Data di inizio",
+        "activationDue": "Pagamento entro",
+        "paidThrough": "Pagato fino al",
+        "firstPayment": "Primo pagamento",
+        "paymentFailed": "Pagamento non riuscito",
+        "nextRenewal": "Prossimo rinnovo",
+        "endsOn": "Termina il",
+        "override": "Eccezione",
+        "reviewed": "Verificato",
+        "lastChange": "Ultima modifica"
+      },
+      "lastChangeBy": "Ultima modifica di {actor} il {date}",
+      "lastChangeOn": "Ultima modifica il {date}",
+      "arrangement": {
+        "stripe": {
+          "label": "Stripe",
+          "hint": "Carta o addebito diretto"
+        },
+        "manual": {
+          "label": "Bonifico",
+          "hint": "Fattura pagata con bonifico"
+        },
+        "complimentary": {
+          "label": "Omaggio",
+          "hint": "Nessun costo"
+        }
+      },
+      "price": {
+        "month": "{amount} al mese",
+        "year": "{amount} all’anno",
+        "none": "Nessun costo"
+      },
+      "exclVat": "IVA esclusa",
+      "override": {
+        "state": {
+          "allow": "Accesso consentito",
+          "restrict": "Accesso limitato"
+        },
+        "until": "Fino al {date}",
+        "title": "Eccezione di accesso",
+        "body": "Sostituisce il risultato automatico per questo sito finché non la rimuovi.",
+        "mode": "Accesso",
+        "allow": "Consenti accesso",
+        "restrict": "Limita accesso",
+        "untilLabel": "Termina il (facoltativo)",
+        "reason": "Motivo",
+        "confirm": "Salva eccezione",
+        "removeTitle": "Rimuovi eccezione",
+        "removeBody": "L’accesso al sito tornerà a dipendere dalla fatturazione.",
+        "removeConfirm": "Rimuovi eccezione"
+      },
+      "review": {
+        "title": "Segna come verificato",
+        "body": "Conferma che hai controllato la fatturazione di questo sito. Resta in verifica finché non arriva il pagamento.",
+        "note": "Nota (facoltativa)",
+        "confirm": "Segna come verificato"
+      },
+      "contact": {
+        "heading": "Contatto di fatturazione",
+        "shared": "Condiviso da tutti i siti di questo cliente.",
+        "alsoUsedBy": "Usato anche da {names}.",
+        "none": "Per questo cliente non è ancora stato registrato un contatto di fatturazione.",
+        "email": "Email",
+        "type": "Tipo di cliente",
+        "types": {
+          "business": "Azienda",
+          "individual": "Privato"
+        },
+        "legalName": "Ragione sociale",
+        "country": "Paese",
+        "vat": "Partita IVA",
+        "vatNone": "Non indicata",
+        "vatVerifiedOn": "Verificata il {date}",
+        "vatStatus": {
+          "none": "Non controllata",
+          "pending": "Controllo in corso",
+          "verified": "Verificata",
+          "unverified": "Non verificabile",
+          "unavailable": "Controllo non disponibile"
+        }
+      },
+      "terms": {
+        "titleSetUp": "Imposta la fatturazione",
+        "titleEdit": "Modifica condizioni",
+        "arrangement": "Modalità",
+        "amount": "Importo",
+        "amountHint": "Netto, IVA esclusa",
+        "interval": "Periodicità",
+        "intervals": {
+          "month": "Mese",
+          "year": "Anno"
+        },
+        "priceLater": "Vale dal prossimo rinnovo.",
+        "startsOn": "Data di inizio",
+        "activationDue": "Scadenza del pagamento",
+        "activationDueHint": "Il primo pagamento scade all’inizio di questo giorno.",
+        "reason": "Motivo",
+        "reasonHint": "Perché la scadenza è oltre {days} giorni?",
+        "paidThrough": "Pagato fino al",
+        "paidThroughHint": "L’ultimo giorno coperto dai bonifici ricevuti.",
+        "save": "Salva condizioni"
+      },
+      "profile": {
+        "title": "Modifica contatto di fatturazione",
+        "billingEmail": "Email di fatturazione",
+        "customerType": "Tipo di cliente",
+        "legalName": "Ragione sociale",
+        "addressLine1": "Indirizzo",
+        "addressLine2": "Indirizzo (seconda riga)",
+        "postalCode": "CAP",
+        "city": "Città",
+        "region": "Provincia o regione",
+        "country": "Codice paese",
+        "countryHint": "Due lettere, per esempio IT.",
+        "vatId": "Partita IVA",
+        "vatHint": "Controllata con VIES quando il cliente è collegato a Stripe.",
+        "save": "Salva contatto"
+      },
+      "toast": {
+        "terms": "Condizioni salvate.",
+        "override": "Eccezione salvata.",
+        "overrideRemoved": "Eccezione rimossa.",
+        "reviewed": "Segnato come verificato.",
+        "profile": "Contatto di fatturazione salvato."
+      },
+      "errors": {
+        "forbidden": "Non hai il permesso di modificare la fatturazione.",
+        "invalid": "Controlla i campi evidenziati.",
+        "notFound": "Sito o cliente non trovato.",
+        "failed": "Salvataggio non riuscito. Riprova."
+      },
+      "fieldErrors": {
+        "arrangement": "Scegli come paga il cliente.",
+        "amount": "Inserisci un importo valido, per esempio 240 o 1200,50.",
+        "interval": "Scegli mese o anno.",
+        "startsOn": "Inserisci una data di inizio valida.",
+        "activationDueRequired": "Per Stripe serve una scadenza del pagamento.",
+        "activationReasonRequired": "Indica un motivo per una scadenza così lontana.",
+        "manualPaidThrough": "Inserisci una data valida.",
+        "override": "Scegli consenti o limita.",
+        "reasonRequired": "Il motivo è obbligatorio.",
+        "untilInPast": "La data di fine deve essere nel futuro.",
+        "billingEmail": "Inserisci un indirizzo email valido.",
+        "customerType": "Scegli un tipo di cliente.",
+        "legalName": "Inserisci un nome.",
+        "addressLine1": "Controlla l’indirizzo.",
+        "addressLine2": "Controlla questa riga.",
+        "postalCode": "Controlla il CAP.",
+        "city": "Controlla la città.",
+        "region": "Controlla la provincia o regione.",
+        "country": "Usa un codice paese di due lettere.",
+        "vatId": "Questa partita IVA sembra non valida.",
+        "activationDueOn": "Inserisci una data valida.",
+        "activationExtensionReason": "Questo motivo è troppo lungo.",
+        "untilOn": "Inserisci una data valida.",
+        "reason": "Questo motivo è troppo lungo.",
+        "note": "Questa nota è troppo lunga.",
+        "state": "Questo sito non è più in verifica."
       }
     }
   },
