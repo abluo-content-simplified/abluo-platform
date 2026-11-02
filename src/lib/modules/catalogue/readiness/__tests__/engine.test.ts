@@ -2,11 +2,14 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_RULES, NOT_A_READINESS_CODE, PRICE_ISSUE_TO_RULE, REEXPOSE_SAFETY_SUBSET, SCHEDULE_ERRORS, activeRules } from '../rules'
 import { WEBSITE, contextKey, evaluateItem, findingFingerprint, offeringContextOf } from '../engine'
+import { asChannelKey as ck, asFormatKey as fk } from '../../commerce/commerce-types'
+import { buildTree } from '../../taxonomy/tree'
 import type { FormatReadinessFacts, ItemReadinessInput, PublicationContext, ReadinessOverride } from '../types'
 
 const COMMERCE = { commerce: '2026-12-01T00:00:00Z' }
 const TAXONOMY = { taxonomy: '2026-12-01T00:00:00Z' }
-const fmt = (f: Partial<FormatReadinessFacts> = {}): FormatReadinessFacts => ({ key: 'default', priceIssues: [], everAvailable: true, priceCoverage: { kind: 'full' }, availability: { issues: [] }, ...f })
+const node = (key: string, parentKey: string | null, order: number) => ({ key, label: {}, parentKey, order, channelRules: {}, defaultOptionListIds: [], archivedAt: null })
+const fmt = (f: Partial<FormatReadinessFacts> = {}): FormatReadinessFacts => ({ key: fk('default'), priceIssues: [], everAvailable: true, priceCoverage: { kind: 'full' }, availability: { issues: [] }, ...f })
 
 function input(over: Partial<ItemReadinessInput> = {}, formats: FormatReadinessFacts[] = [fmt()]): ItemReadinessInput {
   return {
@@ -19,8 +22,8 @@ function input(over: Partial<ItemReadinessInput> = {}, formats: FormatReadinessF
     photoCount: 1,
     categories: { primary: 'wellness', additional: [] },
     categoryState: 'ok',
-    primaryPath: { kind: 'ok' },
-    categoryTree: { nodes: [{ key: 'wellness', parent: null }, { key: 'food', parent: null }, { key: 'pizza', parent: 'food' }] },
+    primaryPath: { kind: 'path', keys: ['wellness'] },
+    categoryTree: buildTree([node('wellness', null, 1000), node('food', null, 2000), node('pizza', 'food', 1000)]),
     formats: () => formats,
     placements: 1,
     allergen: { declaration: null },
@@ -55,7 +58,7 @@ describe('C6 engine — standard family', () => {
     expect(r.recommended.filter((x) => x.code === 'translationMissing')).toEqual([])
   })
 
-  it.each<PublicationContext>([WEBSITE, { kind: 'channel', channel: 'delivery' }, { kind: 'export', profile: 'csv-full' }, { kind: 'print', template: 'classic', locale: 'it' }, { kind: 'marketplace', connection: 'deliveroo', policyVersion: '2026-03' }])(
+  it.each<PublicationContext>([WEBSITE, { kind: 'channel', channel: ck('delivery') }, { kind: 'export', profile: 'csv-full' }, { kind: 'print', template: 'classic', locale: 'it' }, { kind: 'marketplace', connection: 'deliveroo', policyVersion: '2026-03' }])(
     'R-04 food-not-reviewed (%o)',
     (ctx) => {
       const r = evaluateItem(input({ profile: FOOD, allergen: { declaration: { status: 'notReviewed' } } }), ctx)
@@ -142,7 +145,7 @@ describe('C6 engine — model-dependent rules stay inactive until the project is
   })
 
   it('R-34 primary-broken-visible / R-35 primary-archived', () => {
-    const r = evaluateItem(input({ categoryState: 'unknown_primary', primaryPath: { kind: 'broken', reason: 'missingCategory' }, migrations: TAXONOMY }), WEBSITE, { families: ['standard', 'integrity'] })
+    const r = evaluateItem(input({ categoryState: 'unknown_primary', primaryPath: { kind: 'broken', reason: 'missingCategory', keys: [] }, migrations: TAXONOMY }), WEBSITE, { families: ['standard', 'integrity'] })
     expect(r.required).toMatchObject([{ code: 'primaryCategoryMissing', values: { reason: 'missingCategory' }, fix: { surface: 'item', step: 'category' } }])
     const a = evaluateItem(input({ categoryState: 'archived_primary', migrations: TAXONOMY }), WEBSITE)
     expect(a.state).toBe('readyWithWarnings')
@@ -159,24 +162,24 @@ describe('C6 engine — model-dependent rules stay inactive until the project is
   })
 
   it('R-09 price-missing-unavailable-format / R-43 needs ever-available', () => {
-    for (const ctx of [WEBSITE, { kind: 'channel', channel: 'delivery' }] as PublicationContext[]) {
+    for (const ctx of [WEBSITE, { kind: 'channel', channel: ck('delivery') }] as PublicationContext[]) {
       expect(codes(evaluateItem(input({ migrations: COMMERCE }, [fmt({ everAvailable: false, priceCoverage: { kind: 'none' } })]), ctx).recommended.concat(evaluateItem(input({ migrations: COMMERCE }, [fmt({ everAvailable: false, priceCoverage: { kind: 'none' } })]), ctx).required))).toEqual([])
     }
     expect(codes(evaluateItem(input({ migrations: COMMERCE }, [fmt({ everAvailable: true, priceCoverage: { kind: 'none' } })]), WEBSITE).recommended)).toEqual(['priceMissing'])
   })
 
   it('R-10 price-missing-channel: required', () => {
-    const ctx: PublicationContext = { kind: 'channel', channel: 'delivery' }
-    expect(offeringContextOf(ctx)).toEqual({ kind: 'channel', channel: 'delivery' })
+    const ctx: PublicationContext = { kind: 'channel', channel: ck('delivery') }
+    expect(offeringContextOf(ctx)).toEqual({ kind: 'channel', channel: ck('delivery') })
     const r = evaluateItem(input({ migrations: COMMERCE }, [fmt({ priceCoverage: { kind: 'none' } })]), ctx)
     expect(r.state).toBe('blocked')
     expect(codes(r.required)).toEqual(['priceMissing'])
   })
 
   it('R-11 price-partial-coverage / R-12 one of two formats / R-13 print without price column', () => {
-    const p = evaluateItem(input({ migrations: COMMERCE }, [fmt({ priceCoverage: { kind: 'partial', gaps: [1, 2] } })]), WEBSITE)
+    const p = evaluateItem(input({ migrations: COMMERCE }, [fmt({ priceCoverage: { kind: 'partial', gaps: [{ start: 0, end: 60 }, { start: 120, end: 180 }] } })]), WEBSITE)
     expect(p.recommended).toMatchObject([{ code: 'pricePartial', values: { gaps: 2 } }])
-    const two = evaluateItem(input({ migrations: COMMERCE }, [fmt({ key: 'glass' }), fmt({ key: 'bottle', priceCoverage: { kind: 'none' } })]), WEBSITE)
+    const two = evaluateItem(input({ migrations: COMMERCE }, [fmt({ key: fk('glass') }), fmt({ key: fk('bottle'), priceCoverage: { kind: 'none' } })]), WEBSITE)
     expect(two.recommended).toMatchObject([{ code: 'priceMissing', target: { formatKey: 'bottle' } }])
     expect(codes(evaluateItem(input({ migrations: COMMERCE }, [fmt({ priceCoverage: { kind: 'none' } })]), { kind: 'print', template: 'classic', locale: 'it', showsPrice: false }).required)).toEqual([])
   })
@@ -185,11 +188,11 @@ describe('C6 engine — model-dependent rules stay inactive until the project is
     const amb = fmt({ priceIssues: [{ code: 'price.ambiguous' }] })
     expect(codes(evaluateItem(input({ migrations: COMMERCE }, [amb]), WEBSITE).required)).toEqual(['price.ambiguous'])
     expect(amb.everAvailable).toBe(true)
-    expect(codes(evaluateItem(input({ migrations: COMMERCE }, [fmt({ availability: { issues: [{ code: 'availability.conflictingRows' }] } })]), WEBSITE).required)).toEqual(['availability.conflictingRows'])
-    const overlap = evaluateItem(input({ migrations: COMMERCE }, [fmt({ availability: { issues: [{ code: 'availability.scheduleOverlap' }] } })]), WEBSITE)
+    expect(codes(evaluateItem(input({ migrations: COMMERCE }, [fmt({ availability: { issues: ['availability.conflictingRows'] } })]), WEBSITE).required)).toEqual(['availability.conflictingRows'])
+    const overlap = evaluateItem(input({ migrations: COMMERCE }, [fmt({ availability: { issues: ['availability.scheduleOverlap'] } })]), WEBSITE)
     expect(overlap.state).toBe('blocked')
     expect(overlap.required).toMatchObject([{ code: 'availability.scheduleInvalid', values: { reason: 'availability.scheduleOverlap' } }])
-    expect(evaluateItem(input({ migrations: COMMERCE }, [fmt({ availability: { issues: [{ code: 'availability.scheduleRedundant' }] } })]), WEBSITE).state).toBe('ready')
+    expect(evaluateItem(input({ migrations: COMMERCE }, [fmt({ availability: { issues: ['availability.scheduleRedundant'] } })]), WEBSITE).state).toBe('ready')
   })
 
   it('R-41 schedule-not-a-problem: readiness takes no instant', () => {
@@ -278,18 +281,18 @@ describe('C6 engine — integrity, determinism, contexts', () => {
 
   it('R-32 context-keys', () => {
     expect(contextKey(WEBSITE)).toBe('website')
-    expect(contextKey({ kind: 'channel', channel: 'delivery' })).toBe('channel:delivery')
+    expect(contextKey({ kind: 'channel', channel: ck('delivery') })).toBe('channel:delivery')
     expect(contextKey({ kind: 'export', profile: 'csv-full' })).toBe('export:csv-full')
-    expect(contextKey({ kind: 'print', template: 'classic', channel: 'delivery', locale: 'it' })).toBe('print:classic:delivery:it')
+    expect(contextKey({ kind: 'print', template: 'classic', channel: ck('delivery'), locale: 'it' })).toBe('print:classic:delivery:it')
     expect(contextKey({ kind: 'marketplace', connection: 'deliveroo', policyVersion: '2026-03' })).toBe('marketplace:deliveroo@2026-03')
   })
 
   it('R-39 offering-context-of', () => {
     expect(offeringContextOf({ kind: 'export', profile: 'x' })).toEqual({ kind: 'general' })
     expect(offeringContextOf({ kind: 'print', template: 't', locale: 'it' })).toEqual({ kind: 'general' })
-    expect(offeringContextOf({ kind: 'print', template: 't', locale: 'it', channel: 'takeaway' })).toEqual({ kind: 'channel', channel: 'takeaway' })
+    expect(offeringContextOf({ kind: 'print', template: 't', locale: 'it', channel: ck('takeaway') })).toEqual({ kind: 'channel', channel: ck('takeaway') })
     expect(offeringContextOf({ kind: 'marketplace', connection: 'm', policyVersion: '1' })).toEqual({ kind: 'general' })
-    expect(offeringContextOf({ kind: 'marketplace', connection: 'm', policyVersion: '1', channel: 'delivery' })).toEqual({ kind: 'channel', channel: 'delivery' })
+    expect(offeringContextOf({ kind: 'marketplace', connection: 'm', policyVersion: '1', channel: ck('delivery') })).toEqual({ kind: 'channel', channel: ck('delivery') })
   })
 
   it('total: a malformed declaration never throws', () => {

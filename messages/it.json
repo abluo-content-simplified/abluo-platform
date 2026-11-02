@@ -86,14 +86,23 @@
       "content": "Contenuti",
       "requests": "Richieste",
       "discover": "Altro da aggiungere",
-      "billing": "Fatturazione"
+      "billing": "Fatturazione",
+      "catalogueItems": "Elementi",
+      "catalogueCollections": "Raccolte",
+      "catalogueOptions": "Opzioni",
+      "catalogueSetup": "Configurazione"
     },
     "navGroups": {
       "publish": "Pubblica",
       "show": "Mostra",
       "visitors": "Visitatori",
       "tools": "Strumenti",
-      "other": "Altro"
+      "other": "Altro",
+      "content": "Contenuti",
+      "catalogue": "Catalogo",
+      "library": "Libreria",
+      "insights": "Analisi",
+      "project": "Progetto"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -3321,7 +3330,9 @@
     "shell": {
       "signOut": "Esci",
       "openMenu": "Menu",
-      "closeMenu": "Chiudi menu"
+      "closeMenu": "Chiudi menu",
+      "collapseSidebar": "Comprimi barra laterale",
+      "expandSidebar": "Espandi barra laterale"
     },
     "accountMenu": {
       "open": "Apri il menu dell’account",
@@ -5573,7 +5584,8 @@
       "dietaryTags": "Etichette alimentari",
       "serviceChannels": "Canali di servizio",
       "showPricesByDefault": "Mostra i prezzi per impostazione predefinita",
-      "navLabel": "Nome nella dashboard"
+      "navLabel": "Nome nella dashboard",
+      "publicName": "Nome pubblico"
     },
     "errors": {
       "inUse": "Ancora in uso in: {names}.",
@@ -5641,6 +5653,7 @@
         "failed": "Qualcosa è andato storto. Riprova.",
         "allergens_not_reviewed": "Prima verifica gli allergeni: indica cosa contiene, oppure conferma che non è dichiarato nessun allergene della lista UE.",
         "unpublished_dependencies": "Usa qualcosa che non è ancora pubblicato.",
+        "linked_item_needs_price": "Questo articolo deve avere almeno un prezzo prima di poter essere usato come scelta collegata.",
         "option_allergens_not_reviewed": "Prima verifica gli allergeni degli extra.",
         "slug_without_name": "Un indirizzo non ha un nome nella sua lingua."
       },

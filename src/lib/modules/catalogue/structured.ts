@@ -23,6 +23,10 @@
 // currency is always the DTO's `effectiveCurrency`, i.e. the project's);
 // nothing is converted or parsed from prose.
 //
+// Offers = the DTO's DISPLAY prices (Catalogue V2 C5-5: publicCommerce →
+// displayPrices, instant-free; for legacy data exactly the stored offers). F-3:
+// no displayed price ⇒ no Product node. No schedule is ever emitted (D-6.3).
+//
 // Offer availability: the DTO's `state` is a time-window result ('available' |
 // 'outOfHours' | null = unknown time zone). schema.org availability describes
 // STOCK, and a time window evaluated at render time would be wrong in any
@@ -226,7 +230,7 @@ export function catalogueCollectionJsonLd(collection: CatalogueCollectionDTO, ct
   const items = flatten(sections)
   // Recomputed from what is actually emitted, not collection.hasOffers: the
   // only offers in the tree may belong to omitted items.
-  const hasOffers = items.some((i) => i.hasOffers && i.offers.length > 0)
+  const hasOffers = items.some((i) => (i.hasPrices ?? i.hasOffers) && i.offers.length > 0)
 
   if (hasOffers) {
     return {

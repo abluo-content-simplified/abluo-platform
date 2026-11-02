@@ -39,7 +39,7 @@ export function segmentOf(id: string): string | undefined {
 export const MODULE_DASHBOARD_ROUTES: Record<string, string> = Object.fromEntries(
   TENANT_SURFACES.filter(isNavSurface)
     .filter((s) => s.requires.module)
-    .map((s) => [s.requires.module as string, s.segment]),
+    .map((s) => [s.requires.module as string, s.segment.split('/')[0]]),
 )
 
 /**
@@ -71,14 +71,10 @@ export type ClientNavItem = {
    * locale-free so this function stays pure and deterministically testable.
    */
   href: string
-  /**
-   * A tenant-chosen label that replaces the messages default (ADR-033 D12:
-   * the catalogue's `navLabel`). Presentation only — set by the layout, never
-   * by this pure builder; ids, routes and permissions stay unchanged.
-   */
-  label?: string
-  /** Sidebar group (spacing between groups, no headings). */
+  /** Sidebar group (ADR-042 §3). */
   group: NavGroup
+  /** Nested routes this destination owns (an item's editor lights Catalogue → Items). Absolute prefix, locale-agnostic. */
+  owns?: { base: string; except: readonly string[] }
 }
 
 /**
@@ -98,6 +94,7 @@ export function buildClientNavItems(
     labelKey: `clientDashboard.nav.${s.id}`,
     href: `/${grant.projectSlug}/${s.segment}`,
     group: s.group,
+    ...(s.owns ? { owns: { base: `/${grant.projectSlug}/${s.owns.base}`, except: s.owns.except } } : {}),
   }))
 }
 
@@ -116,7 +113,7 @@ export function mediaNavItems(grant: Pick<ProjectGrant, 'projectSlug' | 'permiss
 }
 
 // Phone nav helpers live in a browser-safe module (this one reaches server code).
-export { formatBadgeCount, isNavItemActive, PHONE_CONTENT_GROUPS, phoneNavLayout, type PhoneNavLayout } from './client-nav-layout'
+export { formatBadgeCount, isNavItemActive, PHONE_CONTENT_GROUPS, phoneNavLayout, resolveActiveNavId, sidebarGroups, groupOfNavId, type PhoneNavLayout } from './client-nav-layout'
 
 /**
  * Resolves the `ProjectGrant` for `projectSlug` from a caller's grants, or

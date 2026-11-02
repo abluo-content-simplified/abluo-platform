@@ -8,6 +8,11 @@
 // caller only when the items use at least two categories
 // (collectionFilterCategories). Values are machine keys (isFilterValue), so
 // they are safe inside the rule.
+//
+// Catalogue V2 C1.8: with a category tree, `data-cats` holds each assigned
+// category AND its ancestors (itemCategoryFilterKeys = expandForFilter), and
+// the bar offers top-level categories — so choosing "Food" also shows the
+// items filed under "Food › Pizza". A flat vocabulary renders exactly as before.
 
 import { useId, useState, type ReactNode } from 'react'
 

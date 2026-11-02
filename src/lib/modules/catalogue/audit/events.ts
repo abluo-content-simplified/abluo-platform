@@ -10,6 +10,7 @@
 
 import type { AllergenDeclarationStatus, AllergenInvalidationCause, AllergenKey, ReviewBasis } from '../allergens'
 import type { BatchOp } from '../list-model'
+import type { ChannelAvailabilityState } from '../commerce/commerce-types'
 import type { ReadinessCode, RuleLevel } from '../readiness/types'
 
 /** C12 §12.3 — every kind. Order = the contract's list. */
@@ -60,8 +61,8 @@ export type AuditActorKind = 'user' | 'studio' | 'system'
 export type AuditActor = { kind: AuditActorKind; id: string | null; support?: boolean }
 
 // ── Payload helper types (owned elsewhere; content-free summaries) ──────────
-/** C2 — the effective channel state (placeholder until C2 lands: same literal set). */
-export type ChannelAvailabilityState = 'available' | 'unavailable'
+/** C2 — the effective channel state (owner: commerce/commerce-types.ts). */
+export type { ChannelAvailabilityState }
 /** Content-free summary of a C5a schedule: counts and a hash, never times or labels. */
 export type ScheduleSummary = { baseline: ChannelAvailabilityState; overrides: number; daysCovered: number; fingerprint: string }
 export type RuleSummary = 'inherit' | ScheduleSummary

@@ -1,4 +1,5 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
+import { catalogueCommerceSchemaTypes, catalogueItemCommerceFields } from './schema-commerce'
 import { isReadingStatus } from './reading-status'
 import { validateUniquePublicId } from '@/lib/sanity/fields/public-id'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, BACKGROUND_SURFACE_OPTIONS } from '@/lib/sanity/fields/shared'
@@ -8,6 +9,7 @@ import { FOOD_PROFILE_GROQ, PROFILES, PROFILE_ORDER, can, profileOf } from './pr
 import { BOOK_YEAR_MIN, bookYearMax } from './isbn'
 import { EDITION_LANGUAGES } from './editions'
 import { allergenEvidenceFields, catalogueItemR1Fields } from '@/lib/sanity/studio/catalogue-evidence-fields'
+import { catalogueItemCategoryFields, catalogueTaxonomySchemaTypes } from './schema-taxonomy'
 import { ALLERGENS, allergenDeclarationIssues, describeDeclarationIssue, optionDeclarationIssues, unreviewedChoices, unknownAllergenKeys } from './allergens'
 
 // ── Catalogue module — Sanity schema types ────────────────────────────────────
@@ -630,6 +632,8 @@ export const catalogueItem = defineType({
       of: [defineArrayMember({ type: 'string' })],
       description: 'Defined in the module settings.',
     }),
+    // Catalogue V2 C1.4 (R1: declared, not yet written) — primary + additional category keys.
+    ...catalogueItemCategoryFields,
     // ADR-033 Amendment J slice 7 — keys of the project's `tag` taxonomyTerm records
     // (Categories & Tags in the dashboard). Same plain string list as categories.
     defineField({
@@ -679,6 +683,8 @@ export const catalogueItem = defineType({
       description:
         'A channel-specific offer wins over one with no channel. Within the same scope, availability windows must not overlap.',
     }),
+    // Catalogue V2 R1 (contract C10-6): `formats` + `channelAvailability`, hidden and read-only; nothing writes them until R2.
+    ...catalogueItemCommerceFields,
     defineField({
       name: 'optionLists',
       title: 'Option lists',
@@ -1141,4 +1147,8 @@ export const catalogueSchemaTypes = [
   catalogueItemLink,
   catalogueSection,
   catalogueListingSection,
+  // Catalogue V2 R1 — channels, formats, prices, schedules (schema-commerce.ts).
+  ...catalogueCommerceSchemaTypes,
+  // Catalogue V2 R1 — taxonomy document, pack history (schema-taxonomy.ts).
+  ...catalogueTaxonomySchemaTypes,
 ]

@@ -1,9 +1,8 @@
-import { redirect } from 'next/navigation'
-import { PageShell } from '@/components/app/ui/PageShell'
+import { CatalogueListScreen, type CatalogueListProps } from '../list-screen'
 
-/** `/catalogue/collections` — the list lives on the catalogue screen (its Collections view). */
-export default async function CollectionsPage({ params }: { params: Promise<{ tenant: string }> }) {
-  const { tenant: projectSlug } = await params
-  redirect(`/${projectSlug}/catalogue?view=collections`)
-  return <PageShell>{null}</PageShell>
+/** ADR-042 N2: Catalogue → Collections is its own route and sidebar destination. */
+export const dynamic = 'force-dynamic'
+
+export default function CollectionsPage(props: CatalogueListProps) {
+  return <CatalogueListScreen {...props} view="collections" />
 }

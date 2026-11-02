@@ -9,6 +9,7 @@ import { gallerySchemaTypes } from './gallery/schema'
 import { faqSchemaTypes } from './faq/schema'
 import { documentsSchemaTypes } from './documents/schema'
 import { catalogueSchemaTypes } from './catalogue/schema'
+import { CATALOGUE_TAXONOMY_SCHEMA_TYPE_NAMES } from './catalogue/schema-taxonomy'
 import { brandHubSchemaTypes } from './brand-hub/schema'
 import { SEGMENT_REGEX_SOURCE } from './catalogue/segment'
 import { PROFILES, PROFILE_ORDER, profilesWith } from './catalogue/profiles'
@@ -1218,6 +1219,16 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         'catalogueOption',
         'catalogueSection',
         'catalogueAvailability',
+        // Catalogue V2 R1 commerce types (schema-commerce.ts).
+        'catalogueWeeklyWindow',
+        'catalogueWeeklyOverride',
+        'catalogueChannelRule',
+        'cataloguePrice',
+        'catalogueFormat',
+        'catalogueFormatTemplate',
+        'catalogueMigrationMarkers',
+        // Catalogue V2 R1 (schema-taxonomy.ts).
+        ...CATALOGUE_TAXONOMY_SCHEMA_TYPE_NAMES,
       ],
 
       schemaDefinitions: () => catalogueSchemaTypes,
@@ -1299,10 +1310,40 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           description: 'Maintained by the module. Every segment this website has used; each redirects to the current one.',
         },
         {
+          // C11 R-A1: deprecated — the dashboard always says "Catalogue". Kept (hidden) until
+          // data step D4 copies it into publicName; removed in R3.
           id: 'navLabel',
-          label: 'Dashboard name',
+          label: 'Dashboard name (deprecated)',
           type: 'localizedString',
-          description: 'Optional. Leave empty to show "Catalogue" in the dashboard; set it only if this project should use another name (for example "Menu"). Presentation only.',
+          hidden: true,
+          description: 'No longer used: the dashboard always says "Catalogue". Its value is moved to "Public name".',
+        },
+        {
+          // C11: the tenant's word for the catalogue on the website (Menu, Books, Wine list…).
+          id: 'publicName',
+          label: 'Public name',
+          type: 'localizedString',
+          description: 'Used on your website; the dashboard always says Catalogue.',
+        },
+        {
+          // C7.9 / D-14: module-written setup state (never which pack). Hidden in every editor.
+          id: 'setupCompletedAt',
+          label: 'Setup completed',
+          type: 'string',
+          hidden: true,
+          description: 'Maintained by the module. When Catalogue setup was completed.',
+        },
+        {
+          id: 'setupSource',
+          label: 'Setup source',
+          type: 'select',
+          hidden: true,
+          options: [
+            { value: 'empty', label: 'Started empty' },
+            { value: 'pack', label: 'Starter pack' },
+            { value: 'manual', label: 'Marked complete' },
+          ],
+          description: 'Maintained by the module. How setup was completed.',
         },
         {
           id: 'affiliateDisclosure',
@@ -1332,8 +1373,27 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           id: 'serviceChannels',
           label: 'Service channels',
           type: 'localizedStringList',
+          // Contract C2-3: each entry also carries active / defaultAvailability / defaultSchedule.
+          supportsChannelAttributes: true,
           description:
-            'The ways an item is sold (dine in, takeaway, …). Each price belongs to one channel. A new catalogue has none; an unscoped price applies everywhere.',
+            'How an item is obtained (dine in, takeaway, delivery, …). Each channel has its own default availability; a price without a channel is the standard price. A new catalogue has none.',
+        },
+        {
+          id: 'formatTemplates',
+          label: 'Format templates',
+          type: 'schemaType',
+          schemaType: 'catalogueFormatTemplate',
+          schemaTypeArray: true,
+          hidden: true,
+          description: 'Quick picks for new formats (Glass 25 cl, Bottle 33 cl …), copied into an item, never linked. Edited in Catalogue → Setup (contract C3-6).',
+        },
+        {
+          id: 'catalogueMigrations',
+          label: 'Catalogue migrations',
+          type: 'schemaType',
+          schemaType: 'catalogueMigrationMarkers',
+          hidden: true,
+          description: 'Maintained by the migration scripts: when each Catalogue data step was verified for this project (contract C10-6).',
         },
         {
           id: 'defaultItemProfile',

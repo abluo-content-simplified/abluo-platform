@@ -16,7 +16,8 @@ import { allergenDeclarationIssues } from '../allergens'
 import { attachmentIssues, isBlockingAttachmentIssue, slugFromName } from '../dashboard-form'
 import { isValidIsbn } from '../isbn'
 import { PROFILES, can } from '../profiles'
-import type { CatalogueMigrationState } from './contract-deps'
+import type { CatalogueMigrationState } from '../schema-commerce'
+import type { OfferingContext } from '../commerce/commerce-types'
 import type { ItemReadinessInput, PublicationContext, PublicationStandard, ReadinessCode, ReadinessRule, RuleFailure, RuleLevel } from './types'
 
 export const DEFAULT_STANDARD_KEY = 'default'
@@ -384,10 +385,10 @@ export const DEFAULT_RULES: readonly ReadinessRule[] = Object.freeze([
         : [],
   },
   // 25
-  formatCodeRule('availability.conflictingRows', 'publish', (f) => !!f.availability?.issues.some((i) => i.code === 'availability.conflictingRows')),
+  formatCodeRule('availability.conflictingRows', 'publish', (f) => !!f.availability?.issues.includes('availability.conflictingRows')),
   // 26
   {
-    ...formatCodeRule('price.inactiveChannel', undefined, (f) => f.priceIssues.some((i) => i.code === 'price.inactiveChannel') || !!f.availability?.issues.some((i) => i.code === 'availability.inactiveChannel')),
+    ...formatCodeRule('price.inactiveChannel', undefined, (f) => f.priceIssues.some((i) => i.code === 'price.inactiveChannel') || !!f.availability?.issues.includes('availability.inactiveChannel')),
     levelIn: (ctx) => (ctx.kind === 'website' || ctx.kind === 'channel' ? 'recommended' : null),
   },
   // 27
@@ -421,8 +422,8 @@ export const DEFAULT_RULES: readonly ReadinessRule[] = Object.freeze([
     gate: 'publish',
     check: (input, ctx) =>
       input.formats(offeringContextFor(ctx)).flatMap((f) => {
-        const hit = f.availability?.issues.find((i) => SCHEDULE_ERRORS.has(i.code))
-        return hit ? [{ target: { kind: 'format' as const, id: input.id, formatKey: f.key }, fix: { surface: 'item' as const, step: 'price' as const, tab: 'prices' as const }, messageKey: 'scheduleInvalid', values: { reason: hit.code } }] : []
+        const hit = f.availability?.issues.find((i) => SCHEDULE_ERRORS.has(i))
+        return hit ? [{ target: { kind: 'format' as const, id: input.id, formatKey: f.key }, fix: { surface: 'item' as const, step: 'price' as const, tab: 'prices' as const }, messageKey: 'scheduleInvalid', values: { reason: hit } }] : []
       }),
   },
   // ── Integrity family (gate-only, §6.7.3) ──
@@ -436,8 +437,8 @@ export const DEFAULT_RULES: readonly ReadinessRule[] = Object.freeze([
   integrityRule('integrity.unknownKey', 'commerce', (input) => [...input.integrity?.unknownKeys ?? []]),
   integrityRule('integrity.currencyStored', 'commerce', (input) => (input.integrity?.storedCurrency ? ['offers'] : [])),
   integrityRule('integrity.unknownCategory', 'taxonomy', (input) => {
-    const known = new Set((input.categoryTree?.nodes ?? []).map((n) => n.key))
-    return input.categoryTree ? input.categories.additional.filter((k) => !known.has(k)) : []
+    const tree = input.categoryTree
+    return tree ? input.categories.additional.filter((k) => !tree.nodes.has(k)) : []
   }),
 ] satisfies ReadinessRule[])
 
@@ -491,7 +492,7 @@ function integrityRule(code: ReadinessCode, activation: ReadinessRule['activatio
 }
 
 /** §6.4a — the only mapping from a publication context to an offering context (re-exported by the engine). */
-export function offeringContextFor(ctx: PublicationContext): { kind: 'general' } | { kind: 'channel'; channel: string } {
+export function offeringContextFor(ctx: PublicationContext): OfferingContext {
   switch (ctx.kind) {
     case 'website':
       return { kind: 'general' }

@@ -321,15 +321,33 @@ export function collectionUsesCards(collection: CatalogueCollectionDTO): boolean
 export const isFilterValue = (v: string): boolean => /^[A-Za-z0-9_-]{1,80}$/.test(v)
 
 /**
- * The categories the collection's items use, first appearance first, one per value. The filter bar shows
- * only when there are at least two — with one category there is nothing to choose.
+ * The TOP-LEVEL categories the collection's items use (a category's root ancestor, or the category itself
+ * when it has none — Catalogue V2 C1.8), first appearance first, one per value. For a flat vocabulary this is
+ * exactly the categories the items use. The filter bar shows only when there are at least two — with one
+ * category there is nothing to choose.
  */
 export function collectionFilterCategories(collection: CatalogueCollectionDTO): { value: string; label: string }[] {
   const seen = new Map<string, string>()
   for (const item of collectionItems(collection)) {
-    for (const c of item.categories) if (isFilterValue(c.value) && !seen.has(c.value)) seen.set(c.value, c.label || c.value)
+    for (const c of item.categories) {
+      const root = c.ancestors?.[0] ?? c
+      if (isFilterValue(root.value) && !seen.has(root.value)) seen.set(root.value, root.label || root.value)
+    }
   }
   return seen.size >= 2 ? [...seen].map(([value, label]) => ({ value, label })) : []
+}
+
+/**
+ * The item's filter keys (`data-cats`): each assigned category plus its ancestors — the membership set
+ * of C1 `expandForFilter`, from the ancestors the resolver attached — so choosing a parent shows the
+ * items of every category below it. A flat vocabulary yields exactly the assigned keys, as before.
+ */
+export function itemCategoryFilterKeys(item: Pick<CatalogueItemDTO, 'categories'>): string[] {
+  const out: string[] = []
+  for (const c of item.categories) {
+    for (const v of [c.value, ...(c.ancestors ?? []).map((a) => a.value)]) if (isFilterValue(v) && !out.includes(v)) out.push(v)
+  }
+  return out
 }
 
 // ── URLs ──────────────────────────────────────────────────────────────────────

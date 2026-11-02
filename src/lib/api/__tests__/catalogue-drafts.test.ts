@@ -68,7 +68,7 @@ function fake(docs: Docs = {}, namespace: Array<Record<string, unknown>> = []) {
     }
     if (q.includes('(_id in $ids || _id in $draftIds)')) {
       const want = new Set([...(p.ids as string[]), ...(p.draftIds as string[])])
-      return Object.values(docs).filter((d) => d._type === p.type && want.has(d._id as string)).map((d) => ({ _id: d._id, offered: Array.isArray(d.offers) && d.offers.length > 0 }))
+      return Object.values(docs).filter((d) => d._type === p.type && want.has(d._id as string)).map((d) => ({ _id: d._id, hasPrice: Array.isArray(d.offers) && d.offers.length > 0 }))
     }
     if (q.includes('references($id)')) return 0
     if (q.includes('_type == $type') || q.includes('"mediaAsset"')) return p.ids
@@ -339,12 +339,12 @@ describe('draft references (ADR-033 D-4)', () => {
     expect(JSON.stringify(f.patchOps)).toContain('"_strengthenOnPublish":{"type":"catalogueOptionList"}')
     await expect(patchCatalogueDraft(ctx(grant()), 'project-a', 'item', { id: 'item-1', rev: 'd1', set: { optionLists: [{ listId: 'nope', min: 0 }] } }, f.deps)).rejects.toMatchObject({ code: 'invalid_value' })
   })
-  it('an option may link to a draft item only if it is offered (D2)', async () => {
+  it('an option may link to a draft item only if it has a price (D2, D-21 hasPrice)', async () => {
     const ol = { _id: 'drafts.ol-1', _type: 'catalogueOptionList', _rev: 'o1', projectSlug: 'trattoria', name: { it: 'Contorni' }, options: [] }
     const f = fake({ 'drafts.ol-1': ol, 'drafts.side': draftItem({ _id: 'drafts.side', offers: [{ _key: 'o', price: 3 }] }), 'drafts.free': draftItem({ _id: 'drafts.free' }) })
     await patchCatalogueDraft(ctx(grant()), 'project-a', 'optionList', { id: 'ol-1', rev: 'o1', set: { options: [{ _key: 'a', label: { it: 'Insalata' }, itemId: 'side' }] } }, f.deps)
     expect(JSON.stringify(f.patchOps)).toContain('"_weak":true')
-    await expect(patchCatalogueDraft(ctx(grant()), 'project-a', 'optionList', { id: 'ol-1', rev: 'o1', set: { options: [{ _key: 'a', label: { it: 'X' }, itemId: 'free' }] } }, f.deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(patchCatalogueDraft(ctx(grant()), 'project-a', 'optionList', { id: 'ol-1', rev: 'o1', set: { options: [{ _key: 'a', label: { it: 'X' }, itemId: 'free' }] } }, f.deps)).rejects.toMatchObject({ code: 'linked_item_needs_price', message: 'This item needs at least one price before it can be used as a linked choice.' })
   })
   it('publishing a collection that lists a never-published item is refused, naming it; nothing written', async () => {
     const weakRef = { _type: 'reference', _ref: 'new-1', _key: 'k', _weak: true, _strengthenOnPublish: { type: 'catalogueItem' } }
@@ -518,5 +518,29 @@ describe('getCatalogueSite: category vocabulary (Amendment J dual-read)', () => 
       { value: 'a', label: { it: 'A', en: 'Ay' }, color: '#111' },
       { value: 'b', label: { it: 'B' }, color: null },
     ])
+  })
+})
+
+describe('getCatalogueSite: Catalogue V2 R1 readers (C1 triple dual-read, C11 R-A1)', () => {
+  const site = { defaultLocale: 'it', supportedLocales: ['it', 'en'], timeZone: 'Europe/Rome' }
+  const read = async (reply: Record<string, unknown>, config: Record<string, unknown> = CONFIG) => {
+    const fetch = vi.fn(async () => ({ site, config, translate: false, ...reply }))
+    return getCatalogueSite(ctx(grant()), 'project-a', { client: { fetch } as never })
+  }
+  it('the taxonomy document wins over term records and the config list (tree order, label maps)', async () => {
+    const result = await read({
+      categoryTerms: [{ key: 'x', order: 1, label: { it: 'X' } }],
+      taxonomy: { categories: [{ key: 'pizza_bianche', parentKey: 'pizza', order: 1, label: { it: 'Bianche' } }, { key: 'pizza', order: 1, label: { it: 'Pizza', _type: 'localizedString' } }], tags: [{ key: 'new', order: 1, label: { it: 'Novità' } }] },
+    })
+    expect(result.config.categories).toEqual([
+      { value: 'pizza', label: { it: 'Pizza' }, color: null },
+      { value: 'pizza_bianche', label: { it: 'Bianche' }, color: null },
+    ])
+    expect(result.config.tags).toEqual([{ value: 'new', label: { it: 'Novità' }, color: null }])
+  })
+  it('equiv/dashboard: the dashboard never reads navLabel; publicName is carried for Setup only', async () => {
+    const result = await read({}, { ...CONFIG, navLabel: { it: 'Menù' }, publicName: { it: ' Menù ', en: '', _type: 'localizedString' } })
+    expect(result.config).not.toHaveProperty('navLabel')
+    expect(result.config.publicName).toEqual({ it: 'Menù' })
   })
 })

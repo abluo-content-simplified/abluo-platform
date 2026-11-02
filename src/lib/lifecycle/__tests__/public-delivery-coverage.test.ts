@@ -258,6 +258,7 @@ const OTHER_READERS: Record<string, string> = {
   'src/lib/modules/registry.ts': 'Studio structure filters (staff only)',
   'src/lib/lifecycle/visibility.ts': 'the rule itself (a path example in its docs)',
   'src/lib/modules/catalogue/dashboard-queries.ts': 'client dashboard catalogue reads (authenticated, project-scoped after assertModuleAction) — lists every state on purpose',
+  'src/lib/modules/catalogue/taxonomy/reference-sources.ts': 'Catalogue category deletion guard (server-side, tenant-scoped client injected by the taxonomy service) — counts every item copy incl. drafts and archived on purpose (D-3)',
   'src/lib/api/catalogue-lifecycle.ts': 'catalogue lifecycle descriptors — referrer checks before archive/delete (authenticated dashboard)',
   'src/lib/api/faq-sets.ts': 'client dashboard FAQ set editor and library (authenticated, project-scoped after assertModuleAction) — lists every state on purpose',
   'src/lib/api/faq-lifecycle.ts': 'FAQ set lifecycle descriptor — referrer checks before archive/delete (authenticated dashboard)',

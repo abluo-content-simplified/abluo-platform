@@ -21,7 +21,7 @@ import { getBlogDashboard } from '@/lib/api/dashboard/blog'
 import { getFormsDashboard } from '@/lib/api/dashboard/forms'
 import { getGalleryDashboard } from '@/lib/api/dashboard/gallery'
 import { getGalleriesDescribed } from '@/lib/api/dashboard/gallery-described'
-import { getCatalogueGlance, loadCatalogueNavLabel } from '@/lib/api/catalogue-drafts'
+import { getCatalogueGlance } from '@/lib/api/catalogue-drafts'
 import { getMediaDashboard } from '@/lib/api/dashboard/media'
 import { getPeopleDashboard } from '@/lib/api/dashboard/people'
 import { getSiteStatus } from '@/lib/api/dashboard/site'
@@ -279,9 +279,8 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
     }
   })
   // Catalogue (ADR-033 spec §10.1): items on the website, drafts, and the quiet "no price" gap.
-  const [catalogue, catalogueLabel] = show('glance.catalogue')
-    ? await Promise.all([getCatalogueGlance(ctx, grant.projectId).catch(() => null), loadCatalogueNavLabel(grant.projectSlug, locale)])
-    : [null, null]
+  // C11 (K-2): the dashboard always says "Catalogue" (interface dictionary), never the tenant's public name.
+  const catalogue = show('glance.catalogue') ? await getCatalogueGlance(ctx, grant.projectId).catch(() => null) : null
   const tcat = await getTranslations('catalogue.dashboard.glance')
   const postsHref = link('blog')
   const galleriesHref = link('gallery')
@@ -322,7 +321,7 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
     show('glance.catalogue') && catalogue ? (
       <StatTile
         key="catalogue"
-        label={catalogueLabel ?? tcat('label')}
+        label={tcat('label')}
         value={catalogue.published}
         sub={tcat('sub', { drafts: catalogue.drafts, noPrice: catalogue.noPrice })}
         href={link('catalogue')}

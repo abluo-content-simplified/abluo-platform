@@ -1,0 +1,78 @@
+import { headers } from 'next/headers'
+import { notFound, redirect } from 'next/navigation'
+import { span, traced } from '@/lib/perf/timing'
+import { perfBeacon } from '@/lib/perf/beacon'
+import { getTranslations } from 'next-intl/server'
+import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
+import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
+import { getProjectSiteDomain } from '@/lib/api/client-dashboard'
+import { catalogueAbilities, getCatalogueSite, listCatalogue } from '@/lib/api/catalogue-drafts'
+import { catalogueImageShape } from '@/lib/modules/catalogue/list-model'
+import { pathServedBase } from '@/lib/modules/catalogue/site-base'
+import { CatalogueBrowser } from '@/components/client/catalogue/CatalogueBrowser'
+import { PageShell } from '@/components/app/ui/PageShell'
+
+/**
+ * Client dashboard — the Catalogue lists (ADR-033, spec §10.2; ADR-042 N2):
+ * Items, Collections and Option lists are three routes (sidebar destinations),
+ * each rendered by this one screen with its list fixed by the route. Reads
+ * through `listCatalogue` (catalogue.item.read, project-scoped, every state); a
+ * project without the module, or a person without the permission, gets a 404.
+ * Always titled "Catalogue" (interface dictionary — C11/K-2).
+ */
+export type CatalogueListProps = {
+  params: Promise<{ tenant: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
+
+export type CatalogueListView = 'items' | 'collections' | 'optionLists'
+
+/** Route segment (under `/catalogue`) of each list. */
+export const CATALOGUE_LIST_PATH: Record<CatalogueListView, string> = { items: 'items', collections: 'collections', optionLists: 'option-lists' }
+
+async function CataloguePageInner({ params, searchParams, view }: CatalogueListProps & { view: CatalogueListView }) {
+  const { tenant: projectSlug } = await params
+  const query = await searchParams
+  const ctx = await span('auth', () => getTenantAuthorizationContext({ purpose: 'render' }))
+  if (!ctx) redirect(`/login?next=/${projectSlug}/catalogue/${CATALOGUE_LIST_PATH[view]}`)
+  const grant = resolveProjectGrant(ctx.projects, projectSlug)
+  if (!grant) notFound()
+
+  // "View on website" points at the environment the dashboard is on: dev and
+  // preview serve the project by path; anywhere else its own domain.
+  const h = await headers()
+  const publicPathBase = pathServedBase(h.get('x-forwarded-host') ?? h.get('host'), projectSlug, h.get('x-forwarded-proto') === 'http' ? 'http' : 'https')
+
+  let lists, site
+  try {
+    ;[lists, site] = await Promise.all([span('listCatalogue', async () => listCatalogue(ctx, grant.projectId, { publicDomain: await getProjectSiteDomain(ctx, grant.projectId).catch(() => null), publicPathBase })), span('site', () => getCatalogueSite(ctx, grant.projectId))])
+  } catch (error) {
+    if (error instanceof TenantAuthorizationError) notFound()
+    throw error
+  }
+  // C11 (K-2): always the interface dictionary's "Catalogue" — the tenant's public name is for the website only.
+  const t = await getTranslations('clientDashboard.nav')
+  const title = t('catalogue')
+
+  return (
+    <PageShell>
+      <CatalogueBrowser
+        key={view}
+        projectSlug={projectSlug}
+        title={title}
+        lists={lists}
+        site={{ imageShape: catalogueImageShape({ presetId: site.presetId }), defaultLocale: site.defaultLocale, timeZone: site.timeZone, currency: site.config.currency, categories: site.config.categories }}
+        can={catalogueAbilities(grant)}
+        initialView={view}
+        initialStatus={typeof query.status === 'string' ? query.status : null}
+        initialSort={typeof query.sort === 'string' ? query.sort : null}
+      />
+      {perfBeacon()}
+    </PageShell>
+  )
+}
+
+export function CatalogueListScreen(props: CatalogueListProps & { view: CatalogueListView }) {
+  return traced('catalogue.listPage', () => CataloguePageInner(props))
+}

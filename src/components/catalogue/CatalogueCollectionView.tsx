@@ -22,7 +22,7 @@ import { AllergensAndDietary, Byline, ItemLinks, OfferList, OptionsSummary } fro
 import type { CatalogueWebsiteMessages } from './messages'
 import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import { itemHasAmazonLink } from '@/lib/modules/catalogue/amazon-delivery'
-import { collectionFilterCategories, isFilterValue, itemsUseCards } from '@/lib/modules/catalogue/website'
+import { collectionFilterCategories, itemCategoryFilterKeys, itemsUseCards } from '@/lib/modules/catalogue/website'
 import { CatalogueItemCard } from './CatalogueItemCard'
 import { FeaturedBadge } from './FeaturedBadge'
 import { shelvesOf, type ReadingStatus } from '@/lib/modules/catalogue/reading-status'
@@ -100,9 +100,9 @@ export function CatalogueCollectionView({
   )
 }
 
-/** The item's category keys for the filter bar (data-cats). */
+/** The item's category keys for the filter bar (data-cats): assigned categories and their ancestors (C1). */
 function catsOf(item: CatalogueItemDTO): string {
-  return item.categories.map((c) => c.value).filter(isFilterValue).join(' ')
+  return itemCategoryFilterKeys(item).join(' ')
 }
 
 function SectionBlock({

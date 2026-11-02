@@ -13,8 +13,11 @@ import {
   segmentOf,
   isNavItemActive,
   phoneNavLayout,
+  resolveActiveNavId,
+  sidebarGroups,
   formatBadgeCount,
 } from '../client-navigation'
+import type { NavGroup } from '@/lib/client/surfaces'
 import type { ProjectGrant } from '@/lib/api/tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
@@ -37,16 +40,16 @@ describe('buildClientNavItems', () => {
   const navWithoutSupport = (grant: Parameters<typeof buildClientNavItems>[0]) =>
     buildClientNavItems(grant).filter((i) => i.moduleId !== 'support')
 
-  it('always lists Support, in the support & configuration group', () => {
+  it('always lists Support, in the bottom block', () => {
     expect(buildClientNavItems(grantWith([], []))).toEqual([
-      { moduleId: 'support', labelKey: 'clientDashboard.nav.support', href: '/livener/support', group: 'support' },
+      { moduleId: 'support', labelKey: 'clientDashboard.nav.support', href: '/livener/support', group: 'bottom' },
     ])
   })
 
   it('yields a Blog nav item ONLY when the module is installed AND blog.post.read is held', () => {
     const items = navWithoutSupport(grantWith(['blog'], ['blog.post.read']))
     // Posts also brings Categories & Tags (ADR-033 Amendment J), which the same permission opens.
-    expect(items.filter((i) => i.moduleId !== 'taxonomy')).toEqual([{ moduleId: 'blog', labelKey: 'clientDashboard.nav.blog', href: '/livener/posts', group: 'publish' }])
+    expect(items.filter((i) => i.moduleId !== 'taxonomy')).toEqual([{ moduleId: 'blog', labelKey: 'clientDashboard.nav.blog', href: '/livener/posts', group: 'content' }])
   })
 
   it('yields NO Blog item when the module is not installed, even with the permission', () => {
@@ -161,11 +164,11 @@ describe('resolveProjectGrant', () => {
 })
 
 describe('phoneNavLayout (Home · Content · Requests · Media · More)', () => {
-  const item = (moduleId: string, segment: string, group = 'content') => ({
+  const item = (moduleId: string, segment: string, group: NavGroup) => ({
     moduleId,
     labelKey: `clientDashboard.nav.${moduleId}`,
     href: `/livener/${segment}`,
-    group: group as 'content',
+    group,
   })
   const ids = (xs: { moduleId: string }[]) => xs.map((i) => i.moduleId)
   /** Every item lands in exactly one place: content, requests, media or overflow. */
@@ -176,36 +179,39 @@ describe('phoneNavLayout (Home · Content · Requests · Media · More)', () => 
   }
 
   const tmz = [
-    item('blog', 'posts', 'publish'),
-    item('events', 'agenda', 'publish'),
-    item('gallery', 'galleries', 'show'),
-    item('catalogue', 'catalogue', 'show'),
-    item('documents', 'document-library', 'show'),
+    item('blog', 'posts', 'content'),
+    item('events', 'agenda', 'content'),
+    item('gallery', 'galleries', 'content'),
+    item('documents', 'document-library', 'content'),
+    item('catalogueItems', 'catalogue/items', 'catalogue'),
+    item('catalogueCollections', 'catalogue/collections', 'catalogue'),
+    item('catalogueOptions', 'catalogue/option-lists', 'catalogue'),
     item('forms', 'submissions', 'visitors'),
-    item('media', 'media'),
-    item('people', 'people'),
-    item('taxonomy', 'taxonomy'),
-    item('analytics', 'analytics', 'activity'),
-    item('support', 'support', 'support'),
+    item('media', 'media', 'library'),
+    item('people', 'people', 'library'),
+    item('taxonomy', 'taxonomy', 'library'),
+    item('analytics', 'analytics', 'insights'),
+    item('settings', 'settings', 'project'),
+    item('support', 'support', 'bottom'),
   ]
 
-  it('tmz-like: Content sheet of five modules, Requests, Media; the rest is More', () => {
+  it('tmz-like: the Content sheet lists the Content and Catalogue groups, Requests, Media; the rest is More', () => {
     const l = phoneNavLayout(tmz)
-    expect(ids(l.content)).toEqual(['blog', 'events', 'gallery', 'catalogue', 'documents'])
+    expect(ids(l.content)).toEqual(['blog', 'events', 'gallery', 'documents', 'catalogueItems', 'catalogueCollections', 'catalogueOptions'])
     expect(l.requests?.moduleId).toBe('forms')
     expect(l.media?.moduleId).toBe('media')
-    expect(ids(l.overflow)).toEqual(['people', 'taxonomy', 'analytics', 'support'])
+    expect(ids(l.overflow)).toEqual(['people', 'taxonomy', 'analytics', 'settings', 'support'])
     placedOnce(tmz)
   })
 
   it('CYCE-like: Events + FAQ + Documents in the sheet, Requests, Media; Access (members) in More', () => {
     const cyce = [
-      item('events', 'agenda', 'publish'),
-      item('faq', 'faq-sets', 'publish'),
-      item('documents', 'document-library', 'show'),
+      item('events', 'agenda', 'content'),
+      item('faq', 'faq-sets', 'content'),
+      item('documents', 'document-library', 'content'),
       item('forms', 'submissions', 'visitors'),
       item('members', 'access', 'visitors'),
-      item('media', 'media'),
+      item('media', 'media', 'library'),
     ]
     const l = phoneNavLayout(cyce)
     expect(ids(l.content)).toEqual(['events', 'faq', 'documents'])
@@ -216,7 +222,7 @@ describe('phoneNavLayout (Home · Content · Requests · Media · More)', () => 
   })
 
   it('Amélie-like (galleries only, no forms): Content links straight to Galleries, no Requests tab', () => {
-    const amelie = [item('gallery', 'galleries', 'show'), item('media', 'media')]
+    const amelie = [item('gallery', 'galleries', 'content'), item('media', 'media', 'library')]
     const l = phoneNavLayout(amelie)
     expect(ids(l.content)).toEqual(['gallery']) // exactly one → the tab links straight to it
     expect(l.requests).toBeNull()
@@ -225,8 +231,8 @@ describe('phoneNavLayout (Home · Content · Requests · Media · More)', () => 
     placedOnce(amelie)
   })
 
-  it('no Publish/Show module → no Content tab; Requests only when the person has forms', () => {
-    const l = phoneNavLayout([item('media', 'media'), item('people', 'people')])
+  it('no Content or Catalogue destination → no Content tab; Requests only when the person has forms', () => {
+    const l = phoneNavLayout([item('media', 'media', 'library'), item('people', 'people', 'library')])
     expect(l.content).toEqual([])
     expect(l.requests).toBeNull()
     expect(ids(l.overflow)).toEqual(['people'])
@@ -234,7 +240,44 @@ describe('phoneNavLayout (Home · Content · Requests · Media · More)', () => 
   })
 
   it('keeps menu order inside the Content sheet', () => {
-    expect(ids(phoneNavLayout(tmz).content)).toEqual(ids(tmz.filter((i) => ['blog', 'events', 'gallery', 'catalogue', 'documents'].includes(i.moduleId))))
+    expect(ids(phoneNavLayout(tmz).content)).toEqual(ids(tmz.filter((i) => i.group === 'content' || i.group === 'catalogue')))
+  })
+})
+
+describe('resolveActiveNavId (ADR-042 N2a, N7)', () => {
+  const cat = { base: '/p/catalogue', except: ['collections', 'option-lists', 'setup'] }
+  const nav = [
+    { moduleId: 'blog', labelKey: '', href: '/p/posts', group: 'content' as const },
+    { moduleId: 'catalogueItems', labelKey: '', href: '/p/catalogue/items', group: 'catalogue' as const, owns: cat },
+    { moduleId: 'catalogueCollections', labelKey: '', href: '/p/catalogue/collections', group: 'catalogue' as const },
+    { moduleId: 'catalogueOptions', labelKey: '', href: '/p/catalogue/option-lists', group: 'catalogue' as const },
+  ]
+  it.each([
+    ['/p/posts', 'blog'],
+    ['/p/posts/abc', 'blog'],
+    ['/p/catalogue/items', 'catalogueItems'],
+    ['/p/catalogue/new', 'catalogueItems'],
+    ['/p/catalogue/abc-123', 'catalogueItems'],
+    ['/p/catalogue/collections', 'catalogueCollections'],
+    ['/p/catalogue/collections/new', 'catalogueCollections'],
+    ['/p/catalogue/collections/c1', 'catalogueCollections'],
+    ['/p/catalogue/option-lists/o1', 'catalogueOptions'],
+  ])('%s lights %s', (pathname, expected) => {
+    expect(resolveActiveNavId(pathname, nav)).toBe(expected)
+  })
+  it('lights nothing for another section, a lookalike path or a Setup route that has no destination', () => {
+    expect(resolveActiveNavId('/p/home', nav)).toBeNull()
+    expect(resolveActiveNavId('/p/postsx', nav)).toBeNull()
+    expect(resolveActiveNavId('/p/catalogue/setup', nav)).toBeNull()
+  })
+})
+
+describe('sidebarGroups (ADR-042 N1)', () => {
+  const mk = (moduleId: string, group: NavGroup) => ({ moduleId, labelKey: '', href: `/p/${moduleId}`, group })
+  it('orders the groups Content · Catalogue · Visitors · Library · Insights · Project, bottom block apart, empty groups left out', () => {
+    const r = sidebarGroups([mk('support', 'bottom'), mk('analytics', 'insights'), mk('forms', 'visitors'), mk('blog', 'content'), mk('settings', 'project')])
+    expect(r.groups.map((g) => g.group)).toEqual(['content', 'visitors', 'insights', 'project'])
+    expect(r.bottom.map((i) => i.moduleId)).toEqual(['support'])
   })
 })
 

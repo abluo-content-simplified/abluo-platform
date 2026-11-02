@@ -59,6 +59,8 @@ export type CatalogueErrorCode =
   | 'option_allergens_not_reviewed'
   /** D-4: the document references never-published content; `detail.dependencies` names each. */
   | 'unpublished_dependencies'
+  /** D2 + D-21: an option links to an item without any price (`hasPrice` false). */
+  | 'linked_item_needs_price'
   | 'failed'
 
 export type CatalogueErrorDetail = {

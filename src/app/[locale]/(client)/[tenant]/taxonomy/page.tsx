@@ -1,10 +1,9 @@
 import { notFound, redirect } from 'next/navigation'
-import { getLocale, getTranslations } from 'next-intl/server'
+import { getTranslations } from 'next-intl/server'
 import { span, traced } from '@/lib/perf/timing'
 import { perfBeacon } from '@/lib/perf/beacon'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
-import { loadCatalogueNavLabel } from '@/lib/api/catalogue-drafts'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { manageableTaxonomyModules } from '@/lib/taxonomy/manageable'
 import { internalTagScopes } from '@/lib/tags/internal-tags'
@@ -45,10 +44,8 @@ async function TaxonomyPageInner({
   // Nothing to manage (no module with terms, no media or gallery tags): there is no page.
   if (manageable.length === 0 && internal.length === 0) notFound()
 
-  const locale = await getLocale()
+  // Module tabs use the interface dictionary only — the Catalogue tab always says "Catalogue" (C11/K-2).
   const t = await getTranslations('clientDashboard.nav')
-  // A project's own name for the Catalogue (navLabel) is used for the module, like the sidebar does.
-  const catalogueLabel = manageable.some((m) => m.module === 'catalogue') ? await loadCatalogueNavLabel(projectSlug, locale).catch(() => null) : null
   // Taxonomy tabs first (registry order), then Media, then Galleries.
   const tabs: TaxonomyTab[] = [
     ...manageable.map((m): TaxonomyTab => ({
@@ -56,7 +53,7 @@ async function TaxonomyPageInner({
       id: m.module,
       kinds: m.kinds as SectionKind[],
       canWrite: m.canWrite,
-      label: (m.module === 'catalogue' && catalogueLabel) || (t.has(m.module) ? t(m.module) : m.module),
+      label: t.has(m.module) ? t(m.module) : m.module,
     })),
     ...(['media', 'galleries'] as const).flatMap((scope): TaxonomyTab[] => {
       const found = internal.find((x) => x.scope === scope)

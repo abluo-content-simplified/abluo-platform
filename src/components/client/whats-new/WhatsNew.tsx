@@ -6,6 +6,7 @@ import { AppIcon } from '@/components/app/shell/AppIcon'
 import type { AccountMenuRow } from '@/components/app/shell/AccountMenu'
 import { Button } from '@/components/app/ui/Button'
 import { CountBadge } from '@/components/app/ui/CountBadge'
+import { RailItem } from '@/components/app/ui/RailItem'
 import { DialogFrame } from '@/components/app/ui/DialogFrame'
 import { SidebarRowButton } from '@/components/app/ui/SidebarRowButton'
 import { SidePanel } from '@/components/app/ui/SidePanel'
@@ -41,6 +42,8 @@ export function useWhatsNew(
   options: { popup?: boolean } = {},
 ): {
   sidebarRow: ReactNode
+  /** The same entry as an icon in the collapsed sidebar rail. */
+  railRow: ReactNode
   menuRow: AccountMenuRow | null
   panel: ReactNode
 } {
@@ -58,7 +61,7 @@ export function useWhatsNew(
     if (popup) void markUpdatesReadAction([popup.id])
   }, [popup])
 
-  if (!updates || updates.length === 0) return { sidebarRow: null, menuRow: null, panel: null }
+  if (!updates || updates.length === 0) return { sidebarRow: null, railRow: null, menuRow: null, panel: null }
 
   const unread = countUnread(updates, seen)
   const unreadLabel = unread ? t('unreadCount', { count: unread }) : undefined
@@ -83,6 +86,8 @@ export function useWhatsNew(
       {t('title')}
     </SidebarRowButton>
   )
+
+  const railRow = <RailItem label={t('title')} icon={WHATS_NEW_ICON} badge={unread ? { count: unread, label: unreadLabel ?? '' } : undefined} onClick={openPanel} />
 
   const menuRow: AccountMenuRow = {
     key: 'whatsNew',
@@ -151,5 +156,5 @@ export function useWhatsNew(
     </>
   )
 
-  return { sidebarRow, menuRow, panel }
+  return { sidebarRow, railRow, menuRow, panel }
 }

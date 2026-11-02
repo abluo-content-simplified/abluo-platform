@@ -8,7 +8,15 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { MODULE_REGISTRY } from '@/lib/modules/registry'
-import { MODULES_WITHOUT_TENANT_SURFACE, TENANT_SURFACES as ALL_SURFACES } from '../surfaces'
+import {
+  CATALOGUE_SETUP_PERMISSION,
+  CATALOGUE_SETUP_PERMISSION_DEFINED,
+  CATALOGUE_SETUP_ROUTE_EXISTS,
+  catalogueSetupPermissions,
+  MODULES_WITHOUT_TENANT_SURFACE,
+  NAV_GROUPS,
+  TENANT_SURFACES as ALL_SURFACES,
+} from '../surfaces'
 import {
   buildTenantSurfaces,
   CONFIGURATION_PERMISSIONS,
@@ -108,7 +116,7 @@ describe('nav surfaces', () => {
   }
 
   for (const s of nav) {
-    it(`${s.id}: segment "${s.segment}" is an existing route folder`, () => {
+    it.skipIf(s.available === false)(`${s.id}: segment "${s.segment}" is an existing route folder`, () => {
       const dir = path.join(tenantRoutes, s.segment)
       expect(existsSync(dir) && statSync(dir).isDirectory()).toBe(true)
       expect(existsSync(path.join(dir, 'page.tsx')), `${s.segment}/page.tsx`).toBe(true)
@@ -163,10 +171,9 @@ describe('buildTenantSurfaces', () => {
 
   it('an owner with every module sees every nav item and the module widgets', () => {
     const s = buildTenantSurfaces(grantFor('owner', ['blog', 'forms', 'gallery']))
-    // Sidebar order and groups: the modules in their PLAT-3 groups (Publish · Show · Visitors), then
-    // content work · activity · support & configuration (Tom, 2026-10-22). Categories & Tags closes the content group.
-    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'forms', 'media', 'people', 'taxonomy', 'analytics', 'support', 'connections', 'settings'])
-    expect(s.nav.map((n) => n.group)).toEqual(['publish', 'show', 'visitors', 'content', 'content', 'content', 'activity', 'support', 'support', 'support'])
+    // ADR-042 §3: Content · Catalogue · Visitors · Library · Insights · Project, then the bottom block.
+    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'forms', 'media', 'people', 'taxonomy', 'analytics', 'connections', 'settings', 'support'])
+    expect(s.nav.map((n) => n.group)).toEqual(['content', 'content', 'visitors', 'library', 'library', 'library', 'insights', 'project', 'project', 'bottom'])
     expect(ids(s.widgets)).toEqual(expect.arrayContaining(['siteStatus', 'attention', 'glance.posts', 'glance.requests', 'glance.galleries', 'traffic', 'latest.posts']))
   })
 
@@ -240,18 +247,100 @@ describe('module coverage', () => {
   })
 })
 
-describe('catalogue (ADR-033 spec §10.1)', () => {
+describe('catalogue group (ADR-033 spec §10.1, ADR-042 N2 / N2a)', () => {
   const ids = (xs: readonly { id: string }[]) => xs.map((x) => x.id)
-  it('one nav entry + the glance widget, for anyone who can read items, only with the module', () => {
-    const viewer = { enabledModuleIds: ['catalogue'], permissions: grantPermissions('viewer', ['catalogue']) }
-    const s = buildTenantSurfaces(viewer)
-    expect(ids(s.nav)).toContain('catalogue')
+  const READ = grantPermissions('viewer', ['catalogue'])
+
+  it('Items, Collections and Options + the glance widget, for anyone who can read items, only with the module', () => {
+    const s = buildTenantSurfaces({ enabledModuleIds: ['catalogue'], permissions: READ })
+    expect(ids(s.nav.filter((n) => n.group === 'catalogue'))).toEqual(['catalogueItems', 'catalogueCollections', 'catalogueOptions'])
     expect(ids(s.widgets)).toContain('glance.catalogue')
     const without = buildTenantSurfaces({ enabledModuleIds: [], permissions: grantPermissions('owner', []) })
-    expect(ids(without.nav)).not.toContain('catalogue')
+    expect(ids(without.nav).filter((i) => i.startsWith('catalogue'))).toEqual([])
     expect(ids(without.widgets)).not.toContain('glance.catalogue')
   })
+
+  it('fails closed: without catalogue.item.read the group is empty (no group, no entries)', () => {
+    const s = buildTenantSurfaces({ enabledModuleIds: ['catalogue'], permissions: [] })
+    expect(s.nav.filter((n) => n.group === 'catalogue')).toEqual([])
+  })
+
+  it('routes: /catalogue/items, /catalogue/collections, /catalogue/option-lists; Items owns the editor and new-item routes', () => {
+    const byId = (id: string) => TENANT_SURFACES.find((t): t is NavSurface => t.kind === 'nav' && t.id === id)!
+    expect(byId('catalogueItems').segment).toBe('catalogue/items')
+    expect(byId('catalogueCollections').segment).toBe('catalogue/collections')
+    expect(byId('catalogueOptions').segment).toBe('catalogue/option-lists')
+    expect(byId('catalogueItems').owns).toEqual({ base: 'catalogue', except: ['collections', 'option-lists', 'setup'] })
+  })
+
+  it('Setup is declared but hidden until its route exists, whatever the permissions', () => {
+    const setup = TENANT_SURFACES.find((t): t is NavSurface => t.kind === 'nav' && t.id === 'catalogueSetup')!
+    expect(setup.available).toBe(CATALOGUE_SETUP_ROUTE_EXISTS)
+    const all = buildTenantSurfaces({ enabledModuleIds: ['catalogue'], permissions: [...READ, 'catalogue.taxonomy.write', CATALOGUE_SETUP_PERMISSION] })
+    expect(ids(all.nav)).not.toContain('catalogueSetup')
+  })
+
+  it('once its route exists: Setup permission or catalogue.taxonomy.write opens it, plain readers do not (N2a)', () => {
+    const setup = { ...TENANT_SURFACES.find((t): t is NavSurface => t.kind === 'nav' && t.id === 'catalogueSetup')!, available: true }
+    const registry = [setup]
+    const visible = (permissions: string[]) => ids(buildTenantSurfaces({ enabledModuleIds: ['catalogue'], permissions }, registry).nav)
+    expect(visible(['catalogue.taxonomy.write'])).toEqual(['catalogueSetup'])
+    expect(visible(READ)).toEqual([])
+    expect(buildTenantSurfaces({ enabledModuleIds: [], permissions: ['catalogue.taxonomy.write'] }, registry).nav).toEqual([])
+  })
+
+  it('the Setup permission is gated by a helper that is false until the permission exists in the manifest', () => {
+    const manifest = { has: (id: string) => JSON.stringify(MODULE_REGISTRY).includes(`"id":"${id}"`) }
+    expect(CATALOGUE_SETUP_PERMISSION_DEFINED).toBe(manifest.has(CATALOGUE_SETUP_PERMISSION))
+    expect(catalogueSetupPermissions().includes(CATALOGUE_SETUP_PERMISSION)).toBe(CATALOGUE_SETUP_PERMISSION_DEFINED)
+    expect(catalogueSetupPermissions()).toContain('catalogue.taxonomy.write')
+  })
+
+  it('the Setup route flag matches the route folder', () => {
+    expect(existsSync(path.join(ROOT, 'src/app/[locale]/(client)/[tenant]/catalogue/setup/page.tsx'))).toBe(CATALOGUE_SETUP_ROUTE_EXISTS)
+  })
 })
+
+describe('navigation groups (ADR-042 N1, section 3)', () => {
+  const ids = (xs: readonly { id: string }[]) => xs.map((x) => x.id)
+  const all = MODULE_REGISTRY.map((m) => m.id)
+  const owner = { permissions: [...grantPermissions('owner', all), 'billing.manage', 'catalogue.taxonomy.write'], enabledModuleIds: all }
+
+  it('the groups are Content · Catalogue · Visitors · Library · Insights · Project, then the bottom block', () => {
+    expect([...NAV_GROUPS]).toEqual(['content', 'catalogue', 'visitors', 'library', 'insights', 'project', 'bottom'])
+  })
+
+  it('places every destination as Tom confirmed (2026-11-02)', () => {
+    const by = (g: string) => ids(buildTenantSurfaces(owner).nav.filter((n) => n.group === g))
+    expect(by('content')).toEqual(['blog', 'events', 'faq', 'gallery', 'documents'])
+    expect(by('catalogue')).toEqual(['catalogueItems', 'catalogueCollections', 'catalogueOptions'])
+    expect(by('visitors')).toEqual(['forms', 'members'])
+    expect(by('library')).toEqual(['media', 'people', 'taxonomy'])
+    expect(by('insights')).toEqual(['analytics'])
+    expect(by('project')).toEqual(['connections', 'settings', 'billing'])
+    expect(by('bottom')).toEqual(['support'])
+  })
+
+  it('every group is a known group and sorted: no entry sits before an earlier group', () => {
+    const groups = buildTenantSurfaces(owner).nav.map((n) => NAV_GROUPS.indexOf(n.group))
+    expect(groups.every((g) => g >= 0)).toBe(true)
+    expect([...groups].sort((a, b) => a - b)).toEqual(groups)
+  })
+
+  it('nothing sits in the wrong group for a person with little access (entry visibility by permission)', () => {
+    const editor = buildTenantSurfaces({ enabledModuleIds: ['blog', 'catalogue'], permissions: ['blog.post.read'] }).nav
+    expect(ids(editor)).toEqual(['blog', 'taxonomy', 'support'])
+  })
+
+  it('navSegmentsFor reports first path segments once (the project switcher)', async () => {
+    const { navSegmentsFor } = await import('../surfaces')
+    const segs = navSegmentsFor({ enabledModuleIds: ['catalogue'], permissions: READ_ITEMS })
+    expect(segs.filter((s) => s === 'catalogue')).toEqual(['catalogue'])
+    expect(segs).not.toContain('catalogue/items')
+  })
+})
+
+const READ_ITEMS = ['catalogue.item.read']
 
 describe('switchTarget — the project switcher never lands on a 404', async () => {
   const { switchTarget, navSegmentsFor } = await import('../surfaces')

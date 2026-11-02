@@ -18,7 +18,8 @@ export type ItemChoice = {
   name: string
   thumb: string | null
   categories: string[]
-  offered: boolean
+  /** D-21: at least one price on any format — the rule for a linked choice ("offered" is never a synonym for "priced"). */
+  hasPrice: boolean
   imageCount: number
   offerCount: number
   /** Never published (D-4): shown as a draft, never implying it is public. */
@@ -35,7 +36,7 @@ export function itemChoices(lists: CatalogueLists, defaultLocale: string): ItemC
       name: i.names[defaultLocale] || i.name || i.id,
       thumb: i.thumb,
       categories: i.categories,
-      offered: i.offerCount > 0,
+      hasPrice: i.offerCount > 0,
       imageCount: i.imageCount,
       offerCount: i.offerCount,
       isDraft: !i.isPublished,

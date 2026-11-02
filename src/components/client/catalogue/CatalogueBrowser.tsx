@@ -51,7 +51,6 @@ import {
   type ListSortKey,
 } from '@/lib/modules/catalogue/list-model'
 import { CAT_ICONS, GapBadges, InUseNotice, catalogueHref, textIn, useCatalogueError } from './catalogue-ui'
-import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
 import { UnpublishDateSheet } from '@/components/app/lifecycle/UnpublishDateSheet'
 import { Button, ButtonLink } from '@/components/app/ui/Button'
 
@@ -107,7 +106,7 @@ export function CatalogueBrowser({
   initialSort = null,
 }: {
   projectSlug: string
-  /** The tenant's name for the module (navLabel) or the messages default. */
+  /** The page title — always the interface dictionary's "Catalogue" (C11/K-2). */
   title: string
   lists: CatalogueLists
   site: Pick<CatalogueSite, 'defaultLocale' | 'timeZone'> & { currency: string; /** Frame shape for items without a profile (starter-preset fallback); items with a profile follow the registry. */ imageShape: ImageShape; categories: { value: string; label: Record<string, string> }[] }
@@ -122,7 +121,7 @@ export function CatalogueBrowser({
   const ui = useLocale()
   const router = useRouter()
   const errorText = useCatalogueError()
-  const [view, setView] = useState<CatalogueView>(VIEWS.includes(initialView as CatalogueView) ? (initialView as CatalogueView) : 'items')
+  const [view] = useState<CatalogueView>(VIEWS.includes(initialView as CatalogueView) ? (initialView as CatalogueView) : 'items')
   const [status, setStatus] = useState<CatalogueStatusFilter>(parseStatusFilter(initialStatus))
   const [sort, setSort] = useState<ListSort>(() => parseListSort(initialSort))
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -506,17 +505,6 @@ export function CatalogueBrowser({
               ) : null}
             </>
           }
-        />
-
-        <SegmentedControl
-          label={t('views.label')}
-          value={view}
-          onChange={(v) => {
-            setView(v)
-            setCategory('')
-            syncUrl(v, status)
-          }}
-          options={VIEWS.map((v) => ({ value: v, label: t(`views.${v}`) }))}
         />
 
         {inUse ? <InUseNotice projectSlug={projectSlug} referrers={inUse} onClose={() => setInUse(null)} /> : null}

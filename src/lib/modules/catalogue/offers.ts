@@ -1,4 +1,10 @@
-// ── Catalogue — offer resolution ──────────────────────────────────────────────
+// ── Catalogue — offer resolution (LEGACY; superseded by commerce/, removed in R3) ─
+//
+// Contract C4-8: superseded by commerce/prices.ts (resolvePrice, priceIssues)
+// and commerce/channel-availability.ts. No production caller uses resolveOffer,
+// channelState or isSoldOn (C10-2 item 4); they stay as the LEGACY ORACLE of the
+// C10-5 equivalence check and for the legacy offer editor (offerIssues) until
+// R2/R3. The names below that the new model renamed are aliased at the end.
 //
 // Authority: ADR-033 D7 (currency), D14 (embedded offers, reserved fields),
 // A2 (optional channel), A3 (non-overlap per scope), A4 (precedence and
@@ -189,3 +195,7 @@ export function offerIssues(
 
   return issues
 }
+
+// ── Aliases to the Catalogue V2 commerce names (contract C4-3; until R3) ─────
+export { effectiveCurrency as effectivePriceCurrency, resolvePrice, priceIssues, displayPrices, priceCoverage } from './commerce/prices'
+export type { Price, PriceResolution, PriceSource, PriceCoverage } from './commerce/prices'

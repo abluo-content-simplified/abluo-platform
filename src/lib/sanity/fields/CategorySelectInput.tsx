@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useClient, useFormValue, set, unset, type ArrayOfPrimitivesInputProps } from 'sanity'
+import { catalogueVocabulary, type RawCatalogueTaxonomy } from '@/lib/modules/catalogue/taxonomy/read'
+import { cleanTextMap } from '@/lib/taxonomy/vocabulary'
 
 /**
  * CategorySelectInput — choose from categories defined in the module.
@@ -61,17 +63,25 @@ export function CategorySelectInput(props: ArrayOfPrimitivesInputProps) {
     setLoading(true)
     // ADR-033 Amendment J (dual-read): taxonomyTerm records replace the module's
     // config list when the website has any (same rule as the dashboard and website).
+    // Catalogue V2 C1 (R1, Catalogue only): the catalogue-taxonomy document, when it
+    // holds categories, replaces both (catalogueVocabulary — the one reader).
     client
-      .fetch<{ config?: ConfiguredCategory[] | null; terms?: { key?: string; label?: Record<string, string>; color?: string }[] | null } | null>(
+      .fetch<{ config?: ConfiguredCategory[] | null; terms?: { key?: string; label?: Record<string, string>; color?: string }[] | null; taxonomy?: RawCatalogueTaxonomy } | null>(
         `{
           "config": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]
             .moduleInstallations[moduleId == $moduleId][0]
             .config.categories[]{ value, label, color },
-          "terms": *[_type == "taxonomyTerm" && projectSlug == $projectSlug && module == $moduleId && kind == "category" && !(_id in path("drafts.**"))] | order(order asc, key asc){ key, label, color }
+          "terms": *[_type == "taxonomyTerm" && projectSlug == $projectSlug && module == $moduleId && kind == "category" && !(_id in path("drafts.**"))] | order(order asc, key asc){ key, label, color },
+          "taxonomy": select($moduleId == "catalogue" => *[_type == "catalogueTaxonomy" && _id == "catalogue-taxonomy." + $projectSlug && projectSlug == $projectSlug][0]{ "categories": categories[]{ key, label, parentKey, order, archivedAt } }, null)
         }`,
         { projectSlug, moduleId }
       )
       .then((data) => {
+        const fromDocument = moduleId === 'catalogue' ? catalogueVocabulary({ taxonomy: data?.taxonomy, configCategories: null }) : null
+        if (fromDocument?.categorySource === 'document') {
+          setCategories((fromDocument.categories ?? []).map((c) => ({ value: c.value, label: cleanTextMap(c.label) })))
+          return
+        }
         const terms = (data?.terms ?? []).filter((t) => typeof t?.key === 'string' && t.key !== '')
         setCategories(
           terms.length > 0

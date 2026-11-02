@@ -19,7 +19,8 @@ describe('English navigation labels are Title Case', () => {
   const groups: Record<string, Record<string, string>> = {
     'clientDashboard.nav': en.clientDashboard.nav,
     'admin.nav': en.admin.nav,
-    'sidebar rows': { whatsNew: en.clientDashboard.whatsNew.title, signOut: en.app.shell.signOut },
+    'clientDashboard.navGroups': en.clientDashboard.navGroups,
+    'sidebar rows': { whatsNew: en.clientDashboard.whatsNew.title, signOut: en.app.shell.signOut, collapse: en.app.shell.collapseSidebar, expand: en.app.shell.expandSidebar },
   }
   for (const [name, labels] of Object.entries(groups)) {
     it(name, () => {

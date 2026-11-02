@@ -1,7 +1,7 @@
 'use client'
 
 import { useLiveSupportCount } from '@/components/client/tickets/useLiveSupportCount'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
@@ -13,10 +13,11 @@ import { TabBarButton } from '@/components/app/ui/TabBarButton'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { LinkCard } from '@/components/app/ui/LinkCard'
 import { CountBadge } from '@/components/app/ui/CountBadge'
-import { AppSidebar, type AppNavEntry } from '@/components/app/shell/AppSidebar'
+import { AppSidebar, type AppNavEntry, type AppNavItem } from '@/components/app/shell/AppSidebar'
+import { useSidebarState } from '@/components/app/shell/SidebarState'
 import type { ClientNavItem } from '@/lib/modules/client-navigation'
-import { isNavItemActive, phoneNavLayout } from '@/lib/modules/client-nav-layout'
-import { isModuleNavGroup, type NavGroup } from '@/lib/client/surfaces'
+import { groupOfNavId, isNavItemActive, PHONE_CONTENT_GROUPS, phoneNavLayout, resolveActiveNavId, sidebarGroups } from '@/lib/modules/client-nav-layout'
+import { effectiveGroupOpen } from '@/lib/app-nav-preferences'
 import type { ClientProductUpdate } from '@/lib/whats-new/model'
 import { useWhatsNew } from './whats-new/WhatsNew'
 import { ProfilePanel, type ProfileData } from './account/ProfilePanel'
@@ -85,6 +86,10 @@ const ICONS = {
   billing: 'M2 6h20v12H2zM2 10h20M6 15h4',
   settings: 'M4 7h10M18 7h2M4 17h2M10 17h10M16 4v6M8 14v6',
   catalogue: 'M4 6h16M4 12h16M4 18h10M18 16v4M16 18h4',
+  catalogueItems: 'M4 6h16M4 12h16M4 18h10M18 16v4M16 18h4',
+  catalogueCollections: 'M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z',
+  catalogueOptions: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  catalogueSetup: 'M4 7h10M18 7h2M4 17h2M10 17h10M16 4v6M8 14v6',
   faq: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12zM9.6 9.5a2.5 2.5 0 0 1 4.9.8c0 1.7-2.5 2.2-2.5 2.2M12 15.5h.01',
   taxonomy: 'M3 10V4h6l11 11-6 6zM7.5 7.5h.01',
   members: 'M6 11V8a6 6 0 0 1 12 0v3M5 11h14v10H5zM12 15v2',
@@ -95,6 +100,16 @@ const ICONS = {
   content: 'M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
   discover: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM17.5 14v7M14 17.5h7',
   generic: APP_ICONS.generic,
+} as const
+
+/** One icon per headed group, drawn on its rail button. */
+const GROUP_ICONS = {
+  content: ICONS.content,
+  catalogue: ICONS.catalogue,
+  visitors: ICONS.forms,
+  library: ICONS.media,
+  insights: ICONS.analytics,
+  project: ICONS.settings,
 } as const
 
 const REPORT_ICON = 'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'
@@ -119,13 +134,15 @@ export function ClientSidebar({
   const pathname = usePathname()
   const [profileOpen, setProfileOpen] = useState(false)
   const t = useTranslations('clientDashboard')
+  const tShell = useTranslations('app.shell')
   // The Content sheet is open on the page it was opened on (navigating closes it), like the drawer.
   const [contentOpenOn, setContentOpenOn] = useState<string | null>(null)
   if (contentOpenOn !== null && contentOpenOn !== pathname) setContentOpenOn(null)
   const contentOpen = contentOpenOn === pathname
   const activeProjectName = projects.find((p) => p.projectSlug === activeSlug)?.name?.trim() || activeSlug
   const { content, requests, media, overflow } = phoneNavLayout(navItems)
-  const labelOf = (i: ClientNavItem) => i.label ?? t(`nav.${i.moduleId}`)
+  const contentGroups = PHONE_CONTENT_GROUPS.filter((g) => content.some((i) => i.group === g)).length
+  const labelOf = (i: ClientNavItem) => t(`nav.${i.moduleId}`)
   const requestsBadge = newRequestsCount > 0 ? { count: newRequestsCount, label: t('shell.requestsUnanswered', { count: newRequestsCount }) } : undefined
   const news = useWhatsNew(whatsNew, { popup: whatsNewPopup })
   const billingNav = billingNavBadge(billingAttention)
@@ -134,47 +151,51 @@ export function ClientSidebar({
   const moreBadge = billingBadge && overflow.some((i) => i.moduleId === 'billing') ? billingBadge : undefined
   const liveSupportUnread = useLiveSupportCount(activeSlug, supportUnread, pathname, navItems.some((i) => i.moduleId === 'support'))
 
-  // Home stands alone at the top. The modules' screens follow in their groups
-  // (PLAT-3: Publish · Show · Visitors · Tools), each with a small heading; the
-  // other groups (content work, activity, support & configuration) get extra
-  // space above them, no heading. "What's new" (a panel, not a page) opens the
-  // support & configuration group (Tom, 2026-10-22).
-  const links: (AppNavEntry & { group: string })[] = [
-    { key: 'home', href: homeHref, label: t('nav.home'), icon: ICONS.home, group: 'home' },
-    ...navItems.map((i) => ({
-      key: i.moduleId,
-      href: i.href,
-      label: i.label ?? t(`nav.${i.moduleId}`),
-      icon: iconFor(i.moduleId),
-      group: i.group as string,
-      badge:
-        i.moduleId === 'support' && liveSupportUnread > 0
-          ? { count: liveSupportUnread, label: t('supportTickets.list.unreadCount', { count: liveSupportUnread }) }
-          : i.moduleId === 'forms'
-            ? requestsBadge
-            : i.moduleId === 'billing'
-              ? billingBadge
-              : undefined,
-    })),
-  ]
-  // The bottom group (Tom, 2026-10-29): Connected Apps, Settings, Support, What's New, More You Can Add.
-  const SUPPORT_ORDER = ['connections', 'settings', 'billing', 'support']
-  const supportRank = (key: string) => SUPPORT_ORDER.indexOf(key)
-  const supportRows = links.filter((i) => i.group === 'support').sort((x, y) => supportRank(x.key) - supportRank(y.key))
-  const discover: AppNavEntry & { group: string } = { key: 'discover', href: `/${activeSlug}/discover`, label: t('nav.discover'), icon: ICONS.discover, group: 'support' }
-  const bottomGroup: (AppNavEntry & { group: string })[] = [
-    ...supportRows,
-    ...(news.sidebarRow ? [{ key: 'whatsNew', node: news.sidebarRow, group: 'support' }] : []),
-    discover,
-  ]
-  const rest = links.filter((i) => i.group !== 'support')
-  const grouped: (AppNavEntry & { group: string })[] = [...rest, ...bottomGroup]
-  const items: AppNavEntry[] = grouped.map(({ group, ...item }, n) => {
-    const starts = n > 0 && group !== grouped[n - 1].group
-    return starts && isModuleNavGroup(group as NavGroup)
-      ? { ...item, groupStart: true, groupHeading: t(`navGroups.${group}` as 'navGroups.publish') }
-      : { ...item, groupStart: starts }
+  // ADR-042: Home stands alone at the top; then the headed groups (Content, Catalogue, Visitors, Library,
+  // Insights, Project), each a collapsible disclosure (a flyout in the rail); then the unheaded bottom block
+  // (Support, What's New, More You Can Add). One definition: `surfaces.ts` -> `sidebarGroups`.
+  const activeId = isNavItemActive(pathname, homeHref) ? 'home' : resolveActiveNavId(pathname, navItems)
+  const activeGroup = groupOfNavId(navItems, activeId)
+  const sidebarState = useSidebarState()
+  const setGroupOpen = sidebarState?.setGroupOpen
+  // The person closed the group of the current destination: it stays closed until they go somewhere else (N3).
+  const [closedAt, setClosedAt] = useState<string | null>(null)
+  const suppressAutoOpen = closedAt === activeId
+  useEffect(() => {
+    if (activeGroup && !suppressAutoOpen) setGroupOpen?.(activeGroup, true)
+  }, [activeGroup, suppressAutoOpen, setGroupOpen])
+  const toEntry = (i: ClientNavItem): AppNavItem => ({
+    key: i.moduleId,
+    href: i.href,
+    label: labelOf(i),
+    icon: iconFor(i.moduleId),
+    badge:
+      i.moduleId === 'support' && liveSupportUnread > 0
+        ? { count: liveSupportUnread, label: t('supportTickets.list.unreadCount', { count: liveSupportUnread }) }
+        : i.moduleId === 'forms'
+          ? requestsBadge
+          : i.moduleId === 'billing'
+            ? billingBadge
+            : undefined,
   })
+  const { groups, bottom } = sidebarGroups(navItems)
+  const items: AppNavEntry[] = [
+    { key: 'home', href: homeHref, label: t('nav.home'), icon: ICONS.home },
+    ...groups.map((g) => ({
+      key: g.group,
+      label: t(`navGroups.${g.group}`),
+      icon: GROUP_ICONS[g.group],
+      items: g.items.map(toEntry),
+      open: sidebarState ? effectiveGroupOpen(sidebarState.prefs, g.group, activeGroup, suppressAutoOpen) : true,
+      onOpenChange: (open: boolean) => {
+        setGroupOpen?.(g.group, open)
+        if (!open && g.group === activeGroup) setClosedAt(activeId)
+      },
+    })),
+    ...bottom.map((i, n) => ({ ...toEntry(i), groupStart: n === 0 })),
+    ...(news.sidebarRow ? [{ key: 'whatsNew', node: news.sidebarRow, railNode: news.railRow }] : []),
+    { key: 'discover', href: `/${activeSlug}/discover`, label: t('nav.discover'), icon: ICONS.discover, groupStart: bottom.length === 0 },
+  ]
 
   return (
     <>
@@ -206,13 +227,15 @@ export function ClientSidebar({
         ],
         ...(profile ? { onProfile: () => setProfileOpen(true) } : {}),
       }}
-      isActive={isNavItemActive}
+      activeKey={activeId}
+      collapsible={{ collapseLabel: tShell('collapseSidebar'), expandLabel: tShell('expandSidebar') }}
       drawerSide="right"
       showMenuButton={false}
-      bottomBar={({ drawerOpen, setDrawerOpen, isActive }) => {
+      bottomBar={({ drawerOpen, setDrawerOpen }) => {
+        const isActive = (href: string) => (href === homeHref ? activeId === 'home' : [...content, requests, media].some((i) => i?.href === href && i.moduleId === activeId))
         // Slots (phoneNavLayout): Home · Content · Requests · Media · More. A slot the project does not have is left out.
-        const contentActive = content.some((i) => isActive(i.href))
-        const moreActive = drawerOpen || overflow.some((i) => isActive(i.href))
+        const contentActive = content.some((i) => i.moduleId === activeId)
+        const moreActive = drawerOpen || overflow.some((i) => i.moduleId === activeId)
         const linkTabs: { key: string; href: string; label: string; d: string; badge?: { count: number; label: string } }[] = [
           { key: 'home', href: homeHref, label: t('nav.home'), d: ICONS.home },
           ...(content.length === 1 ? [{ key: 'content', href: content[0].href, label: t('nav.content'), d: ICONS.content }] : []),
@@ -271,9 +294,22 @@ export function ClientSidebar({
     {content.length > 1 ? (
       <BottomSheet open={contentOpen} title={t('nav.content')} onClose={() => setContentOpenOn(null)}>
         <div className="flex flex-col gap-2">
-          {content.map((i) => (
-            <LinkCard key={i.moduleId} href={i.href} icon={<AppIcon d={iconFor(i.moduleId)} size={20} />} title={labelOf(i)} />
-          ))}
+          {PHONE_CONTENT_GROUPS.map((group) => {
+            const rows = content.filter((i) => i.group === group)
+            if (rows.length === 0) return null
+            return (
+              <section key={group} aria-labelledby={`content-sheet-${group}`} className="flex flex-col gap-2">
+                {contentGroups > 1 ? (
+                  <h3 id={`content-sheet-${group}`} className="px-1 pt-2 text-[0.6875rem] font-medium tracking-wider text-muted-foreground uppercase">
+                    {t(`navGroups.${group}`)}
+                  </h3>
+                ) : null}
+                {rows.map((i) => (
+                  <LinkCard key={i.moduleId} href={i.href} icon={<AppIcon d={iconFor(i.moduleId)} size={20} />} title={labelOf(i)} />
+                ))}
+              </section>
+            )
+          })}
         </div>
       </BottomSheet>
     ) : null}

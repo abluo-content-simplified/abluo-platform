@@ -86,14 +86,23 @@
       "content": "Inhalte",
       "requests": "Anfragen",
       "discover": "Mehr zum Hinzufügen",
-      "billing": "Abrechnung"
+      "billing": "Abrechnung",
+      "catalogueItems": "Einträge",
+      "catalogueCollections": "Sammlungen",
+      "catalogueOptions": "Optionen",
+      "catalogueSetup": "Einrichtung"
     },
     "navGroups": {
       "publish": "Veröffentlichen",
       "show": "Zeigen",
       "visitors": "Besucher",
       "tools": "Werkzeuge",
-      "other": "Weitere"
+      "other": "Weitere",
+      "content": "Inhalte",
+      "catalogue": "Katalog",
+      "library": "Bibliothek",
+      "insights": "Einblicke",
+      "project": "Projekt"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -3321,7 +3330,9 @@
     "shell": {
       "signOut": "Abmelden",
       "openMenu": "Menü",
-      "closeMenu": "Menü schließen"
+      "closeMenu": "Menü schließen",
+      "collapseSidebar": "Seitenleiste einklappen",
+      "expandSidebar": "Seitenleiste ausklappen"
     },
     "accountMenu": {
       "open": "Kontomenü öffnen",
@@ -5573,7 +5584,8 @@
       "dietaryTags": "Ernährungshinweise",
       "serviceChannels": "Servicekanäle",
       "showPricesByDefault": "Preise standardmäßig anzeigen",
-      "navLabel": "Name im Dashboard"
+      "navLabel": "Name im Dashboard",
+      "publicName": "Öffentlicher Name"
     },
     "errors": {
       "inUse": "Wird noch verwendet in: {names}.",
@@ -5641,6 +5653,7 @@
         "failed": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
         "allergens_not_reviewed": "Prüfe zuerst die Allergene: Gib an, was enthalten ist, oder bestätige, dass kein Allergen der EU-Liste angegeben ist.",
         "unpublished_dependencies": "Hier wird etwas verwendet, das noch nicht veröffentlicht ist.",
+        "linked_item_needs_price": "Dieser Artikel braucht mindestens einen Preis, bevor er als verknüpfte Auswahl verwendet werden kann.",
         "option_allergens_not_reviewed": "Prüfe zuerst die Allergene der Extras.",
         "slug_without_name": "Eine Adresse hat keinen Namen in ihrer Sprache."
       },

@@ -70,22 +70,22 @@ describe('deterministic regardless of registry or install order', () => {
 })
 
 describe('both surfaces use the same source', () => {
-  it('the sidebar module entries follow the shared order and carry the shared group', () => {
+  it('the sidebar module entries follow the shared module order (ADR-042 changes the groups, not the order)', () => {
     const moduleNav = TENANT_SURFACES.filter((s): s is NavSurface => s.kind === 'nav' && Boolean(s.requires.module))
     const modules = moduleNav.map((s) => s.requires.module as string)
     expect(modules).toEqual(sortByModuleOrder(modules, (x) => x))
-    for (const s of moduleNav) expect(s.group, s.id).toBe(moduleGroupOf(s.requires.module as string))
   })
-  it('an Owner with every module: Home → Publish → Show → Visitors (Access next to Forms) → content → activity → support', () => {
+  it('an Owner with every module (ADR-042 section 3): Content → Catalogue → Visitors (Access next to Forms) → Library → Insights → Project → bottom', () => {
     const all = MODULE_REGISTRY.map((m) => m.id)
     const nav = buildTenantSurfaces({ permissions: grantPermissions('owner', all), enabledModuleIds: all }).nav
     expect(nav.map((n) => [n.id, n.group])).toEqual([
-      ['blog', 'publish'], ['events', 'publish'], ['faq', 'publish'],
-      ['gallery', 'show'], ['catalogue', 'show'], ['documents', 'show'],
+      ['blog', 'content'], ['events', 'content'], ['faq', 'content'], ['gallery', 'content'], ['documents', 'content'],
+      ['catalogueItems', 'catalogue'], ['catalogueCollections', 'catalogue'], ['catalogueOptions', 'catalogue'],
       ['forms', 'visitors'], ['members', 'visitors'],
-      ['media', 'content'], ['people', 'content'], ['taxonomy', 'content'],
-      ['analytics', 'activity'],
-      ['support', 'support'], ['connections', 'support'], ['settings', 'support'],
+      ['media', 'library'], ['people', 'library'], ['taxonomy', 'library'],
+      ['analytics', 'insights'],
+      ['connections', 'project'], ['settings', 'project'],
+      ['support', 'bottom'],
     ])
   })
   it('Studio and the dashboard both import the shared definition, and neither keeps its own list', () => {

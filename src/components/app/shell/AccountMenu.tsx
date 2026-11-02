@@ -43,6 +43,8 @@ import type { AppTextSize, AppTheme } from '@/lib/app-theme'
  */
 export type AccountMenuProps = {
   variant: 'sidebar' | 'bar'
+  /** `sidebar` only: just the avatar (the collapsed rail); the popover is the same. */
+  compact?: boolean
   name: string
   email: string
   avatarUrl: string | null
@@ -188,7 +190,7 @@ function MenuBody({ variant, name, email, helpUrl, profileHref, onProfile, role,
 
 export function AccountMenu(props: AccountMenuProps) {
   const quickAdd = useQuickAdd()
-  const { variant, name, email, avatarUrl, role, siteName } = props
+  const { variant, name, email, avatarUrl, role, siteName, compact = false } = props
   const t = useTranslations('app.accountMenu')
   const roleLine = useRoleLine(role, siteName)
   const [open, setOpen] = useState(false)
@@ -226,7 +228,7 @@ export function AccountMenu(props: AccountMenuProps) {
       <button
         ref={buttonRef}
         type="button"
-        aria-label={desktop ? undefined : [t('open'), ...flagged.map((r) => r.badgeLabel).filter(Boolean)].join(', ')}
+        aria-label={desktop && !compact ? undefined : [t('open'), ...flagged.map((r) => r.badgeLabel).filter(Boolean)].join(', ')}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
@@ -235,7 +237,9 @@ export function AccountMenu(props: AccountMenuProps) {
           setOpen((o) => !o)
         }}
         className={
-          desktop
+          desktop && compact
+            ? 'grid size-10 place-items-center rounded-md transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+            : desktop
             ? 'flex w-full items-start gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
             : 'grid size-11 shrink-0 place-items-center rounded-full hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
         }
@@ -246,7 +250,7 @@ export function AccountMenu(props: AccountMenuProps) {
             <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-action ring-2 ring-background" />
           ) : null}
         </span>
-        {desktop ? (
+        {desktop && !compact ? (
           <span className="min-w-0 flex-1 pt-0.5">
             <span className="block truncate text-sm font-medium text-foreground">{label}</span>
             {roleLine ? <span className="block truncate text-xs text-muted-foreground">{roleLine}</span> : null}

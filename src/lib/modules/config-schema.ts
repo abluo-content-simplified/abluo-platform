@@ -147,6 +147,27 @@ function buildModuleConfigField(field: ModuleConfigFieldDef) {
                   'Stable internal identifier recorded with each submission. Changing it breaks the link to existing records — rename the label instead.',
                 validation: (Rule) => Rule.required(),
               }),
+              // Catalogue channel attributes (contract C2-3). Read defaults for entries
+              // without them: active ⇒ true, defaultAvailability ⇒ 'unavailable', defaultSchedule ⇒ [].
+              ...(field.supportsChannelAttributes
+                ? [
+                    defineField({ name: 'active', title: 'Active', type: 'boolean', description: 'Inactive channels are hidden everywhere; their prices and rules are kept.' }),
+                    defineField({
+                      name: 'defaultAvailability',
+                      title: 'Default availability',
+                      type: 'string',
+                      options: { list: [{ title: 'Available', value: 'available' }, { title: 'Unavailable', value: 'unavailable' }], layout: 'radio' },
+                      description: 'The project default for this channel. Empty = unavailable.',
+                    }),
+                    defineField({
+                      name: 'defaultSchedule',
+                      title: 'Default schedule',
+                      type: 'array',
+                      of: [defineArrayMember({ type: 'catalogueWeeklyOverride' })],
+                      description: 'Optional weekly overrides of the default availability.',
+                    }),
+                  ]
+                : []),
               ...(field.supportsColor
                 ? [defineField({
                     name: 'color',
@@ -237,6 +258,12 @@ function buildModuleConfigField(field: ModuleConfigFieldDef) {
         validation: (Rule) => (field.required ? Rule.required() : Rule),
       })
     }
+
+    case 'schemaType':
+      // Structured, module-edited config (validate.ts requires `hidden`).
+      return field.schemaTypeArray
+        ? defineField({ ...common, type: 'array', of: [defineArrayMember({ type: field.schemaType ?? 'object' })] })
+        : defineField({ ...common, type: field.schemaType ?? 'object' })
 
     case 'text':
       return defineField({

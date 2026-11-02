@@ -86,14 +86,23 @@
       "content": "Content",
       "requests": "Requests",
       "discover": "More You Can Add",
-      "billing": "Billing"
+      "billing": "Billing",
+      "catalogueItems": "Items",
+      "catalogueCollections": "Collections",
+      "catalogueOptions": "Options",
+      "catalogueSetup": "Setup"
     },
     "navGroups": {
       "publish": "Publish",
       "show": "Show",
       "visitors": "Visitors",
       "tools": "Tools",
-      "other": "Other"
+      "other": "Other",
+      "content": "Content",
+      "catalogue": "Catalogue",
+      "library": "Library",
+      "insights": "Insights",
+      "project": "Project"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -3321,7 +3330,9 @@
     "shell": {
       "signOut": "Sign Out",
       "openMenu": "Menu",
-      "closeMenu": "Close menu"
+      "closeMenu": "Close menu",
+      "collapseSidebar": "Collapse Sidebar",
+      "expandSidebar": "Expand Sidebar"
     },
     "accountMenu": {
       "open": "Open account menu",
@@ -5573,7 +5584,8 @@
       "dietaryTags": "Dietary tags",
       "serviceChannels": "Service channels",
       "showPricesByDefault": "Show prices by default",
-      "navLabel": "Dashboard name"
+      "navLabel": "Dashboard name",
+      "publicName": "Public name"
     },
     "errors": {
       "inUse": "Still used by: {names}.",
@@ -5641,6 +5653,7 @@
         "failed": "Something went wrong. Please try again.",
         "allergens_not_reviewed": "Review the allergens first: say what it contains, or confirm that no allergens from the EU list are declared.",
         "unpublished_dependencies": "This uses something that isn't published yet.",
+        "linked_item_needs_price": "This item needs at least one price before it can be used as a linked choice.",
         "option_allergens_not_reviewed": "Review the allergens of the extras first.",
         "slug_without_name": "An address has no name in its language."
       },

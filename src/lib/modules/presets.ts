@@ -68,6 +68,8 @@ export function presetValueError(field: ModuleConfigFieldDef, value: unknown): s
     }
     case 'reference':
       return 'is a reference; presets cannot set references'
+    case 'schemaType':
+      return 'is structured module config; presets cannot set it'
   }
 }
 

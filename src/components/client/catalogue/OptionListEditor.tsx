@@ -41,7 +41,7 @@ const newKey = () => Math.random().toString(36).slice(2, 14)
 /**
  * Option lists (spec §10.2, ADR-033 D2): a plain editor — the list's name and
  * its options (label per language, add or remove, a price change that may be
- * zero or negative, and optionally a linked item that is itself offered),
+ * zero or negative, and optionally a linked item that has at least one price),
  * reorderable. How many options a customer can choose (min/max) is set where an item
  * attaches the list, not here. Archiving or deleting is refused while any
  * non-archived item uses the list; the refusal links every one of them (C7).
@@ -81,7 +81,7 @@ export function OptionListEditor({
   const { toast, show } = useUndo()
   const isLive = Boolean(snapshot?.live)
   const title = textIn(name, ui, d) || t('untitled')
-  const offered = items.filter((i) => i.offered)
+  const priced = items.filter((i) => i.hasPrice)
   const tt = useTranslations('catalogue.dashboard.together')
   const together = usePublishTogether({
     projectSlug,
@@ -268,13 +268,13 @@ export function OptionListEditor({
                       {delta !== null && delta !== 0 ? <span className="pb-3 text-sm text-muted-foreground">{formatPrice(delta, site.config.currency, ui, { signed: true })}</span> : null}
                     </div>
                     {delta === null ? <p className="mt-2 text-sm text-destructive">{t('badDelta')}</p> : null}
-                    {offered.length ? (
+                    {priced.length ? (
                       <div className="mt-3">
                         <FilterSelect
                           label={t('linkedItem')}
                           value={o.itemId ?? ''}
                           onChange={(v) => setOpt(o.key, { itemId: v || null })}
-                          options={[{ value: '', label: t('noLinkedItem') }, ...offered.map((i) => ({ value: i.id, label: i.isDraft ? t('draftLabel', { name: i.name }) : i.name }))]}
+                          options={[{ value: '', label: t('noLinkedItem') }, ...priced.map((i) => ({ value: i.id, label: i.isDraft ? t('draftLabel', { name: i.name }) : i.name }))]}
                         />
                       </div>
                     ) : null}

@@ -110,6 +110,10 @@ export type ModuleCollectionGroupDef = {
  *                      (`hidden`) bookkeeping, e.g. the catalogue's retired URL
  *                      segments; not a general authoring control.
  * reference          — reference to one or more document types, `referenceTo` required
+ * schemaType         — a value of a registered Sanity object type named by `schemaType`
+ *                      (an array of it with `schemaTypeArray`). Structured settings
+ *                      edited by a module's own surface (e.g. Catalogue → Setup), never
+ *                      by the generic Modules pane: such a field must be `hidden`.
  */
 export type ModuleConfigFieldType =
   | 'string'
@@ -121,6 +125,7 @@ export type ModuleConfigFieldType =
   | 'localizedStringList'
   | 'stringList'
   | 'reference'
+  | 'schemaType'
 
 /** One choice in a `select` config field. */
 export type ModuleConfigOption = {
@@ -211,6 +216,17 @@ export type ModuleConfigFieldDef = {
   showWhen?: { field: string; equals: string | boolean }
   /** For `localizedStringList`: each entry also carries an optional colour. */
   supportsColor?: boolean
+  /**
+   * For `localizedStringList` (Catalogue service channels, contract C2-3): each
+   * entry also carries `active`, `defaultAvailability` and `defaultSchedule`
+   * (an array of `catalogueWeeklyOverride`). Edited by Catalogue → Setup, not
+   * by the generic list editor.
+   */
+  supportsChannelAttributes?: boolean
+  /** For `schemaType`: the registered Sanity object type name. REQUIRED for that type. */
+  schemaType?: string
+  /** For `schemaType`: the value is an array of `schemaType` members. */
+  schemaTypeArray?: boolean
   /**
    * For `localizedStringList`: each entry is also a public page, so it carries
    * a description, a list of retired keys that 301 to it, and a noindex flag.

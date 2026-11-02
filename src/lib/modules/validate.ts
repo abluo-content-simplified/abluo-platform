@@ -56,6 +56,7 @@ const VALID_CONFIG_FIELD_TYPES = new Set<string>([
   'localizedStringList',
   'stringList',
   'reference',
+  'schemaType',
 ])
 
 /**
@@ -435,6 +436,16 @@ export function validateRegistry(manifests: ModuleManifest[]): void {
           rule: 12,
           message: `config field "${field.id}" is a reference but declares no referenceTo targets.`,
           fix: `Add referenceTo: ["someDocumentType"] — a Sanity reference field must declare what it points to.`,
+        })
+      }
+
+      // A schemaType field names a registered object type and is never a Modules-pane control.
+      if (field.type === 'schemaType' && (!field.schemaType || !field.hidden)) {
+        errors.push({
+          moduleId: mid,
+          rule: 12,
+          message: `config field "${field.id}" is a schemaType field but ${!field.schemaType ? 'names no schemaType' : 'is not hidden'}.`,
+          fix: `Set schemaType: "someObjectType" and hidden: true — structured config is edited by the module's own surface, not the Modules pane.`,
         })
       }
 

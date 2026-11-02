@@ -34,6 +34,7 @@ import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
 import { publicFilterFor, publicFilterForAnyType } from '@/lib/lifecycle/public-types'
 import { visibilityFilter } from '@/lib/modules/catalogue/visibility'
 import { catalogueCategoryTermsGroq, catalogueTermsGroq, moduleRoutableTermsGroq, moduleTermsGroq } from '@/lib/taxonomy/vocabulary'
+import { catalogueTaxonomyGroq } from '@/lib/modules/catalogue/taxonomy/read'
 
 // ─── ADR-032 D3 — the public-visibility rule ─────────────────────────────────
 // Every public read of a lifecycle type (post, newsArticle, event, gallery) —
@@ -2436,6 +2437,11 @@ const CATALOGUE_IMAGE_FIELDS = /* groq */ `
 
 // An offer: price, channel (absent = unscoped, A2), note, serving hours.
 // currency / locationKey are reserved and deliberately absent.
+//
+// Catalogue V2 dual-read (contract C10-4): `formats` (each with its prices and
+// price windows) and the item availability rows are projected beside the
+// legacy `offers`; commerceOf (commerce/legacy-commerce.ts) decides which shape
+// wins. Same reserved-field rule for prices: currency / locationKey never projected.
 const CATALOGUE_OFFER_FIELDS = /* groq */ `
   offers[] {
     _key,
@@ -2443,7 +2449,23 @@ const CATALOGUE_OFFER_FIELDS = /* groq */ `
     price,
     "priceNote": ${loc('priceNote')},
     availability[] { days, from, to }
-  }
+  },
+  formats[] {
+    _key,
+    "label": ${loc('label')},
+    identifiers { sku, isbn, gtin },
+    quantity { value, unit },
+    templateKey,
+    channelAvailability[] { _key, channel, state, schedule[] { _key, _type, days, from, to, state } },
+    prices[] {
+      _key,
+      channel,
+      amount,
+      "note": ${loc('note')},
+      windows[] { _key, days, from, to }
+    }
+  },
+  channelAvailability[] { _key, channel, state, schedule[] { _key, _type, days, from, to, state } }
 `
 
 const CATALOGUE_OPTION_LIST_FIELDS = /* groq */ `
@@ -2492,6 +2514,9 @@ const CATALOGUE_ITEM_FIELDS = /* groq */ `
   "description": ${loc('description')},
   "slugMap": slug,
   categories,
+  // Catalogue V2 C1.4 — read with the legacy list (itemCategoryAssignment); absent until R2 writes them.
+  primaryCategory,
+  additionalCategories,
   tags,
   links[] { _key, "label": ${loc('label')}, url, kind, affiliate, moreUrls, edition { language, original } },
   // ADR-033 D-3 — the explicit declaration; the note is tenant text (locale chain).
@@ -2615,7 +2640,8 @@ export const catalogueModuleConfigQuery = /* groq */ `
       showPricesByDefault,
       // Amendment K — this language only; blank falls back to the platform's default sentence.
       "affiliateDisclosure": affiliateDisclosure[$locale],
-      "serviceChannels": serviceChannels[] { value, "label": coalesce(label[$locale], label[$defaultLocale], label.en) },
+      // Contract C2 — the channel attributes (read defaults in commerce/channels.ts readChannelEntry).
+      "serviceChannels": serviceChannels[] { value, "label": coalesce(label[$locale], label[$defaultLocale], label.en), active, defaultAvailability, defaultSchedule[] { _key, _type, days, from, to, state } },
       "categories": categories[] { value, color, "label": coalesce(label[$locale], label[$defaultLocale], label.en) },
       "dietaryTags": dietaryTags[] { value, "label": coalesce(label[$locale], label[$defaultLocale], label.en) }
     },
@@ -2624,6 +2650,9 @@ export const catalogueModuleConfigQuery = /* groq */ `
     "categoryTerms": ${catalogueCategoryTermsGroq('coalesce(label[$locale], label[$defaultLocale], label.en)')},
     // Slice 7 — tags come from term records only.
     "tagTerms": ${catalogueTermsGroq('tag', 'coalesce(label[$locale], label[$defaultLocale], label.en)')},
+    // Catalogue V2 C1 (R1 triple dual-read): the catalogue-taxonomy document, when it holds a kind,
+    // replaces the term records (and config list) for that kind entirely (catalogueVocabulary).
+    "taxonomy": ${catalogueTaxonomyGroq('coalesce(label[$locale], label[$defaultLocale], label.en)')},
     "timeZone": *[_type == "siteConfig" && projectSlug == $projectSlug][0].timeZone
   }
 `

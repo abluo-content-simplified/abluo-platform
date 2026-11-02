@@ -6,8 +6,11 @@
 //
 // Composes the module's own rules rather than restating them:
 //   sections.ts      readingOrder — the tree, with fail-visible recovery (A7)
-//   offers.ts        effectiveCurrency (D7/A6); asResolverOffers feeds resolveOffer
-//   availability.ts  evaluate — serving hours in the site zone (A8)
+//   commerce/        commerceOf (dual-read: formats, else legacy offers — C10-4) →
+//                    publicCommerce (C5-5: display prices + weekly profiles,
+//                    instant-free) → the DTO offers/formats; effectiveCurrency (D7/A6)
+//   availability.ts  evaluate (deprecated window vocabulary) — the per-price
+//                    window state the DTO has always carried (A8)
 //   lifecycle        isPublicAt — the ADR-032 D3 rule re-checked in TypeScript,
 //                    so a stale cache or a hand-built row cannot leak hidden
 //                    content (B4)
@@ -21,13 +24,21 @@ import type { PortableTextContent, SanityCrop, SanityHotspot, SanityImageAsset }
 import { allergenDeclarationIssues, orderedAllergens } from './allergens'
 import { evaluate, WEEKDAYS, type AvailabilityState, type Weekday } from './availability'
 import { effectiveCurrency, type Offer } from './offers'
+import { CATEGORY_RULES, availabilityInputsOf, type CategoryRuleLookup } from './commerce/channel-availability'
+import { channelSetOf, readChannelEntry, type Channel, type ChannelSet } from './commerce/channels'
+import { commerceOf } from './commerce/legacy-commerce'
+import { publicCommerce } from './commerce/offering'
+import type { Price } from './commerce/prices'
+import type { CategoryTree } from './taxonomy/types'
 import { catalogueLinkUrl } from './links'
 import { readEdition } from './editions'
 import { readingOrder } from './sections'
 import { normalise } from './slugs'
 import { can, profileOf } from './profiles'
 import { normalizeIsbn, parseBookYear } from './isbn'
-import { catalogueCategoryVocabulary, tagVocabulary, type CategoryTermRow } from '@/lib/taxonomy/vocabulary'
+import type { CategoryTermRow } from '@/lib/taxonomy/vocabulary'
+import { catalogueVocabulary, itemCategoryAssignment, itemCategoryKeys, readCategoryNodes, type RawCatalogueTaxonomy } from './taxonomy/read'
+import { ancestorsOf, buildTree } from './taxonomy/tree'
 import type {
   CatalogueAvailabilityDTO,
   CatalogueCollectionDTO,
@@ -42,6 +53,7 @@ import type {
   CatalogueItemProfile,
   OptionAllergenDeclarationDTO,
   CatalogueLinkedItemDTO,
+  CatalogueFormatDTO,
   CatalogueOfferDTO,
   CatalogueOptionDTO,
   CatalogueOptionListDTO,
@@ -139,6 +151,9 @@ export type RawCatalogueItem = LifecycleFields & {
   links?: ({ _key?: string | null; label?: RawText; url?: unknown; kind?: unknown; affiliate?: unknown; moreUrls?: unknown; edition?: unknown } | null)[] | null
   slugMap?: RawSlugMap
   categories?: readonly string[] | null
+  /** Catalogue V2 C1.4 — when either is present it wins over the legacy `categories` (itemCategoryAssignment). */
+  primaryCategory?: string | null
+  additionalCategories?: readonly string[] | null
   /** Slice 7 — keys of tag terms. */
   tags?: readonly string[] | null
   /** D-3 — as projected: status, allergens, mayContain, confirmed, note (locale-resolved). */
@@ -146,6 +161,10 @@ export type RawCatalogueItem = LifecycleFields & {
   dietary?: readonly string[] | null
   images?: (RawCatalogueImage | null)[] | null
   offers?: (RawCatalogueOffer | null)[] | null
+  /** Catalogue V2 (C3-3) — read through commerceOf; wins over `offers` when non-empty (C10-4). */
+  formats?: unknown[] | null
+  /** Catalogue V2 (C5-7) — item availability rows. */
+  channelAvailability?: unknown[] | null
   optionLists?: (RawCatalogueOptionListAttachment | null)[] | null
 }
 
@@ -183,6 +202,8 @@ export type RawCataloguePage = {
 }
 
 type RawTerm = { value?: string | null; label?: RawText; color?: string | null }
+/** A service channel entry as projected: the vocabulary term plus the C2 attributes. */
+type RawChannelTerm = RawTerm & { _key?: string | null; active?: boolean | null; defaultAvailability?: string | null; defaultSchedule?: unknown[] | null }
 
 export type RawCatalogueConfigRow = {
   catalogue?: {
@@ -190,7 +211,7 @@ export type RawCatalogueConfigRow = {
     publicSegment?: string | null
     publicSegmentHistory?: readonly string[] | null
     showPricesByDefault?: boolean | null
-    serviceChannels?: (RawTerm | null)[] | null
+    serviceChannels?: (RawChannelTerm | null)[] | null
     categories?: (RawTerm | null)[] | null
     dietaryTags?: (RawTerm | null)[] | null
     /** Amendment K — already locale-resolved by GROQ (request locale only). */
@@ -200,6 +221,8 @@ export type RawCatalogueConfigRow = {
   categoryTerms?: readonly (CategoryTermRow | null)[] | null
   /** Slice 7 — the project's tag term records. */
   tagTerms?: readonly (CategoryTermRow | null)[] | null
+  /** Catalogue V2 C1 — the catalogue-taxonomy document (labels locale-resolved by GROQ), or null. */
+  taxonomy?: RawCatalogueTaxonomy
   timeZone?: string | null
 } | null
 
@@ -213,6 +236,11 @@ export type CatalogueResolveContext = {
   config: CatalogueConfigDTO
   /** The instant visibility and availability are evaluated at. */
   now: Date
+  /**
+   * C1 taxonomy inputs for the availability resolver (owner: C1). Absent = not
+   * loaded: no category level (R1 — no category rules exist yet).
+   */
+  taxonomy?: { tree: CategoryTree; category: CategoryRuleLookup } | null
 }
 
 /**
@@ -382,18 +410,56 @@ export function resolveCatalogueConfig(
     const n = normalise(h)
     if (n && n !== segment && !history.includes(n)) history.push(n)
   }
+  // Catalogue V2 C1 (R1): document → term records → config list, per kind, never mixed.
+  const vocabulary = catalogueVocabulary({ taxonomy: row?.taxonomy, categoryTerms: row?.categoryTerms, tagTerms: row?.tagTerms, configCategories: c.categories })
+  const categories = termsOf(vocabulary.categories as (RawTerm | null)[] | null | undefined, locale, defaultLocale)
+  if (vocabulary.categorySource === 'document') {
+    const byValue = new Map(categories.map((t) => [t.value, t]))
+    for (const t of categories) {
+      const ancestors = ancestorsOf(vocabulary.tree, t.value).reverse().flatMap((k) => (byValue.has(k) ? [{ value: k, label: byValue.get(k)!.label }] : []))
+      if (ancestors.length > 0) t.ancestors = ancestors
+    }
+  }
   return {
     currency: (nonEmpty(c.currency) ?? CATALOGUE_DEFAULT_CURRENCY).trim().toUpperCase(),
     segment,
     segmentHistory: history,
     showPricesByDefault: c.showPricesByDefault !== false,
     channels: termsOf(c.serviceChannels, locale, defaultLocale),
-    categories: termsOf(catalogueCategoryVocabulary(row?.categoryTerms, c.categories), locale, defaultLocale),
-    tags: termsOf(tagVocabulary(row?.tagTerms), locale, defaultLocale),
+    channelModel: channelModelOf(c.serviceChannels, locale, defaultLocale),
+    categories,
+    tags: termsOf(vocabulary.tags as (RawTerm | null)[], locale, defaultLocale),
+    // C1 → C5: only a taxonomy document carries category rules; legacy vocabularies add nothing.
+    ...(vocabulary.categorySource === 'document' ? { categoryNodes: readCategoryNodes(row?.taxonomy?.categories) } : {}),
     dietaryTags: termsOf(c.dietaryTags, locale, defaultLocale),
     timeZone: nonEmpty(row?.timeZone),
     affiliateDisclosure: typeof c.affiliateDisclosure === 'string' && c.affiliateDisclosure.trim() ? c.affiliateDisclosure.trim() : null,
   }
+}
+
+/** C2 channel model from the projected entries; labels resolved like the vocabulary terms. */
+function channelModelOf(rows: readonly (RawChannelTerm | null)[] | null | undefined, locale: string, defaultLocale?: string | null): Channel[] {
+  const out: Channel[] = []
+  const seen = new Set<string>()
+  for (const r of rows ?? []) {
+    const c = readChannelEntry(r ? { ...r, label: text(r.label, locale, defaultLocale) ?? r.value ?? '' } : r)
+    if (!c || seen.has(c.key)) continue
+    seen.add(c.key)
+    out.push(c)
+  }
+  return out
+}
+
+/** The ChannelSet a request resolves with (memoised per config object). */
+const channelSets = new WeakMap<CatalogueConfigDTO, ChannelSet>()
+export function channelSetOfConfig(config: CatalogueConfigDTO): ChannelSet {
+  const hit = channelSets.get(config)
+  if (hit) return hit
+  // A config without a channel model (hand-built) reads its vocabulary terms as legacy entries.
+  const model = config.channelModel ?? config.channels.map((t) => readChannelEntry({ value: t.value, label: t.label })).filter((c): c is Channel => c !== null)
+  const set = channelSetOf(model)
+  channelSets.set(config, set)
+  return set
 }
 
 // ── Images ────────────────────────────────────────────────────────────────────
@@ -438,29 +504,70 @@ function stateOf(rules: CatalogueAvailabilityDTO[], ctx: CatalogueResolveContext
   }
 }
 
-export function resolveOffers(rows: RawCatalogueItem['offers'], ctx: CatalogueResolveContext): CatalogueOfferDTO[] {
-  // D7/A6: the project's currency, full stop. offer.currency is never read.
+/** One display price → the DTO entry the website has always rendered (key, amount, formatted, note, channel label, windows). */
+function offerDtoOf(p: Price, ctx: CatalogueResolveContext, currency: string, labels: ReadonlyMap<string, string>): CatalogueOfferDTO {
+  const availability = availabilityOf(p.windows as RawCatalogueOffer['availability'])
+  return {
+    key: p.key,
+    channel: p.scope,
+    channelLabel: p.scope ? labels.get(p.scope) ?? null : null,
+    price: p.amount,
+    effectiveCurrency: currency,
+    formattedPrice: formatPrice(p.amount, currency, ctx.locale),
+    isFree: p.amount === 0,
+    priceNote: text(p.note as RawText, ctx.locale, ctx.defaultLocale),
+    availability,
+    state: stateOf(availability, ctx),
+  }
+}
+
+/**
+ * The commerce of one item for the website (C5-5): read through commerceOf
+ * (formats, else legacy offers), then publicCommerce — display prices per
+ * format and weekly profiles, instant-free (a cached page is valid at every
+ * hour). For legacy data the flattened display prices are exactly the stored
+ * valid offers in stored order (C10-5 E6/E8).
+ */
+export function resolveCommerce(
+  row: Pick<RawCatalogueItem, 'offers' | 'formats' | 'channelAvailability' | 'primaryCategory' | 'additionalCategories' | 'categories' | 'publicId'>,
+  ctx: CatalogueResolveContext,
+): { offers: CatalogueOfferDTO[]; formats: CatalogueFormatDTO[] } {
+  // D7/A6: the project's currency, full stop. A stored price currency is never read.
   const currency = effectiveCurrency({ currency: ctx.config.currency })
   const labels = new Map(ctx.config.channels.map((c) => [c.value, c.label]))
-  const out: CatalogueOfferDTO[] = []
-  for (const r of rows ?? []) {
-    if (!r || typeof r._key !== 'string' || !finite(r.price) || r.price < 0) continue
-    const channel = nonEmpty(r.channel)
-    const availability = availabilityOf(r.availability)
-    out.push({
-      key: r._key,
-      channel,
-      channelLabel: channel ? labels.get(channel) ?? null : null,
-      price: r.price,
-      effectiveCurrency: currency,
-      formattedPrice: formatPrice(r.price, currency, ctx.locale),
-      isFree: r.price === 0,
-      priceNote: text(r.priceNote, ctx.locale, ctx.defaultLocale),
-      availability,
-      state: stateOf(availability, ctx),
-    })
-  }
-  return out
+  const channels = channelSetOfConfig(ctx.config)
+  const commerce = commerceOf(row, channels)
+  const taxonomy = ctx.taxonomy ?? taxonomyOfConfig(ctx.config)
+  // C1.9 R1: the primary from whichever shape the item stores (legacy list → first existing category, D-15).
+  const primaryCategory = taxonomy ? itemCategoryAssignment(row, taxonomy.tree).primary : nonEmpty(row.primaryCategory)
+  const pc = publicCommerce(
+    availabilityInputsOf(channels, taxonomy),
+    { itemId: nonEmpty(row.publicId) ?? '', primaryCategory, itemRules: commerce.itemRules, formats: commerce.formats },
+    { currency },
+  )
+  const formats: CatalogueFormatDTO[] = pc.formats.map((f) => ({
+    key: f.key,
+    label: f.label === null ? null : text(f.label as RawText, ctx.locale, ctx.defaultLocale),
+    prices: f.prices.map((p) => offerDtoOf(p, ctx, currency, labels)),
+    availability: f.availability.map((a) => ({ context: a.context.kind === 'general' ? 'general' : a.context.channel, profile: [...a.profile], availableSometime: a.availableSometime })),
+  }))
+  return { offers: formats.flatMap((f) => f.prices), formats }
+}
+
+const taxonomyCache = new WeakMap<readonly unknown[], { tree: CategoryTree; category: CategoryRuleLookup }>()
+
+/** The C1 category level from the config's taxonomy nodes (built once per config); null = none (legacy vocabulary). */
+function taxonomyOfConfig(config: CatalogueConfigDTO): { tree: CategoryTree; category: CategoryRuleLookup } | null {
+  const nodes = config.categoryNodes
+  if (!nodes) return null
+  let t = taxonomyCache.get(nodes)
+  if (!t) taxonomyCache.set(nodes, (t = { tree: buildTree(nodes), category: CATEGORY_RULES }))
+  return t
+}
+
+/** @deprecated R3 — the legacy offers alone; use resolveCommerce. Same entries for legacy data. */
+export function resolveOffers(rows: RawCatalogueItem['offers'], ctx: CatalogueResolveContext): CatalogueOfferDTO[] {
+  return resolveCommerce({ offers: rows }, ctx).offers
 }
 
 /** DTO offers in the shape offers.ts resolveOffer / channelState take. */
@@ -555,7 +662,7 @@ export function resolveBookDetails(raw: RawCatalogueItem['bookDetails'], profile
  */
 export function resolveItem(row: RawCatalogueItem | null | undefined, ctx: CatalogueResolveContext): CatalogueItemDTO | null {
   if (!row || !isPublicAt(row, LIFECYCLE_PUBLIC_RULES.catalogueItem, ctx.now)) return null
-  const offers = resolveOffers(row.offers, ctx)
+  const { offers, formats } = resolveCommerce(row, ctx)
   const profile = itemProfileOf(row.itemProfile)
   const bookDetails = resolveBookDetails(row.bookDetails, profile)
   return {
@@ -568,12 +675,15 @@ export function resolveItem(row: RawCatalogueItem | null | undefined, ctx: Catal
     description: text(row.description, ctx.locale, ctx.defaultLocale),
     links: resolveLinks(row.links, ctx),
     images: imagesOf(row.images, ctx),
-    categories: pickTerms(row.categories, ctx.config.categories),
+    // C1 R1: primary + additional when stored, else the legacy list — same keys, same order for legacy data.
+    categories: pickTerms(itemCategoryKeys(row), ctx.config.categories),
     tags: pickTerms(row.tags, ctx.config.tags),
     allergenDeclaration: allergenDeclarationOf(row, itemProfileOf(row.itemProfile), ctx),
     dietary: pickTerms(row.dietary, ctx.config.dietaryTags),
     offers,
     hasOffers: offers.length > 0,
+    hasPrices: offers.length > 0,
+    formats,
     optionLists: optionListsOf(row.optionLists, ctx, can(itemProfileOf(row.itemProfile), 'foodInformation')),
     visibility: visibilityOf(row.visibility),
     page: pageRefOf(row.hasPage, row.slugMap, ctx.locale),

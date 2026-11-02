@@ -109,7 +109,8 @@ describe('client-dashboard pages and layouts', () => {
     const offenders = files(join(process.cwd(), 'src'))
       .filter((f) => /purpose\s*:\s*['"]render['"]/.test(readFileSync(f, 'utf8')))
       .map((f) => relative(process.cwd(), f).split(sep).join('/'))
-      .filter((f) => !/\/(page|layout)\.tsx$/.test(f) && !f.includes('/__tests__/'))
+      // `catalogue/list-screen.tsx`: the one screen behind the three Catalogue list routes (ADR-042 N2); each page.tsx just names its list.
+      .filter((f) => !/\/(page|layout)\.tsx$/.test(f) && !f.includes('/__tests__/') && !f.endsWith('/catalogue/list-screen.tsx'))
     expect(offenders).toEqual([])
   })
 })

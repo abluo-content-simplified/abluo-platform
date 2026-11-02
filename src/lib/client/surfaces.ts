@@ -14,7 +14,7 @@
  *
  * Browser-safe and pure: no server imports, so the sidebar and pages can use it.
  */
-import { moduleGroupOf, sortByModuleOrder, type ModuleGroupId } from '@/lib/modules/order'
+import { sortByModuleOrder } from '@/lib/modules/order'
 
 /** What a surface needs. Empty = anyone with a grant on the project. */
 export type SurfaceRequirement = {
@@ -34,32 +34,46 @@ export type NavSurface = {
   kind: 'nav'
   /** Stable id; also the icon / i18n suffix (`clientDashboard.nav.<id>`). */
   id: string
-  /** URL segment under `/{projectSlug}/`. */
+  /**
+   * Path under `/{projectSlug}/` — usually one segment (`posts`); a module's
+   * sub-destination has two (`catalogue/items`, ADR-042 N2). Every destination
+   * is a real route (deep-linkable), never a tab.
+   */
   segment: string
   requires: SurfaceRequirement
-  /**
-   * Sidebar group. A module's screen sits in its module group (PLAT-3, Tom
-   * 2026-10-28: Publish · Show · Visitors · Tools, from `@/lib/modules/order`,
-   * shown with a heading). Then the screens that are not a module (Tom,
-   * 2026-10-22): content work (Media, Categories & Tags, People), activity
-   * (Analytics), support & configuration — separated by spacing only. The
-   * client's "What's new" row opens the `support` group.
-   */
+  /** Sidebar group (ADR-042 §3). */
   group: NavGroup
+  /**
+   * Nested routes that belong to this destination without sitting under its
+   * path: `/{project}/{base}/…` is this destination unless the next segment is
+   * in `except` (those have destinations of their own). Catalogue → Items owns
+   * an item's editor and the new-item flow (`/catalogue/<id>`, `/catalogue/new`).
+   */
+  owns?: { base: string; except: readonly string[] }
+  /** False while the route does not exist: declared, never shown, never counted as a section the project has. */
+  available?: boolean
 }
 
-/** Screens that are not a module: spacing only, no heading. */
-export type PlainNavGroup = 'content' | 'activity' | 'support'
-export type NavGroup = ModuleGroupId | PlainNavGroup
+/**
+ * The dashboard navigation groups (ADR-042 N1, placements confirmed by Tom
+ * 2026-11-02), in sidebar order. Home sits above them and is not a surface;
+ * `bottom` is the unheaded block under the groups (Support, What's New, More You
+ * Can Add). An empty group is not shown. PLAT-3 (`@/lib/modules/order`) keeps
+ * governing module order in Studio and inside a group.
+ */
+export const NAV_GROUPS = ['content', 'catalogue', 'visitors', 'library', 'insights', 'project', 'bottom'] as const
+export type NavGroup = (typeof NAV_GROUPS)[number]
+export type HeadedNavGroup = Exclude<NavGroup, 'bottom'>
+export const HEADED_NAV_GROUPS: readonly HeadedNavGroup[] = NAV_GROUPS.filter((g): g is HeadedNavGroup => g !== 'bottom')
 
-/** Is this a module group (shown with a heading in the sidebar)? */
-export function isModuleNavGroup(group: NavGroup): group is ModuleGroupId {
-  return group !== 'content' && group !== 'activity' && group !== 'support'
+/** Does this group have a heading (a disclosure in the sidebar, a flyout in the rail)? */
+export function isHeadedNavGroup(group: NavGroup): group is HeadedNavGroup {
+  return group !== 'bottom'
 }
 
-/** A module's screen: its group and position come from the shared module order (PLAT-3). */
-function moduleNav(id: string, segment: string, module: string, permission: string): NavSurface {
-  return { kind: 'nav', id, segment, group: moduleGroupOf(module), requires: { module, permission } }
+/** A module's screen in its group (ADR-042 §3); order inside the registry follows the shared module order (PLAT-3). */
+function moduleNav(id: string, segment: string, module: string, permission: string, group: NavGroup): NavSurface {
+  return { kind: 'nav', id, segment, group, requires: { module, permission } }
 }
 
 /** Where a Home widget sits. Each slot is laid out by the Home page. */
@@ -113,6 +127,21 @@ export const FEATURE_CONTROL_ALLOWLIST: readonly string[] = [
   'billing.manage',
 ]
 
+/** Catalogue routes with a destination of their own: not Items' nested routes. */
+export const CATALOGUE_OWN_ROUTES: readonly string[] = ['collections', 'option-lists', 'setup']
+
+/** Flip with the `catalogue/setup` route (a test refuses the flag when the folder is missing, or the folder when the flag is off). */
+export const CATALOGUE_SETUP_ROUTE_EXISTS = false
+
+/** The Setup permission. Flip `CATALOGUE_SETUP_PERMISSION_DEFINED` when it is added to the catalogue manifest (a test keeps the two in step). */
+export const CATALOGUE_SETUP_PERMISSION = 'catalogue.setup.manage'
+export const CATALOGUE_SETUP_PERMISSION_DEFINED = false
+
+/** Permissions that open Catalogue → Setup: the Setup permission once it exists (false until then), and the category permission (K-4/D-3). */
+export function catalogueSetupPermissions(): string[] {
+  return [...(CATALOGUE_SETUP_PERMISSION_DEFINED ? [CATALOGUE_SETUP_PERMISSION] : []), 'catalogue.taxonomy.write']
+}
+
 /**
  * The modules' own screens. Listed in any order: their sidebar order and group
  * come from `@/lib/modules/order` (PLAT-3), shared with the Studio module list.
@@ -120,19 +149,25 @@ export const FEATURE_CONTROL_ALLOWLIST: readonly string[] = [
  */
 const MODULE_NAV: readonly NavSurface[] = sortByModuleOrder(
   [
-    moduleNav('blog', 'posts', 'blog', 'blog.post.read'),
+    moduleNav('blog', 'posts', 'blog', 'blog.post.read', 'content'),
     // `agenda`, not `events`: `/{project}/events` is the public website's events route.
-    moduleNav('events', 'agenda', 'events', 'events.event.read'),
+    moduleNav('events', 'agenda', 'events', 'events.event.read', 'content'),
     // ADR-037 D9: the FAQ Sets library (list + editor).
-    moduleNav('faq', 'faq-sets', 'faq', 'faq.set.read'),
-    moduleNav('gallery', 'galleries', 'gallery', 'gallery.gallery.read'),
-    // ADR-033 D12: one entry. Label "Catalogue" unless the project sets the optional `navLabel` override (presentation only).
-    moduleNav('catalogue', 'catalogue', 'catalogue', 'catalogue.item.read'),
+    moduleNav('faq', 'faq-sets', 'faq', 'faq.set.read', 'content'),
+    moduleNav('gallery', 'galleries', 'gallery', 'gallery.gallery.read', 'content'),
+    // ADR-033 D12 / C11 (K-2): every Catalogue entry is labelled by the interface dictionary ("Catalogue" group).
+    // ADR-042 N2 / N2a: the Catalogue group — Items · Collections · Options · Setup, each a real route.
+    // `/catalogue` redirects to Items; an item's editor and the new-item flow light Items.
+    { ...moduleNav('catalogueItems', 'catalogue/items', 'catalogue', 'catalogue.item.read', 'catalogue'), owns: { base: 'catalogue', except: CATALOGUE_OWN_ROUTES } },
+    moduleNav('catalogueCollections', 'catalogue/collections', 'catalogue', 'catalogue.item.read', 'catalogue'),
+    moduleNav('catalogueOptions', 'catalogue/option-lists', 'catalogue', 'catalogue.item.read', 'catalogue'),
+    // Setup (N2a): the Setup permission, or `catalogue.taxonomy.write` (Categories & Tags only). Hidden until its route exists.
+    { kind: 'nav', id: 'catalogueSetup', segment: 'catalogue/setup', group: 'catalogue', available: CATALOGUE_SETUP_ROUTE_EXISTS, requires: { module: 'catalogue', anyPermission: catalogueSetupPermissions() } },
     // ADR-040 §15 — Documents (the library).
-    moduleNav('documents', 'document-library', 'documents', 'documents.document.read'),
-    moduleNav('forms', 'submissions', 'forms', 'forms.submission.read'),
+    moduleNav('documents', 'document-library', 'documents', 'documents.document.read', 'content'),
+    moduleNav('forms', 'submissions', 'forms', 'forms.submission.read', 'visitors'),
     // ADR-040 B2.5 / §15 — Access (groups, passwords, who can see each page): next to Forms (PLAT-3).
-    moduleNav('members', 'access', 'members', 'members.access.read'),
+    moduleNav('members', 'access', 'members', 'members.access.read', 'visitors'),
   ],
   (s) => s.requires.module as string
 )
@@ -142,9 +177,9 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   // 1. The modules' screens, in the shared module order and groups (PLAT-3).
   ...MODULE_NAV,
   // 2. Content work that is not a module.
-  { kind: 'nav', id: 'media', segment: 'media', group: 'content', requires: { permission: 'media.library.manage' } },
+  { kind: 'nav', id: 'media', segment: 'media', group: 'library', requires: { permission: 'media.library.manage' } },
   // People sits with the content work (Tom, 2026-10-22).
-  { kind: 'nav', id: 'people', segment: 'people', group: 'content', requires: { anyPermission: ['users.invite', 'users.manage'] } },
+  { kind: 'nav', id: 'people', segment: 'people', group: 'library', requires: { anyPermission: ['users.invite', 'users.manage'] } },
   // ADR-033 Amendment J: Categories & Tags, one manager for every module that declares a taxonomy.
   // Shown when the person may manage terms (`<module>.taxonomy.write`) or at least read them
   // (the module's read permission; viewers list read-only) in one of those modules, or the internal
@@ -154,7 +189,7 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
     kind: 'nav',
     id: 'taxonomy',
     segment: 'taxonomy',
-    group: 'content',
+    group: 'library',
     requires: {
       anyOf: [
         { anyModule: ['blog', 'catalogue', 'documents', 'events', 'news'], anyPermission: ['blog.taxonomy.write', 'blog.post.read', 'catalogue.taxonomy.write', 'catalogue.item.read', 'documents.taxonomy.write', 'documents.document.read', 'events.taxonomy.write', 'events.event.read', 'news.taxonomy.write', 'news.article.read'] },
@@ -168,20 +203,20 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   // Analytics is not a module (ADR-029 §3.4): only the permission gates it. Whether
   // Google is connected is Abluo's configuration, which tenant code may not read
   // (boundary test) — the page itself says "not connected yet" until it is.
-  { kind: 'nav', id: 'analytics', segment: 'analytics', group: 'activity', requires: { permission: 'analytics.read' } },
+  { kind: 'nav', id: 'analytics', segment: 'analytics', group: 'insights', requires: { permission: 'analytics.read' } },
   // 4. Support & configuration ("What's new" opens this group in the sidebar).
   // Support (Tom, 2026-10-22): a "coming soon" page for everyone on the project until ticketing exists.
-  { kind: 'nav', id: 'support', segment: 'support', group: 'support', requires: {} },
+  { kind: 'nav', id: 'support', segment: 'support', group: 'bottom', requires: {} },
   // ADR-031: partner apps reading this site. Owners and Site admins only; always listed (calm empty state).
-  { kind: 'nav', id: 'connections', segment: 'apps', group: 'support', requires: { permission: 'connections.manage' } },
+  { kind: 'nav', id: 'connections', segment: 'apps', group: 'project', requires: { permission: 'connections.manage' } },
   // Settings (Tom, 2026-10-18; 2026-10-28): the client's own settings — today Form notifications (who receives form emails).
   // The affiliate programs live only in Connected Apps (`connections`) since 2026-10-26.
   // Never technical configuration: gated on its own content-style permission, NOT `settings.manage`.
-  { kind: 'nav', id: 'settings', segment: 'settings', group: 'support', requires: { permission: 'site.details.read' } },
+  { kind: 'nav', id: 'settings', segment: 'settings', group: 'project', requires: { permission: 'site.details.read' } },
   // Billing (ADR-041 Phase 5; Tom, 2026-11-02): the Owner pays here; a member granted invoice access can look.
   // Both are TENANT permissions: the layout adds them to the grant it builds the sidebar from
   // (`billingNavPermissions`). Allowlisted in FEATURE_CONTROL_ALLOWLIST.
-  { kind: 'nav', id: 'billing', segment: 'billing', group: 'support', requires: { anyPermission: ['billing.manage', 'billing.invoice.read'] } },
+  { kind: 'nav', id: 'billing', segment: 'billing', group: 'project', requires: { anyPermission: ['billing.manage', 'billing.invoice.read'] } },
 
   // ── Home widgets (ADR-029 §5) ───────────────────────────────────────────
   { kind: 'widget', id: 'siteStatus', slot: 'header', requires: {} },
@@ -248,14 +283,20 @@ export type TenantSurfaces = {
   featureControls: FeatureControlSurface[]
 }
 
-/** Everything this grant may see, in registry order. */
+/** Stable sort into group order (ADR-042 N1). */
+function sortByGroup(nav: NavSurface[]): NavSurface[] {
+  return nav.map((s, i) => ({ s, i })).sort((a, b) => NAV_GROUPS.indexOf(a.s.group) - NAV_GROUPS.indexOf(b.s.group) || a.i - b.i).map((x) => x.s)
+}
+
+/** Everything this grant may see, in group order then registry order. */
 export function buildTenantSurfaces(
   grant: SurfaceGrant,
   registry: readonly TenantSurface[] = TENANT_SURFACES,
 ): TenantSurfaces {
   const visible = registry.filter((s) => surfaceAllowed(grant, s.requires))
   return {
-    nav: visible.filter((s): s is NavSurface => s.kind === 'nav'),
+    // Declared-but-unbuilt destinations never show; groups keep ADR-042 order, registry order inside a group.
+    nav: sortByGroup(visible.filter((s): s is NavSurface => s.kind === 'nav' && s.available !== false)),
     widgets: visible.filter((s): s is WidgetSurface => s.kind === 'widget'),
     featureControls: visible.filter(
       (s): s is FeatureControlSurface => s.kind === 'featureControl' && FEATURE_CONTROL_ALLOWLIST.includes(s.id),
@@ -275,7 +316,7 @@ export function hasWidget(surfaces: TenantSurfaces, id: string): boolean {
  * 2026-10-18: switching from TMZ's Catalogue to Livener, which has none).
  */
 export function navSegmentsFor(grant: SurfaceGrant): string[] {
-  return TENANT_SURFACES.filter((s): s is Extract<TenantSurface, { kind: 'nav' }> => s.kind === 'nav' && surfaceAllowed(grant, s.requires)).map((s) => s.segment)
+  return [...new Set(buildTenantSurfaces(grant).nav.map((s) => s.segment.split('/')[0]))]
 }
 
 /** Where the project switcher goes: the same section in the next project when it has it, else its Home. */

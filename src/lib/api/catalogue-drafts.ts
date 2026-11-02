@@ -70,14 +70,15 @@ import {
 } from '@/lib/modules/catalogue/dashboard-patch'
 import { initialItemProfile, type ItemProfile } from '@/lib/modules/catalogue/dashboard-form'
 import { can, isItemProfile, profileOf } from '@/lib/modules/catalogue/profiles'
-import { catalogueCategoryVocabulary, tagVocabulary, type CategoryTermRow } from '@/lib/taxonomy/vocabulary'
+import type { CategoryTermRow } from '@/lib/taxonomy/vocabulary'
+import { catalogueVocabulary, itemCategoryKeys, type RawCatalogueTaxonomy } from '@/lib/modules/catalogue/taxonomy/read'
+import { publicNameMap } from '@/lib/modules/catalogue/public-name'
 import { namedSlugConflicts, type NamedSlugConflict } from '@/lib/modules/catalogue/validation'
 import {
   CATALOGUE_COUNT_QUERY,
   CATALOGUE_DASHBOARD_LIST_QUERY,
   CATALOGUE_GLANCE_QUERY,
   CATALOGUE_MEDIA_EXIST_QUERY,
-  CATALOGUE_NAV_LABEL_QUERY,
   CATALOGUE_REF_TARGETS_QUERY,
   CATALOGUE_REUSE_COUNT_QUERY,
   CATALOGUE_SITE_QUERY,
@@ -176,7 +177,11 @@ export type CatalogueSite = {
   /** Shops the tenant ticked as approved, in their order (Settings). */
   affiliateShops?: { shop: AffiliateShopId }[]
   config: {
-    navLabel: Record<string, string>
+    /**
+     * C11: the tenant's word for the catalogue on the WEBSITE, per locale (module config `publicName`).
+     * Read only by Setup → Public website; the dashboard itself always says "Catalogue".
+     */
+    publicName: Record<string, string>
     segment: string | null
     currency: string
     channels: CatalogueTerm[]
@@ -195,7 +200,7 @@ const termsOf = (rows: unknown): CatalogueTerm[] =>
     .map((r) => ({ value: r.value as string, label: localized(r.label), color: typeof r.color === 'string' && r.color ? r.color : null }))
 
 async function readSite(client: Client, projectSlug: string): Promise<CatalogueSite> {
-  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null; amazonTrackingIds?: { marketplace?: unknown; trackingId?: unknown }[] | null; awinPublisherId?: unknown; affiliateShops?: { shop?: unknown }[] | null } | null; config?: RawConfig; presetId?: unknown; translate?: boolean; categoryTerms?: CategoryTermRow[] | null; tagTerms?: CategoryTermRow[] | null } | null>(
+  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null; amazonTrackingIds?: { marketplace?: unknown; trackingId?: unknown }[] | null; awinPublisherId?: unknown; affiliateShops?: { shop?: unknown }[] | null } | null; config?: RawConfig; presetId?: unknown; translate?: boolean; categoryTerms?: CategoryTermRow[] | null; tagTerms?: CategoryTermRow[] | null; taxonomy?: RawCatalogueTaxonomy } | null>(
     CATALOGUE_SITE_QUERY,
     { projectSlug }
   ))
@@ -204,6 +209,8 @@ async function readSite(client: Client, projectSlug: string): Promise<CatalogueS
   if (!defaultLocale) throw new CatalogueError('failed', 'Site languages are not configured.')
   const c = (r?.config ?? {}) as Record<string, unknown>
   const currency = typeof c.currency === 'string' && /^[A-Za-z]{3}$/.test(c.currency) ? c.currency.toUpperCase() : 'EUR'
+  // Catalogue V2 C1 (R1): taxonomy document → term records → config list, per kind, never mixed.
+  const vocabulary = catalogueVocabulary({ taxonomy: r?.taxonomy, categoryTerms: r?.categoryTerms, tagTerms: r?.tagTerms, configCategories: c.categories })
   return {
     defaultLocale,
     locales: [defaultLocale, ...supported.filter((l) => l !== defaultLocale)],
@@ -214,14 +221,13 @@ async function readSite(client: Client, projectSlug: string): Promise<CatalogueS
     translate: r?.translate === true,
     presetId: typeof r?.presetId === 'string' && r.presetId ? r.presetId : null,
     config: {
-      navLabel: localized(c.navLabel),
+      publicName: publicNameMap(c.publicName),
       segment: typeof c.publicSegment === 'string' && c.publicSegment ? c.publicSegment : null,
       currency,
       channels: termsOf(c.serviceChannels),
-      // ADR-033 Amendment J (dual-read): term records replace the config list entirely when the project has any.
-      categories: termsOf(catalogueCategoryVocabulary(r?.categoryTerms, c.categories)),
-      // Slice 7: tag term records only (no config list).
-      tags: termsOf(tagVocabulary(r?.tagTerms)),
+      // Document entries come in tree order; term records / config list exactly as before.
+      categories: termsOf(vocabulary.categories),
+      tags: termsOf(vocabulary.tags),
       dietaryTags: termsOf(c.dietaryTags),
       defaultItemProfile: initialItemProfile(c.defaultItemProfile),
     },
@@ -246,25 +252,10 @@ export async function resolveAmazonLink(ctx: TenantAuthorizationContext, project
   return { url: r.ok ? r.url : null }
 }
 
-/**
- * The dashboard's name for the module in the reader's language (ADR-033 D12),
- * or null → the messages default. Presentation only; never an identifier.
- * Never throws: a missing label must not break the shell.
- */
-export async function loadCatalogueNavLabel(projectSlug: string, locale: string, deps: CatalogueDeps = {}): Promise<string | null> {
-  try {
-    const raw = await (deps.client ?? sanityWriteClient).fetch<unknown>(CATALOGUE_NAV_LABEL_QUERY, { projectSlug })
-    const v = localized(raw)
-    return v[locale]?.trim() || null
-  } catch {
-    return null
-  }
-}
-
 // ── Lists ─────────────────────────────────────────────────────────────────────
 
 type RowBase = { _id: string; _rev?: string; slug?: unknown; _createdAt?: string; _updatedAt?: string; name?: unknown; publishedAt?: unknown; expiresAt?: unknown; archivedAt?: unknown }
-type ItemRow = RowBase & { byline?: unknown; bookAuthor?: unknown; bookYear?: unknown; bookStatus?: unknown; itemProfile?: unknown; allergenStatus?: unknown; categories?: unknown; hasPage?: unknown; visibility?: unknown; imageCount?: number | null; firstImage?: string | null; offerCount?: number | null; prices?: unknown; lists?: unknown }
+type ItemRow = RowBase & { byline?: unknown; bookAuthor?: unknown; bookYear?: unknown; bookStatus?: unknown; itemProfile?: unknown; allergenStatus?: unknown; categories?: unknown; primaryCategory?: unknown; additionalCategories?: unknown; hasPage?: unknown; visibility?: unknown; imageCount?: number | null; firstImage?: string | null; offerCount?: number | null; prices?: unknown; lists?: unknown }
 type CollectionRow = RowBase & { sectionNames?: unknown; collectionType?: unknown; hasPage?: unknown; visibility?: unknown; sectionCount?: number | null; itemRefs?: unknown }
 type OptionListRow = RowBase & { optionCount?: number | null }
 
@@ -387,7 +378,8 @@ export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: 
       bookStatus: isReadingStatus(e.row.bookStatus) ? e.row.bookStatus : null,
       itemProfile: isItemProfile(e.row.itemProfile) ? e.row.itemProfile : null,
       allergensNotReviewed: can(profileOf(e.row.itemProfile), 'foodInformation') && e.row.allergenStatus !== 'containsListedAllergens' && e.row.allergenStatus !== 'noneDeclared',
-      categories: strings(e.row.categories),
+      // C1 R1: primary first, then additional; the legacy list when the new fields are absent.
+      categories: itemCategoryKeys(e.row),
       hasPage: e.row.hasPage === true,
       thumb: typeof e.row.firstImage === 'string' ? (thumbById.get(e.row.firstImage) ?? null) : null,
       imageCount: typeof e.row.imageCount === 'number' ? e.row.imageCount : 0,
@@ -583,21 +575,22 @@ export async function checkCatalogueSlugs(
 /**
  * ADR-033 D-4 — which of these ids are documents of `type` in this project,
  * and which of them have NO published version (→ referenced weakly). Every id
- * must exist (published or draft); `offered` additionally requires the item
- * to carry a price in the version that will be used (D2: an option links only
- * to an item that is itself offered). Returns the never-published ids.
+ * must exist (published or draft); `hasPrice` additionally requires the item
+ * to carry at least one price in the version that will be used (D2, D-21: an
+ * option links only to an item with a price — "offered" is never a synonym for
+ * "priced"). Returns the never-published ids.
  */
-async function resolveTargets(client: Client, projectSlug: string, type: string, ids: string[], opts: { offered?: boolean } = {}): Promise<Set<string>> {
+async function resolveTargets(client: Client, projectSlug: string, type: string, ids: string[], opts: { hasPrice?: boolean } = {}): Promise<Set<string>> {
   if (!ids.length) return new Set()
-  const rows = await span(`sanity.refTargets.${type}`, () => client.fetch<Array<{ _id: string; offered?: boolean }> | null>(CATALOGUE_REF_TARGETS_QUERY, { type, projectSlug, ids, draftIds: ids.map((i) => `drafts.${i}`) }, RAW))
-  const published = new Map<string, { offered?: boolean }>()
-  const drafts = new Map<string, { offered?: boolean }>()
+  const rows = await span(`sanity.refTargets.${type}`, () => client.fetch<Array<{ _id: string; hasPrice?: boolean }> | null>(CATALOGUE_REF_TARGETS_QUERY, { type, projectSlug, ids, draftIds: ids.map((i) => `drafts.${i}`) }, RAW))
+  const published = new Map<string, { hasPrice?: boolean }>()
+  const drafts = new Map<string, { hasPrice?: boolean }>()
   for (const r of rows ?? []) (r._id.startsWith('drafts.') ? drafts : published).set(r._id.replace(/^drafts\./, ''), r)
   const neverPublished = new Set<string>()
   for (const id of ids) {
     const row = published.get(id) ?? drafts.get(id)
     if (!row) throw new CatalogueError('invalid_value', 'Something you picked is no longer available.')
-    if (opts.offered && row.offered !== true) throw new CatalogueError('invalid_value', 'Something you picked is no longer available.')
+    if (opts.hasPrice && row.hasPrice !== true) throw new CatalogueError('linked_item_needs_price', 'This item needs at least one price before it can be used as a linked choice.')
     if (!published.has(id)) neverPublished.add(id)
   }
   return neverPublished
@@ -693,8 +686,8 @@ export async function patchCatalogueDraft(
         }))
       : null,
     resolveTargets(client, grant.projectSlug, 'catalogueOptionList', cleaned.refs.optionLists),
-    // Sections list items (drafts included, D-4); an option may link only to an item that is itself offered (D2).
-    resolveTargets(client, grant.projectSlug, 'catalogueItem', cleaned.refs.items.filter((i) => i !== input.id), { offered: kind === 'optionList' }),
+    // Sections list items (drafts included, D-4); an option may link only to an item with at least one price (D2, D-21).
+    resolveTargets(client, grant.projectSlug, 'catalogueItem', cleaned.refs.items.filter((i) => i !== input.id), { hasPrice: kind === 'optionList' }),
   ])
   applyWeakRefs(cleaned.set, weakItems, weakLists)
   if (Object.keys(cleaned.slugs).length) {

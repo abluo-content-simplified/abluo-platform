@@ -8,7 +8,9 @@
 // src/lib/sanity/queries.ts; nothing here may ever be used to render a page.
 
 import { FOOD_PROFILE_GROQ } from './profiles'
+import { COMMERCE_HAS_PRICE_GROQ, COMMERCE_PRICE_COUNT_GROQ, COMMERCE_PRICES_GROQ } from './commerce/groq'
 import { catalogueCategoryTermsGroq, catalogueTermsGroq } from '@/lib/taxonomy/vocabulary'
+import { catalogueTaxonomyGroq } from './taxonomy/read'
 
 /** Site languages and zone (dates are entered in the site's time zone, ADR-032 D8). */
 export const CATALOGUE_SITE_QUERY = /* groq */ `{
@@ -20,20 +22,20 @@ export const CATALOGUE_SITE_QUERY = /* groq */ `{
   // (catalogueCategoryVocabulary). Inside this one query — no extra round trip on the save path.
   "categoryTerms": ${catalogueCategoryTermsGroq('label')},
   // Slice 7 — tag term records (no config list exists for tags).
-  "tagTerms": ${catalogueTermsGroq('tag', 'label')}
+  "tagTerms": ${catalogueTermsGroq('tag', 'label')},
+  // Catalogue V2 C1 (R1 triple dual-read): the catalogue-taxonomy document wins per kind when present.
+  "taxonomy": ${catalogueTaxonomyGroq('label')}
 }`
-
-/** Only the dashboard label (ADR-033 D12) — presentation; read for the sidebar. */
-export const CATALOGUE_NAV_LABEL_QUERY = /* groq */ `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "catalogue"][0].config.navLabel`
 
 const LIFECYCLE = `publishedAt, expiresAt, archivedAt`
 
 /** Every item, collection and option list of the project — published and draft copies (raw perspective). */
 export const CATALOGUE_DASHBOARD_LIST_QUERY = /* groq */ `{
   "items": *[_type == "catalogueItem" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{
-    _id, _rev, _createdAt, _updatedAt, name, byline, slug, itemProfile, "bookAuthor": bookDetails.author, "bookYear": bookDetails.year, "bookStatus": bookDetails.readingStatus, "allergenStatus": allergenDeclaration.status, categories, hasPage, visibility, ${LIFECYCLE},
+    _id, _rev, _createdAt, _updatedAt, name, byline, slug, itemProfile, "bookAuthor": bookDetails.author, "bookYear": bookDetails.year, "bookStatus": bookDetails.readingStatus, "allergenStatus": allergenDeclaration.status, categories, primaryCategory, additionalCategories, hasPage, visibility, ${LIFECYCLE},
     "imageCount": count(images), "firstImage": images[0]._ref,
-    "offerCount": count(offers), "prices": offers[].price,
+    // Dual-read (C10-4): formats when present, else legacy offers.
+    "offerCount": ${COMMERCE_PRICE_COUNT_GROQ}, "prices": ${COMMERCE_PRICES_GROQ},
     "lists": optionLists[].list._ref
   },
   "collections": *[_type == "catalogueCollection" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{
@@ -57,10 +59,11 @@ export const CATALOGUE_MEDIA_EXIST_QUERY = /* groq */ `*[_type == "mediaAsset" &
 /**
  * Reference targets (ADR-033 D-4): the published AND draft versions of these
  * ids among `$type` documents of this project — a draft-only target is
- * referenced weakly. `offered` = the version carries a price (an option may
- * link only to an item that is itself offered, D2).
+ * referenced weakly. `hasPrice` = the version carries at least one price on any
+ * format (D2 + D-21: an option may link only to an item with a price; an item
+ * with a price qualifies even when unavailable on a particular channel).
  */
-export const CATALOGUE_REF_TARGETS_QUERY = /* groq */ `*[_type == $type && projectSlug == $projectSlug && (_id in $ids || _id in $draftIds)]{ _id, "offered": count(coalesce(offers, [])) > 0 }`
+export const CATALOGUE_REF_TARGETS_QUERY = /* groq */ `*[_type == $type && projectSlug == $projectSlug && (_id in $ids || _id in $draftIds)]{ _id, "hasPrice": ${COMMERCE_HAS_PRICE_GROQ} }`
 
 /** D-5 preview: how many OTHER documents (outside this publish) reference `$id`, in any version. */
 export const CATALOGUE_REUSE_COUNT_QUERY = /* groq */ `count(*[projectSlug == $projectSlug && references($id) && !(_id in $ids) && !(_id in path("versions.**"))])`
@@ -72,7 +75,7 @@ export const CATALOGUE_COUNT_QUERY = /* groq */ `count(*[_type == $type && proje
 export const CATALOGUE_GLANCE_QUERY = /* groq */ `{
   "published": count(*[_type == "catalogueItem" && projectSlug == $projectSlug && !(_id in path("drafts.**")) && !defined(archivedAt)]),
   "drafts": count(*[_type == "catalogueItem" && projectSlug == $projectSlug && _id in path("drafts.**") && !defined(archivedAt)]),
-  "noPrice": count(*[_type == "catalogueItem" && projectSlug == $projectSlug && !(_id in path("drafts.**")) && !defined(archivedAt) && count(coalesce(offers, [])) == 0])
+  "noPrice": count(*[_type == "catalogueItem" && projectSlug == $projectSlug && !(_id in path("drafts.**")) && !defined(archivedAt) && (${COMMERCE_PRICE_COUNT_GROQ}) == 0])
 }`
 
 /**

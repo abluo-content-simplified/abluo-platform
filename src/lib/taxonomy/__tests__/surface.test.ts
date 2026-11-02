@@ -22,11 +22,11 @@ const grantFor = (role: 'owner' | 'editor' | 'viewer', modules: string[], extra:
 const navIds = (g: ReturnType<typeof grantFor>) => buildClientNavItems(g).map((i) => i.moduleId)
 
 describe('registry entry', () => {
-  it('closes the content group (Tom, 2026-10-22: after People and FAQ Sets)', () => {
+  it('closes the Library group (ADR-042 section 3: Media, People, Categories & Tags)', () => {
     const nav = TENANT_SURFACES.filter((s) => s.kind === 'nav')
-    const content = nav.filter((s) => s.group === 'content')
-    expect(content[content.length - 1].id).toBe('taxonomy')
-    expect(surface.group).toBe('content')
+    const library = nav.filter((s) => s.group === 'library')
+    expect(library[library.length - 1].id).toBe('taxonomy')
+    expect(surface.group).toBe('library')
     expect(surface.segment).toBe('taxonomy')
   })
 

@@ -9,20 +9,25 @@ import type { AttachmentForm, ItemStep } from '../dashboard-form'
 import type { ItemTab } from '../item-issues'
 import type { ItemProfile } from '../profiles'
 import type { NamedSlugConflict } from '../validation'
-import type {
-  CatalogueMigrationState,
-  CategoryAssignmentState,
-  CategoryKey,
-  CategoryTree,
-  ChannelKey,
-  CollectionId,
-  EffectiveRule,
-  FormatKey,
-  OfferingContext,
-  PriceCoverage,
-  PriceIssue,
-  PrimaryPath,
-} from './contract-deps'
+// Types owned by the other Catalogue contracts — imported, never redefined (K-9).
+import type { CatalogueMigrationState } from '../schema-commerce'
+import type { CategoryAssignmentState, CategoryKey, CategoryTree, PrimaryPath } from '../taxonomy/types'
+import type { ChannelKey, FormatKey, OfferingContext } from '../commerce/commerce-types'
+import type { EffectiveRule } from '../commerce/channel-availability'
+import type { PriceCoverage, PriceIssue } from '../commerce/prices'
+
+export type { CatalogueMigrationState, CategoryAssignmentState, CategoryKey, CategoryTree, ChannelKey, EffectiveRule, FormatKey, OfferingContext, PriceCoverage, PrimaryPath }
+
+/** A catalogueCollection document id. */
+export type CollectionId = string
+
+/**
+ * A C3/C4 save-time issue (`format.*`, `price.*`) as readiness reads it: the
+ * code, and the one row it is about. A C4 `PriceIssue` maps with
+ * `priceIssueFact`; R1's legacy offer-form issues map in facts-client.ts.
+ */
+export type PriceIssueFact = { code: PriceIssue['code'] | (string & {}); key?: string }
+export const priceIssueFact = (i: PriceIssue): PriceIssueFact => ({ code: i.code, ...(i.keys[0] !== undefined && { key: i.keys[0] }) })
 
 export type RuleLevel = 'required' | 'recommended'
 
@@ -171,13 +176,13 @@ export type FormatReadinessFacts = {
    * commerce model (C3/C4/C5) is not built yet; `undefined` = not known, and
    * every rule that reads it is inactive until `catalogueMigrations.commerce`.
    */
-  availability?: EffectiveRule
+  availability?: Pick<EffectiveRule, 'issues'>
   /** D-6: available at SOME time of the week in this offering context. Optional in R1 (see above). */
   everAvailable?: boolean
   /** C4 priceCoverage. Optional in R1 (see above). */
   priceCoverage?: PriceCoverage
   /** C3/C4 save-time shape problems + runtime price codes. In R1: the legacy offer-form issues (`offerFormIssues`). */
-  priceIssues: ReadonlyArray<PriceIssue>
+  priceIssues: ReadonlyArray<PriceIssueFact>
   skuDuplicateInProject?: boolean
 }
 

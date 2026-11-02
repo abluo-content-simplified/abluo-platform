@@ -3,6 +3,8 @@ import { navSegmentsFor } from '@/lib/client/surfaces'
 import { stopwatch, traced } from '@/lib/perf/timing'
 import { perfBeacon } from '@/lib/perf/beacon'
 import { notFound, redirect } from 'next/navigation'
+import { APP_NAV_COOKIE, parseNavPreferences } from '@/lib/app-nav-preferences'
+import { SidebarStateProvider } from '@/components/app/shell/SidebarState'
 import { APP_QUICK_ADD_COOKIE, APP_TEXT_SIZE_COOKIE, APP_THEME_COOKIE, parseAppQuickAdd, parseAppTextSize, parseAppTheme } from '@/lib/app-theme'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { getViewerAccount } from '@/lib/api/viewer-account'
@@ -35,7 +37,6 @@ import { SupportReplyNotice } from '@/components/client/support/SupportReplyNoti
 import { getFormsDashboard } from '@/lib/api/dashboard/forms'
 import { SupportAccessNotice } from '@/components/client/support/SupportAccessNotice'
 import { BillingNotice } from '@/components/client/billing/BillingNotice'
-import { loadCatalogueNavLabel } from '@/lib/api/catalogue-drafts'
 
 /**
  * Project-scoped client dashboard shell (ADR-017 Phase 2 / task #81).
@@ -87,12 +88,10 @@ async function ClientProjectLayoutInner({
   }
 
   const uiLocale = await getLocale()
-  // ADR-033 D12: the catalogue's tenant-chosen dashboard name (presentation only).
-  const catalogueLabel = activeGrant.enabledModuleIds.includes('catalogue') ? await loadCatalogueNavLabel(activeGrant.projectSlug, uiLocale) : null
-  lap('catalogueLabel')
+  // C11 (K-2): the Catalogue entry is always the dictionary's "Catalogue" — no tenant name override.
   // Billing is tenant-scoped: resolve this project's own client (only for people holding a billing permission).
   const billingTenantId = hasAnyBillingGrant(ctx) ? (tenantIdOfGrant(activeGrant) ?? (await projectTenantId(activeGrant.projectId))) : null
-  const navItems = buildClientNavItems({ ...activeGrant, permissions: [...activeGrant.permissions, ...billingNavPermissions(ctx, activeGrant, billingTenantId)] }).map((i) => (i.moduleId === 'catalogue' && catalogueLabel ? { ...i, label: catalogueLabel } : i))
+  const navItems = buildClientNavItems({ ...activeGrant, permissions: [...activeGrant.permissions, ...billingNavPermissions(ctx, activeGrant, billingTenantId)] })
   const viewer = await getViewerAccount(ctx.userId)
   lap('viewer')
   const summaries = await loadProjectSummaries(ctx.projects.map((grant) => grant.projectId))
@@ -145,6 +144,8 @@ async function ClientProjectLayoutInner({
   const theme = parseAppTheme(jar.get(APP_THEME_COOKIE)?.value)
   const textSize = parseAppTextSize(jar.get(APP_TEXT_SIZE_COOKIE)?.value)
   const quickAdd = parseAppQuickAdd(jar.get(APP_QUICK_ADD_COOKIE)?.value)
+  // ADR-042: sidebar collapsed / open-group preferences, so the first paint already matches.
+  const navPrefs = parseNavPreferences(jar.get(APP_NAV_COOKIE)?.value)
   // Unanswered contact requests (status "new") for the nav badge: the same read as Home's
   // "Unanswered requests" (getFormsDashboard → the enforced, RLS-backed submissions read), only
   // when the person has the contact-requests item and, in a support visit, requests are shown.
@@ -170,7 +171,7 @@ async function ClientProjectLayoutInner({
     >
       {/* ADR-035: one upload store — photos keep uploading while the person moves between screens. */}
       <UploadsProvider>
-      <div className="min-h-screen md:flex">
+      <SidebarStateProvider initial={navPrefs} className="min-h-screen md:flex">
         <ClientSidebar
           navItems={navItems}
           projects={projects}
@@ -196,7 +197,7 @@ async function ClientProjectLayoutInner({
           profile={profile}
         />
         {/* #client-main: the main scroll container (the selection bar / scroll listeners use it); bottom padding on phones clears the fixed tab bar — the only place that does. */}
-        <div id="client-main" className="min-h-screen min-w-0 flex-1 md:ml-56">
+        <div id="client-main" className="min-h-screen min-w-0 flex-1 md:ml-56 md:group-data-[nav-t=rail]/nav:max-lg:ml-14 lg:group-data-[nav-d=rail]/nav:ml-14">
           {/* A newer Abluo build is live: calm, never reloads by itself. */}
           <NewVersionNotice className="mx-4 mt-4 md:mx-6 md:mt-6" />
           <PresenceHeartbeat />
@@ -234,7 +235,7 @@ async function ClientProjectLayoutInner({
             {perfBeacon()}
           </main>
         </div>
-      </div>
+      </SidebarStateProvider>
       </UploadsProvider>
     </AddContentRoot>
   )

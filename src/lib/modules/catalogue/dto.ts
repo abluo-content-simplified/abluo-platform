@@ -42,6 +42,9 @@ import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import type { PortableTextContent, SanityCrop, SanityHotspot, SanityImageAsset } from '@/lib/sanity/types'
 import type { AllergenKey } from './allergens'
 import type { AvailabilityState, Weekday } from './availability'
+import type { Channel } from './commerce/channels'
+import type { WeekProfile } from './commerce/commerce-types'
+import type { CategoryNode } from './taxonomy/types'
 import type { TreeIssue } from './sections'
 import type { ItemProfile } from './profiles'
 
@@ -67,6 +70,12 @@ export type CatalogueTermDTO = {
   /** Label for the request locale. */
   label: string
   color: string | null
+  /**
+   * Categories only, and only when the category has parents (Catalogue V2 C1): the
+   * ancestors root first, for the website filter (ancestor membership). Absent for a
+   * flat vocabulary, so every legacy term resolves exactly as before.
+   */
+  ancestors?: readonly { value: string; label: string }[]
 }
 
 /**
@@ -128,6 +137,18 @@ export type CatalogueOfferDTO = {
    * channel X now".
    */
   state: AvailabilityState | null
+}
+
+/** One format of an item as the website receives it (C5-5 publicCommerce). Instant-free: no "now". */
+export type CatalogueFormatDTO = {
+  /** The format's `_key` ('default' for the implicit format). */
+  key: string
+  /** Request-locale label; null for the implicit format. */
+  label: string | null
+  /** Display prices of this format, same entries as in `offers`. */
+  prices: CatalogueOfferDTO[]
+  /** Per public context ('general' when the project has no active channel, else each active channel): its weekly profile. */
+  availability: { context: string; profile: WeekProfile; availableSometime: boolean }[]
 }
 
 /** A catalogue item an option points at (a side also sold alone). */
@@ -224,9 +245,19 @@ export type CatalogueItemDTO = {
    */
   allergenDeclaration: AllergenDeclarationDTO | null
   dietary: CatalogueTermDTO[]
+  /**
+   * The DISPLAY prices of every format, flattened in format then stored order
+   * (contract C4 displayPrices via C5-5 publicCommerce — instant-free). For
+   * legacy data this is exactly the stored offer list the website always
+   * rendered (C10-5 E6). Every renderer and structured.ts read this.
+   */
   offers: CatalogueOfferDTO[]
-  /** True when the item carries at least one offer (OfferCatalog vs ItemList, B1). */
+  /** True when at least one price is displayed (OfferCatalog vs ItemList, B1). Same value as hasPrices. */
   hasOffers: boolean
+  /** C5-5 — replaces hasOffers (kept as its alias until R3). Optional only so hand-built DTO literals stay valid; resolveItem always sets it. */
+  hasPrices?: boolean
+  /** C5-5 — per format: display prices and weekly availability profiles per public context. Carried, not rendered in R1. Always set by resolveItem. */
+  formats?: CatalogueFormatDTO[]
   optionLists: CatalogueOptionListDTO[]
   visibility: CatalogueVisibility
   /** null when the item has no page of its own (hasPage false, AC 13). */
@@ -298,6 +329,20 @@ export type CatalogueConfigDTO = {
   dietaryTags: CatalogueTermDTO[]
   /** Site IANA time zone for availability (A8). null = unknown. */
   timeZone: string | null
+  /**
+   * Contract C2 — the channel model (key, label, active, defaultAvailability,
+   * defaultSchedule), stored order, active and inactive. Optional: absent (a
+   * hand-built config) = `channels` read as legacy entries (active, read
+   * default unavailable — C10-4 transition).
+   */
+  channelModel?: Channel[]
+  /**
+   * Contract C1/C5 — the category nodes of the project's catalogue-taxonomy
+   * document (key, parentKey, order, channelRules), for the category level of
+   * the availability resolver. Absent when the project has no taxonomy document
+   * (legacy vocabularies carry no category rules): no category level.
+   */
+  categoryNodes?: CategoryNode[]
   /** Amendment K — the catalogue's own affiliate disclosure for the request locale; null = use the platform default. */
   affiliateDisclosure: string | null
 }

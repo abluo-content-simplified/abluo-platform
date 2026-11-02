@@ -213,8 +213,9 @@ export async function GET(): Promise<Response> {
     }
 
     // Catalogue — same per-language shape. The heading is platform text, like
-    // the others; the tenant's own label for the module (navLabel, D12) is a
-    // dashboard concern and never reaches a machine-readable surface.
+    // the others. Catalogue V2 C11 R-B (approved, D-12; ships with data step D4,
+    // NOT in R1): the heading will use resolvePublicName per language block,
+    // falling back to "Catalogue". Until then it is unchanged.
     for (const loc of [locale, ...otherLocales]) {
       const block = catalogueLinesFor(
         { collections: catalogueCollections ?? [], items: catalogueItems ?? [] },

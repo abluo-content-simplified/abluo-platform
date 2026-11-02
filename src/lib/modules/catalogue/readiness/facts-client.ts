@@ -12,10 +12,11 @@
 
 import { declarationPatch, offerFormIssues, type ItemState } from '../dashboard-form'
 import type { ItemIssueContext, ItemIssueState } from '../item-issues'
+import { asFormatKey } from '../commerce/commerce-types'
 import type { FormatReadinessFacts, ItemReadinessInput } from './types'
 
 /** The implicit default format's key (C3: an item without formats has exactly one). */
-export const IMPLICIT_FORMAT_KEY = 'default'
+export const IMPLICIT_FORMAT_KEY = asFormatKey('default')
 
 export type ClientFactsState = ItemIssueState & Partial<Pick<ItemState, 'description' | 'imageIds'>> & { id?: string }
 

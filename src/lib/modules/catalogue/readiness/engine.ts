@@ -7,7 +7,8 @@
 // throws; no clock, no randomness, no I/O.
 
 import { DEFAULT_RULES, DEFAULT_STANDARD, activeRules, offeringContextFor } from './rules'
-import type { OfferingContext } from './contract-deps'
+import { filterKeys } from '../taxonomy/tree'
+import type { OfferingContext } from '../commerce/commerce-types'
 import type {
   ContextKey,
   Finding,
@@ -68,14 +69,10 @@ function scopeMatches(scope: RuleScope | undefined, input: ItemReadinessInput, c
   }
   if (scope.profiles && (!input.profile || !scope.profiles.includes(input.profile))) return false
   if (scope.primaryCategorySubtree) {
-    // C1 `filterKeys(tree, subtree).includes(primary)`, done over the tree facts until C1 exports it.
+    // C1 `filterKeys(tree, subtree).includes(primary)`.
     const primary = input.categories.primary
     if (!primary || !input.categoryTree) return false
-    const parent = new Map(input.categoryTree.nodes.map((n) => [n.key, n.parent]))
-    let k: string | null | undefined = primary
-    let guard = 0
-    while (k && k !== scope.primaryCategorySubtree && guard++ < 64) k = parent.get(k)
-    if (k !== scope.primaryCategorySubtree) return false
+    if (!filterKeys(input.categoryTree, scope.primaryCategorySubtree).includes(primary)) return false
   }
   if (scope.collection) return false // placement-by-collection facts land with the Catalogue UI slice
   return true

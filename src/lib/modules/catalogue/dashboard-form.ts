@@ -21,6 +21,8 @@ import { isAmazonShortLink, looksLikeAmazon, parseAmazonUrl } from '@/lib/affili
 import { can, isItemProfile, offeringOf, type ItemProfile } from './profiles'
 import { bookYearProblem, normalizeIsbn, parseBookYear } from './isbn'
 import { orderedAllergens, type AllergenDeclarationStatus, type AllergenKey } from './allergens'
+import { commerceOf } from './commerce/legacy-commerce'
+import { itemCategoryKeys } from './taxonomy/read'
 
 /** ADR-033 D-2 — what the ITEM is (not the tenant). */
 export { PROFILE_ORDER as ITEM_PROFILES, isItemProfile, type ItemProfile } from './profiles'
@@ -92,6 +94,30 @@ export function offerFormsFromDoc(offers: unknown): OfferForm[] {
         to: typeof a?.to === 'string' ? a.to : '',
       })),
     }))
+}
+
+/**
+ * The editor state reader (C5-5, REVIEW A7): an item's prices through the
+ * commerce dual-read. Legacy `offers` read exactly as before (offerFormsFromDoc);
+ * a document that already carries `formats` (none in R1 — writers stay legacy)
+ * shows its prices, every format flattened, so the editor never shows an empty
+ * price form for a priced item. The writer (offersToDoc) is unchanged in R1.
+ */
+export function offerFormsFromItem(doc: { formats?: unknown; offers?: unknown }): OfferForm[] {
+  if (!(Array.isArray(doc.formats) && doc.formats.length > 0)) return offerFormsFromDoc(doc.offers)
+  return commerceOf(doc).formats.flatMap((f) =>
+    f.prices.map((p) => ({
+      key: p.key,
+      channel: p.scope,
+      price: priceText(p.amount),
+      availability: p.windows.map((w, i) => ({
+        key: `${p.key}-w${i}`,
+        days: (w.days ?? []).filter((d): d is Weekday => WEEKDAYS.includes(d as Weekday)),
+        from: w.from ?? '',
+        to: w.to ?? '',
+      })),
+    })),
+  )
 }
 
 /** Rows with a price become stored offers; empty rows are simply "not sold that way". */
@@ -699,10 +725,11 @@ export function itemStateFromDoc(doc: Record<string, unknown> | null | undefined
     bookDetails: bookDetailsFromDoc(d.bookDetails),
     description: textsOf(d.description),
     links: linkFormsFromDoc(d.links),
-    categories: stringsOf(d.categories),
+    // Catalogue V2 C1 (R1): primary + additional when stored, else the legacy list (writers stay legacy in R1).
+    categories: itemCategoryKeys(d),
     tags: stringsOf(d.tags),
     imageIds: refsOf(d.images),
-    offers: offerFormsFromDoc(d.offers),
+    offers: offerFormsFromItem(d),
     allergenDeclaration: declarationFormFromDoc(d.allergenDeclaration),
     dietary: stringsOf(d.dietary),
     options: attachmentsFromDoc(d.optionLists),

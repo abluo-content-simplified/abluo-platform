@@ -2,10 +2,15 @@
 
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
-import { Link, usePathname } from '@/i18n/navigation'
-import { CountBadge } from '@/components/app/ui/CountBadge'
+import { usePathname } from '@/i18n/navigation'
+import { RailFlyout } from '@/components/app/ui/RailFlyout'
+import { RailItem } from '@/components/app/ui/RailItem'
+import { SidebarCollapseToggle } from '@/components/app/ui/SidebarCollapseToggle'
+import { SidebarGroup } from '@/components/app/ui/SidebarGroup'
+import { SidebarLink } from '@/components/app/ui/SidebarLink'
 import { AccountMenu, type AccountMenuProps } from './AccountMenu'
 import { AppIcon, APP_ICONS } from './AppIcon'
+import { currentNavLayout, useSidebarState } from './SidebarState'
 
 /**
  * The navigation frame of every Abluo App surface (ADR-030) — the client
@@ -55,11 +60,30 @@ export type AppNavSlot = {
   node: ReactNode
   groupStart?: boolean
   groupHeading?: string
+  /** What the collapsed rail shows instead (e.g. an icon-only RailItem). None → the row is left out of the rail. */
+  railNode?: ReactNode
 }
 
-export type AppNavEntry = AppNavItem | AppNavSlot
+/**
+ * A collapsible group of destinations (ADR-042): a disclosure heading when the
+ * sidebar is expanded, one icon with a flyout in the rail. The caller owns the
+ * open state (remembered per person).
+ */
+export type AppNavGroup = {
+  key: string
+  /** Already translated. */
+  label: string
+  /** An `AppIcon` path (the rail shows it). */
+  icon: string
+  items: AppNavItem[]
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+export type AppNavEntry = AppNavItem | AppNavSlot | AppNavGroup
 
 const isSlot = (entry: AppNavEntry): entry is AppNavSlot => 'node' in entry
+const isGroup = (entry: AppNavEntry): entry is AppNavGroup => 'items' in entry
 
 /** What a surface's phone tab bar needs from the frame. */
 export type AppSidebarBottomBar = {
@@ -87,6 +111,10 @@ export type AppSidebarProps = {
   account: Omit<AccountMenuProps, 'variant'>
   /** Is `href` the current page? Defaults to "this page or a page under it". */
   isActive?: (pathname: string, href: string) => boolean
+  /** The current destination's key, when the caller resolves it (nested routes). Wins over `isActive`. */
+  activeKey?: string | null
+  /** Desktop and tablet can collapse to an icon rail (needs a `SidebarStateProvider` around the frame). Labels already translated. */
+  collapsible?: { collapseLabel: string; expandLabel: string }
   /** Phone-only bottom tab bar. None → no tab bar. */
   bottomBar?: (bar: AppSidebarBottomBar) => ReactNode
   /** Phones: the side the drawer slides in from. Default `left` (admin); the client dashboard uses `right` (its "More" tab). md+ is always the left sidebar. */
@@ -96,6 +124,13 @@ export type AppSidebarProps = {
 }
 
 const BRAND = 'Abluo'
+
+/** A group's aggregated badge: the sum of its destinations' counts (and their labels), or undefined when nothing waits. */
+function sumBadges(items: AppNavItem[]): { count: number; label: string } | undefined {
+  const withBadge = items.filter((i) => i.badge && i.badge.count > 0)
+  const count = withBadge.reduce((n, i) => n + (i.badge?.count ?? 0), 0)
+  return count > 0 ? { count, label: withBadge.map((i) => i.badge?.label).filter(Boolean).join(', ') } : undefined
+}
 
 /** `/x` is active on `/x` and `/x/…`, never on `/xy`. Pure; both sides locale-agnostic. */
 export function isHrefActive(pathname: string, href: string): boolean {
@@ -113,6 +148,8 @@ export function AppSidebar({
   footer,
   account,
   isActive: isActiveFor = isHrefActive,
+  activeKey,
+  collapsible,
   bottomBar,
   drawerSide = 'left',
   showMenuButton = true,
@@ -158,9 +195,17 @@ export function AppSidebar({
     }
   }, [drawerOpen])
 
+  const sidebarState = useSidebarState()
   const isActive = (href: string) => isActiveFor(pathname, href)
-  const links = items.filter((i): i is AppNavItem => !isSlot(i))
-  const heading = title ?? links.find((i) => isActive(i.href))?.label ?? tagline
+  const itemActive = (item: AppNavItem) => (activeKey !== undefined ? item.key === activeKey : isActive(item.href))
+  const links = items.flatMap((i): AppNavItem[] => (isSlot(i) ? [] : isGroup(i) ? i.items : [i]))
+  const heading = title ?? links.find(itemActive)?.label ?? tagline
+  const railEnabled = Boolean(collapsible && sidebarState)
+  // Which of the two renderings shows: below md the drawer is always the expanded one; md-lg follows the tablet
+  // preference, lg+ the desktop one (the attributes sit on the SidebarStateProvider wrapper).
+  const EXPANDED_ONLY = railEnabled ? 'md:group-data-[nav-t=rail]/nav:max-lg:hidden lg:group-data-[nav-d=rail]/nav:hidden' : ''
+  const RAIL_ONLY = 'hidden md:group-data-[nav-t=rail]/nav:max-lg:contents lg:group-data-[nav-d=rail]/nav:contents'
+  const toggle = () => sidebarState?.toggleLayout(currentNavLayout())
 
   return (
     <>
@@ -200,7 +245,7 @@ export function AppSidebar({
         id={id}
         ref={drawerRef}
         tabIndex={-1}
-        className={`fixed top-0 z-50 flex h-dvh w-64 flex-col overflow-y-auto overscroll-contain border-border bg-card text-card-foreground outline-none duration-200 motion-reduce:transition-none md:visible md:z-40 md:h-screen md:w-56 md:translate-x-0 ${
+        className={`fixed top-0 z-50 flex h-dvh w-64 flex-col overflow-y-auto overscroll-contain border-border bg-card text-card-foreground outline-none duration-200 motion-reduce:transition-none md:visible md:z-40 md:h-screen md:w-56 md:translate-x-0 ${railEnabled ? 'md:group-data-[nav-t=rail]/nav:max-lg:w-14 lg:group-data-[nav-d=rail]/nav:w-14' : ''} ${
           drawerSide === 'right'
             ? `right-0 border-l pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:right-auto md:left-0 md:border-l-0 md:border-r md:pb-0 ${drawerOpen ? '' : 'translate-x-full'}`
             : `left-0 border-r ${drawerOpen ? '' : '-translate-x-full'}`
@@ -210,61 +255,109 @@ export function AppSidebar({
             : 'invisible transition-[translate,visibility]'
         }`}
       >
-        <div className="border-b border-border-subtle px-5 py-5">
-          <span className="text-sm font-semibold tracking-tight text-foreground">{BRAND}</span>
-          <p className="mt-0.5 text-xs text-muted-foreground">{tagline}</p>
-        </div>
+        {/* ── Expanded (always on phones, in the drawer) ───────────────── */}
+        <div className={`contents ${EXPANDED_ONLY}`}>
+          <div className="flex items-start justify-between gap-2 border-b border-border-subtle px-5 py-5">
+            <div>
+              <span className="text-sm font-semibold tracking-tight text-foreground">{BRAND}</span>
+              <p className="mt-0.5 text-xs text-muted-foreground">{tagline}</p>
+            </div>
+            {railEnabled && collapsible ? (
+              <span className="hidden md:inline-flex">
+                <SidebarCollapseToggle collapsed={false} label={collapsible.collapseLabel} onToggle={toggle} controls={id} />
+              </span>
+            ) : null}
+          </div>
 
-        {top ? <div className="border-b border-border-subtle px-4 py-4">{top}</div> : null}
+          {top ? <div className="border-b border-border-subtle px-4 py-4">{top}</div> : null}
 
-        <nav aria-label={navLabel ?? tagline} className="flex-1 space-y-0.5 px-3 py-4">
-          {items.map((item) => {
-            // A heading or a plain group start puts space above the row; a heading also labels it.
-            const groupHead = item.groupHeading ? (
-              <p className="mt-5 mb-1 px-3 text-[0.6875rem] font-medium tracking-wider text-muted-foreground uppercase">
-                {item.groupHeading}
-              </p>
-            ) : null
-            const spaced = !item.groupHeading && item.groupStart
-            if (isSlot(item)) {
+          <nav aria-label={navLabel ?? tagline} className="flex-1 space-y-0.5 px-3 py-4">
+            {items.map((item) => {
+              if (isGroup(item)) {
+                const badge = sumBadges(item.items)
+                return (
+                  <SidebarGroup
+                    key={item.key}
+                    id={`${id}-group-${item.key}`}
+                    label={item.label}
+                    open={item.open}
+                    onOpenChange={item.onOpenChange}
+                    active={item.items.some(itemActive)}
+                    badge={badge}
+                  >
+                    {item.items.map((child) => (
+                      <SidebarLink key={child.key} href={child.href} label={child.label} icon={child.icon} active={itemActive(child)} badge={child.badge} onNavigate={closeDrawer} />
+                    ))}
+                  </SidebarGroup>
+                )
+              }
+              // A heading or a plain group start puts space above the row; a heading also labels it.
+              const groupHead = item.groupHeading ? (
+                <p className="mt-5 mb-1 px-3 text-[0.6875rem] font-medium tracking-wider text-muted-foreground uppercase">
+                  {item.groupHeading}
+                </p>
+              ) : null
+              const spaced = !item.groupHeading && item.groupStart
+              if (isSlot(item)) {
+                return (
+                  <Fragment key={item.key}>
+                    {groupHead}
+                    <div className={spaced ? 'mt-4' : undefined}>{item.node}</div>
+                  </Fragment>
+                )
+              }
               return (
                 <Fragment key={item.key}>
                   {groupHead}
-                  <div className={spaced ? 'mt-4' : undefined}>{item.node}</div>
+                  <SidebarLink
+                    href={item.href}
+                    label={item.label}
+                    icon={item.icon}
+                    active={itemActive(item)}
+                    badge={item.badge}
+                    onNavigate={closeDrawer}
+                    className={spaced ? 'mt-4' : ''}
+                  />
                 </Fragment>
               )
-            }
-            const active = isActive(item.href)
-            return (
-              <Fragment key={item.key}>
-                {groupHead}
-                <Link
-                  href={item.href}
-                  onClick={closeDrawer}
-                  aria-current={active ? 'page' : undefined}
-                  className={`${spaced ? 'mt-4 ' : ''}flex min-h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors ${
-                    active ? 'bg-muted font-semibold text-foreground' : 'text-muted-foreground hover:bg-hover hover:text-foreground'
-                  }`}
-                >
-                  <AppIcon d={item.icon} size={18} />
-                  {item.label}
-                  {item.badge && item.badge.count > 0 ? (
-                    <span className="ml-auto inline-flex">
-                      <CountBadge tone="attention" count={item.badge.count} srLabel={item.badge.label} />
-                    </span>
-                  ) : null}
-                </Link>
-              </Fragment>
-            )
-          })}
-          {navFooter}
-        </nav>
+            })}
+            {navFooter}
+          </nav>
 
-        {/* Desktop only: on phones the account menu lives in the top bar. */}
-        <div className="hidden border-t border-border-subtle px-3 py-3 md:block">
-          {footer ? <div className="mb-1">{footer}</div> : null}
-          <AccountMenu variant="sidebar" {...account} />
+          {/* Desktop only: on phones the account menu lives in the top bar. */}
+          <div className="hidden border-t border-border-subtle px-3 py-3 md:block">
+            {footer ? <div className="mb-1">{footer}</div> : null}
+            <AccountMenu variant="sidebar" {...account} />
+          </div>
         </div>
+
+        {/* ── Icon rail (tablet / desktop, when collapsed) ─────────────── */}
+        {railEnabled && collapsible ? (
+          <div className={RAIL_ONLY}>
+            <div className="flex flex-col items-center gap-2 border-b border-border-subtle py-3">
+              <span aria-hidden="true" className="text-sm font-semibold text-foreground">{BRAND.charAt(0)}</span>
+              <SidebarCollapseToggle collapsed label={collapsible.expandLabel} onToggle={toggle} controls={id} />
+            </div>
+            <nav aria-label={navLabel ?? tagline} className="flex flex-1 flex-col items-center gap-1 px-2 py-3">
+              {items.map((item) => {
+                if (isGroup(item)) {
+                  return (
+                    <RailFlyout key={item.key} label={item.label} icon={item.icon} active={item.items.some(itemActive)} badge={sumBadges(item.items)}>
+                      {item.items.map((child) => (
+                        <SidebarLink key={child.key} href={child.href} label={child.label} icon={child.icon} active={itemActive(child)} badge={child.badge} />
+                      ))}
+                    </RailFlyout>
+                  )
+                }
+                if (isSlot(item)) return item.railNode ? <Fragment key={item.key}>{item.railNode}</Fragment> : null
+                return <RailItem key={item.key} href={item.href} label={item.label} icon={item.icon} active={itemActive(item)} badge={item.badge} />
+              })}
+            </nav>
+            <div className="flex justify-center border-t border-border-subtle px-2 py-3">
+              <AccountMenu variant="sidebar" compact {...account} />
+            </div>
+          </div>
+        ) : null}
       </aside>
 
       {bottomBar?.({ drawerOpen, setDrawerOpen, isActive })}

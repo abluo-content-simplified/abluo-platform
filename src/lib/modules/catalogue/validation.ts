@@ -9,6 +9,7 @@
 //   - overlapping availability within a scope  → offers.ts `offerIssues`
 //   - slug normalisation and the raw conflict scan → slugs.ts
 
+import { COMMERCE_PRICE_AMOUNTS_GROQ } from './commerce/groq'
 import { normalise, slugConflicts, type SlugOwner } from './slugs'
 
 const baseId = (id: string) => id.replace(/^drafts\./, '')
@@ -114,8 +115,12 @@ export function namedSlugConflicts(
 export type ItemPriceRow = { _id: string; prices?: readonly unknown[] | null }
 export type OptionListRow = { _id: string; deltas?: readonly unknown[] | null }
 
-/** Offer prices of every item of the project (published and draft copies; deduplicated below). */
-export const CURRENCY_ITEM_PRICES_QUERY = `*[_type == "catalogueItem" && projectSlug == $projectSlug]{ _id, "prices": offers[defined(price)].price }`
+/**
+ * Prices of every item of the project (published and draft copies; deduplicated below).
+ * Dual-read (C5-5, REVIEW A7/C-5): `formats[].prices[].amount` when the item has formats, else the
+ * legacy `offers[].price` — must ship in R1 so the warning never under-counts once R2 writers unset `offers`.
+ */
+export const CURRENCY_ITEM_PRICES_QUERY = `*[_type == "catalogueItem" && projectSlug == $projectSlug]{ _id, "prices": ${COMMERCE_PRICE_AMOUNTS_GROQ} }`
 /** Non-zero option price changes of every option list of the project. */
 export const CURRENCY_OPTION_DELTAS_QUERY = `*[_type == "catalogueOptionList" && projectSlug == $projectSlug]{ _id, "deltas": options[defined(priceDelta) && priceDelta != 0].priceDelta }`
 
