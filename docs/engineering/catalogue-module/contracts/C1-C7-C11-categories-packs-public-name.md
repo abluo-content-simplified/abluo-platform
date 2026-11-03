@@ -1,7 +1,9 @@
 # Catalogue redesign — step-2 contracts C1, C7, C11
 
 **Status:** Accepted — Tom 2026-11-02 (final consistency review applied; `DECISIONS-step2-final-2026-11-02.md`, `REVIEW-step3-final-consistency.md`). Design only; nothing implemented, no git or data touched.
-**Date:** 2026-11-02 · **Rev 4**
+**Date:** 2026-11-02 · **Rev 5** (2026-11-03)
+
+> **Rev 5 changelog** (Tom's decision D-22, 2026-11-03). New **C1.12 Profile applicability**: optional `useFor` (item profiles) on root categories (inherited by descendants), Catalogue tags and option lists; one pure compatibility rule enforced by the item writer, the publish gate, readiness, Studio validation and (when they exist) bulk edit and import; pickers filter; Setup shows profile chips, a profile filter and a "Use for" editor; packs set the values; tmz is fixed in Setup by Tom (RUNBOOK §13). C7.2/C7.3 gain the pack fields and two codes.
 
 > **Rev 4 changelog** (final consistency review, section C/D items for this file; no decision changed).
 > - **C-5 / D(b)** Pizzeria delivery is evening-only consistently (text, rule on defaults, fixtures); `PackSelection.channelRules: 'skip'` also skips channel default schedules (`defaultAvailabilityWithoutSchedule`), so the schedule is declinable in the preview; new fixtures. **C-6** `deletionBlockers`/`deletionRoute` is THE "unused" implementation; C8 consumes it. **C-21** `term.archive`/`term.unarchive` operation ids stated (category = `setup.manage`, tag = `taxonomy.write`). **C-4** every taxonomy mutation carries `abluo-setup-` transaction ids (packs keep `abluo-pack-`). **C-12** legacy `categories` timing aligned with C10 (kept by D1, unset by R2 writers, all by R3). **C-13** `PACK_MAX_TX_BYTES = min(1_000_000, SANITY_MUTATION_MAX_BYTES)`. **C-14** C11.2 "Where" list gains `defaultSchedule` and `catalogueMigrations`. **C-16** audit kind is `public_name.migrated` (no prefix). **C-27** stale "Issue n" wording replaced. **C-28** `image-shape/tmz-fallback` fixture owned here. **C-30** `assertModuleAction` per `capabilitiesFor(op)`.
@@ -201,6 +203,8 @@ export type MovePlan = {
   patches: readonly { key: CategoryKey; parentKey: CategoryKey | null; order: number }[]
 } | { ok: false; code: MoveIssueCode; key: CategoryKey; detail?: string }
 ```
+
+*D-22 (2026-11-03):* `CategoryNode` (roots only) and `TagNode` gain an optional `useFor?: readonly ItemProfile[]` — see **C1.12**.
 
 **Constants** (in `taxonomy/limits.ts`, single source):
 
@@ -546,6 +550,130 @@ Base tree **T-food** (en default; it/de where noted):
 | `surface/single-writer` | static scan of `src/` | `catalogueTaxonomy` written only under `lib/modules/catalogue/taxonomy/`; `MODULE_REGISTRY` catalogue has no `taxonomies`; `manageableTaxonomyModules` never returns `catalogue`; taxonomy service called with module `catalogue` → `kind_not_declared` |
 | `guard/no-mixing` | project with both `catalogueTaxonomy` and term records | document wins entirely; labels never merged |
 
+## C1.12 Profile applicability (D-22)
+
+*Decided — Tom 2026-11-03, D-22 (`DECISIONS-step2-final-2026-11-02.md`).* A category branch, a tag or an option list may be meant for some item profiles only (a pizza never belongs in "Books › Design"). This section is the single definition of that rule; every writer, picker, gate and validator imports it.
+
+### C1.12.1 Model
+
+```ts
+import type { ItemProfile } from '../profiles'          // the profile registry ids: book · foodOrDrink · product · service
+/** "Use for". Absent or EMPTY = every item profile ("All item types"). No sentinel value is stored. */
+export type UseFor = readonly ItemProfile[]
+
+CategoryNode.useFor?: UseFor     // meaningful on ROOT categories only (parentKey null)
+TagNode.useFor?: UseFor          // per tag (tags are flat)
+catalogueOptionList.useFor?: UseFor   // per option list document (draft/published like the list's other fields)
+```
+
+Stored shape (arrays only, D-2 attribute-path budget): `catalogueCategory.useFor?: string[]`, `catalogueTag.useFor?: string[]`, `catalogueOptionList.useFor?: string[]` — profile ids, deduplicated, in `PROFILE_ORDER`. Writers **unset** the field for "All item types" (never write `[]`, never a sentinel such as `"all"`). The list is stored as chosen: ticking all four profiles stores four ids (it is "all of today's profiles"; a profile added to the registry later is then not included until someone adds it). Unknown ids are refused by every writer and by Studio validation; the reader drops them, and a stored list whose every id is unknown reads as **no profile at all** (`[]` would mean "all", so the reader keeps a distinct `unknownOnly` flag and `appliesTo` answers *false* for it — a corrupt value never widens applicability).
+
+UI labels (Tom): **Food or drink · Book · Other product · Service · All item types** (`catalogue.useFor.*`); the registry ids stay internal.
+
+### C1.12.2 Inheritance
+
+- **All descendants inherit the profiles of their top-level category.** `effectiveProfiles(tree, key)` = the `useFor` of the root of `key`'s path in the built tree (`ancestorsOf(key).at(-1) ?? key`). No per-level overrides: a non-root node's own `useFor` is ignored by every reader, refused by every writer (`category_use_for_not_root`) and flagged by Studio validation.
+- A node that `buildTree` repairs to a root (orphan, cycle cut) uses its own `useFor`.
+- **Moves.** Moving a root under a parent **drops its `useFor` in the same guarded patch**; the moved branch inherits the new root's profiles. Moving a node to the top level gives it no `useFor` (all item types) until Setup sets one. `previewCategoryMove` returns `profiles: { before, after }` (effective, for the moved node) and `newlyIncompatible` (items of the moved subtree whose assignment becomes incompatible); the move confirmation shows both whenever they differ. A move never changes an item.
+- Unknown key: `effectiveProfiles` returns `[]` (all) — unknown keys are reported by `integrity.unknownCategory` / `unknown_primary`, not here.
+
+### C1.12.3 Compatibility rule (pure, `taxonomy/profile-applicability.ts` — the ONE implementation)
+
+```ts
+export function readUseFor(raw: unknown): { profiles: ItemProfile[]; unknownOnly: boolean }
+export function appliesTo(useFor: UseFor | undefined, profile: ItemProfile, unknownOnly?: boolean): boolean  // empty/absent → true
+export function effectiveProfiles(tree: CategoryTree, key: CategoryKey): ItemProfile[]
+export function isCategoryCompatible(tree: CategoryTree, key: CategoryKey, profile: ItemProfile): boolean
+export function isTagCompatible(tag: Pick<TagNode, 'useFor'> | undefined, profile: ItemProfile): boolean        // unknown tag → true (integrity elsewhere)
+export function isOptionListCompatible(list: { useFor?: UseFor } | undefined, profile: ItemProfile): boolean
+export type ProfileFinding =
+  | { kind: 'primary' | 'additional'; key: CategoryKey; root: CategoryKey; useFor: ItemProfile[] }
+  | { kind: 'tag'; key: TagKey; useFor: ItemProfile[] }
+  | { kind: 'option'; key: string /* list id */; useFor: ItemProfile[] }
+export function incompatibleAssignments(item: ApplicabilityItem, taxonomy: { tree: CategoryTree; tags: readonly TagNode[] }, optionLists: ReadonlyMap<string, UseFor | undefined>): ProfileFinding[]
+export function newIncompatibleAssignments(before: ApplicabilityItem, after: ApplicabilityItem, taxonomy, optionLists): ProfileFinding[]  // findings of `after` whose (kind,key) was not assigned in `before`
+export function narrowingImpact(items, taxonomy, optionLists, change): { items: number; sample: { id: string }[] }   // items newly incompatible after a useFor change
+// ApplicabilityItem = { profile: ItemProfile | null; assignment: CategoryAssignment; tags: readonly string[]; optionListIds: readonly string[] }
+```
+
+- **Both primary and additional categories must be compatible**; every tag; every attached option list.
+- An item with **no valid profile** produces no profile findings (`profileMissing` already blocks it).
+- Findings are listed in a fixed order: primary, additional (stored order), tags (stored order), option lists (attachment order).
+- **Changing an item's profile checks all existing assignments** — it does so by construction: findings are a pure function of (profile, assignments, taxonomy), recomputed on every render, save, gate and validation.
+
+### C1.12.4 Enforcement points (same rule everywhere)
+
+| Where | Behaviour |
+|---|---|
+| Item writer (`item-writer.ts` `profileApplicabilityRefusal`, called by `cleanCatalogueSet` + the draft save) | Refuses a save that **adds** an incompatible assignment (`newIncompatibleAssignments` non-empty): `invalid_value`, field `primaryCategory`/`additionalCategories`/`tags`/`optionLists`, message names the term. **Never deletes** an existing assignment; a profile change is always saved and keeps every assignment (findings surface). |
+| Publish gate (`cataloguePublishGate`) | Required readiness finding `profileMismatch` per incompatible assignment → `not_ready` with the named findings (fix links: categories → item `category` step / content tab; tags → content tab; option lists → options tab). Runs **independently of the migration markers** (activation `always`): without any `useFor` in the project it can never fire, so unchanged data behaves exactly as before. Primary **and** additional categories, tags and option lists. |
+| Readiness (`readiness/rules.ts`, `facts-model.ts`) | Rule `profileMismatch`, level **required** in every context, gate `publish`, family `standard`, activation `always`; facts `profileFindings` built by the ONE shared `modelFacts` for editor and gate (R-30 equivalence). List chip `profileMismatch` ("Not used for this type") in every project. |
+| Studio (critical validation) | `catalogueItem.itemProfile` carries an async `Rule.custom(...).error()` that reads the project's `catalogueTaxonomy` and the attached option lists and runs `incompatibleAssignments` (the same function); `catalogueCategory.useFor` refuses unknown ids and a value on a non-root node. Studio stays read-only (C9); this protects break-glass writes. |
+| Bulk edit | No Catalogue bulk-edit writer exists yet. D-19 `publishManyTogether` runs the publish gate per document, so it inherits the rule; a future bulk "set category / tag / profile" action **must** call `newIncompatibleAssignments` per item before writing (test required in that slice). |
+| Import | No import path exists yet (`import.*` operations are declared only). The import slice **must** call `incompatibleAssignments` per row in its dry-run and refuse rows that would add an incompatible assignment, with the same messages. Exported from the pure module for that purpose. |
+| Re-exposure (D-15 safety subset) | **Not included.** Incompatibility is a publication-time quality rule like `primaryCategoryMissing`; back online / restore / date changes do not re-run it (the safety subset stays the four rules). Recorded 2026-11-03. |
+
+### C1.12.5 Pickers (dashboard)
+
+- `CategoryPicker` receives `compatible(key)` and `incompatibleText(key)`: the browser and search list only compatible branches; an existing incompatible assignment stays visible (summary and browser) with **"Not used for <profile>"**, a remove action and the normal way to choose a replacement; it is never removed automatically. Inline "Add category" offers only compatible parents, or **Top level** — a new root created inline from an item gets `useFor = [item profile]` (part of `term.create`, `taxonomy.write`: a brand-new root has no items, so no impact).
+- The tag picker (`TermPicker` with `isAvailable` / `unavailableText`) and the option-list picker (`OptionsField`) apply the same filter and the same "Not used for" state.
+
+### C1.12.6 Setup
+
+- **Categories & Tags:** a profile chip per root (`Pill`, one per profile; none = "All item types") and per tag; a **filter by item profile** above the tree and the tag list (shows the branches/tags applicable to that profile); "Use for" editor (`UseForField`: square checkboxes, "All item types" clears) in the category sheet for **root** categories only (children show "Inherited from <root>") and in a tag sheet.
+- **Options:** the option-list editor shows the same "Use for" field.
+- **Narrowing** a root's or tag's `useFor` shows an impact preview first — the number of items (drafts included) that become incompatible — and **never modifies items**; widening needs no preview.
+
+### C1.12.7 Service operations, permissions, audit
+
+| Operation | Capability | C8 op |
+|---|---|---|
+| `setCategoryUseFor({ key, useFor, rev, baseHashes })` + `previewCategoryUseFor` (root only; user-intent, revision-guarded, `category_conflict` on 409) | `catalogue.setup.manage` | `term.setUseFor` `kind:'category'` |
+| `setTagUseFor({ key, useFor, rev, baseHashes })` + `previewTagUseFor` | `catalogue.taxonomy.write` (D-3: editors manage tags) | `term.setUseFor` `kind:'tag'` |
+| Option list `useFor` via the existing draft writer (`saveCatalogueDraft`, kind `optionList`, field `useFor`) | `catalogue.setup.manage` in addition to `optionList.edit` | `optionList.setUseFor` |
+| `createCategory({ …, useFor })` — only when `parentKey === null` | `catalogue.taxonomy.write` | `term.create` |
+
+Audit (C12, through `recordCatalogueActivity`, content-free — profile ids are registry ids, not tenant content): **`taxonomy.use_for_changed`** `{ target: 'category' | 'tag' | 'optionList'; key: string; before: ItemProfile[]; after: ItemProfile[]; newlyIncompatible: number }`, scope `category` (category, tag) / `optionList`. Moves that drop a root's `useFor` are already audited as `category.restructured` (its `impact.items`).
+
+Stable error codes added: `category_use_for_not_root`, `use_for_invalid` (unknown profile id or malformed list).
+
+### C1.12.8 Packs (C7)
+
+`PackCategory.useFor?` (roots only — `pack_use_for_not_root`), `PackTag.useFor?`, `PackOptionGroup.useFor?`; values validated against `PROFILES` (`pack_profile_unknown`). Every root and every option group of a non-empty pack **declares** `useFor` (`pack_use_for_missing`); tags may omit it (generic tags such as New, Seasonal, Local, Staff pick, Limited stay available to all profiles). Bookshop roots/tags → Book; the five restaurant packs → Food or drink (their food-specific tags too); applying writes `useFor` only on nodes/lists it **creates** (never on equivalent existing ones — fill-if-absent never overwrites a tenant's choice). Food setup applies the same packs. **Runtime reads only the stored `useFor`, never which pack was applied** (C7.9 guard unchanged).
+
+### C1.12.9 Migration of existing data (tmz)
+
+No automatic data step: absent `useFor` = all item types, so every existing project keeps today's behaviour. tmz is fixed by Tom in Setup (RUNBOOK §13): create root **Books** (Use for: Book), move Literature, Technology, Design and the other book categories under it (setup permission; the move drops nothing — they were roots without `useFor`). The draft pizza then shows **"Design isn't used for Food or drink"** and must be fixed by Tom; nothing is ever auto-replaced. The read-only report `scripts/catalogue/report-profile-applicability.mjs` lists every incompatible assignment with the same pure function (dry-run only).
+
+### C1.12.10 Named test fixtures (`taxonomy/__tests__/profile-applicability.test.ts` unless noted)
+
+Base tree **T-mixed**: `food` (root, useFor `[foodOrDrink]`) › `pizza` › `pizza_bianche`; `books` (root, useFor `[book]`) › `design`, `literature`; `shop` (root, useFor `[book, product]`) › `gifts`; `misc` (root, no useFor). Tags: `new` (none), `spicy` `[foodOrDrink]`, `signed_copy` `[book]`. Lists: `extras` `[foodOrDrink]`, `wrap` (none).
+
+| Fixture | Input | Expected |
+|---|---|---|
+| `use-for/read` | `['book','book','x']`, `['x']`, `null`, `[]` | `{profiles:[book]}`, `{profiles:[],unknownOnly:true}`, all, all |
+| `use-for/inherit` | `effectiveProfiles(pizza_bianche)`, `(gifts)`, `(misc)`, `('nope')` | `[foodOrDrink]`, `[book,product]`, `[]`, `[]` |
+| `use-for/non-root-ignored` | `design` stored with own `useFor:[service]` | effective `[book]` |
+| `use-for/unknown-only` | root stored `useFor:['x']` | compatible with no profile |
+| `compat/pizza-design` | pizza `{profile foodOrDrink, primary design}` | `[{kind:'primary', key:'design', root:'books'}]` |
+| `compat/additional` | book `{primary literature, additional [pizza]}` | one `additional` finding |
+| `compat/multi-profile` | product in `gifts`; book in `gifts` | compatible both |
+| `compat/tags-options` | pizza with tags `[new, signed_copy]`, lists `[extras, wrap]` | one `tag` finding (`signed_copy`), no option finding |
+| `compat/order` | primary + additional + tag + option all incompatible | findings in that order |
+| `compat/no-profile` | profile null | `[]` |
+| `compat/profile-change` | book in `literature` changes profile to foodOrDrink | finding for `literature`; assignment unchanged |
+| `new/only-added` | before `{primary design}` after `{primary design, additional [literature]}` for a pizza | `newIncompatible` = `literature` only (design already there) |
+| `new/profile-change-never-refuses` | before book/design, after foodOrDrink/design | `[]` |
+| `narrow/impact` | `shop` narrowed to `[book]`, two products + one book in `gifts` | `items: 2` |
+| `move/drops-use-for` | move `books` under `misc` (service `moveCategory`, fake client) | patch unsets `useFor` on `books`; preview `profiles.before [book]`, `after []` |
+| `writer/refuse-add` (`item-writer` test) | pizza draft adds `literature` | `invalid_value` naming `additionalCategories`; nothing written |
+| `writer/keep-existing` (`item-writer` test) | pizza draft with `design` saves its name | saved; `design` kept |
+| `gate/blocks` (`catalogue-publish-gate` test) | pizza with primary `design`, project WITHOUT migration markers | `not_ready`, finding `profileMismatch` values `{kind:'primary', key:'design'}` |
+| `readiness/rule` (readiness test) | same input through editor and doc facts builders | identical `profileMismatch` findings (R-30) |
+| `studio/validation` (schema test) | Studio custom rule with fake client | error text names `design` |
+| `service/set-use-for` (service test) | root ok; non-root → `category_use_for_not_root`; editor on category → forbidden; editor on tag → ok; audit `taxonomy.use_for_changed` content-free | as stated |
+| `pack/use-for` (packs test) | every registry pack | roots + option groups declare `useFor`; Bookshop roots `[book]`; restaurant roots `[foodOrDrink]`; plan → apply writes `useFor` on created nodes only |
+
 ---
 
 # C7 — Pack format
@@ -613,6 +741,8 @@ export type PackDeclaration = {
 }
 ```
 
+*D-22 (2026-11-03):* `PackCategory.useFor?: ItemProfile[]` (roots only), `PackTag.useFor?`, `PackOptionGroup.useFor?` — rules and validation codes (`pack_use_for_missing`, `pack_use_for_not_root`) in **C1.12.8**.
+
 **Forbidden content (test-enforced):** any key named `currency`; any money amount; any `_id`; any `appliedPack` reference; any external-channel policy; any reference to Studio.
 
 ## C7.3 Validation at build time (`validatePackDeclaration`, run by a vitest over the registry)
@@ -636,6 +766,7 @@ export type PackDeclaration = {
 | `pack_too_large` | exceeds `MAX_CATEGORIES`/`MAX_TAGS`, or planned mutation count / payload for an empty project exceeds the single-transaction budget (not an error: sets `needsChunking`, asserted in a fixture only for the synthetic oversize pack) |
 | `pack_option_ref_unknown` | `defaultOptionGroups`, collection refs name declared groups |
 | `pack_runtime_branch` | registry consumers outside the allow-list (C7.9) |
+| `pack_use_for_missing` / `pack_use_for_not_root` | D-22: a root category or option group of a non-empty pack without `useFor`; a `useFor` on a child category (C1.12.8) |
 
 ## C7.4 Current state, equivalence, plan
 

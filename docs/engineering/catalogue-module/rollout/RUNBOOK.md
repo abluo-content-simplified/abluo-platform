@@ -230,3 +230,22 @@ Code rollbacks are one release at a time. Data reverts use the step's `--revert`
 | R3 | Restore from the P′ export and re-apply edits made since (manual) — the reason R3 waits for Tom. |
 
 A revert is verified by re-planning it on the result: it must plan nothing (`revert.complete`).
+
+---
+
+## 13. tmz — profile-aware categories (D-22, C1.12) — done by Tom in Setup, never by a script
+
+No data step writes `useFor`. Absent "Use for" = all item types, so nothing changes until Tom sets it. Do this after R2 (with D-22) is live on production and the D1 taxonomy document exists for tmz.
+
+1. **Report first (read-only).** From the repo root:
+   ```bash
+   npx tsx scripts/catalogue/report-profile-applicability.mjs --dataset production --project tmz
+   ```
+   It lists every item (drafts included) with each assignment that is not used for the item's type — today it must print **none** (no "Use for" exists yet). It also prints each item's type, so check now how many book items have **no type set**: they count as *Other product* (the writer's fallback). If any exist, either give them the type Book first, or tick **Book + Other product** on the Books root in step 2.
+2. **Setup → Categories & Tags → Add category** (needs Catalogue Setup): name **Books** / it **Libri** / de **Bücher**, Top level. Open it → **Use for** → tick **Book** (see step 1 for Other product) → Save.
+3. **Move** Literature, Technology, Design and every other book category under **Books** (drag, arrow keys or ⋯ → Move; Catalogue Setup). Each move preview shows "Used for: All item types → Book" and the number of items that would no longer fit (books: 0; the pizza draft: 1). Confirm. Moves never change items.
+4. **Run the report again.** Expected: exactly one finding — the draft pizza, **primary category Design isn't used for Food or drink**. Open it in the dashboard: the editor shows "Design — Not used for Food or drink" and the publish panel names it with a link to Categories. Tom replaces it (e.g. after creating a Food & Drink branch with **Setup → Starter structures → a restaurant pack** or the food setup, which sets "Use for: Food or drink" on its roots automatically) or removes it. Nothing replaces it automatically.
+5. Optional: tags that only make sense for books (e.g. *Illustrated*, *Memoir*) → Setup → Tags → ⋯ → **Use for** → Book. Generic tags stay "All item types". Narrowing shows how many items become incompatible first.
+6. Re-run the report: it must print **none** once the pizza is fixed.
+
+Rollback: set "Use for" back to **All item types** (clears the field) — items were never changed.

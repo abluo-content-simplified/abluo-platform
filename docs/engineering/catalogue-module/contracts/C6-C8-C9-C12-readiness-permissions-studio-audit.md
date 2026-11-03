@@ -356,6 +356,7 @@ export function offeringContextOf(ctx: PublicationContext): OfferingContext {
 | 28 | `allergenEvidenceMissing` | food item, declaration reviewed but `review` block absent/incomplete (legacy declarations before C13) — see C13 | r (`overridable: false`) | r | r | r | r | – | item · details · details |
 | 29 | `integrity.legacyOffersShadowed` | legacy `offers[]` non-empty alongside `formats[]` (C10 `legacy.offersShadowed`) | gate-only, R | – | – | – | – | publish | none |
 | 30 | `availability.scheduleInvalid` *(D-6, added Rev 3)* | any format's availability `issues` carry a C5a **schedule/row error**: `availability.scheduleOverlap` (overlapping overrides at one scope), `scheduleInvalidTime`, `scheduleIncomplete`, `scheduleZeroLength`, `scheduleUnknownDay`, `scheduleUnknownKind`, `scheduleLimitExceeded`, `scheduleOnImplicitFormat`, `keyMismatch`, `duplicateChannel` or `stateInvalid`. `values.reason` = the C5a code; one finding per format, naming the first. **Not** raised for `availability.scheduleRedundant` (a C5a warning, shown in the schedule editor only) and **never** for "currently unavailable by schedule" (see below) | R | R | R | R | R | publish | item · channels (`fix.surface:'setup'` when the overlap sits on a category or channel schedule) |
+| 31 | `profileMismatch` *(D-22, added 2026-11-03)* | an assigned primary or additional category, tag or attached option list whose "Use for" excludes the item's profile (C1.12 `incompatibleAssignments`; one finding per assignment; `values.kind` = primary · additional · tag · option, `values.key`) — activation `always` (fires only where `useFor` data exists); **not** in the D-15 re-exposure subset | R | R | R | R | R | publish | item · category (categories) / content (tags) / options |
 
 ### Price: the decision (K-3 rule 10)
 
@@ -812,6 +813,8 @@ export type CatalogueOperation =
   | { op: 'term.create' | 'term.rename' | 'term.translate' | 'term.reorder' | 'term.deleteUnusedLeaf' }   // taxonomy.write (D-3)
   | { op: 'term.archive' | 'term.unarchive'; kind: 'category' | 'tag' }                                       // category → setup.manage, tag → taxonomy.write (C-21)
   | { op: 'term.reparent' | 'term.reassign' | 'term.deleteInUse' | 'term.setAvailabilityRule' }            // setup.manage (D-3)
+  | { op: 'term.setUseFor'; kind: 'category' | 'tag' }                                                        // D-22 (C1.12.7): category → setup.manage, tag → taxonomy.write
+  | { op: 'optionList.setUseFor' }                                                                              // D-22: item.write + setup.manage
   | { op: 'setup.applyPack' | 'setup.channels' | 'setup.standards' | 'setup.publicWebsite' | 'setup.defaults' | 'setup.currency' }
   | { op: 'import.start' | 'import.confirm' | 'import.undo'; createsTerms: boolean }
   | { op: 'export.data' | 'export.pdf' | 'export.allergenRegister' }
@@ -1294,6 +1297,7 @@ export function validateAuditDetail(kind: CatalogueAuditKind, detail: unknown): 
 | `pack.updated` | user | project / packId | from/to version, added counts | optional update with diff |
 | `category.rule_changed` | user (`setup.manage`) | category / categoryKey | tri-state before → after on a channel, plus **impact counts** = C5 `availabilityImpact` (items/formats changed, to-available / to-unavailable, shielded by explicit overrides) | brief 11.4: confirmed, counts shown |
 | `category.restructured` | user (`setup.manage`) | category / key | move/delete/reassign + counts | not in brief §28 but availability-material (I-8) |
+| `taxonomy.use_for_changed` | user (`setup.manage` for categories and option lists, `taxonomy.write` for tags) | category / key (tag, option list: same scope rules, `target` names which) | profile ids before → after + count of items newly incompatible | D-22, C1.12.7; registry ids only, never labels |
 | `channel.activated` / `.deactivated` | user (`setup.manage`) | channel / channelKey | `defaultAvailability` chosen + C5 `availabilityImpact` counts. Activation changes availability **only through the channel's `defaultAvailability`** (an `available` default makes items without overrides available on it; an `unavailable` default changes nothing) — K-3 rule 1 ("entering a price never activates a channel") is a statement about prices, not about this explicit setting | `channel.default_changed` and `channel.removed` are separate rows |
 | `standard.changed` | user (`setup.manage`) | standard / standardKey | version bump, rule codes added/removed/re-levelled, overrides expired | codes only, no tenant message text |
 | `allergen.reviewed` | user (`allergen.update`) | item / publicId (choice: item id + `choiceKey`) | status → status, the Annex II keys contains / may contain (closed legal list, not personal), **basis**, previous status; reviewer = actor | The only place the declaration's content appears; it is the evidence (20.2). Not the free-text note. |

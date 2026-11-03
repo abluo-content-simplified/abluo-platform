@@ -65,3 +65,39 @@ The review service distinguishes a valid review action from an uncontrolled edit
 
 **D-21 Lower-impact confirmations — all approved**, with one naming change. Approved: implicit format has no explicit override; `effectiveIsbn` is the ISBN authority; editions do not become formats in this slice; conflicting duplicate rows → unset + visible readiness error, never an arbitrary winner; unknown-channel and stored-currency legacy rows stop pre-flight; unreachable standard prices retained until explicit cleanup; channel deletion requires counted, previewed, audited cleanup; packs reuse stable keys such as `dine-in` and `takeaway`; limits 12 channels, 24 formats per item, 300 categories, 200 Catalogue tags; readiness counts include drafts and distinguish Ready / Not yet; missing-translation checks only for public locales and not immediately penalising a newly added locale; superseded pricing sections in the brief clearly marked; export unavailable in support mode.
 *Option-item picker:* keep the rule that a linked item must have at least one price; rename the internal result from `offered` to **`hasPrice`**; message: **"This item needs at least one price before it can be used as a linked choice."** An item with at least one price qualifies even when unavailable on a particular channel. All other picker requirements (project scope, valid draft/published dependency, lifecycle checks) continue to apply. After the split, "offered" is never a synonym for "priced".
+
+## Added after step 2
+
+**D-22 Profile-aware Catalogue taxonomy — Decided, Tom, 2026-11-03.** Amends C1 (new C1.12) and touches C3, C6, C7, C8, C9, C12. Tom's rules, verbatim:
+
+Each **top-level category** gets an optional **"Use for"** setting containing one or more item profiles: Food or drink · Book · Other product · Service · All item types.
+Examples: Food & Drink → Food or drink · Books → Book · Shop → Book + Other product · Services → Service.
+
+- Categories **without a setting remain available to every profile** (backward compatibility).
+- **All descendants inherit** the profiles of their top-level category. No per-level overrides yet; a branch serving different profiles belongs under an appropriate root.
+
+*Behaviour*
+- A pizza picker shows only branches applicable to Food or drink; a book only branches applicable to Book.
+- A category may support several profiles.
+- **Changing an item's profile checks all existing category assignments.**
+- **Incompatible assignments are shown clearly and must be removed or replaced before publication. They are never silently deleted.**
+- **Both primary and additional categories must be compatible.**
+- **Server validation, Studio's critical validation, bulk editing and import must enforce the same rule** — not only the visual picker.
+- **Setup shows profile chips beside each root category and allows filtering the tree by item profile.**
+- **Starter packs set these values automatically.**
+- **Runtime behaviour depends only on category data, never on which starter pack was used.**
+
+*Existing tmz data*
+- Create a **Books** root (Use for: Book) and place Literature, Technology, Design and the other book categories beneath it.
+- The draft pizza currently assigned to a book category (Design) is **flagged as needing a compatible category** — never pretend Design is valid for a pizza, never silently replace it.
+- A Food & Drink branch can then be created through food setup or a restaurant pack.
+
+*Tags*
+- Apply the **same optional profile applicability to Catalogue tags** (flat list, per tag). Generic tags (New, Featured, Seasonal) stay available to all profiles; book- or food-specific tags are filtered.
+
+*Other pickers*
+- Audit other shared item pickers — particularly **Options** — for the same cross-profile leakage. If an option group can apply to selected profiles, use the **same multi-profile pattern**, not a different mechanism.
+
+Must be in C1 before Step 3 (affects the taxonomy model, migration, starter packs, pickers, import and publication validation).
+
+*Implementation calls recorded with the decision (C1.12):* "All item types" is stored as **absent** (no sentinel); a moved root **drops** its `useFor` and inherits the new root's profiles (the move preview shows the change); option lists use the same `useFor` field; category and option-list `useFor` need `catalogue.setup.manage`, tag `useFor` follows D-3 ("manage tags" = `catalogue.taxonomy.write`); a new root created inline from an item gets `useFor = [item profile]`; incompatibility is **not** part of the D-15 re-exposure safety subset; the readiness rule is active in every project (it can only fire where `useFor` data exists).
