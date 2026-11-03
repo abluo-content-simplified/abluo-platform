@@ -21,6 +21,9 @@
 // website-context result onto `ItemIssue` so the editor is unchanged.
 
 import type { ItemState, ItemStep } from './dashboard-form'
+import type { ChannelSet } from './commerce/channels'
+import type { CategoryTree } from './taxonomy/types'
+import type { CatalogueMigrationState } from './schema-commerce'
 import { WEBSITE, evaluateItem } from './readiness/engine'
 import { itemReadinessInputFromState } from './readiness/facts-client'
 import type { Finding, ReadinessCode } from './readiness/types'
@@ -49,13 +52,22 @@ export type ItemIssue = {
 export type ItemIssueContext = {
   defaultLocale: string
   locales: readonly string[]
+  /** The project's channel keys (an older caller); `channelSet` wins when given. */
   channels: readonly string[]
   /** option list id → number of options (every list of the project). */
   optionCounts: ReadonlyMap<string, number>
+  /** R2: the project's channels (C2 `readChannels`). */
+  channelSet?: ChannelSet
+  /** R2: the project's category tree (C1 `buildTree`). */
+  tree?: CategoryTree
+  /** R2: the site zone (windowed prices without it are `price.indeterminate`). */
+  timeZone?: string | null
+  /** R2 (C6 step 7): the project's C10-6 markers — the model-dependent rules run only when both data steps are verified. */
+  migrations?: CatalogueMigrationState
 }
 
 /** The state `itemIssues` reads: an `ItemState` (the wizard's profile may still be null). */
-export type ItemIssueState = Pick<ItemState, 'itemProfile' | 'name' | 'bookDetails' | 'offers' | 'options' | 'allergenDeclaration' | 'hasPage' | 'slug'>
+export type ItemIssueState = Pick<ItemState, 'itemProfile' | 'name' | 'bookDetails' | 'formats' | 'itemRules' | 'options' | 'allergenDeclaration' | 'hasPage' | 'slug'> & Partial<Pick<ItemState, 'assignment'>>
 
 /**
  * C6 §6.6 legacy id of each projected finding (tests pin it). Only these codes
@@ -74,6 +86,12 @@ export const LEGACY_ID: Partial<Record<ReadinessCode, string>> = Object.freeze({
   pageAddressInvalid: 'pageAddress',
   strayAddress: 'strayAddress',
   isbnInvalid: 'isbn',
+  // R2 (C6 step 7): active only in a project whose taxonomy + commerce data steps are verified.
+  categoryMissing: 'categoryMissing',
+  primaryCategoryMissing: 'primaryCategory',
+  'price.ambiguous': 'priceAmbiguous',
+  'availability.conflictingRows': 'availabilityConflict',
+  'availability.scheduleInvalid': 'scheduleInvalid',
 })
 
 /**
@@ -82,7 +100,7 @@ export const LEGACY_ID: Partial<Record<ReadinessCode, string>> = Object.freeze({
  * the allergens (registry row 21 comes after the page rows 11–12). Kept so the
  * adapter's output is byte-identical (G-03).
  */
-const LEGACY_ORDER: readonly string[] = ['profile', 'name', 'price', 'priceTimes', 'priceOverlap', 'priceChannel', 'optionsMinMax', 'allergens', 'isbn', 'optionList', 'pageAddress', 'strayAddress']
+const LEGACY_ORDER: readonly string[] = ['profile', 'name', 'price', 'priceTimes', 'priceOverlap', 'priceChannel', 'categoryMissing', 'primaryCategory', 'optionsMinMax', 'allergens', 'isbn', 'optionList', 'pageAddress', 'strayAddress', 'priceAmbiguous', 'availabilityConflict', 'scheduleInvalid']
 
 /** Pure, 1:1: severity from level + gate; step/tab/focus from the fix target; legacy id. Null when the finding has no editor form. */
 export function findingToItemIssue(f: Finding): ItemIssue | null {

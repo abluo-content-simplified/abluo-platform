@@ -42,6 +42,15 @@ export const PRICE_ISSUE_TO_RULE: Readonly<Record<string, 'price.invalid' | 'pri
   incompleteWindow: 'price.times',
   overlappingOffers: 'price.overlap',
   unknownChannel: 'price.channel',
+  // R2: the C4 save-time codes (priceIssues) join the same four groups (REVIEW C-17).
+  'price.amountInvalid': 'price.invalid',
+  'price.tooManyDecimals': 'price.invalid',
+  'price.windowInvalidTime': 'price.times',
+  'price.windowIncomplete': 'price.times',
+  'price.windowZeroLength': 'price.times',
+  'price.windowUnknownDay': 'price.times',
+  'price.overlap': 'price.overlap',
+  'price.unknownChannel': 'price.channel',
 })
 
 const PRICE_MESSAGE: Record<'price.invalid' | 'price.times' | 'price.overlap' | 'price.channel', string> = {

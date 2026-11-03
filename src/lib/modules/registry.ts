@@ -1444,6 +1444,19 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
             'What the new-item wizard preselects for "What are you offering?". Optional; always changeable per item.',
         },
         {
+          // D-13 part 4 (C7.6): the list-image frame of items WITHOUT a profile, written once by data
+          // step D3 only where `defaultItemProfile` would change the shape the legacy preset gave.
+          id: 'itemImageShape',
+          label: 'Image frame for items without a type',
+          type: 'select',
+          hidden: true,
+          options: [
+            { value: 'portrait', label: 'Upright' },
+            { value: 'landscape', label: 'Landscape' },
+          ],
+          description: 'Maintained by the module. The list-image frame of items that have no type yet.',
+        },
+        {
           id: 'currency',
           label: 'Currency',
           type: 'select',

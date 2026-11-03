@@ -7,6 +7,7 @@ import { evaluate as groq, parse } from 'groq-js'
 import { CATALOGUE_DASHBOARD_LIST_QUERY, CATALOGUE_GLANCE_QUERY, CATALOGUE_REF_TARGETS_QUERY } from '../../dashboard-queries'
 import { CURRENCY_ITEM_PRICES_QUERY, currencyImpact } from '../../validation'
 import { itemStateFromDoc, offerFormsFromDoc } from '../../dashboard-form'
+import { commerceOf } from '../legacy-commerce'
 import { catalogueSchemaTypes, catalogueItem } from '../../schema'
 import { CATALOGUE_COMMERCE_SCHEMA_TYPE_NAMES } from '../../schema-commerce'
 import { evaluate, ruleIssues, rulesOverlap, type AvailabilityState } from '../../availability'
@@ -53,14 +54,17 @@ describe('GROQ readers accept both shapes', () => {
 })
 
 describe('editor state reader', () => {
-  it('legacy offers read exactly as before', () => {
+  it('legacy offers read through the dual-read: the implicit format, keys kept (C10-3)', () => {
     const offers = [{ _key: 'a', channel: 'dine-in', price: 9.5, availability: [{ _key: 'w', days: ['mon'], from: '18:00', to: '02:00' }] }]
-    expect(itemStateFromDoc({ offers }).offers).toEqual(offerFormsFromDoc(offers))
+    const s = itemStateFromDoc({ offers })
+    expect(s.formats).toEqual(commerceOf({ offers }).formats)
+    expect(s.formats[0].prices).toEqual([{ key: 'a', scope: 'dine-in', amount: 9.5, note: null, windows: [{ days: ['mon'], from: '18:00', to: '02:00' }] }])
+    // offerFormsFromDoc (legacy form reader) still reads the same row.
+    expect(offerFormsFromDoc(offers)[0]).toMatchObject({ key: 'a', channel: 'dine-in', price: '9.50' })
   })
-  it('a document with formats shows its prices (flattened), never an empty price form', () => {
-    expect(itemStateFromDoc({ formats: [{ _key: 'default', prices: [{ _key: 'p', amount: 4, channel: 'takeaway', windows: [{ days: ['fri'], from: '12:00', to: '15:00' }] }] }] }).offers).toEqual([
-      { key: 'p', channel: 'takeaway', price: '4.00', availability: [{ key: 'p-w0', days: ['fri'], from: '12:00', to: '15:00' }] },
-    ])
+  it('a document with formats shows its formats and prices, never an empty price form', () => {
+    const s = itemStateFromDoc({ formats: [{ _key: 'default', prices: [{ _key: 'p', amount: 4, channel: 'takeaway', windows: [{ days: ['fri'], from: '12:00', to: '15:00' }] }] }] })
+    expect(s.formats[0].prices).toEqual([{ key: 'p', scope: 'takeaway', amount: 4, note: null, windows: [{ days: ['fri'], from: '12:00', to: '15:00' }] }])
   })
 })
 

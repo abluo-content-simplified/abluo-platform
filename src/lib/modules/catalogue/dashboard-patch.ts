@@ -27,6 +27,10 @@ import type { Referrer } from '@/lib/lifecycle/service'
 import type { NamedSlugConflict } from './validation'
 import { can, isItemProfile } from './profiles'
 import { bookYearMax, normalizeIsbn, parseBookYear } from './isbn'
+import { legacyOffersToFormats } from './commerce/legacy-commerce'
+import type { ChannelSet } from './commerce/channels'
+import type { CategoryTree } from './taxonomy/types'
+import { bookIsbnAfter, categoriesShape, cleanFormats, cleanRuleRows, commerceShape, profileAfter, writerChannels, writerTree } from './item-writer'
 
 export type CatalogueKind = 'item' | 'collection' | 'optionList'
 
@@ -61,6 +65,8 @@ export type CatalogueErrorCode =
   | 'unpublished_dependencies'
   /** D2 + D-21: an option links to an item without any price (`hasPrice` false). */
   | 'linked_item_needs_price'
+  /** C6 §6.7.1: a required readiness finding without an older code; `detail.readiness` lists them all. */
+  | 'not_ready'
   | 'failed'
 
 export type CatalogueErrorDetail = {
@@ -71,6 +77,8 @@ export type CatalogueErrorDetail = {
   /** E-3: the languages with an address but no name. */
   locales?: string[]
   field?: string
+  /** C6 §6.7.1 (`not_ready`): every required finding, with its fix target. */
+  readiness?: import('./readiness/types').Finding[]
 }
 
 export class CatalogueError extends Error {
@@ -129,6 +137,12 @@ export type PatchContext = {
   /** The draft as stored (for offer locationKeys and pre-existing orphan sections). */
   previous: Record<string, unknown>
   newKey: () => string
+  /** R2: the project's channels (C2 readChannels over `serviceChannels`); default = `channels` as bare keys. */
+  channelSet?: ChannelSet
+  /** R2: the project's category tree (C1); default = a flat tree over `categories`. */
+  categoryTree?: CategoryTree
+  /** The site's main language (format names are required in it with ≥ 2 formats); default = the first of `locales`. */
+  defaultLocale?: string
 }
 
 export type CleanedPatch = {
@@ -150,7 +164,9 @@ const FIELDS: Record<CatalogueKind, { localized: Record<string, { max: number; t
       byline: { max: CATALOGUE_LIMITS.byline, type: 'localizedString' },
       description: { max: CATALOGUE_LIMITS.description, type: 'localizedText' },
     },
-    plain: ['itemProfile', 'bookDetails', 'categories', 'tags', 'links', 'images', 'offers', 'allergenDeclaration', 'dietary', 'optionLists', 'hasPage', 'visibility'],
+    // R2 (C10-6): `formats` + `channelAvailability` and `primaryCategory` + `additionalCategories` are written;
+    // the legacy `offers` / `categories` are still ACCEPTED (an older tab, a replayed journal) and written in the new shape.
+    plain: ['itemProfile', 'bookDetails', 'categories', 'primaryCategory', 'additionalCategories', 'tags', 'links', 'images', 'offers', 'formats', 'channelAvailability', 'allergenDeclaration', 'dietary', 'optionLists', 'hasPage', 'visibility'],
   },
   collection: {
     localized: { name: { max: CATALOGUE_LIMITS.name, type: 'localizedString' }, description: { max: CATALOGUE_LIMITS.description, type: 'localizedText' } },
@@ -461,12 +477,11 @@ export function cleanCatalogueSet(kind: CatalogueKind, input: Record<string, unk
         r.set.hasPage = value
         r.hasPage = value as boolean
         break
-      case 'categories': {
-        const v = stringSet(value, (c) => ctx.categories.includes(c), CATALOGUE_LIMITS.categories, field)
-        if (v.length) r.set.categories = v
-        else r.unset.push('categories')
+      case 'categories':
+      case 'primaryCategory':
+      case 'additionalCategories':
+        // R2 (C1, D-15): written as primary + additional by applyShapeSwitch, never as the legacy list.
         break
-      }
       case 'tags': {
         const v = stringSet(value, (c) => ctx.tags.includes(c), CATALOGUE_LIMITS.tags, field)
         if (v.length) r.set.tags = v
@@ -497,11 +512,18 @@ export function cleanCatalogueSet(kind: CatalogueKind, input: Record<string, unk
         break
       }
       case 'offers': {
+        // An older client: the same validation as before, then the C10-3 mapping (keys kept) — stored as formats.
+        // Price notes the dashboard never edited survive from the stored prices/offers with the same key (T-10).
         const v = cleanOffers(value, ctx)
-        if (v.length) r.set.offers = v
-        else r.unset.push('offers')
+        r.set.formats = withPreviousNotes(legacyOffersToFormats(v) as unknown as Record<string, unknown>[], ctx.previous)
         break
       }
+      case 'formats':
+        r.set.formats = cleanFormats(value, writerContext(ctx, input), bad)
+        break
+      case 'channelAvailability':
+        r.set.channelAvailability = cleanRuleRows(value, { channelSet: channelsOf(ctx), newKey: ctx.newKey }, 'channelAvailability', bad)
+        break
       case 'links': {
         const v = cleanLinks(value, ctx)
         if (v.length) r.set.links = v
@@ -531,9 +553,62 @@ export function cleanCatalogueSet(kind: CatalogueKind, input: Record<string, unk
         throw new CatalogueError('invalid_field', `Field "${path}" cannot be changed here.`)
     }
   }
-  if (kind === 'item') applyItemRules(r, input, ctx.previous)
+  if (kind === 'item') {
+    applyItemRules(r, input, ctx.previous)
+    applyShapeSwitch(r, input, ctx)
+  }
   if (ROUTABLE.has(kind)) applySlugNameRule(r, input, ctx.previous)
   return r
+}
+
+const channelsOf = (ctx: PatchContext): ChannelSet => ctx.channelSet ?? writerChannels(undefined, ctx.channels)
+
+function writerContext(ctx: PatchContext, input: Record<string, unknown>) {
+  const set: Record<string, unknown> = {}
+  if ('bookDetails' in input) {
+    const b = cleanBookDetails(input.bookDetails)
+    if (b) set.bookDetails = b
+  }
+  return {
+    locales: ctx.locales,
+    channelSet: channelsOf(ctx),
+    categoryTree: writerTree(ctx.categoryTree, ctx.categories),
+    previous: ctx.previous,
+    newKey: ctx.newKey,
+    itemProfile: profileAfter(input, ctx.previous),
+    bookIsbn: bookIsbnAfter(set, 'bookDetails' in input && !set.bookDetails ? ['bookDetails'] : [], ctx.previous),
+    defaultLocale: ctx.defaultLocale ?? [...ctx.locales][0] ?? 'en',
+  }
+}
+
+/** Notes of stored prices (new shape) or offers (legacy) by key — the legacy offers editor never carried them. */
+function withPreviousNotes(formats: Record<string, unknown>[], previous: Record<string, unknown>): Record<string, unknown>[] {
+  const notes = new Map<string, unknown>()
+  for (const o of (Array.isArray(previous.offers) ? previous.offers : []) as Record<string, unknown>[]) if (o && typeof o._key === 'string' && o.priceNote) notes.set(o._key, o.priceNote)
+  for (const f of (Array.isArray(previous.formats) ? previous.formats : []) as Record<string, unknown>[])
+    for (const p of (Array.isArray(f?.prices) ? f.prices : []) as Record<string, unknown>[]) if (p && typeof p._key === 'string' && p.note) notes.set(p._key, p.note)
+  return formats.map((f) => ({ ...f, prices: (f.prices as Record<string, unknown>[]).map((p) => (notes.has(p._key as string) && !p.note ? { ...p, note: notes.get(p._key as string) } : p)) }))
+}
+
+/**
+ * C10-6 R2: the item writer leaves ONE shape on the document it writes — `formats` (+ rows)
+ * xor `offers`, primary/additional xor `categories`. A legacy draft converts on its first
+ * save, whatever field that save touches (item-writer.ts).
+ */
+function applyShapeSwitch(r: CleanedPatch, input: Record<string, unknown>, ctx: PatchContext) {
+  const take = (field: string) => {
+    if (!(field in r.set)) return undefined
+    const v = r.set[field] as Record<string, unknown>[]
+    delete r.set[field]
+    return v
+  }
+  const commerce = commerceShape(ctx.previous, { formats: take('formats'), channelAvailability: take('channelAvailability') }, channelsOf(ctx))
+  const categories = categoriesShape(ctx.previous, input, writerTree(ctx.categoryTree, ctx.categories), bad)
+  for (const s of [commerce, categories]) {
+    if (!s) continue
+    Object.assign(r.set, s.set)
+    for (const u of s.unset) if (!r.unset.includes(u)) r.unset.push(u)
+  }
 }
 
 // ── Book details (Amendment I-3) ──────────────────────────────────────────────

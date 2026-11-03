@@ -71,7 +71,13 @@ import {
 import { initialItemProfile, type ItemProfile } from '@/lib/modules/catalogue/dashboard-form'
 import { can, isItemProfile, profileOf } from '@/lib/modules/catalogue/profiles'
 import type { CategoryTermRow } from '@/lib/taxonomy/vocabulary'
-import { catalogueVocabulary, itemCategoryKeys, type RawCatalogueTaxonomy } from '@/lib/modules/catalogue/taxonomy/read'
+import { catalogueVocabulary, itemCategoryKeys, readCategoryNodes, type RawCatalogueTaxonomy } from '@/lib/modules/catalogue/taxonomy/read'
+import { buildTree } from '@/lib/modules/catalogue/taxonomy/tree'
+import type { CategoryNode } from '@/lib/modules/catalogue/taxonomy/types'
+import { ORDER_STEP } from '@/lib/taxonomy/rules'
+import { readChannels } from '@/lib/modules/catalogue/commerce/channels'
+import { CATALOGUE_MIGRATION_STEPS, type CatalogueMigrationState } from '@/lib/modules/catalogue/schema-commerce'
+import { isImageShape, type ImageShape } from '@/lib/modules/catalogue/list-model'
 import { publicNameMap } from '@/lib/modules/catalogue/public-name'
 import { namedSlugConflicts, type NamedSlugConflict } from '@/lib/modules/catalogue/validation'
 import {
@@ -168,8 +174,6 @@ export type CatalogueSite = {
   /** IANA zone of the site, or null (the dashboard falls back to the viewer's). */
   timeZone: string | null
   translate: boolean
-  /** The starter preset the catalogue was set up from (e.g. 'bookshop'), or null. */
-  presetId?: string | null
   /** The project's Amazon tracking IDs (Settings), for the buy-link preview. Empty when none. */
   amazonTrackingIds?: AmazonTrackingId[]
   /** Awin publisher ID (digits) from Settings, or null — the buy-link preview for Awin shops. */
@@ -190,6 +194,17 @@ export type CatalogueSite = {
     dietaryTags: CatalogueTerm[]
     /** D-2: the profile the item wizard preselects (module setting, e.g. from a starter preset); null = none. */
     defaultItemProfile: ItemProfile | null
+    /**
+     * D-13 part 4: the list-image frame for items WITHOUT a profile when it must differ from
+     * `defaultItemProfile`'s (module-written by data step D3; null = follow `defaultItemProfile`).
+     */
+    itemImageShape: ImageShape | null
+    /** C2: the raw `serviceChannels` entries (plain JSON) — every reader builds its ChannelSet with `readChannels`. */
+    serviceChannels: unknown[]
+    /** C1: the category tree's nodes (plain JSON) — `buildTree(categoryNodes)` on either side; a flat list for a legacy vocabulary. */
+    categoryNodes: CategoryNode[]
+    /** C10-6 markers of this project (gate rule activation, C6 step 7). */
+    migrations: CatalogueMigrationState
   }
 }
 
@@ -199,8 +214,25 @@ const termsOf = (rows: unknown): CatalogueTerm[] =>
     .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object' && typeof (r as { value?: unknown }).value === 'string' && !!(r as { value: string }).value)
     .map((r) => ({ value: r.value as string, label: localized(r.label), color: typeof r.color === 'string' && r.color ? r.color : null }))
 
+/** C10-6 markers as read: one ISO string per verified data step, nothing else. */
+export function migrationsOf(raw: unknown): CatalogueMigrationState {
+  const out: CatalogueMigrationState = {}
+  if (!raw || typeof raw !== 'object') return out
+  for (const step of CATALOGUE_MIGRATION_STEPS) {
+    const v = (raw as Record<string, unknown>)[step]
+    if (typeof v === 'string' && v) out[step] = v
+  }
+  return out
+}
+
+/** The tree's nodes: the taxonomy document's when it is the source, else a flat list over the legacy vocabulary (labels kept). */
+function categoryNodesOf(taxonomy: RawCatalogueTaxonomy, source: string, terms: CatalogueTerm[]): CategoryNode[] {
+  if (source === 'document' && taxonomy && Array.isArray(taxonomy.categories)) return readCategoryNodes(taxonomy.categories)
+  return terms.map((t, i) => ({ key: t.value, label: t.label, parentKey: null, order: (i + 1) * ORDER_STEP, channelRules: {}, defaultOptionListIds: [], archivedAt: null }))
+}
+
 async function readSite(client: Client, projectSlug: string): Promise<CatalogueSite> {
-  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null; amazonTrackingIds?: { marketplace?: unknown; trackingId?: unknown }[] | null; awinPublisherId?: unknown; affiliateShops?: { shop?: unknown }[] | null } | null; config?: RawConfig; presetId?: unknown; translate?: boolean; categoryTerms?: CategoryTermRow[] | null; tagTerms?: CategoryTermRow[] | null; taxonomy?: RawCatalogueTaxonomy } | null>(
+  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null; amazonTrackingIds?: { marketplace?: unknown; trackingId?: unknown }[] | null; awinPublisherId?: unknown; affiliateShops?: { shop?: unknown }[] | null } | null; config?: RawConfig; translate?: boolean; categoryTerms?: CategoryTermRow[] | null; tagTerms?: CategoryTermRow[] | null; taxonomy?: RawCatalogueTaxonomy } | null>(
     CATALOGUE_SITE_QUERY,
     { projectSlug }
   ))
@@ -211,6 +243,7 @@ async function readSite(client: Client, projectSlug: string): Promise<CatalogueS
   const currency = typeof c.currency === 'string' && /^[A-Za-z]{3}$/.test(c.currency) ? c.currency.toUpperCase() : 'EUR'
   // Catalogue V2 C1 (R1): taxonomy document → term records → config list, per kind, never mixed.
   const vocabulary = catalogueVocabulary({ taxonomy: r?.taxonomy, categoryTerms: r?.categoryTerms, tagTerms: r?.tagTerms, configCategories: c.categories })
+  const categories = termsOf(vocabulary.categories)
   return {
     defaultLocale,
     locales: [defaultLocale, ...supported.filter((l) => l !== defaultLocale)],
@@ -219,17 +252,20 @@ async function readSite(client: Client, projectSlug: string): Promise<CatalogueS
     awinPublisherId: awinPublisherIdOf({ awinPublisherId: r?.site?.awinPublisherId }),
     affiliateShops: approvedShops({ affiliateShops: r?.site?.affiliateShops }).map((shop) => ({ shop })),
     translate: r?.translate === true,
-    presetId: typeof r?.presetId === 'string' && r.presetId ? r.presetId : null,
     config: {
       publicName: publicNameMap(c.publicName),
       segment: typeof c.publicSegment === 'string' && c.publicSegment ? c.publicSegment : null,
       currency,
       channels: termsOf(c.serviceChannels),
       // Document entries come in tree order; term records / config list exactly as before.
-      categories: termsOf(vocabulary.categories),
+      categories,
       tags: termsOf(vocabulary.tags),
       dietaryTags: termsOf(c.dietaryTags),
       defaultItemProfile: initialItemProfile(c.defaultItemProfile),
+      itemImageShape: isImageShape(c.itemImageShape) ? c.itemImageShape : null,
+      serviceChannels: Array.isArray(c.serviceChannels) ? (c.serviceChannels as unknown[]) : [],
+      categoryNodes: categoryNodesOf(r?.taxonomy, vocabulary.categorySource, categories),
+      migrations: migrationsOf(c.catalogueMigrations),
     },
   }
 }
@@ -671,10 +707,13 @@ export async function patchCatalogueDraft(
   }
   const cleaned = cleanCatalogueSet(kind, input.set, {
     locales: new Set(site.locales),
+    defaultLocale: site.defaultLocale,
     channels: site.config.channels.map((c) => c.value),
     categories: site.config.categories.map((c) => c.value),
     tags: site.config.tags.map((c) => c.value),
     dietary: site.config.dietaryTags.map((c) => c.value),
+    channelSet: readChannels(site.config.serviceChannels).channels,
+    categoryTree: buildTree(site.config.categoryNodes),
     previous,
     newKey,
   })

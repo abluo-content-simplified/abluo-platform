@@ -30,14 +30,14 @@ import { WEEKDAYS, type Weekday } from '@/lib/modules/catalogue/availability'
 import { formatPrice } from '@/lib/modules/catalogue/resolve'
 import { CATALOGUE_LINK_LIMITS } from '@/lib/modules/catalogue/links'
 import type { CatalogueTerm } from '@/lib/api/catalogue-drafts'
+import type { ChannelSet } from '@/lib/modules/catalogue/commerce/channels'
+import type { Format } from '@/lib/modules/catalogue/commerce/formats'
 import type { NamedSlugConflict } from '@/lib/modules/catalogue/validation'
 import {
   ITEM_PROFILES,
   attachmentIssues,
   bookYearInvalid,
   declarationIssues,
-  offerFormIssues,
-  parsePrice,
   linkFormIssues,
   buyLinkOf,
   withBuyLink,
@@ -50,7 +50,6 @@ import {
   type DeclarationForm,
   type ItemProfile,
   type LinkForm,
-  type OfferForm,
   type Texts,
   type Visibility,
 } from '@/lib/modules/catalogue/dashboard-form'
@@ -609,134 +608,6 @@ export function PhotoField({
   )
 }
 
-// ── Prices (one per channel + everywhere; optional serving times) ────────────
-
-export function PriceField({ offers, channels, currency, defaultLocale, onChange, hiddenByAmazon = false }: { offers: OfferForm[]; channels: readonly CatalogueTerm[]; currency: string; defaultLocale: string; onChange: (next: OfferForm[]) => void; /** The item has an Amazon buy link: the website shows no manual price next to it. */ hiddenByAmazon?: boolean }) {
-  const t = useTranslations('catalogue.dashboard.item.price')
-  const ta = useTranslations('catalogue.dashboard.item.fields.amazon')
-  const td = useTranslations('catalogue.dashboard.days')
-  const ui = useLocale()
-  const id = useId()
-  const channelValues = channels.map((c) => c.value)
-  // "More price options" is closed until asked for — unless a price already uses serving times.
-  const [moreOpen, setMoreOpen] = useState<ReadonlySet<string>>(new Set())
-  const issues = offerFormIssues(offers, channelValues)
-  const issueFor = (key: string) => issues.filter((i) => ('key' in i && i.key === key) || (i.kind === 'overlappingOffers' && i.keys.includes(key)))
-  const scopeLabel = (ch: string | null) => {
-    if (ch === null) return channels.length ? t('everywhere') : t('price')
-    const term = channels.find((c) => c.value === ch)
-    return term ? termLabel(term, ui, defaultLocale) : t('unknownChannel', { channel: ch })
-  }
-  const set = (key: string, patch: Partial<OfferForm>) => onChange(offers.map((o) => (o.key === key ? { ...o, ...patch } : o)))
-  const addAnother = (channel: string | null) => {
-    const lastIndex = offers.map((o) => o.channel).lastIndexOf(channel)
-    const row: OfferForm = { key: newKey(), channel, price: '', availability: [{ key: newKey(), days: [], from: '', to: '' }] }
-    onChange([...offers.slice(0, lastIndex + 1), row, ...offers.slice(lastIndex + 1)])
-  }
-  const remove = (key: string) => {
-    const row = offers.find((o) => o.key === key)
-    const sameScope = offers.filter((o) => o.channel === row?.channel)
-    // The last row of a scope stays (emptied): an empty price means "not sold that way".
-    if (sameScope.length <= 1) set(key, { price: '', availability: [] })
-    else onChange(offers.filter((o) => o.key !== key))
-  }
-  const dayOptions = WEEKDAYS.map((d) => ({ value: d, label: td(d) }))
-  return (
-    <div className="space-y-4">
-      {hiddenByAmazon ? <Notice tone="info">{ta('priceHint')}</Notice> : null}
-      {offers.map((o, n) => {
-        const mine = issueFor(o.key)
-        const parsed = parsePrice(o.price)
-        const firstOfScope = offers.findIndex((x) => x.channel === o.channel) === n
-        return (
-          <Panel key={o.key}>
-            <div className="flex items-start justify-between gap-3">
-              <FieldLabel htmlFor={`${id}-${o.key}`}>
-                {scopeLabel(o.channel)}
-                {!firstOfScope ? <span className="ml-2 text-sm font-normal text-muted-foreground">{t('anotherTime')}</span> : null}
-              </FieldLabel>
-              {o.price || o.availability.length || !firstOfScope ? (
-                <IconButton className="-mt-2 -mr-2" aria-label={t('remove')} onClick={() => remove(o.key)}>
-                  {CAT_ICONS.trash}
-                </IconButton>
-              ) : null}
-            </div>
-            <div className="mt-1.5 flex items-center gap-2">
-              <TextInput flush className="max-w-40"
-                id={`${id}-${o.key}`}
-                data-offer-key={o.key}
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder={t('placeholder')}
-                value={o.price}
-                onChange={(e) => set(o.key, { price: e.target.value })}
-                aria-invalid={mine.some((i) => i.kind === 'invalidPrice') || undefined} />
-              <span className="text-[0.9375rem] text-muted-foreground">{currency}</span>
-              {parsed !== null && o.price ? <span className="text-sm text-muted-foreground">{formatPrice(parsed, currency, ui)}</span> : null}
-            </div>
-            {mine.some((i) => i.kind === 'invalidPrice' || i.kind === 'negativePrice' || i.kind === 'tooManyDecimals') ? <p className="mt-2 text-sm text-destructive">{t('invalidPrice')}</p> : null}
-            {mine.some((i) => i.kind === 'overlappingOffers') ? <p className="mt-2 text-sm text-destructive">{t('overlap')}</p> : null}
-            {mine.some((i) => i.kind === 'zeroLength' || i.kind === 'incompleteWindow' || i.kind === 'invalidTime') ? <p className="mt-2 text-sm text-destructive">{t('badTimes')}</p> : null}
-
-            {o.availability.map((a) => (
-              <div key={a.key} className="mt-4 space-y-3 rounded-xl bg-muted p-3">
-                <ToggleChips
-                  label={t('days')}
-                  size="compact"
-                  options={dayOptions}
-                  value={a.days}
-                  onChange={(days) => set(o.key, { availability: o.availability.map((x) => (x.key === a.key ? { ...x, days: days as Weekday[] } : x)) })}
-                />
-                <p className="text-sm text-muted-foreground">{a.days.length ? null : t('everyDay')}</p>
-                <div className="flex flex-wrap items-end gap-3">
-                  <label className="flex flex-col text-sm text-foreground">
-                    {t('from')}
-                    <TextInput className="w-36" type="time" value={a.from} onChange={(e) => set(o.key, { availability: o.availability.map((x) => (x.key === a.key ? { ...x, from: e.target.value } : x)) })} />
-                  </label>
-                  <label className="flex flex-col text-sm text-foreground">
-                    {t('to')}
-                    <TextInput className="w-36" type="time" value={a.to} onChange={(e) => set(o.key, { availability: o.availability.map((x) => (x.key === a.key ? { ...x, to: e.target.value } : x)) })} />
-                  </label>
-                  <Button variant="secondary" onClick={() => set(o.key, { availability: o.availability.filter((x) => x.key !== a.key) })}>
-                    {t('removeTimes')}
-                  </Button>
-                </div>
-                {wrapsMidnight(a) ? <p className="text-sm text-muted-foreground">{t('overnight')}</p> : null}
-              </div>
-            ))}
-            <div className="mt-3 flex flex-wrap gap-2">
-              {firstOfScope ? (
-                <Button variant="secondary" onClick={() => addAnother(o.channel)}>
-                  {CAT_ICONS.plus}
-                  {t('addAnother')}
-                </Button>
-              ) : null}
-              {o.availability.length ? (
-                <Button variant="secondary" onClick={() => set(o.key, { availability: [...o.availability, { key: newKey(), days: [], from: '', to: '' }] })}>
-                  {t('addMoreTimes')}
-                </Button>
-              ) : !moreOpen.has(o.key) ? (
-                <Button variant="secondary" aria-expanded={false} onClick={() => setMoreOpen(new Set([...moreOpen, o.key]))}>
-                  {t('morePriceOptions')}
-                </Button>
-              ) : null}
-            </div>
-            {!o.availability.length && moreOpen.has(o.key) ? (
-              <div className="mt-3 space-y-2 rounded-xl bg-muted p-3">
-                <p className="text-sm text-muted-foreground">{t('timesHelp')}</p>
-                <Button variant="secondary" onClick={() => set(o.key, { availability: [{ key: newKey(), days: [], from: '', to: '' }] })}>
-                  {t('addTimes')}
-                </Button>
-              </div>
-            ) : null}
-          </Panel>
-        )
-      })}
-      {channels.length ? <p className="text-sm text-muted-foreground">{t('everywhereHelp')}</p> : null}
-    </div>
-  )
-}
-
 // ── Food information (ADR-033 D-3): allergen declaration + dietary ───────────
 //
 // An explicit declaration, never inferred: "Contains" (all fourteen EU
@@ -1115,7 +986,7 @@ export function ItemPreview({
   byline,
   description,
   photo,
-  offers,
+  formats,
   channels,
   currency,
   declaration,
@@ -1129,8 +1000,9 @@ export function ItemPreview({
   byline?: Texts
   description: Texts
   photo: string | null
-  offers: OfferForm[]
-  channels: readonly CatalogueTerm[]
+  /** R2: the item's formats and prices (C3/C4), as edited. */
+  formats: readonly Format[]
+  channels: ChannelSet
   currency: string
   /** null for a product or service (no allergen interface). */
   declaration: DeclarationForm | null
@@ -1143,8 +1015,13 @@ export function ItemPreview({
   // The preview shows the website's own wording (pending legal copy — one source, the website messages).
   const tw = useTranslations('catalogue.website')
   const ui = useLocale()
-  const priced = offers.filter((o) => parsePrice(o.price) !== null)
-  const label = (ch: string | null) => (ch === null ? (channels.length ? tp('everywhere') : tp('price')) : termLabel(channels.find((c) => c.value === ch) ?? { value: ch, label: {}, color: null }, ui, defaultLocale))
+  // Every price of every format, in stored order; a row reads "Format · Channel" when either is not the default.
+  const textOf = (v: unknown) => (typeof v === 'string' ? v : v && typeof v === 'object' ? textIn(v as Record<string, string>, ui, defaultLocale) : '')
+  const priced = formats.flatMap((f) => f.prices.map((p) => ({ key: `${f.key}:${p.key}`, amount: p.amount, format: f.implicit ? '' : textOf(f.label), scope: p.scope })))
+  const label = (row: { format: string; scope: string | null }) => {
+    const ch = row.scope === null ? '' : textOf(channels.byKey.get(row.scope as never)?.label) || row.scope
+    return [row.format, ch].filter(Boolean).join(' · ') || (channels.active.length ? tp('everywhere') : tp('price'))
+  }
   const isBook = profile === 'book'
   const bylineText = byline ? textIn(byline, locale, defaultLocale) : ''
   const secondary = isBook ? itemSecondaryLine({ itemProfile: 'book', byline: bylineText, author: bookDetails?.author, year: parseBookYear(bookDetails?.year) }) : bylineText
@@ -1160,7 +1037,7 @@ export function ItemPreview({
       <div className="space-y-2 p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-xl font-semibold text-foreground">{textIn(name, locale, defaultLocale) || t('untitled')}</h3>
-          {priced[0] ? <span className="text-lg font-semibold text-foreground">{formatPrice(parsePrice(priced[0].price)!, currency, locale)}</span> : null}
+          {priced[0] ? <span className="text-lg font-semibold text-foreground">{formatPrice(priced[0].amount, currency, locale)}</span> : null}
         </div>
         {secondary ? <p className="text-sm text-muted-foreground">{secondary}</p> : null}
         {publisherLine ? <p className="text-sm text-muted-foreground">{publisherLine}</p> : null}
@@ -1170,8 +1047,8 @@ export function ItemPreview({
           <ul className="space-y-1 pt-1">
             {priced.map((o) => (
               <li key={o.key} className="flex justify-between gap-3 text-sm text-foreground">
-                <span>{label(o.channel)}</span>
-                <span>{formatPrice(parsePrice(o.price)!, currency, locale)}</span>
+                <span>{label(o)}</span>
+                <span>{formatPrice(o.amount, currency, locale)}</span>
               </li>
             ))}
           </ul>

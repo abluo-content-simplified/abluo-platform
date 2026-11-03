@@ -3,7 +3,9 @@
 // generated editor state — same ids, severities, steps, tabs, message keys,
 // values and focus selectors, in the same order.
 import { describe, expect, it } from 'vitest'
-import { EMPTY_BOOK_DETAILS, NOT_REVIEWED, type AttachmentForm, type DeclarationForm, type OfferForm } from '../../dashboard-form'
+import { EMPTY_BOOK_DETAILS, NOT_REVIEWED, emptyFormats, parsePrice, type AttachmentForm, type DeclarationForm, type OfferForm } from '../../dashboard-form'
+import type { Format } from '../../commerce/formats'
+import type { ChannelKey } from '../../commerce/commerce-types'
 import { itemIssues, type ItemIssueContext, type ItemIssueState } from '../../item-issues'
 import type { ItemProfile } from '../../profiles'
 import { legacyItemIssues } from './legacy-item-issues.oracle'
@@ -14,9 +16,6 @@ const OFFERS: OfferForm[][] = [
   [],
   [{ key: 'a', channel: null, price: '', availability: [] }],
   [{ key: 'a', channel: null, price: '8.50', availability: [] }],
-  [{ key: 'b', channel: null, price: 'abc', availability: [] }],
-  [{ key: 'c', channel: null, price: '1.234', availability: [] }],
-  [{ key: 'd', channel: null, price: '-2', availability: [] }],
   [{ key: 'e', channel: null, price: '9', availability: [{ key: 'w', days: ['mon'], from: '25:00', to: '10:00' }] }],
   [{ key: 'f', channel: null, price: '9', availability: [{ key: 'w', days: ['mon'], from: '10:00', to: '' }] }],
   [{ key: 'g', channel: null, price: '9', availability: [{ key: 'w', days: ['mon'], from: '10:00', to: '10:00' }] }],
@@ -26,11 +25,25 @@ const OFFERS: OfferForm[][] = [
   ],
   [{ key: 'j', channel: 'gone', price: '9', availability: [] }],
   [{ key: 'k', channel: 'delivery', price: '9', availability: [] }],
-  [
-    { key: 'l', channel: 'gone', price: 'x', availability: [{ key: 'w', days: ['tue'], from: '9', to: '' }] },
-    { key: 'm', channel: null, price: '3', availability: [] },
-  ],
 ]
+
+/**
+ * R2: the editor edits the C3/C4 model. Every legacy offer form above is one the model can hold (an amount
+ * that is a number — the price field never hands text that is not an amount to the state), mapped exactly as
+ * the dual-read maps stored offers (C10-3): one implicit format, one price per filled row, keys kept.
+ */
+function asFormats(offers: readonly OfferForm[]): Format[] {
+  const prices = offers
+    .filter((o) => o.price.trim() !== '')
+    .map((o) => ({
+      key: o.key,
+      scope: o.channel as ChannelKey | null,
+      amount: parsePrice(o.price)!,
+      note: null,
+      windows: o.availability.filter((a) => a.days.length || a.from || a.to).map((a) => ({ days: a.days, from: a.from || null, to: a.to || null })),
+    }))
+  return [{ ...emptyFormats()[0], prices }]
+}
 const OPTIONS: AttachmentForm[][] = [[], [{ key: 'x', listId: 'L', min: 3, max: 1 }], [{ key: 'y', listId: 'GONE', min: 0, max: null }], [{ key: 'z', listId: 'L', min: 0, max: 9 }]]
 const DECLS: DeclarationForm[] = [
   NOT_REVIEWED,
@@ -74,17 +87,18 @@ describe('G-03 adapter-equivalence', () => {
     const r = rng(20261102)
     let nonEmpty = 0
     for (let n = 0; n < 4000; n++) {
-      const s: ItemIssueState = {
+      const offers = pick(r, OFFERS)
+      const common = {
         itemProfile: pick(r, PROFILES),
         name: pick(r, NAMES),
         bookDetails: { ...EMPTY_BOOK_DETAILS, isbn: pick(r, ISBNS) },
-        offers: pick(r, OFFERS),
         options: pick(r, OPTIONS),
         allergenDeclaration: pick(r, DECLS),
         ...pick(r, PAGES),
       }
+      const s: ItemIssueState = { ...common, formats: asFormats(offers), itemRules: {} }
       const ctx = pick(r, CTXS)
-      const expected = plain(legacyItemIssues(s, ctx))
+      const expected = plain(legacyItemIssues({ ...common, offers }, ctx))
       if (expected.length) nonEmpty++
       expect(plain(itemIssues(s, ctx)), JSON.stringify({ s, ctx: { ...ctx, optionCounts: [...ctx.optionCounts] } })).toStrictEqual(expected)
     }
@@ -93,18 +107,18 @@ describe('G-03 adapter-equivalence', () => {
   })
 
   it('covers the one place where registry order differs from the editor order (ISBN before option list and page)', () => {
-    const s: ItemIssueState = {
-      itemProfile: 'book',
+    const common = {
+      itemProfile: 'book' as const,
       name: { it: '!!!' },
       bookDetails: { ...EMPTY_BOOK_DETAILS, isbn: '123' },
-      offers: [],
       options: [{ key: 'y', listId: 'GONE', min: 0, max: null }],
       allergenDeclaration: NOT_REVIEWED,
       hasPage: true,
       slug: {},
     }
+    const s: ItemIssueState = { ...common, formats: emptyFormats(), itemRules: {} }
     const ctx = CTXS[0]
     expect(itemIssues(s, ctx).map((i) => i.id)).toEqual(['isbn', 'optionList', 'pageAddress'])
-    expect(plain(itemIssues(s, ctx))).toStrictEqual(plain(legacyItemIssues(s, ctx)))
+    expect(plain(itemIssues(s, ctx))).toStrictEqual(plain(legacyItemIssues({ ...common, offers: [] }, ctx)))
   })
 })

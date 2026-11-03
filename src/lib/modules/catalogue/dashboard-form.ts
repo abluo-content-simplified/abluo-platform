@@ -22,7 +22,14 @@ import { can, isItemProfile, offeringOf, type ItemProfile } from './profiles'
 import { bookYearProblem, normalizeIsbn, parseBookYear } from './isbn'
 import { orderedAllergens, type AllergenDeclarationStatus, type AllergenKey } from './allergens'
 import { commerceOf } from './commerce/legacy-commerce'
-import { itemCategoryKeys } from './taxonomy/read'
+import { itemCategoryAssignment } from './taxonomy/read'
+import { formatIssues, type Format } from './commerce/formats'
+import { priceIssues } from './commerce/prices'
+import { scheduleIssues } from './commerce/availability-schedule'
+import { FORMAT_LIMIT, type ChannelAvailabilityRule, type FormatKey, type IssueLevel } from './commerce/commerce-types'
+import { IMPLICIT_FORMAT_KEY } from './commerce/format-key'
+import type { ChannelSet } from './commerce/channels'
+import type { CategoryAssignment } from './taxonomy/types'
 
 /** ADR-033 D-2 — what the ITEM is (not the tenant). */
 export { PROFILE_ORDER as ITEM_PROFILES, isItemProfile, type ItemProfile } from './profiles'
@@ -198,6 +205,110 @@ export function wrapsMidnight(a: Pick<AvailabilityForm, 'from' | 'to'>): boolean
   return Boolean(a.from && a.to && a.to < a.from)
 }
 
+// ── Formats, prices and availability (R2: C3, C4, C5/C5a) ────────────────────
+//
+// The editor edits the commerce MODEL itself (C3 `Format[]` from `commerceOf`,
+// the dual-read) and the item's channel rules; the autosave sends the stored
+// shapes below and the server rebuilds and re-validates them (item-writer.ts).
+// A legacy item opens exactly as the dual-read reads it (one implicit format,
+// item rules derived from the offers in an unmigrated channel project), so its
+// first save converts it without changing anything visible (C10-6 R2).
+
+/** The item's explicit channel rules (C5 level 3), channel key → complete rule. No entry = inherit. */
+export type ItemRules = Readonly<Record<string, ChannelAvailabilityRule>>
+
+/** An item with nothing stored yet: one implicit format, no price (I-C3-1). */
+export const emptyFormats = (): Format[] => [{ key: IMPLICIT_FORMAT_KEY as FormatKey, label: null, identifiers: {}, quantity: null, templateKey: null, availability: new Map(), prices: [], implicit: true }]
+
+/** Stored item → the editor's commerce state (the one dual-read, C10-4). `channels` = the project's (legacy derivation needs them). */
+export function itemCommerceFromDoc(doc: { formats?: unknown; offers?: unknown; channelAvailability?: unknown }, channels?: ChannelSet): { formats: Format[]; itemRules: ItemRules } {
+  const c = commerceOf(doc, channels)
+  return { formats: c.formats.map((f) => ({ ...f, availability: new Map(f.availability) })), itemRules: Object.fromEntries(c.itemRules) }
+}
+
+/** Localized text to send: the non-empty values; a GROQ-resolved string is never stored back. */
+const localizedPatch = (v: Format['label'] | null | undefined): Record<string, string> | undefined => {
+  if (v == null || typeof v === 'string') return undefined
+  const out: Record<string, string> = {}
+  for (const [k, t] of Object.entries(v)) if (typeof t === 'string' && t.trim()) out[k] = t.trim()
+  return Object.keys(out).length ? out : undefined
+}
+
+function rulePatch(channel: string, rule: ChannelAvailabilityRule) {
+  return {
+    channel,
+    state: rule.state,
+    ...(rule.overrides.length ? { schedule: rule.overrides.map((o) => ({ _key: o.key, days: [...o.days], ...(o.from ? { from: o.from } : {}), ...(o.to ? { to: o.to } : {}), state: o.state })) } : {}),
+  }
+}
+
+/** What the autosave sends for `channelAvailability`. */
+export function itemRulesPatch(rules: ItemRules) {
+  return Object.entries(rules).map(([channel, rule]) => rulePatch(channel, rule))
+}
+
+/** What the autosave sends for `formats` (the implicit format keeps no label). */
+export function formatsPatch(formats: readonly Format[]) {
+  return formats.map((f) => {
+    const label = f.implicit ? undefined : localizedPatch(f.label)
+    return {
+      _key: f.key,
+      ...(label ? { label } : {}),
+      ...(f.identifiers.sku || f.identifiers.isbn || f.identifiers.gtin ? { identifiers: { ...f.identifiers } } : {}),
+      ...(f.quantity ? { quantity: { ...f.quantity } } : {}),
+      ...(f.templateKey ? { templateKey: f.templateKey } : {}),
+      ...(f.availability.size ? { channelAvailability: [...f.availability].map(([c, r]) => rulePatch(c, r)) } : {}),
+      prices: f.prices.map((p) => {
+        const note = localizedPatch(p.note)
+        return {
+          _key: p.key,
+          amount: p.amount,
+          ...(p.scope ? { channel: p.scope } : {}),
+          ...(note ? { note } : {}),
+          ...(p.windows.length ? { windows: p.windows.map((w, i) => ({ _key: `${p.key}-w${i}`, ...(w.days?.length ? { days: [...w.days] } : {}), ...(w.from ? { from: w.from } : {}), ...(w.to ? { to: w.to } : {}) })) } : {}),
+        }
+      }),
+    }
+  })
+}
+
+/** One problem to show on the formats/prices form (the FormatPriceRows `issues` shape). */
+export type FormatFormIssue = { code: string; level: IssueLevel; formatKey?: FormatKey; priceKeys?: readonly string[] }
+
+/**
+ * Save-time problems of the formats and of the item's rules, from the same pure
+ * functions the server runs (formatIssues, priceIssues, scheduleIssues) —
+ * errors hold back the autosave of that field, warnings only show.
+ */
+export function formatFormIssues(
+  formats: readonly Format[],
+  rules: ItemRules,
+  ctx: { channels: ChannelSet; defaultLocale: string; itemProfile: ItemProfile | null; bookIsbn: string | null },
+): FormatFormIssue[] {
+  const out: FormatFormIssue[] = []
+  if (formats.length > FORMAT_LIMIT) out.push({ code: 'format.limitExceeded', level: 'error' })
+  for (const i of formatIssues(formats, { channels: ctx.channels, defaultLocale: ctx.defaultLocale, itemProfile: ctx.itemProfile ?? 'product', bookIsbn: ctx.bookIsbn })) {
+    if (i.code === 'format.limitExceeded') continue
+    out.push({ code: i.code, level: i.level, ...(i.key !== undefined && { formatKey: i.key }) })
+  }
+  for (const f of formats) for (const i of priceIssues(f, ctx.channels)) out.push({ code: i.code, level: i.level, formatKey: f.key, priceKeys: i.keys })
+  for (const f of formats) for (const [, r] of f.availability) for (const i of scheduleIssues(r)) out.push({ code: i.code, level: i.level, formatKey: f.key })
+  for (const r of Object.values(rules)) for (const i of scheduleIssues(r)) out.push({ code: i.code, level: i.level })
+  return out
+}
+
+export const hasBlockingFormatIssue = (issues: readonly FormatFormIssue[]) => issues.some((i) => i.level === 'error')
+
+/** How many prices an item has (any format, any scope). */
+export const priceCountOf = (formats: readonly Format[]) => formats.reduce((n, f) => n + f.prices.length, 0)
+
+// ── Categories (R2: C1 assignment, D-15) ─────────────────────────────────────
+
+/** What the autosave sends for the item's categories (the server writes them and unsets the legacy list). */
+export function assignmentSet(a: CategoryAssignment): { primaryCategory: string | null; additionalCategories: string[] } {
+  return { primaryCategory: a.primary, additionalCategories: [...a.additional] }
+}
+
 // ── Option-list attachments (ADR-033 D2) ──────────────────────────────────────
 
 export type AttachmentForm = { key: string; listId: string; min: number; max: number | null }
@@ -264,7 +375,13 @@ export type ItemStep = 'profile' | 'name' | 'category' | 'photo' | 'price' | 'de
 export type ItemWizardContext = {
   /** The chosen profile; null until the editor picks one. */
   itemProfile: ItemProfile | null
+  /** Categories + tags the project has; 0 hides the step — unless `categoryRequired` (R2, D-15). */
   categoryCount: number
+  /**
+   * R2 (C6 step 7, D-15): publishing needs a main category in this project, so the step is always
+   * shown (with inline "Add category" when the editor may create one). Drafts still save without it.
+   */
+  categoryRequired?: boolean
   locales: readonly string[]
   /**
    * Whether the Options step is relevant (decision D7: by profile/capability,
@@ -282,11 +399,17 @@ export function itemOptionsRelevant(c: { itemProfile: ItemProfile | null; attach
   return (c.itemProfile !== null && offeringOf(c.itemProfile, 'options') === 'default') || c.attachedCount > 0 || c.projectListCount > 0
 }
 
+/**
+ * R2 (brief §15, mapped onto the existing wizard; the compact-creation redesign is a later slice):
+ * profile → name → categories + primary → formats, channels, prices → allergen review when
+ * applicable → then the optional steps (photo, options, page, languages) → preview → publish.
+ */
 export function itemWizardSteps(c: ItemWizardContext): ItemStep[] {
   const steps: ItemStep[] = ['profile', 'name']
-  if (c.categoryCount > 0) steps.push('category')
-  steps.push('photo', 'price')
+  if (c.categoryCount > 0 || c.categoryRequired) steps.push('category')
+  steps.push('price')
   if (c.itemProfile && can(c.itemProfile, 'foodInformation')) steps.push('details')
+  steps.push('photo')
   if (c.showOptions !== false) steps.push('options')
   steps.push('page')
   if (c.locales.length > 1) steps.push('languages')
@@ -305,16 +428,21 @@ export function initialItemProfile(defaultItemProfile: unknown): ItemProfile | n
 export type ItemFormState = {
   itemProfile?: ItemProfile | null
   name: Texts
-  offers: readonly OfferForm[]
+  formats: readonly Format[]
+  itemRules: ItemRules
+  bookDetails?: Pick<BookDetailsForm, 'isbn'>
   options: readonly AttachmentForm[]
   hasPage: boolean
 }
 
-/** Whether Next is allowed on a step. The profile and the name are required; every other step can be skipped. */
-export function canAdvanceItem(step: ItemStep, s: ItemFormState, defaultLocale: string, ctx: { channels: readonly string[]; optionCounts: ReadonlyMap<string, number> }): boolean {
+/**
+ * Whether Next is allowed on a step. The profile and the name are required; every other step can be
+ * skipped — the category step too (a draft saves without one; publishing asks for it, D-15).
+ */
+export function canAdvanceItem(step: ItemStep, s: ItemFormState, defaultLocale: string, ctx: { channels: ChannelSet; optionCounts: ReadonlyMap<string, number> }): boolean {
   if (step === 'profile') return isItemProfile(s.itemProfile)
   if (step === 'name') return Boolean(s.name[defaultLocale]?.trim())
-  if (step === 'price') return offerFormIssues(s.offers, ctx.channels).length === 0
+  if (step === 'price') return !hasBlockingFormatIssue(formatFormIssues(s.formats, s.itemRules, { channels: ctx.channels, defaultLocale, itemProfile: s.itemProfile ?? null, bookIsbn: s.bookDetails?.isbn?.trim() || null }))
   if (step === 'options') return !attachmentIssues(s.options, ctx.optionCounts).some(isBlockingAttachmentIssue)
   return true
 }
@@ -704,10 +832,14 @@ export type ItemState = {
   bookDetails: BookDetailsForm
   /** F-2 — edited in the item editor only (the wizard stays at its step count). */
   links: LinkForm[]
-  categories: string[]
+  /** R2 (C1): one primary + additional categories. */
+  assignment: CategoryAssignment
   tags: string[]
   imageIds: string[]
-  offers: OfferForm[]
+  /** R2 (C3/C4): the item's formats with their prices and format overrides; never empty. */
+  formats: Format[]
+  /** R2 (C5): the item's explicit channel rules. */
+  itemRules: ItemRules
   allergenDeclaration: DeclarationForm
   dietary: string[]
   options: AttachmentForm[]
@@ -716,8 +848,9 @@ export type ItemState = {
   visibility: Visibility
 }
 
-export function itemStateFromDoc(doc: Record<string, unknown> | null | undefined, fallbackProfile: ItemProfile | null = null): ItemState {
+export function itemStateFromDoc(doc: Record<string, unknown> | null | undefined, fallbackProfile: ItemProfile | null = null, channels?: ChannelSet): ItemState {
   const d = doc ?? {}
+  const commerce = itemCommerceFromDoc(d, channels)
   return {
     itemProfile: isItemProfile(d.itemProfile) ? d.itemProfile : fallbackProfile,
     name: textsOf(d.name),
@@ -725,11 +858,12 @@ export function itemStateFromDoc(doc: Record<string, unknown> | null | undefined
     bookDetails: bookDetailsFromDoc(d.bookDetails),
     description: textsOf(d.description),
     links: linkFormsFromDoc(d.links),
-    // Catalogue V2 C1 (R1): primary + additional when stored, else the legacy list (writers stay legacy in R1).
-    categories: itemCategoryKeys(d),
+    // Catalogue V2 C1: primary + additional when stored, else the legacy list (first key primary, D-15).
+    assignment: itemCategoryAssignment(d),
     tags: stringsOf(d.tags),
     imageIds: refsOf(d.images),
-    offers: offerFormsFromItem(d),
+    formats: commerce.formats,
+    itemRules: commerce.itemRules,
     allergenDeclaration: declarationFormFromDoc(d.allergenDeclaration),
     dietary: stringsOf(d.dietary),
     options: attachmentsFromDoc(d.optionLists),

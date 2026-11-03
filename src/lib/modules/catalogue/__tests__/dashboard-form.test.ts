@@ -3,6 +3,8 @@
  * offers screen, wizard steps, attachments, and the collection builder's tree
  * edits (add subsection position, delete + undo, reorder, drop, orphans).
  */
+import { EMPTY_CHANNELS } from '../commerce/channels'
+import type { Format } from '../commerce/formats'
 import { describe, expect, it } from 'vitest'
 import {
   addSection,
@@ -21,6 +23,7 @@ import {
   itemGaps,
   itemStateFromDoc,
   itemWizardSteps,
+  emptyFormats,
   moveIndex,
   moveSectionBy,
   newOrphans,
@@ -103,10 +106,13 @@ describe('offers screen ↔ stored offers', () => {
 describe('item wizard steps', () => {
   const base = { itemProfile: 'foodOrDrink' as const, categoryCount: 2, locales: ['it', 'en'] }
   it('full flow for food in a multilingual project', () => {
-    expect(itemWizardSteps(base)).toEqual(['profile', 'name', 'category', 'photo', 'price', 'details', 'options', 'page', 'languages', 'preview', 'publish'])
+    // R2 (brief §15): categories, then formats/prices, then the allergen review; photo and the rest are optional steps after.
+    expect(itemWizardSteps(base)).toEqual(['profile', 'name', 'category', 'price', 'details', 'photo', 'options', 'page', 'languages', 'preview', 'publish'])
   })
   it('"What are you offering?" is ALWAYS first (D-2); food information only for food; languages only with >1 locale; categories only when configured', () => {
-    expect(itemWizardSteps({ itemProfile: 'product', categoryCount: 0, locales: ['it'] })).toEqual(['profile', 'name', 'photo', 'price', 'options', 'page', 'preview', 'publish'])
+    expect(itemWizardSteps({ itemProfile: 'product', categoryCount: 0, locales: ['it'] })).toEqual(['profile', 'name', 'price', 'photo', 'options', 'page', 'preview', 'publish'])
+    // C6 step 7 / D-15: where publishing needs a main category the step is always there.
+    expect(itemWizardSteps({ itemProfile: 'product', categoryCount: 0, categoryRequired: true, locales: ['it'] })).toContain('category')
     expect(itemWizardSteps({ itemProfile: null, categoryCount: 0, locales: ['it'] })[0]).toBe('profile')
     expect(itemWizardSteps({ itemProfile: 'service', categoryCount: 0, locales: ['it'] })).not.toContain('details')
   })
@@ -117,18 +123,22 @@ describe('item wizard steps', () => {
     expect(initialItemProfile('dish')).toBeNull()
   })
   it('the profile step needs a choice', () => {
-    const ctx = { channels: [], optionCounts: new Map() }
-    const state = { name: {}, offers: [], options: [], hasPage: false }
+    const ctx = { channels: EMPTY_CHANNELS, optionCounts: new Map() }
+    const state = { name: {}, formats: emptyFormats(), itemRules: {}, options: [], hasPage: false }
     expect(canAdvanceItem('profile', { ...state, itemProfile: null }, 'it', ctx)).toBe(false)
     expect(canAdvanceItem('profile', { ...state, itemProfile: 'service' }, 'it', ctx)).toBe(true)
   })
-  it('only the name is required; invalid prices / min > max hold Next', () => {
-    const ctx = { channels: [], optionCounts: new Map([['L', 3]]) }
-    const state = { name: {}, offers: [], options: [], hasPage: false }
+  it('only the name is required; invalid prices / min > max hold Next; the category step never holds Next', () => {
+    const ctx = { channels: EMPTY_CHANNELS, optionCounts: new Map([['L', 3]]) }
+    const state = { name: {}, formats: emptyFormats(), itemRules: {}, options: [], hasPage: false }
     expect(canAdvanceItem('name', state, 'it', ctx)).toBe(false)
     expect(canAdvanceItem('name', { ...state, name: { it: ' Margherita ' } }, 'it', ctx)).toBe(true)
     expect(canAdvanceItem('photo', state, 'it', ctx)).toBe(true)
-    expect(canAdvanceItem('price', { ...state, offers: [{ key: 'a', channel: null, price: 'x', availability: [] }] }, 'it', ctx)).toBe(false)
+    expect(canAdvanceItem('category', state, 'it', ctx)).toBe(true)
+    const priced = (prices: Format['prices']) => [{ ...emptyFormats()[0], prices }]
+    expect(canAdvanceItem('price', { ...state, formats: priced([{ key: 'a', scope: null, amount: 1.005, note: null, windows: [] }]) }, 'it', ctx)).toBe(false)
+    expect(canAdvanceItem('price', { ...state, formats: priced([{ key: 'a', scope: null, amount: 8, note: null, windows: [{ days: ['mon'], from: '10:00', to: '10:00' }] }]) }, 'it', ctx)).toBe(false)
+    expect(canAdvanceItem('price', { ...state, formats: priced([{ key: 'a', scope: null, amount: 8, note: null, windows: [] }]) }, 'it', ctx)).toBe(true)
     expect(canAdvanceItem('options', { ...state, options: [{ key: 'a', listId: 'L', min: 3, max: 1 }] }, 'it', ctx)).toBe(false)
     expect(canAdvanceItem('options', { ...state, options: [{ key: 'a', listId: 'L', min: 0, max: 9 }] }, 'it', ctx)).toBe(true)
   })
@@ -239,7 +249,10 @@ describe('document → form', () => {
     expect(s.allergenDeclaration).toEqual({ status: 'containsListedAllergens', allergens: ['gluten', 'milk'], mayContain: [], confirmed: false, note: { it: 'Forno condiviso' } })
     expect(itemStateFromDoc({}).itemProfile).toBeNull()
     expect(itemStateFromDoc({ itemType: 'dish' }).itemProfile).toBeNull()
-    expect(s.offers[0]).toEqual({ key: 'o', channel: 'dine-in', price: '8.00', availability: [] })
+    // Dual-read: the legacy offer is the implicit format's price, same key (C10-3).
+    expect(s.formats).toHaveLength(1)
+    expect(s.formats[0]).toMatchObject({ key: 'default', implicit: true })
+    expect(s.formats[0].prices).toEqual([{ key: 'o', scope: 'dine-in', amount: 8, note: null, windows: [] }])
     expect(s.options).toEqual([{ key: 'att', listId: 'L', min: 1, max: null }])
   })
   it('options: price change parsed (signed), invalid → no patch; reorder', () => {

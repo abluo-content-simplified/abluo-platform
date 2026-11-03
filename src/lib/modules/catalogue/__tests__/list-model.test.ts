@@ -19,24 +19,48 @@ import {
 const st = (status: LifecycleState['status'], hasChanges = false): LifecycleState => ({ status, hasChanges, publishOn: null, unpublishOn: null })
 const row = (name: string, o: Partial<SortableRow> = {}): SortableRow => ({ name, status: st('published'), publishOn: null, unpublishOn: null, price: null, updatedAt: '2026-01-01T00:00:00Z', ...o })
 
-describe('catalogueImageShape', () => {
-  it('is portrait for the Bookshop preset and landscape for everything else', () => {
-    expect(catalogueImageShape({ presetId: 'bookshop' })).toBe('portrait')
-    expect(catalogueImageShape({ presetId: 'restaurant' })).toBe('landscape')
-    expect(catalogueImageShape({ presetId: null })).toBe('landscape')
+describe('catalogueImageShape (D-13 part 4: module configuration, never the preset)', () => {
+  it('items without a profile follow itemImageShape, else defaultItemProfile, else landscape', () => {
+    expect(catalogueImageShape({ itemImageShape: 'portrait', defaultItemProfile: 'product' })).toBe('portrait')
+    expect(catalogueImageShape({ defaultItemProfile: 'book' })).toBe('portrait')
+    expect(catalogueImageShape({ defaultItemProfile: 'foodOrDrink' })).toBe('landscape')
+    expect(catalogueImageShape({ defaultItemProfile: null })).toBe('landscape')
+    expect(catalogueImageShape({ itemImageShape: 'nonsense' })).toBe('landscape')
     expect(catalogueImageShape({})).toBe('landscape')
   })
 })
 
 describe('catalogueImageShape per item profile (slice 4d)', () => {
-  it('book is portrait, the other profiles landscape, whatever the preset', () => {
+  it('book is portrait, the other profiles landscape, whatever the configuration', () => {
     expect(catalogueImageShape({ itemProfile: 'book' })).toBe('portrait')
-    expect(catalogueImageShape({ itemProfile: 'book', presetId: 'restaurant' })).toBe('portrait')
-    for (const p of ['foodOrDrink', 'product', 'service']) expect(catalogueImageShape({ itemProfile: p, presetId: 'bookshop' })).toBe('landscape')
+    expect(catalogueImageShape({ itemProfile: 'book', defaultItemProfile: 'foodOrDrink', itemImageShape: 'landscape' })).toBe('portrait')
+    for (const p of ['foodOrDrink', 'product', 'service']) expect(catalogueImageShape({ itemProfile: p, defaultItemProfile: 'book', itemImageShape: 'portrait' })).toBe('landscape')
   })
-  it('the preset only decides for items without a profile', () => {
-    expect(catalogueImageShape({ itemProfile: null, presetId: 'bookshop' })).toBe('portrait')
-    expect(catalogueImageShape({ itemProfile: 'nonsense', presetId: 'bookshop' })).toBe('portrait')
+  it('an unknown profile counts as none', () => {
+    expect(catalogueImageShape({ itemProfile: 'nonsense', itemImageShape: 'portrait' })).toBe('portrait')
+  })
+})
+
+/**
+ * C7.6 / C10 fixture `image-shape/tmz-fallback`: tmz (Bookshop v1 preset, `defaultItemProfile: product`) — the
+ * frame of its items WITHOUT a profile must be identical before and after the presetId reader is replaced.
+ * `defaultItemProfile` alone would turn them landscape, so the contract's branch applies: D3 writes the shape
+ * once as the explicit setting `itemImageShape`. Before = the legacy rule as it was (preset bookshop → portrait).
+ */
+describe('image-shape/tmz-fallback', () => {
+  const legacyBefore = (presetId: string | null) => (presetId === 'bookshop' ? 'portrait' : 'landscape')
+  const tmzAfterD3 = { defaultItemProfile: 'product', itemImageShape: 'portrait' as const }
+  it('tmz items without a profile keep their frame', () => {
+    expect(catalogueImageShape({ itemProfile: null, ...tmzAfterD3 })).toBe(legacyBefore('bookshop'))
+  })
+  it('profiled tmz items are unaffected either way', () => {
+    for (const p of ['book', 'product', 'foodOrDrink', 'service']) expect(catalogueImageShape({ itemProfile: p, ...tmzAfterD3 })).toBe(catalogueImageShape({ itemProfile: p }))
+  })
+  it('records why the explicit setting is needed: defaultItemProfile alone would differ', () => {
+    expect(catalogueImageShape({ defaultItemProfile: 'product' })).not.toBe(legacyBefore('bookshop'))
+  })
+  it('a project without a preset is unchanged without any setting', () => {
+    expect(catalogueImageShape({ defaultItemProfile: 'foodOrDrink' })).toBe(legacyBefore(null))
   })
 })
 

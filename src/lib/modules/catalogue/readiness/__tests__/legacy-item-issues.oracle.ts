@@ -3,10 +3,11 @@
 // meant to change, change the engine and this oracle's expectations together.
 import { PROFILES, can } from '../../profiles'
 import { isValidIsbn } from '../../isbn'
-import { declarationIssues, attachmentIssues, isBlockingAttachmentIssue, offerFormIssues, slugFromName } from '../../dashboard-form'
+import { declarationIssues, attachmentIssues, isBlockingAttachmentIssue, offerFormIssues, slugFromName, type OfferForm } from '../../dashboard-form'
 import type { ItemIssue, ItemIssueContext, ItemIssueState } from '../../item-issues'
 
-export function legacyItemIssues(s: ItemIssueState, ctx: ItemIssueContext): ItemIssue[] {
+// R2: the editor state carries formats now; the oracle keeps reading the legacy offer form (type only changed).
+export function legacyItemIssues(s: Omit<ItemIssueState, 'formats' | 'itemRules'> & { offers: readonly OfferForm[] }, ctx: ItemIssueContext): ItemIssue[] {
   const out: ItemIssue[] = []
   const d = ctx.defaultLocale
   const multi = ctx.locales.length > 1

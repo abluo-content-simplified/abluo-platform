@@ -11,10 +11,14 @@ import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import type { CatalogueSite } from '@/lib/api/catalogue-drafts'
 import { looksLikeAmazon } from '@/lib/affiliate/amazon-links'
 import { can } from '@/lib/modules/catalogue/profiles'
-import { EMPTY_BOOK_DETAILS, NOT_REVIEWED, canAdvanceItem, initialItemProfile, itemOptionsRelevant, itemWizardSteps, type ItemProfile, type ItemState, type ItemStep } from '@/lib/modules/catalogue/dashboard-form'
+import { EMPTY_BOOK_DETAILS, NOT_REVIEWED, canAdvanceItem, emptyFormats, formatFormIssues, initialItemProfile, itemOptionsRelevant, itemWizardSteps, type ItemProfile, type ItemState, type ItemStep } from '@/lib/modules/catalogue/dashboard-form'
+import { readChannels } from '@/lib/modules/catalogue/commerce/channels'
+import { buildTree } from '@/lib/modules/catalogue/taxonomy/tree'
+import { modelRulesActive } from '@/lib/modules/catalogue/readiness/facts-model'
+import { CommerceField, ItemCategoriesField } from './item-commerce'
 import { blocksNextOn, itemIssues, publishBlockers, type ItemIssue } from '@/lib/modules/catalogue/item-issues'
 import { CAT_ICONS, ItemIssueList, focusField, useCatalogueError, useItemIssueText } from './catalogue-ui'
-import { BookDetailsFields, BuyLinkField, FoodInfoField, ItemPreview, LanguagesField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, type OptionListChoice } from './item-fields'
+import { BookDetailsFields, BuyLinkField, FoodInfoField, ItemPreview, LanguagesField, NameFields, OptionsField, PageField, PhotoField, ProfileField, type OptionListChoice } from './item-fields'
 import { useCatalogueDraft, type PublishMode } from './use-catalogue-draft'
 import { StrayAddressNotice, useStrayAddress } from './stray-address'
 import { languageName } from '@/components/client/create/StepHeading'
@@ -49,17 +53,21 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
   const errorText = useCatalogueError()
   const d = site.defaultLocale
   const zone = editingZone(site.timeZone)
-  const channels = site.config.channels.map((c) => c.value)
+  const channelSet = useMemo(() => readChannels(site.config.serviceChannels).channels, [site.config.serviceChannels])
+  const channels = useMemo(() => channelSet.all.map((c) => c.key as string), [channelSet])
+  const tree = useMemo(() => buildTree(site.config.categoryNodes), [site.config.categoryNodes])
+  // C6 step 7: in a migrated project publishing needs a main category, so the step is always offered.
+  const categoryRequired = modelRulesActive(site.config.migrations)
   const optionCounts = useMemo(() => new Map(optionLists.map((l) => [l.id, l.optionCount])), [optionLists])
   const initial: ItemState = useMemo(
     // Nothing preselected (Tom, 2026-10-16): the preset's default is only suggested.
-    () => ({ itemProfile: null, name: {}, byline: {}, bookDetails: EMPTY_BOOK_DETAILS, description: {}, links: [], categories: [], tags: [], imageIds: [], offers: [], allergenDeclaration: NOT_REVIEWED, dietary: [], options: [], hasPage: false, slug: {}, visibility: 'public' }),
+    () => ({ itemProfile: null, name: {}, byline: {}, bookDetails: EMPTY_BOOK_DETAILS, description: {}, links: [], assignment: { primary: null, additional: [] }, tags: [], imageIds: [], formats: emptyFormats(), itemRules: {}, allergenDeclaration: NOT_REVIEWED, dietary: [], options: [], hasPage: false, slug: {}, visibility: 'public' }),
     []
   )
   const profileRef = useRef(initial.itemProfile)
   const createExtra = useCallback(() => (profileRef.current ? { itemProfile: profileRef.current } : {}), [])
   const draft = useCatalogueDraft({ projectSlug, kind: 'item', initialId: '', initialRev: '', hasDraft: false, defaultLocale: d, create: createExtra })
-  const item = useItemState({ initial, initialPhotos: [], channels, optionCounts, defaultLocale: d, update: draft.update })
+  const item = useItemState({ initial, initialPhotos: [], channels: channelSet, optionCounts, defaultLocale: d, update: draft.update })
   const { s } = item
   const stray = useStrayAddress(item.setSlug)
   // ADR-035: photos still uploading when the person moves on join the item when ready; Publish waits for them.
@@ -81,7 +89,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
 
   // D7: the Options step is shown when it is relevant (food, or option lists attached / existing) — never by business type.
   const stepsFor = (itemProfile: ItemProfile | null, attachedCount: number) =>
-    itemWizardSteps({ itemProfile, categoryCount: site.config.categories.length + site.config.tags.length || (canAddCategory ? 1 : 0), locales: site.locales, showOptions: itemOptionsRelevant({ itemProfile, attachedCount, projectListCount: optionLists.length }) })
+    itemWizardSteps({ itemProfile, categoryCount: site.config.categories.length + site.config.tags.length || (canAddCategory ? 1 : 0), categoryRequired, locales: site.locales, showOptions: itemOptionsRelevant({ itemProfile, attachedCount, projectListCount: optionLists.length }) })
   const steps = stepsFor(s.itemProfile, s.options.length)
   const [step, setStep] = useState<ItemStep | 'done'>(steps[0])
   const [publish, setPublish] = useState<PublishChoiceValue>({ mode: 'now', publishAt: null, expire: false, unpublishAt: null })
@@ -97,8 +105,9 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
     setError(null)
     mainRef.current?.scrollTo?.({ top: 0 })
   }
-  const ctx = { channels, optionCounts }
-  const issues = itemIssues(s, { defaultLocale: d, locales: site.locales, channels, optionCounts })
+  const ctx = { channels: channelSet, optionCounts }
+  const issues = itemIssues(s, { defaultLocale: d, locales: site.locales, channels, optionCounts, channelSet, tree, timeZone: site.timeZone, migrations: site.config.migrations })
+  const formatIssues = formatFormIssues(s.formats, s.itemRules, { channels: channelSet, defaultLocale: d, itemProfile: s.itemProfile, bookIsbn: s.bookDetails.isbn.trim() || null })
   const issueText = useItemIssueText()
   const canNext = step !== 'done' && canAdvanceItem(step, s, d, ctx)
   const goNext = () => {
@@ -232,7 +241,18 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
           <>
             {heading('item-step-category', 'category')}
             <div className="mt-8">
-              <TermPicker projectSlug={projectSlug} module="catalogue" kind="category" label={t('category.title')} terms={site.config.categories} value={s.categories} onChange={item.setCategories} defaultLocale={d} canAdd={canAddCategory} />
+              <ItemCategoriesField
+                projectSlug={projectSlug}
+                label={t('category.title')}
+                hint={categoryRequired ? t('category.requiredHint') : undefined}
+                nodes={site.config.categoryNodes}
+                value={s.assignment}
+                onChange={item.setAssignment}
+                canCreate={canAddCategory}
+                locales={site.locales}
+                defaultLocale={d}
+                presentation="inline"
+              />
               {site.config.tags.length || canAddCategory ? (
                 <div className="mt-8">
                   <p className="mb-3 text-[0.9375rem] font-semibold text-foreground">{t('tag.title')}</p>
@@ -252,7 +272,20 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
           <>
             {heading('item-step-price', 'price')}
             <div className="mt-8">
-              <PriceField offers={s.offers} channels={site.config.channels} currency={site.config.currency} defaultLocale={d} onChange={item.setOffers} hiddenByAmazon={s.links.some((l) => l.kind === 'buy' && looksLikeAmazon(l.url))} />
+              <CommerceField
+                formats={s.formats}
+                itemRules={s.itemRules}
+                channels={channelSet}
+                tree={tree}
+                primaryCategory={s.assignment.primary}
+                currency={site.config.currency}
+                locales={site.locales}
+                defaultLocale={d}
+                issues={formatIssues}
+                onFormats={item.setFormats}
+                onItemRules={item.setItemRules}
+                hiddenByAmazon={s.links.some((l) => l.kind === 'buy' && looksLikeAmazon(l.url))}
+              />
             </div>
           </>
         ) : step === 'details' ? (
@@ -299,7 +332,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
           <>
             {heading('item-step-preview', 'preview')}
             <div className="mt-8">
-              <ItemPreview profile={s.itemProfile} bookDetails={s.bookDetails} name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={s.itemProfile && can(s.itemProfile, 'foodInformation') ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
+              <ItemPreview profile={s.itemProfile} bookDetails={s.bookDetails} name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} formats={s.formats} channels={channelSet} currency={site.config.currency} declaration={s.itemProfile && can(s.itemProfile, 'foodInformation') ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
             </div>
           </>
         ) : step === 'publish' ? (

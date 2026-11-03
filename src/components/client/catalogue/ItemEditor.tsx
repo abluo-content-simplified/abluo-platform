@@ -24,12 +24,16 @@ import type { CatalogueAbilities, CatalogueSite, CatalogueSnapshot } from '@/lib
 import { looksLikeAmazon } from '@/lib/affiliate/amazon-links'
 import type { Referrer } from '@/lib/lifecycle/service'
 import { PROFILES, can as profileCan } from '@/lib/modules/catalogue/profiles'
-import { attachmentIssues, declarationIssues, itemGaps, itemOptionsRelevant, itemStateFromDoc, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
+import { attachmentIssues, declarationIssues, formatFormIssues, itemGaps, itemOptionsRelevant, itemStateFromDoc, priceCountOf, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
+import { readChannels } from '@/lib/modules/catalogue/commerce/channels'
+import { buildTree } from '@/lib/modules/catalogue/taxonomy/tree'
+import { modelRulesActive } from '@/lib/modules/catalogue/readiness/facts-model'
+import { CommerceField, ItemCategoriesField } from './item-commerce'
 import { adviceTabs, issueCountByTab, itemIssues, publishBlockers, type ItemIssue, type ItemTab } from '@/lib/modules/catalogue/item-issues'
 import { CAT_ICONS, GapBadges, InUseNotice, ItemIssueList, TabLabel, focusField, textIn, useCatalogueError } from './catalogue-ui'
 import { CatalogueDates, type CatalogueLive } from './CatalogueDates'
 import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
-import { BookDetailsFields, FieldBlock, FoodInfoField, ItemPreview, LanguagesField, LinksField, NameFields, OptionsField, PageField, PhotoField, PriceField, VisibilityField, type OptionListChoice } from './item-fields'
+import { BookDetailsFields, FieldBlock, FoodInfoField, ItemPreview, LanguagesField, LinksField, NameFields, OptionsField, PageField, PhotoField, VisibilityField, type OptionListChoice } from './item-fields'
 import { ChangeTypeSheet } from './ChangeTypeSheet'
 import { usePublishTogether } from './publish-dependencies'
 import { languageName } from '@/components/client/create/StepHeading'
@@ -84,13 +88,18 @@ export function ItemEditor({
   const errorText = useCatalogueError()
   const d = site.defaultLocale
   const zone = editingZone(site.timeZone)
-  const channels = site.config.channels.map((c) => c.value)
+  const channelSet = useMemo(() => readChannels(site.config.serviceChannels).channels, [site.config.serviceChannels])
+  const channels = useMemo(() => channelSet.all.map((c) => c.key as string), [channelSet])
+  const tree = useMemo(() => buildTree(site.config.categoryNodes), [site.config.categoryNodes])
+  // C6 step 7: the model-dependent rules (main category, price/availability, integrity) run in a migrated project only.
+  const modelRules = modelRulesActive(site.config.migrations)
   const optionCounts = useMemo(() => new Map(optionLists.map((l) => [l.id, l.optionCount])), [optionLists])
-  const initial: ItemState = useMemo(() => itemStateFromDoc(snapshot.doc, null), [snapshot.doc])
+  // The dual-read (C10-4): a legacy item opens exactly as the website reads it; its first save converts it.
+  const initial: ItemState = useMemo(() => itemStateFromDoc(snapshot.doc, null, channelSet), [snapshot.doc, channelSet])
   const archived = snapshot.status.status === 'archived'
   const readOnly = archived || !can.write
   const draft = useCatalogueDraft({ projectSlug, kind: 'item', initialId: snapshot.id, initialRev: snapshot.rev, liveRev: snapshot.live?.rev, hasDraft: snapshot.hasDraft, defaultLocale: d })
-  const item = useItemState({ initial, initialPhotos: snapshot.photos.map((p) => ({ assetId: p.assetId, thumbUrl: p.thumbUrl })), channels, optionCounts, defaultLocale: d, update: readOnly ? () => undefined : draft.update })
+  const item = useItemState({ initial, initialPhotos: snapshot.photos.map((p) => ({ assetId: p.assetId, thumbUrl: p.thumbUrl })), channels: channelSet, optionCounts, defaultLocale: d, update: readOnly ? () => undefined : draft.update })
   // ADR-035: photos still uploading when the person switches tab join the item when ready; Publish waits for them.
   const uploadOwner = `catalogue-item:${useId()}`
   const photosRef = useRef(item.photos)
@@ -141,7 +150,9 @@ export function ItemEditor({
   const tabs: Tab[] = ['content', 'photos', 'prices', ...(hasFoodInfo ? (['details'] as Tab[]) : []), ...(showOptions ? (['options'] as Tab[]) : []), 'page', ...(site.locales.length > 1 ? (['languages'] as Tab[]) : []), 'publishing']
   const name = textIn(s.name, ui, d) || t('untitled')
   const current: Tab = tabs.includes(tab) ? tab : 'content'
-  const issues = itemIssues(s, { defaultLocale: d, locales: site.locales, channels, optionCounts })
+  const issues = itemIssues(s, { defaultLocale: d, locales: site.locales, channels, optionCounts, channelSet, tree, timeZone: site.timeZone, migrations: site.config.migrations })
+  const formatIssues = formatFormIssues(s.formats, s.itemRules, { channels: channelSet, defaultLocale: d, itemProfile: s.itemProfile, bookIsbn: s.bookDetails.isbn.trim() || null })
+  const tc = useTranslations('catalogue.dashboard.item.categories')
   const issueCounts = issueCountByTab(issues)
   const adviceOn = adviceTabs(issues)
   // Advice (an ISBN that does not check out) is shown beside its field and never blocks anything.
@@ -274,7 +285,7 @@ export function ItemEditor({
       </div>
       <div className="flex flex-wrap items-start gap-2">
         <LifecycleBadge status={snapshot.status.status} changes={draft.hasDraft && isLive} />
-        <GapBadges gaps={itemGaps({ imageCount: item.photos.length, offerCount: s.offers.filter((o) => o.price.trim()).length, allergensNotReviewed: hasFoodInfo && declarationIssues(s.allergenDeclaration).length > 0 })} />
+        <GapBadges gaps={itemGaps({ imageCount: item.photos.length, offerCount: priceCountOf(s.formats), allergensNotReviewed: hasFoodInfo && declarationIssues(s.allergenDeclaration).length > 0 })} />
       </div>
       {result && !draft.hasDraft ? (
         <Notice tone="info">
@@ -299,9 +310,22 @@ export function ItemEditor({
             <FieldBlock title={hasBookInfo ? tf('nameBook.title') : tf('name.title')}>
               <NameFields locale={d} profile={s.itemProfile} afterName={hasBookInfo ? <BookDetailsFields value={s.bookDetails} onChange={item.setBookDetails} /> : null} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
             </FieldBlock>
-            {site.config.categories.length || (canAddCategory && can.write) ? (
+            {site.config.categories.length || (canAddCategory && can.write) || modelRules ? (
               <FieldBlock title={tf('category.title')}>
-                <TermPicker projectSlug={projectSlug} module="catalogue" kind="category" label={tf('category.title')} terms={site.config.categories} value={s.categories} onChange={item.setCategories} defaultLocale={d} canAdd={canAddCategory && can.write} />
+                <div data-category-field>
+                  <ItemCategoriesField
+                    projectSlug={projectSlug}
+                    label={tf('category.title')}
+                    hint={modelRules ? tf('category.requiredHint') : undefined}
+                    nodes={site.config.categoryNodes}
+                    value={s.assignment}
+                    onChange={item.setAssignment}
+                    canCreate={canAddCategory && can.write}
+                    locales={site.locales}
+                    defaultLocale={d}
+                    error={modelRules && !readOnly && s.assignment.primary === null && s.assignment.additional.length > 0 ? tc('primaryMissing') : undefined}
+                  />
+                </div>
               </FieldBlock>
             ) : null}
             {site.config.tags.length || (canAddCategory && can.write) ? (
@@ -322,7 +346,21 @@ export function ItemEditor({
           </FieldBlock>
         ) : current === 'prices' ? (
           <FieldBlock title={tf('price.title')} helper={tf('price.helper')}>
-            <PriceField offers={s.offers} channels={site.config.channels} currency={site.config.currency} defaultLocale={d} onChange={item.setOffers} hiddenByAmazon={s.links.some((l) => l.kind === 'buy' && looksLikeAmazon(l.url))} />
+            <CommerceField
+              formats={s.formats}
+              itemRules={s.itemRules}
+              channels={channelSet}
+              tree={tree}
+              primaryCategory={s.assignment.primary}
+              currency={site.config.currency}
+              locales={site.locales}
+              defaultLocale={d}
+              issues={formatIssues}
+              onFormats={item.setFormats}
+              onItemRules={item.setItemRules}
+              hiddenByAmazon={s.links.some((l) => l.kind === 'buy' && looksLikeAmazon(l.url))}
+              disabled={readOnly}
+            />
           </FieldBlock>
         ) : current === 'details' ? (
           <FieldBlock title={tf('details.title')}>
@@ -344,7 +382,7 @@ export function ItemEditor({
           <>
             <FieldBlock title={t('preview')}>
               <div className="max-w-md">
-                <ItemPreview profile={s.itemProfile} bookDetails={s.bookDetails} name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={hasFoodInfo ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
+                <ItemPreview profile={s.itemProfile} bookDetails={s.bookDetails} name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} formats={s.formats} channels={channelSet} currency={site.config.currency} declaration={hasFoodInfo ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
               </div>
             </FieldBlock>
             {!readOnly && live ? (

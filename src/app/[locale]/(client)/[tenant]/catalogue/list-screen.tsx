@@ -62,7 +62,7 @@ async function CataloguePageInner({ params, searchParams, view }: CatalogueListP
         projectSlug={projectSlug}
         title={title}
         lists={lists}
-        site={{ imageShape: catalogueImageShape({ presetId: site.presetId }), defaultLocale: site.defaultLocale, timeZone: site.timeZone, currency: site.config.currency, categories: site.config.categories }}
+        site={{ imageShape: catalogueImageShape({ defaultItemProfile: site.config.defaultItemProfile, itemImageShape: site.config.itemImageShape }), defaultLocale: site.defaultLocale, timeZone: site.timeZone, currency: site.config.currency, categories: site.config.categories }}
         can={catalogueAbilities(grant)}
         initialView={view}
         initialStatus={typeof query.status === 'string' ? query.status : null}

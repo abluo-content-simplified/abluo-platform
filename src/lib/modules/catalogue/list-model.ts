@@ -25,20 +25,24 @@ export function containThumbUrl(url: unknown, size = 720): string | null {
 // ── Image frame shape ─────────────────────────────────────────────────────────
 
 export type ImageShape = 'portrait' | 'landscape'
-
-/** Starter presets whose items are photographed upright (book covers). */
-const PORTRAIT_PRESETS: ReadonlySet<string> = new Set(['bookshop'])
+export const isImageShape = (v: unknown): v is ImageShape => v === 'portrait' || v === 'landscape'
 
 /**
- * The frame shape of an item's list image (ADR-033 Amendment I-2, slice 4d).
- * An item with a profile follows the registry (book → portrait 2:3, the rest
- * landscape). Only an item WITHOUT a profile (created in Studio, never typed)
- * falls back to the catalogue's starter preset (`appliedPreset.id`): Bookshop
- * → portrait. Collections and option lists pass neither and stay landscape.
+ * The frame shape of an item's list image (ADR-033 Amendment I-2, slice 4d;
+ * D-13 part 4). An item with a profile follows the registry (book → portrait
+ * 2:3, the rest landscape). An item WITHOUT a profile (created in Studio,
+ * never typed) follows the module configuration — never the starter preset:
+ *   1. `itemImageShape`, the explicit per-project frame (module-written by data
+ *      step D3 only where `defaultItemProfile` would give a different shape
+ *      than the legacy preset did — C7.6 "never a behaviour change");
+ *   2. else the shape of `defaultItemProfile`;
+ *   3. else landscape. Collections and option lists pass nothing: landscape.
  */
-export function catalogueImageShape(input: { presetId?: string | null; itemProfile?: string | null }): ImageShape {
+export function catalogueImageShape(input: { itemProfile?: string | null; defaultItemProfile?: string | null; itemImageShape?: string | null }): ImageShape {
   if (isItemProfile(input.itemProfile)) return PROFILES[input.itemProfile].list.imageShape
-  return input.presetId && PORTRAIT_PRESETS.has(input.presetId) ? 'portrait' : 'landscape'
+  if (isImageShape(input.itemImageShape)) return input.itemImageShape
+  if (isItemProfile(input.defaultItemProfile)) return PROFILES[input.defaultItemProfile].list.imageShape
+  return 'landscape'
 }
 
 /**

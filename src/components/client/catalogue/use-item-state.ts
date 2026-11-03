@@ -12,21 +12,24 @@ import {
   isBlockingAttachmentIssue,
   linkFormIssues,
   linksPatch,
-  offerFormIssues,
-  offerRows,
-  offersToDoc,
+  assignmentSet,
+  formatFormIssues,
+  formatsPatch,
+  hasBlockingFormatIssue,
+  itemRulesPatch,
   type AttachmentForm,
   type BookDetailsForm,
   type DeclarationForm,
   type ItemProfile,
   type ItemState,
+  type ItemRules,
   type LinkForm,
-  type OfferForm,
   type Visibility,
 } from '@/lib/modules/catalogue/dashboard-form'
+import type { ChannelSet } from '@/lib/modules/catalogue/commerce/channels'
+import type { Format } from '@/lib/modules/catalogue/commerce/formats'
+import type { CategoryAssignment } from '@/lib/modules/catalogue/taxonomy/types'
 import type { ItemPhoto } from './item-fields'
-
-const newKey = () => Math.random().toString(36).slice(2, 14)
 
 /**
  * The item form behind the wizard and the editor: local state for instant
@@ -44,13 +47,14 @@ export function useItemState({
 }: {
   initial: ItemState
   initialPhotos: ItemPhoto[]
-  channels: readonly string[]
+  /** R2: the project's channels (C2) — format and price validation. */
+  channels: ChannelSet
   optionCounts: ReadonlyMap<string, number>
   /** The main language: a link row is saved once it has a label in it. */
   defaultLocale: string
   update: (set: PendingSet) => void
 }) {
-  const [s, setS] = useState<ItemState>(() => ({ ...initial, offers: offerRows(initial.offers, channels, newKey) }))
+  const [s, setS] = useState<ItemState>(initial)
   // The last acceptable year, so author/ISBN typed while the year is wrong still save without losing it.
   const lastYear = useRef(initial.bookDetails.year)
   const [photos, setPhotosState] = useState<ItemPhoto[]>(initialPhotos)
@@ -86,14 +90,27 @@ export function useItemState({
       if (!bookYearInvalid(bookDetails)) lastYear.current = bookDetails.year
       patch({ bookDetails }, { bookDetails: bookDetailsPatch(bookDetails, lastYear.current) })
     },
-    setCategories: (categories: string[]) => patch({ categories }, { categories }),
+    /** R2 (C1): primary + additional; the server writes them and unsets the legacy list on the same document. */
+    setAssignment: (assignment: CategoryAssignment) => patch({ assignment }, assignmentSet(assignment)),
     setTags: (tags: string[]) => patch({ tags }, { tags }),
     setDietary: (dietary: string[]) => patch({ dietary }, { dietary }),
     setPhotos: (next: ItemPhoto[]) => {
       setPhotosState(next)
       patch({ imageIds: next.map((p) => p.assetId) }, { images: next.map((p) => p.assetId) })
     },
-    setOffers: (offers: OfferForm[]) => patch({ offers }, offerFormIssues(offers, channels).length === 0 ? { offers: offersToDoc(offers) } : undefined),
+    /**
+     * R2 (C3/C4): formats and prices are sent once they validate (formatFormIssues = the server's
+     * rules); until then the field shows what to fix. The server stores `formats` and unsets `offers`.
+     */
+    setFormats: (formats: Format[]) => {
+      const ok = !hasBlockingFormatIssue(formatFormIssues(formats, s.itemRules, { channels, defaultLocale, itemProfile: s.itemProfile, bookIsbn: s.bookDetails.isbn.trim() || null }))
+      patch({ formats }, ok ? { formats: formatsPatch(formats) } : undefined)
+    },
+    /** R2 (C5/C5a): the item's channel rules; "Use category default" removes the row. */
+    setItemRules: (itemRules: ItemRules) => {
+      const ok = !hasBlockingFormatIssue(formatFormIssues(s.formats, itemRules, { channels, defaultLocale, itemProfile: s.itemProfile, bookIsbn: s.bookDetails.isbn.trim() || null }))
+      patch({ itemRules }, ok ? { channelAvailability: itemRulesPatch(itemRules) } : undefined)
+    },
     setOptions: (options: AttachmentForm[]) =>
       patch({ options }, attachmentIssues(options, optionCounts).some(isBlockingAttachmentIssue) ? undefined : { optionLists: attachmentsPatch(options) }),
     setHasPage: (hasPage: boolean) => patch({ hasPage }, { hasPage }),

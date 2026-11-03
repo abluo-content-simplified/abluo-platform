@@ -47,7 +47,8 @@ describe('allowlist', () => {
       status: 'containsListedAllergens',
       allergens: ['gluten', 'milk'],
     })
-    expect(cleanCatalogueSet('item', { categories: [] }, ctx()).unset).toEqual(['categories'])
+    // R2 (C10-6): the legacy list is written in the new shape — and unset on the same document.
+    expect(cleanCatalogueSet('item', { categories: [] }, ctx()).unset).toEqual(['categories', 'primaryCategory', 'additionalCategories'])
     expect(code(() => cleanCatalogueSet('item', { allergens: ['milk'] }, food))).toBe('invalid_field')
   })
   it('slug: normalised, collected for the namespace check', () => {
@@ -382,7 +383,9 @@ describe('categories vocabulary from term records (Amendment J)', () => {
   // validation itself is unchanged, so it must accept term keys and refuse the rest.
   const termKeys = ['romanzi', 'saggi']
   it('accepts keys that exist as term records', () => {
-    expect(cleanCatalogueSet('item', { categories: ['saggi', 'romanzi'] }, ctx({ categories: termKeys })).set.categories).toEqual(['saggi', 'romanzi'])
+    const r = cleanCatalogueSet('item', { categories: ['saggi', 'romanzi'] }, ctx({ categories: termKeys }))
+    expect(r.set).toEqual({ primaryCategory: 'saggi', additionalCategories: ['romanzi'] })
+    expect(r.unset).toEqual(['categories'])
   })
   it('rejects an unknown key, and a config-list key once term records replaced the list', () => {
     expect(code(() => cleanCatalogueSet('item', { categories: ['pizza'] }, ctx({ categories: termKeys })))).toBe('invalid_value')

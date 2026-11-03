@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { EMPTY_BOOK_DETAILS, NOT_REVIEWED, itemOptionsRelevant, itemWizardSteps, type ItemState } from '../dashboard-form'
+import { EMPTY_BOOK_DETAILS, NOT_REVIEWED, emptyFormats, itemOptionsRelevant, itemWizardSteps, type ItemState } from '../dashboard-form'
+import type { Price } from '../commerce/prices'
+import type { Weekday } from '../commerce/windows'
 import { adviceTabs, blocksNextOn, issueCountByTab, itemIssues, publishBlockers, type ItemIssueContext } from '../item-issues'
 
 const ctx: ItemIssueContext = { defaultLocale: 'it', locales: ['it'], channels: [], optionCounts: new Map([['L', 3]]) }
@@ -10,10 +12,11 @@ const base: ItemState = {
   bookDetails: EMPTY_BOOK_DETAILS,
   description: {},
   links: [],
-  categories: [],
+  assignment: { primary: null, additional: [] },
   tags: [],
   imageIds: [],
-  offers: [{ key: 'a', channel: null, price: '', availability: [] }],
+  formats: emptyFormats(),
+  itemRules: {},
   allergenDeclaration: NOT_REVIEWED,
   dietary: [],
   options: [],
@@ -21,6 +24,9 @@ const base: ItemState = {
   slug: {},
   visibility: 'public',
 }
+/** One implicit format with these prices (R2: the editor edits the C3/C4 model). */
+const priced = (...prices: Array<Partial<Price> & { key: string; amount: number }>) => [{ ...emptyFormats()[0], prices: prices.map((p) => ({ scope: null, note: null, windows: [], ...p })) }]
+const win = (days: Weekday[], from: string | null, to: string | null) => ({ days, from, to })
 const ids = (s: Partial<ItemState>, c: Partial<ItemIssueContext> = {}) => itemIssues({ ...base, ...s }, { ...ctx, ...c }).map((i) => `${i.severity}:${i.id}`)
 
 describe('itemIssues', () => {
@@ -59,21 +65,18 @@ describe('itemIssues', () => {
   })
 
   it('a malformed price blocks Next on the price step and focuses that field', () => {
-    const issues = itemIssues({ ...base, offers: [{ key: 'k1', channel: null, price: '8,5,0', availability: [] }] }, ctx)
+    const issues = itemIssues({ ...base, formats: priced({ key: 'k1', amount: 8.505 }) }, ctx)
     expect(issues).toHaveLength(1)
     expect(issues[0]).toMatchObject({ id: 'price', severity: 'blocksNext', step: 'price', tab: 'prices', focus: '[data-offer-key="k1"]' })
   })
 
   it('half-filled serving times and overlapping prices are named separately', () => {
-    const times = itemIssues({ ...base, offers: [{ key: 'k1', channel: null, price: '5', availability: [{ key: 'w', days: ['mon'], from: '12:00', to: '' }] }] }, ctx)
+    const times = itemIssues({ ...base, formats: priced({ key: 'k1', amount: 5, windows: [win(['mon'], '12:00', null)] }) }, ctx)
     expect(times.map((i) => i.id)).toEqual(['priceTimes'])
     const overlap = itemIssues(
       {
         ...base,
-        offers: [
-          { key: 'a', channel: null, price: '5', availability: [] },
-          { key: 'b', channel: null, price: '6', availability: [] },
-        ],
+        formats: priced({ key: 'a', amount: 5 }, { key: 'b', amount: 6 }),
       },
       ctx
     )
@@ -81,7 +84,7 @@ describe('itemIssues', () => {
   })
 
   it('an offer on a channel that is gone is reported', () => {
-    expect(ids({ offers: [{ key: 'a', channel: 'old', price: '5', availability: [] }] })).toEqual(['blocksNext:priceChannel'])
+    expect(ids({ formats: priced({ key: 'a', amount: 5, scope: 'old' as never }) })).toEqual(['blocksNext:priceChannel'])
   })
 
   it('option list: min above max blocks Next; a list that no longer exists blocks publish only', () => {
@@ -100,7 +103,7 @@ describe('itemIssues', () => {
   })
 
   it('counts issues per tab', () => {
-    const issues = itemIssues({ ...base, itemProfile: 'foodOrDrink', offers: [{ key: 'a', channel: null, price: 'x', availability: [] }] }, ctx)
+    const issues = itemIssues({ ...base, itemProfile: 'foodOrDrink', formats: priced({ key: 'a', amount: -1 }) }, ctx)
     expect(issueCountByTab(issues)).toEqual({ prices: 1, details: 1 })
   })
 })
@@ -116,7 +119,7 @@ describe('options visibility (D7)', () => {
 
   it('the wizard drops the Options step when it is not relevant', () => {
     const c = { itemProfile: 'product' as const, categoryCount: 0, locales: ['it'] }
-    expect(itemWizardSteps({ ...c, showOptions: false })).toEqual(['profile', 'name', 'photo', 'price', 'page', 'preview', 'publish'])
+    expect(itemWizardSteps({ ...c, showOptions: false })).toEqual(['profile', 'name', 'price', 'photo', 'page', 'preview', 'publish'])
     expect(itemWizardSteps({ ...c, showOptions: true })).toContain('options')
     expect(itemWizardSteps(c)).toContain('options')
   })

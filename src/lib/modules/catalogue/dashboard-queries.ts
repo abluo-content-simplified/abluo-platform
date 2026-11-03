@@ -16,7 +16,6 @@ import { catalogueTaxonomyGroq } from './taxonomy/read'
 export const CATALOGUE_SITE_QUERY = /* groq */ `{
   "site": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales, timeZone, amazonTrackingIds[]{ marketplace, trackingId }, awinPublisherId, affiliateShops[]{ shop } },
   "config": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "catalogue"][0].config,
-  "presetId": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "catalogue"][0].appliedPreset.id,
   "translate": count(*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "translate" && enabled != false]) > 0,
   // ADR-033 Amendment J (dual-read): taxonomyTerm records, when present, replace config.categories
   // (catalogueCategoryVocabulary). Inside this one query — no extra round trip on the save path.
