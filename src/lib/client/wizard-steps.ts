@@ -8,6 +8,7 @@
  *     action on the site it explains where to set them up.
  *   • "gallery" only on sites with the Gallery module (`site.galleries` set).
  *   • "faq" (ADR-037) right after it, only with the FAQ module and faq.set.read (`site.faqSets` set).
+ *   • "authors" (ADR-043) right after it, only with the People module and people.person.read (`site.people` set).
  *   • "promote" (S10) is not built yet; "done" is a screen, never a stored step.
  *   • "review" is the overview: once the first pass is over (the user reached
  *     "publish"), reopening a draft lands there; Edit opens one step and
@@ -27,6 +28,7 @@ export const WIZARD_STEP_ORDER: readonly WizardStep[] = [
   'cta',
   'gallery',
   'faq',
+  'authors',
   'preview',
   'publish',
   'promote',
@@ -37,7 +39,7 @@ export const WIZARD_STEP_ORDER: readonly WizardStep[] = [
 export type WizardFlowStep = Exclude<WizardStep, 'type' | 'promote'>
 
 /** The first-pass steps for this site, in order (the overview "review" is not one of them). */
-export function wizardSteps(site: { categories: unknown[]; languages: string[]; galleries?: unknown[]; faqSets?: unknown[] }): WizardFlowStep[] {
+export function wizardSteps(site: { categories: unknown[]; languages: string[]; galleries?: unknown[]; faqSets?: unknown[]; people?: unknown }): WizardFlowStep[] {
   const steps: WizardFlowStep[] = []
   if (site.categories.length > 0) steps.push('category')
   steps.push('title', 'story', 'cover')
@@ -45,6 +47,7 @@ export function wizardSteps(site: { categories: unknown[]; languages: string[]; 
   steps.push('cta')
   if (site.galleries) steps.push('gallery')
   if (site.faqSets) steps.push('faq')
+  if (site.people) steps.push('authors')
   steps.push('preview', 'publish', 'done')
   return steps
 }
@@ -99,6 +102,7 @@ type Content = {
   cta?: { mode?: string | null; ref?: string | null } | null
   gallery?: string | null
   faqSets?: string[]
+  authors?: string[]
 }
 
 /** True when Portable Text blocks contain any non-blank text. */
@@ -144,7 +148,7 @@ export function progressSteps(steps: WizardFlowStep[]): WizardFlowStep[] {
 // ── Overview ("review") ──────────────────────────────────────────────────────
 
 export type SectionState = 'done' | 'missing' | 'optional'
-export type OverviewSection = { id: 'category' | 'title' | 'story' | 'cover' | 'languages' | 'cta' | 'gallery' | 'faq'; state: SectionState }
+export type OverviewSection = { id: 'category' | 'title' | 'story' | 'cover' | 'languages' | 'cta' | 'gallery' | 'faq' | 'authors'; state: SectionState }
 
 /** The overview's sections for this site, each with its state. */
 export function overviewSections(
@@ -158,6 +162,8 @@ export function overviewSections(
     galleries?: { id: string }[]
     /** Present only with the FAQ module and faq.set.read (may be empty). */
     faqSets?: { id: string }[]
+    /** Present only with the People module and people.person.read (ADR-043). */
+    people?: unknown
   }
 ): OverviewSection[] {
   const d = site.defaultLocale
@@ -179,6 +185,10 @@ export function overviewSections(
   // FAQs below the post (after the gallery): only with the FAQ module.
   if (site.faqSets) {
     out.push({ id: 'faq', state: draft.faqSets?.length ? 'done' : 'optional' })
+  }
+  // Authors (People module): optional; a post with none publishes as before.
+  if (site.people) {
+    out.push({ id: 'authors', state: draft.authors?.length ? 'done' : 'optional' })
   }
   return out
 }

@@ -11,6 +11,7 @@ import { documentsSchemaTypes } from './documents/schema'
 import { catalogueSchemaTypes } from './catalogue/schema'
 import { CATALOGUE_TAXONOMY_SCHEMA_TYPE_NAMES } from './catalogue/schema-taxonomy'
 import { brandHubSchemaTypes } from './brand-hub/schema'
+import { peopleSchemaTypes } from './people/schema'
 import { SEGMENT_REGEX_SOURCE } from './catalogue/segment'
 import { PROFILES, PROFILE_ORDER, profilesWith } from './catalogue/profiles'
 
@@ -169,8 +170,9 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       requires: [],
       // blogListingSection filterMode 'byEvent' references the event type;
       // post.gallery references the gallery type (ADR-022 §6); post.faqSets
-      // references faqSet (ADR-037 D5). All optional.
-      integratesWith: ['events', 'gallery', 'faq'],
+      // references faqSet (ADR-037 D5); post.authors references person
+      // (ADR-043 D5). All optional.
+      integratesWith: ['events', 'gallery', 'faq', 'people'],
     },
 
     dataStore: {
@@ -506,7 +508,8 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
 
     dependencies: {
       requires: [],
-      integratesWith: [],
+      // event.hostPeople and schedule instructors reference person (ADR-043 D5, D9). Optional.
+      integratesWith: ['people'],
     },
 
     dataStore: {
@@ -1730,6 +1733,133 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     },
 
     changelog: 'V1.0.0 — ADR-040 §15 (R9). Document library (public or group documents, languages, note, category, tags, images), placements on pages, Download section.',
+  },
+
+  // ── People ─────────────────────────────────────────────────────────────────
+  // ADR-043 — one list of people per site, reused everywhere.
+  //
+  // The module owns `person` documents (public profile, Sanity) and the
+  // server-only `person_private` rows (Supabase, migration 063). Placements
+  // (team section, post authors, event hosts, schedule instructors) only
+  // REFERENCE people — peopleRefsField() / publicId — and the website reads
+  // them only through PERSON_PUBLIC_FIELDS.
+  //
+  // Clients edit in the dashboard (Library → People); Studio is read-only.
+  // Groups are this module's taxonomy (Categories & Tags, kind "category").
+  // teamSection stays a PLATFORM section (inline members keep rendering
+  // without this module); its `people` / `groupFilter` render only where the
+  // module is installed.
+  {
+    id: 'people',
+    label: 'People',
+    version: '1.0.0',
+    status: 'released',
+    category: 'content',
+
+    platformContract: {
+      collections: [
+        {
+          id: 'people-module',
+          label: 'People',
+          items: [
+            {
+              // Read-only in Studio (ADR-043 D8): no initial value template.
+              id: 'people',
+              label: 'People',
+              schemaType: 'person',
+              filter: `_type == "person" && projectSlug == $slug`,
+              ordering: [
+                { field: 'sortOrder', direction: 'asc' as const },
+                { field: 'lastName', direction: 'asc' as const },
+              ],
+            },
+          ],
+        },
+      ],
+
+      sectionTypes: [],
+
+      schemaTypes: ['personBioText', 'personContact', 'personQualification', 'person'],
+
+      schemaDefinitions: () => peopleSchemaTypes,
+
+      permissions: [
+        {
+          id: 'people.person.read',
+          label: 'View people',
+          description: 'View and list the website\'s people, and see where they are shown.',
+          defaultRoles: ['owner', 'editor', 'viewer'],
+        },
+        {
+          id: 'people.person.write',
+          label: 'Create and edit people',
+          description: 'Create people, edit their profiles, reorder and publish them.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'people.person.archive',
+          label: 'Archive people',
+          description: 'Archive and restore people.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'people.person.anonymise',
+          label: 'Anonymise people',
+          description: 'Remove a person\'s personal data for good (photo, bios, contacts, private data); their place in old content stays empty.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'people.person.delete',
+          label: 'Delete people',
+          description: 'Permanently delete a person who is not used anywhere.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'people.taxonomy.write',
+          label: 'Manage people groups',
+          description: 'Create, rename, reorder and delete the groups people are filed under.',
+          defaultRoles: ['owner', 'editor'],
+        },
+      ],
+
+      configSchema: [
+        {
+          // ADR-043 D7 — the base path of profile pages is per site and
+          // localized (/team, /insegnanti …), never hardcoded. Empty = no
+          // profile pages on this site yet.
+          id: 'profileSegment',
+          label: 'Profile pages URL segment',
+          type: 'localizedString',
+          description:
+            'Where people with their own page live, per language, e.g. "team" gives /team/maria-rossi. Lowercase letters, numbers and single hyphens; it cannot be a word the website already uses. Leave empty for no profile pages.',
+        },
+      ],
+
+      placement: {
+        surfaces: [],
+        note: 'People appear through other content: the Team section (hand-picked or by group), blog post authors, event hosts and session instructors, and — when a profile URL segment is set — their own pages.',
+      },
+    },
+
+    // ADR-043 D3 — Groups ("Dentist", "Yoga Teacher") are this module's
+    // vocabulary in Categories & Tags (kind "category"), stored on the person
+    // as stable keys.
+    taxonomies: [{ kind: 'category', usedBy: [{ type: 'person', field: 'groups' }] }],
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [],
+      // post.authors, event.hostPeople and schedule instructors reference people.
+      integratesWith: ['blog', 'events', 'translate'],
+    },
+
+    dataStore: {
+      // Public profile in Sanity, private data in Supabase (person_private).
+      primary: 'hybrid',
+    },
+
+    changelog: 'V1.0.0 — ADR-043 foundation. person documents (public), person_private (Supabase, migration 063), peopleRefsField on team section / posts / events, PERSON_PUBLIC_FIELDS, Groups taxonomy.',
   },
 
 ]

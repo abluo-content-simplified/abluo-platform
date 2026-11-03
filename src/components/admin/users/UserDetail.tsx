@@ -11,7 +11,7 @@ import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
 import { ListRow } from '@/components/app/ui/list/ListRow'
 import { CellChips, CellPill, CellText, Chips, Pill } from '@/components/app/ui/list/cells'
-import { TwoFactorPill } from '@/components/client/people/people-bits'
+import { TwoFactorPill } from '@/components/client/users/users-bits'
 import type { AdminPerson, PersonAccess, UserActivityItem } from '@/lib/admin/users-model'
 import { LastActive, SuperAdminPill, useExtraLabel, useLocalDateTime, useRoleLabel, UserStatusPill } from './users-bits'
 

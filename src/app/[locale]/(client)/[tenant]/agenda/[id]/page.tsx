@@ -6,6 +6,8 @@ import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { taxonomyWritePermission } from '@/lib/taxonomy/permissions'
 import { EventEditor } from '@/components/client/events/EventEditor'
 import { PageShell } from '@/components/app/ui/PageShell'
+import { searchPersons } from '@/lib/api/persons'
+import { PEOPLE_READ_PERMISSION, PEOPLE_WRITE_PERMISSION } from '@/lib/api/persons-lifecycle'
 
 /**
  * One event (client dashboard · agenda/<id>): its facts, edited in place.
@@ -33,6 +35,20 @@ export default async function EventPage({ params }: { params: Promise<{ tenant: 
     throw error
   }
 
+  // ADR-043: the hosts field shows only with the People module installed and people.person.read
+  // (and the Events Hosts capability, checked in the editor). Hosts already on the event are named here.
+  const people =
+    grant.enabledModuleIds.includes('people') && grant.permissions.includes(PEOPLE_READ_PERMISSION)
+      ? {
+          initial: event.hostPeople.length
+            ? await searchPersons(ctx, grant.projectId, { ids: event.hostPeople, limit: 1 })
+                .then((items) => event.hostPeople.flatMap((pid) => items.filter((i) => i.id === pid)))
+                .catch(() => [])
+            : [],
+          canCreate: grant.permissions.includes(PEOPLE_WRITE_PERMISSION),
+        }
+      : undefined
+
   return (
     <PageShell>
       <EventEditor
@@ -41,6 +57,7 @@ export default async function EventPage({ params }: { params: Promise<{ tenant: 
         canWrite={grant.permissions.includes(EVENT_WRITE_PERMISSION)}
         canDelete={grant.permissions.includes(EVENT_DELETE_PERMISSION)}
         canAddCategory={grant.permissions.includes(taxonomyWritePermission('events'))}
+        people={people}
       />
     </PageShell>
   )

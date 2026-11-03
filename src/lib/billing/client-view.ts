@@ -17,7 +17,7 @@ import {
 import type { BillingProfileView, BillingStatusView } from '@/lib/admin/billing/types'
 import { resolveProjectBilling } from '@/lib/billing/lifecycle'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
-import { tenantOfProject } from '@/lib/people/ownership'
+import { tenantOfProject } from '@/lib/users/ownership'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { billingAccess, type BillingAccess, type BillingSiteFacts } from './client-access'
 import { listInvoices, type InvoiceSummary } from './stripe/service'

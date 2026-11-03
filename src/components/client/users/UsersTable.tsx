@@ -1,0 +1,161 @@
+'use client'
+
+import { useTranslations } from 'next-intl'
+import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
+import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
+import { ListRow } from '@/components/app/ui/list/ListRow'
+import { CellDate, CellPill, CellText, Chips } from '@/components/app/ui/list/cells'
+import { Avatar } from '@/components/app/ui/Avatar'
+import type { Person } from '@/lib/users/service'
+import { displayName, type UsersFilters, type UsersSortColumn } from '@/lib/client/users-filter'
+import { StatusPill, TwoFactorPill } from './users-bits'
+
+/**
+ * Desktop People table (md and up): the generic DataTable configured for
+ * people. Columns: avatar · person (name, email) · role (+ extras) · status ·
+ * invited · joined · last active · two-step · ⋯. The row opens the person.
+ */
+export function UsersTable({
+  people,
+  roleLabel,
+  extraLabel,
+  sort,
+  onSort,
+  onOpen,
+  menuFor,
+}: {
+  people: Person[]
+  roleLabel: (r: string) => string
+  extraLabel: (id: string) => string
+  sort: UsersFilters['sort']
+  onSort: (column: UsersSortColumn) => void
+  onOpen: (person: Person) => void
+  menuFor: (person: Person) => CardMenuItem[]
+}) {
+  const t = useTranslations('clientDashboard.users')
+  const columns: DataTableColumn<Person>[] = [
+    {
+      key: 'avatar',
+      header: <span className="sr-only">{t('columns.avatar')}</span>,
+      width: 'w-12',
+      render: (p) => (
+        <span className="-mt-1 block">
+          <Avatar name={p.name} email={p.email} src={p.avatarUrl} size="sm" muted={p.status !== 'active'} />
+        </span>
+      ),
+    },
+    {
+      key: 'name',
+      header: t('columns.person'),
+      sortable: true,
+      width: 'min-w-56',
+      render: (p) => (
+        <CellText
+          clamp={1}
+          primary={
+            <>
+              {displayName(p)}
+              {p.isYou ? <span className="font-normal text-muted-foreground"> ({t('you')})</span> : null}
+            </>
+          }
+          secondary={p.name ? p.email : null}
+        />
+      ),
+    },
+    {
+      key: 'role',
+      header: t('columns.role'),
+      width: 'w-44',
+      render: (p) => (
+        <span className="flex flex-col items-start gap-1">
+          <span className="flex min-h-6 items-center text-sm text-foreground">{roleLabel(p.role)}</span>
+          <Chips items={p.extras.map(extraLabel)} />
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: t('columns.status'),
+      sortable: true,
+      width: 'w-28',
+      render: (p) => (
+        <CellPill>
+          <StatusPill status={p.status} />
+        </CellPill>
+      ),
+    },
+    { key: 'invited', header: t('columns.invited'), sortable: true, width: 'w-28', render: (p) => <CellDate iso={p.invitedAt} /> },
+    { key: 'joined', header: t('columns.joined'), sortable: true, width: 'w-28', render: (p) => <CellDate iso={p.joinedAt} /> },
+    { key: 'lastActive', header: t('columns.lastActive'), sortable: true, width: 'w-28', render: (p) => <CellDate iso={p.lastActiveAt} /> },
+    {
+      key: 'twoFactor',
+      header: t('columns.twoFactor'),
+      width: 'w-24',
+      render: (p) =>
+        p.twoFactor === null ? (
+          <CellDate iso={null} />
+        ) : (
+          <CellPill>
+            <TwoFactorPill on={p.twoFactor} />
+          </CellPill>
+        ),
+    },
+    {
+      key: 'actions',
+      header: <span className="sr-only">{t('columns.actions')}</span>,
+      width: 'w-12',
+      render: (p) => <CardMenu variant="cell" label={t('menu', { name: displayName(p) })} items={menuFor(p)} />,
+    },
+  ]
+  return (
+    <DataTable
+      label={t('title')}
+      rows={people}
+      columns={columns}
+      rowKey={(p) => p.key}
+      sort={{ column: sort.column, dir: sort.dir, onSort: (key) => onSort(key as UsersSortColumn) }}
+      onRowClick={(p) => onOpen(p)}
+    />
+  )
+}
+
+/**
+ * Phone cards: avatar · name, email, role (+ extras), status · ⋯. Tapping the
+ * card opens the person.
+ */
+export function UsersPhoneList({
+  people,
+  roleLabel,
+  extraLabel,
+  onOpen,
+  menuFor,
+}: {
+  people: Person[]
+  roleLabel: (r: string) => string
+  extraLabel: (id: string) => string
+  onOpen: (person: Person) => void
+  menuFor: (person: Person) => CardMenuItem[]
+}) {
+  const t = useTranslations('clientDashboard.users')
+  return (
+    <ul className="flex flex-col gap-3">
+      {people.map((p) => (
+        <ListRow
+          key={p.key}
+          onOpen={() => onOpen(p)}
+          leading={<Avatar name={p.name} email={p.email} src={p.avatarUrl} size="md" muted={p.status !== 'active'} />}
+          menu={{ label: t('menu', { name: displayName(p) }), items: menuFor(p) }}
+        >
+          <span className="line-clamp-1 text-[0.9375rem] leading-[1.375rem] font-semibold text-foreground">
+            {displayName(p)}
+            {p.isYou ? <span className="font-normal text-muted-foreground"> ({t('you')})</span> : null}
+          </span>
+          {p.name ? <span className="line-clamp-1 text-sm leading-5 text-muted-foreground">{p.email}</span> : null}
+          <span className="text-sm leading-5 text-foreground">{roleLabel(p.role)}</span>
+          <Chips items={p.extras.map(extraLabel)} />
+          <StatusPill status={p.status} />
+        </ListRow>
+      ))}
+    </ul>
+  )
+}

@@ -14,6 +14,8 @@ import {
   validPriceOptions,
   visibleHosts,
 } from '@/lib/modules/events/engagement'
+import { namedPeople } from '@/lib/modules/people/website'
+import { PersonByline } from '@/components/people/PersonByline'
 
 const EXTERNAL_PROPS = { target: '_blank', rel: 'noopener noreferrer' } as const
 
@@ -170,6 +172,7 @@ export function EventCardExtras({
   tenantId,
   size = 'sm',
   className = '',
+  peopleOn = true,
 }: {
   event: Event
   locale: string
@@ -177,17 +180,28 @@ export function EventCardExtras({
   size?: 'sm' | 'base'
   /** Spacing classes for the wrapper — nothing renders when there is nothing to show. */
   className?: string
+  /**
+   * ADR-043: stored host references (People) win over the legacy inline hosts; false = the People module is
+   * known to be off for this site (listings do not resolve it, so the default is on — the data only exists
+   * when someone attached people).
+   */
+  peopleOn?: boolean
 }) {
   const msg = getEventMessages(locale)
+  const hostPeople = namedPeople(event.hostPeople, event.hostPeopleCount, peopleOn)
   const price = priceSummary(event.priceOptions, locale, msg.priceFrom)
   const register = resolveEventLink(event.registrationUrl, locale, tenantId)
-  const hasHosts = visibleHosts(event.hosts).length > 0
+  const hasHosts = hostPeople ? hostPeople.length > 0 : visibleHosts(event.hosts).length > 0
   if (!price && !register && !hasHosts) return null
   const textSize = size === 'base' ? 'text-sm' : 'text-xs'
 
   return (
     <div className={`flex flex-col gap-2 ${textSize} ${className}`}>
-      <EventHostsLine hosts={event.hosts} locale={locale} tenantId={tenantId} linked={false} className="line-clamp-2" />
+      {hostPeople ? (
+        <PersonByline people={hostPeople} locale={locale} label={msg.hostedBy} className="line-clamp-2" />
+      ) : (
+        <EventHostsLine hosts={event.hosts} locale={locale} tenantId={tenantId} linked={false} className="line-clamp-2" />
+      )}
       {(price || register) && (
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           {price && (

@@ -17,7 +17,7 @@ vi.mock('@/lib/supabase/admin', () => ({
   runAsTrustedSystemOperation: async (_reason: string, fn: (db: unknown) => unknown) => fn({ from: (t: string) => query(tables[t] ?? []) }),
 }))
 vi.mock('../stripe/service', () => ({ listInvoices: async () => [] }))
-vi.mock('@/lib/people/ownership', () => ({ tenantOfProject: async () => ({ tenantId: 't-1', slug: 'main' }) }))
+vi.mock('@/lib/users/ownership', () => ({ tenantOfProject: async () => ({ tenantId: 't-1', slug: 'main' }) }))
 
 import { loadClientBillingView } from '../client-view'
 

@@ -376,7 +376,7 @@ describe('POST /api/projects/[projectId]/invite — authorized from the resolved
 })
 
 describe('People server actions — Owner / Site admin only, nothing touched on refusal (ADR-028)', () => {
-  const load = () => import('@/app/[locale]/(client)/[tenant]/people/actions')
+  const load = () => import('@/app/[locale]/(client)/[tenant]/users/actions')
   beforeAll(async () => {
     await load()
   }, 30_000)

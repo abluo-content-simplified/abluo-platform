@@ -172,8 +172,8 @@ describe('buildTenantSurfaces', () => {
   it('an owner with every module sees every nav item and the module widgets', () => {
     const s = buildTenantSurfaces(grantFor('owner', ['blog', 'forms', 'gallery']))
     // ADR-042 §3: Content · Catalogue · Visitors · Library · Insights · Project, then the bottom block.
-    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'forms', 'media', 'people', 'taxonomy', 'analytics', 'connections', 'settings', 'support'])
-    expect(s.nav.map((n) => n.group)).toEqual(['content', 'content', 'visitors', 'library', 'library', 'library', 'insights', 'project', 'project', 'bottom'])
+    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'forms', 'media', 'taxonomy', 'analytics', 'users', 'connections', 'settings', 'support'])
+    expect(s.nav.map((n) => n.group)).toEqual(['content', 'content', 'visitors', 'library', 'library', 'insights', 'project', 'project', 'project', 'bottom'])
     expect(ids(s.widgets)).toEqual(expect.arrayContaining(['siteStatus', 'attention', 'glance.posts', 'glance.requests', 'glance.galleries', 'traffic', 'latest.posts']))
   })
 
@@ -187,10 +187,10 @@ describe('buildTenantSurfaces', () => {
     expect(ids(buildTenantSurfaces(withExtra).widgets)).toContain('traffic')
   })
 
-  it('an editor never gets People, and never a configuration-gated surface', () => {
+  it('an editor never gets Users, and never a configuration-gated surface', () => {
     const s = buildTenantSurfaces(grantFor('editor', ['blog', 'gallery']))
     expect(ids(s.nav)).toContain('blog')
-    expect(ids(s.nav)).not.toContain('people')
+    expect(ids(s.nav)).not.toContain('users')
     expect(ids(s.nav)).not.toContain('connections') // ADR-031: connections.manage is Owner / Site admin only
     expect(ids(s.nav)).not.toContain('forms') // module not installed
   })
@@ -315,9 +315,9 @@ describe('navigation groups (ADR-042 N1, section 3)', () => {
     expect(by('content')).toEqual(['blog', 'events', 'faq', 'gallery', 'documents'])
     expect(by('catalogue')).toEqual(['catalogueItems', 'catalogueCollections', 'catalogueOptions'])
     expect(by('visitors')).toEqual(['forms', 'members'])
-    expect(by('library')).toEqual(['media', 'people', 'taxonomy'])
+    expect(by('library')).toEqual(['people', 'media', 'taxonomy'])
     expect(by('insights')).toEqual(['analytics'])
-    expect(by('project')).toEqual(['connections', 'settings', 'billing'])
+    expect(by('project')).toEqual(['users', 'connections', 'settings', 'billing'])
     expect(by('bottom')).toEqual(['support'])
   })
 

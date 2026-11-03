@@ -1,0 +1,29 @@
+{
+  "clientDashboard": {
+    "create": {
+      "stepNames": {
+        "authors": "Authors"
+      },
+      "authors": {
+        "section": "Authors",
+        "title": "Who wrote this post?",
+        "helper": "Choose the people from your People list. The first one is the main author. It’s optional.",
+        "label": "Authors",
+        "primary": "Main author",
+        "unknownPerson": "Person not found",
+        "summaryNone": "Nobody"
+      }
+    },
+    "events": {
+      "editor": {
+        "hosts": {
+          "title": "Hosts",
+          "helper": "Choose who leads this event, from your People list. They’re shown in this order.",
+          "unknownPerson": "Person not found",
+          "legacyTitle": "Hosts added earlier",
+          "legacyBody": "This event still shows hosts that were added before the People list: {names}. They stay as they are until you choose people above; Abluo can move them over for you."
+        }
+      }
+    }
+  }
+}

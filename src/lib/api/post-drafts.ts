@@ -38,6 +38,8 @@ import { LINK_TARGET_TYPES } from '@/lib/links/link-target'
 import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
 import { postSearchText } from '@/lib/client/posts-filter'
 import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
+import { personRefIds, personRefs } from '@/lib/api/persons-guard'
+import { PEOPLE_READ_PERMISSION, PersonError } from '@/lib/api/persons-lifecycle'
 import { categoryKeyVocabulary, categoryVocabulary, moduleCategoryKeysGroq, moduleTermsGroq, type CategoryTermRow } from '@/lib/taxonomy/vocabulary'
 
 export const BLOG_POST_WRITE_PERMISSION = 'blog.post.write'
@@ -60,6 +62,8 @@ export const WIZARD_STEPS = [
   'cta',
   'gallery',
   'faq',
+  // ADR-043: the post's authors, from the People module.
+  'authors',
   'preview',
   'publish',
   'promote',
@@ -111,6 +115,8 @@ export const LIMITS = {
   drafts: 500,
   /** FAQ sets attached to one post (ADR-037). */
   faqSets: 10,
+  /** Authors (People module, ADR-043) on one post; mirrors the schema's max. */
+  authors: 10,
   faqTitle: 200,
   faqSubtitle: 500,
 } as const
@@ -206,6 +212,8 @@ export async function patchPostDraft(
   if (JSON.stringify(input.set).length > LIMITS.patchBytes) {
     throw new PostDraftError('too_large', 'Patch too large.')
   }
+  // ADR-043: authors need the People module and people.person.read as well — checked before any read.
+  if ('authors' in input.set) assertModuleAction(ctx, projectId, PEOPLE_READ_PERMISSION)
 
   const draftId = `drafts.${input.id}`
   // The four pre-write reads are independent: run them together (optimisation C).
@@ -322,6 +330,23 @@ export async function patchPostDraft(
         continue
       }
       set.faqSets = await faqSetRefs(client, grant.projectSlug, value, (current as { faqSets?: unknown }).faqSets)
+      continue
+    }
+    // Authors (ADR-043 D5): an ordered list of THIS project's people (first = main),
+    // stored as weak references. Needs the People module and people.person.read.
+    // [] / null removes them; a post with no authors publishes as before.
+    if (path === 'authors') {
+      if (value === null || (Array.isArray(value) && value.length === 0)) {
+        unset.push('authors')
+        continue
+      }
+      try {
+        set.authors = await personRefs(grant.projectSlug, value, { max: LIMITS.authors, stored: (current as { authors?: unknown }).authors }, { client })
+      } catch (error) {
+        if (error instanceof PersonError && error.code === 'failed') throw new PostDraftError('failed', 'Could not save.')
+        if (error instanceof PersonError) throw new PostDraftError('invalid_value', 'Unknown person.')
+        throw error
+      }
       continue
     }
     if (path === 'cta.ref') {
@@ -598,6 +623,8 @@ export type PostDraftSnapshot = {
   gallery: string | null
   /** FAQ sets shown below the post, in order (set ids, ADR-037). */
   faqSets: string[]
+  /** Authors (People module, ADR-043) in order, first = main: person document ids. */
+  authors: string[]
   /** The post's FAQ heading per language (empty = the website default). */
   faqTitle: Record<string, string>
   faqSubtitle: Record<string, string>
@@ -837,6 +864,7 @@ export async function getPostDraft(
     cta: ctaChoice(doc.cta),
     gallery: galleryRef(doc.gallery),
     faqSets: faqSetIds(doc.faqSets),
+    authors: personRefIds(doc.authors),
     faqTitle: textMap(doc.faqTitle),
     faqSubtitle: textMap(doc.faqSubtitle),
     hasChanges: published ? contentDiffers(doc, published) : false,

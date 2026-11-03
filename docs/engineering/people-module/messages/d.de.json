@@ -1,0 +1,29 @@
+{
+  "clientDashboard": {
+    "create": {
+      "stepNames": {
+        "authors": "Autoren"
+      },
+      "authors": {
+        "section": "Autoren",
+        "title": "Wer hat diesen Beitrag geschrieben?",
+        "helper": "Wähle die Personen aus deiner Personenliste. Die erste ist die Hauptautorin bzw. der Hauptautor. Das ist optional.",
+        "label": "Autoren",
+        "primary": "Hauptautor",
+        "unknownPerson": "Person nicht gefunden",
+        "summaryNone": "Niemand"
+      }
+    },
+    "events": {
+      "editor": {
+        "hosts": {
+          "title": "Gastgeber",
+          "helper": "Wähle aus deiner Personenliste, wer diese Veranstaltung leitet. Die Reihenfolge hier ist auch die Reihenfolge auf der Website.",
+          "unknownPerson": "Person nicht gefunden",
+          "legacyTitle": "Früher hinzugefügte Gastgeber",
+          "legacyBody": "Diese Veranstaltung zeigt noch Gastgeber, die vor der Personenliste hinzugefügt wurden: {names}. Diese bleiben unverändert, bis du oben Personen auswählst; Abluo kann sie für dich übernehmen."
+        }
+      }
+    }
+  }
+}

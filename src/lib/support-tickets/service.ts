@@ -15,7 +15,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import { getAppEnvironment } from '@/lib/notifications/environment'
-import { safeAvatarUrl } from '@/lib/people/service'
+import { safeAvatarUrl } from '@/lib/users/service'
 import { canSeeTicket, type TicketAccess } from './access'
 import { buildTicketContext } from './context'
 import { stripMetadata } from './image'

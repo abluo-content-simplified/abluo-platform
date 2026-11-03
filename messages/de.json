@@ -75,6 +75,7 @@
       "media": "Medien",
       "taxonomy": "Kategorien & Tags",
       "people": "Personen",
+      "users": "Benutzer",
       "connections": "Verbundene Apps",
       "analytics": "Statistiken",
       "catalogue": "Katalog",
@@ -473,6 +474,13 @@
         "categories": {
           "title": "Kategorie",
           "helper": "Hilft Besuchern, die passenden Veranstaltungen zu finden. Füge hier eine neue hinzu oder verwalte alle unter Kategorien & Tags."
+        },
+        "hosts": {
+          "title": "Gastgeber",
+          "helper": "Wähle aus deiner Personenliste, wer diese Veranstaltung leitet. Die Reihenfolge hier ist auch die Reihenfolge auf der Website.",
+          "unknownPerson": "Person nicht gefunden",
+          "legacyTitle": "Früher hinzugefügte Gastgeber",
+          "legacyBody": "Diese Veranstaltung zeigt noch Gastgeber, die vor der Personenliste hinzugefügt wurden: {names}. Diese bleiben unverändert, bis du oben Personen auswählst; Abluo kann sie für dich übernehmen."
         }
       },
       "errors": {
@@ -662,12 +670,12 @@
         "pendingInvites": {
           "title": "{count, plural, one {Eine Einladung wurde noch nicht angenommen} other {# Einladungen wurden noch nicht angenommen}}",
           "detail": "{count, plural, one {Die Person ist noch nicht dabei.} other {Diese Personen sind noch nicht dabei.}}",
-          "action": "Personen ansehen"
+          "action": "Benutzer ansehen"
         },
         "expiredInvites": {
           "title": "{count, plural, one {Eine Einladung ist abgelaufen} other {# Einladungen sind abgelaufen}}",
           "detail": "{count, plural, one {Schick sie noch einmal, damit die Person beitreten kann.} other {Schick sie noch einmal, damit die Personen beitreten können.}}",
-          "action": "Personen ansehen"
+          "action": "Benutzer ansehen"
         },
         "supportWaiting": {
           "title": "Der Abluo Support wartet auf deine Antwort",
@@ -925,7 +933,8 @@
         "review": "Prüfen & veröffentlichen",
         "cta": "Handlungsaufforderung",
         "gallery": "Galerie",
-        "faq": "FAQ"
+        "faq": "FAQ",
+        "authors": "Autoren"
       },
       "category": {
         "title": "Worum geht es in diesem Beitrag?",
@@ -1137,6 +1146,15 @@
           "what": "Eine Handlungsaufforderung ist der Button am Ende eines Beitrags, zum Beispiel „Termin buchen“.",
           "setup": "Richte sie in Studio ein → Website-Einstellungen → Handlungsaufforderungen"
         }
+      },
+      "authors": {
+        "section": "Autoren",
+        "title": "Wer hat diesen Beitrag geschrieben?",
+        "helper": "Wähle die Personen aus deiner Personenliste. Die erste ist die Hauptautorin bzw. der Hauptautor. Das ist optional.",
+        "label": "Autoren",
+        "primary": "Hauptautor",
+        "unknownPerson": "Person nicht gefunden",
+        "summaryNone": "Niemand"
       }
     },
     "gallery": {
@@ -1966,8 +1984,8 @@
         }
       }
     },
-    "people": {
-      "title": "Personen",
+    "users": {
+      "title": "Benutzer",
       "invite": "Jemanden einladen",
       "inviteTitle": "Jemanden einladen",
       "email": "E-Mail",
@@ -2057,7 +2075,7 @@
       },
       "filters": {
         "filters": "Filter",
-        "search": "Personen suchen",
+        "search": "Benutzer suchen",
         "searchPlaceholder": "Name oder E-Mail suchen…",
         "status": "Status",
         "status_current": "Aktiv und eingeladen",
@@ -3217,7 +3235,8 @@
         "whatsapp": "Füge einen WhatsApp-Button hinzu, damit man dich in der App erreicht, die man schon nutzt.",
         "members": "Mach ausgewählte Seiten oder Dateien nur für bestimmte Personen zugänglich, mit Passwort.",
         "translate": "Biete deine Website in mehr Sprachen an, mit einer ersten Übersetzung, die du nur noch prüfst.",
-        "brand-hub": "Halte Logo, Farben und Schriften an einem Ort, für dich und alle, die mit dir arbeiten."
+        "brand-hub": "Halte Logo, Farben und Schriften an einem Ort, für dich und alle, die mit dir arbeiten.",
+        "people": "Führe dein Team, deine Lehrkräfte und Autor:innen in einer Liste und zeig sie überall dort, wo sie auf deiner Website hingehören."
       }
     },
     "billing": {
@@ -3324,6 +3343,331 @@
       "paused": "Das Bearbeiten ist pausiert, bis die Zahlung erfolgt ist. Deine Website bleibt online.",
       "payNow": "Jetzt bezahlen",
       "contactOwner": "Bitte wende dich an den Inhaber dieser Website."
+    },
+    "persons": {
+      "errors": {
+        "forbidden": "Dafür hast du keine Berechtigung.",
+        "not_found": "Diese Person gibt es nicht mehr.",
+        "invalid_field": "Das kann hier nicht geändert werden.",
+        "invalid_value": "Etwas stimmt nicht. Prüf deine Eingabe und versuch es noch einmal.",
+        "too_large": "Das ist zu viel auf einmal.",
+        "conflict": "Jemand anderes hat diese Person inzwischen geändert. Lade neu, um die aktuelle Version zu sehen.",
+        "in_use": "Diese Person wird noch irgendwo angezeigt. Entferne sie zuerst dort.",
+        "archive_first": "Archiviere diese Person, bevor du sie löschst.",
+        "archived": "Diese Person ist archiviert. Stell sie wieder her, um etwas zu ändern.",
+        "anonymised": "Diese Person wurde anonymisiert und kann nicht mehr geändert werden.",
+        "missing_name": "Vor- und Nachname sind Pflichtfelder.",
+        "missing_slug": "Eine Person mit eigener Seite braucht eine Webadresse in der Hauptsprache.",
+        "slug_taken": "Diese Webadresse wird schon von einer anderen Person verwendet.",
+        "private_unavailable": "Private Angaben können noch nicht gespeichert werden. Alles andere funktioniert.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuch es noch einmal.",
+        "in_use_where": "Diese Person wird noch hier gezeigt: {places}. Entferne sie dort zuerst.",
+        "offline": "Du bist offline. Deine Änderungen werden gespeichert, sobald du wieder online bist."
+      },
+      "list": {
+        "title": "Personen",
+        "new": "Neue Person",
+        "emptyTitle": "Noch keine Personen",
+        "emptyBody": "Lege dein Team, deine Lehrenden oder Autorinnen und Autoren einmal an und zeige sie überall auf deiner Website.",
+        "undo": "Rückgängig",
+        "anonymisedName": "Anonymisierte Person",
+        "notUsed": "Noch nicht verwendet",
+        "usedInOpen": "{name}: wird an {count, plural, one {# Stelle} other {# Stellen}} gezeigt. Anzeigen, wo.",
+        "usedInTitle": "Wo {name} gezeigt wird",
+        "menu": "Aktionen für {name}",
+        "drag": "{name} verschieben, Position {position} von {total}",
+        "columns": {
+          "name": "Name",
+          "groups": "Gruppen",
+          "visibility": "Auf der Website",
+          "usedIn": "Verwendet in",
+          "status": "Status",
+          "updated": "Aktualisiert",
+          "actions": "Aktionen",
+          "order": "Reihenfolge"
+        },
+        "view": {
+          "label": "Ansicht",
+          "list": "Liste",
+          "cards": "Karten"
+        },
+        "actions": {
+          "edit": "Bearbeiten",
+          "usedIn": "Wo gezeigt",
+          "anonymise": "Anonymisieren …"
+        },
+        "done": {
+          "archived": "{name} ist archiviert und nicht mehr auf deiner Website.",
+          "restored": "{name} ist wiederhergestellt.",
+          "deleted": "{name} ist gelöscht.",
+          "ordered": "Neue Reihenfolge gespeichert."
+        },
+        "filters": {
+          "label": "Personen filtern",
+          "search": "Personen suchen",
+          "searchPlaceholder": "Nach Name, Titel oder Gruppe suchen",
+          "group": "Gruppe",
+          "groupAll": "Alle Gruppen",
+          "status": "Status",
+          "statusAll": "Alle",
+          "visibility": "Auf der Website",
+          "visibilityAll": "Überall",
+          "sort": "Sortieren nach",
+          "sort_order_asc": "Deine Reihenfolge",
+          "sort_order_desc": "Deine Reihenfolge, umgekehrt",
+          "sort_name_asc": "Name, A bis Z",
+          "sort_name_desc": "Name, Z bis A",
+          "sort_updated_desc": "Zuletzt aktualisiert",
+          "sort_updated_asc": "Am längsten nicht aktualisiert",
+          "showing": "{shown} von {total} Personen",
+          "clear": "Filter zurücksetzen",
+          "noMatch": "Zu diesen Filtern passt niemand."
+        }
+      },
+      "visibility": {
+        "off": "Ausgeblendet",
+        "listed": "In Listen",
+        "page": "In Listen und eigene Seite"
+      },
+      "usedIn": {
+        "pages": "{count, plural, one {# Seite} other {# Seiten}}",
+        "posts": "{count, plural, one {# Beitrag} other {# Beiträge}}",
+        "events": "{count, plural, one {# Veranstaltung} other {# Veranstaltungen}}",
+        "sessions": "{count, plural, one {# Termin} other {# Termine}}",
+        "none": "Wird noch nirgends gezeigt.",
+        "published": "Veröffentlicht",
+        "notPublished": "Nicht veröffentlicht",
+        "kind": {
+          "page": "Seite",
+          "post": "Beitrag",
+          "event": "Veranstaltung",
+          "sessions": "Termine"
+        },
+        "untitled": {
+          "page": "Seite ohne Titel",
+          "post": "Beitrag ohne Titel",
+          "event": "Veranstaltung ohne Titel"
+        },
+        "loadFailed": "Wir konnten nicht laden, wo diese Person gezeigt wird. Bitte versuche es erneut."
+      },
+      "newPerson": {
+        "title": "Neue Person",
+        "intro": "Beginne mit einem Namen. Den Rest kannst du danach ergänzen.",
+        "firstName": "Vorname",
+        "lastName": "Nachname",
+        "namesNeeded": "Gib Vor- und Nachnamen ein, um fortzufahren.",
+        "cancel": "Abbrechen",
+        "creating": "Wird angelegt …",
+        "create": "Person anlegen",
+        "errors": {
+          "forbidden": "Du darfst keine Personen hinzufügen.",
+          "tooMany": "Du hast die Anzahl an Personen erreicht, die dein Tarif enthält.",
+          "missingName": "Vor- und Nachname sind erforderlich.",
+          "failed": "Wir konnten die Person nicht anlegen. Bitte versuche es erneut."
+        }
+      },
+      "anonymise": {
+        "title": "{name} anonymisieren?",
+        "body": "Name, Foto, Texte und alle privaten Angaben werden endgültig entfernt. Das lässt sich nicht rückgängig machen. Seiten, die diese Person zeigen, zeigen dann „Anonymisierte Person“.",
+        "confirm": "Anonymisieren",
+        "understood": "Mir ist klar, dass das nicht rückgängig zu machen ist",
+        "done": "{name} ist anonymisiert."
+      },
+      "screen": {
+        "loadFailed": "Wir konnten deine Personen nicht laden. Bitte versuche es erneut.",
+        "retry": "Erneut versuchen"
+      },
+      "editor": {
+        "language": "Bearbeitungssprache",
+        "back": "Zurück zu Personen",
+        "untitled": "Neue Person",
+        "anonymisedName": "Anonymisierte Person",
+        "publish": "Veröffentlichen",
+        "publishing": "Wird veröffentlicht …",
+        "published": "Veröffentlicht. Deine Änderungen sind auf deiner Website.",
+        "publishedUsed": "Veröffentlicht. Deine Änderungen erscheinen jetzt an {count, plural, one {# Stelle} other {# Stellen}} deiner Website.",
+        "publishReason": {
+          "upToDate": "Es gibt nichts Neues zu veröffentlichen."
+        },
+        "publishBlocked": "Bevor du veröffentlichen kannst:",
+        "blockers": {
+          "slug": "Gib eine Seitenadresse auf {language} ein"
+        },
+        "discarded": "Deine unveröffentlichten Änderungen wurden verworfen.",
+        "archived": "Archiviert. Diese Person ist nicht mehr auf deiner Website.",
+        "restored": "Wiederhergestellt.",
+        "archivedTitle": "Diese Person ist archiviert",
+        "archivedBody": "Stelle sie wieder her, um Änderungen vorzunehmen.",
+        "anonymisedTitle": "Diese Person ist anonymisiert",
+        "anonymisedBody": "Die Angaben wurden endgültig entfernt, daher gibt es nichts mehr zu bearbeiten.",
+        "readOnly": "Hier kannst du nur ansehen, nicht ändern.",
+        "dismiss": "Schließen",
+        "undo": "Rückgängig",
+        "usedInTitle": "Wo diese Person gezeigt wird",
+        "tabsLabel": "Bereiche",
+        "tabs": {
+          "profile": "Profil",
+          "about": "Über",
+          "contact": "Kontakt",
+          "website": "Auf der Website"
+        },
+        "menu": {
+          "label": "Weitere Aktionen",
+          "discard": "Unveröffentlichte Änderungen verwerfen …",
+          "anonymise": "Anonymisieren …"
+        },
+        "confirm": {
+          "discardTitle": "Unveröffentlichte Änderungen verwerfen?",
+          "discardBody": "Die veröffentlichte Version bleibt unverändert.",
+          "discard": "Änderungen verwerfen",
+          "deleteTitle": "{name} endgültig löschen?",
+          "deleteBody": "Diese Person und ihre privaten Angaben werden endgültig entfernt."
+        },
+        "contact": {
+          "removed": "{value} entfernt.",
+          "movedPublic": "In „Öffentlich“ verschoben. Es erscheint nach dem Veröffentlichen auf deiner Website.",
+          "movedPrivate": "In „Privat“ verschoben. Es wird nicht mehr auf deiner Website gezeigt.",
+          "privateUnavailableTitle": "Private Angaben sind noch nicht verfügbar",
+          "privateUnavailable": "Öffentliche Kontaktdaten funktionieren bereits. Private erscheinen hier, sobald deine Website aktualisiert ist.",
+          "title": "Kontaktdaten",
+          "hint": "Wähle bei jedem, wer ihn sehen darf.",
+          "none": "Noch keine Kontaktdaten.",
+          "kind": "Art",
+          "kinds": {
+            "email": "E-Mail",
+            "phone": "Telefon",
+            "whatsapp": "WhatsApp",
+            "instagram": "Instagram",
+            "linkedin": "LinkedIn",
+            "website": "Website",
+            "url": "Anderer Link"
+          },
+          "placeholders": {
+            "email": "name@beispiel.de",
+            "phone": "+49 30 1234567",
+            "whatsapp": "+49 151 1234567",
+            "instagram": "@deinname",
+            "linkedin": "@deinname",
+            "website": "https://",
+            "url": "https://"
+          },
+          "value": "Kontakt",
+          "valueNeeded": "Gib die Kontaktangabe ein",
+          "problems": {
+            "email": "Das sieht nicht nach einer E-Mail-Adresse aus.",
+            "phone": "Verwende Ziffern, Leerzeichen und ein führendes +, zum Beispiel +49 30 1234567.",
+            "handle": "Gib einen Nutzernamen wie @deinname oder einen Link mit https:// ein.",
+            "url": "Links beginnen mit http:// oder https://."
+          },
+          "label": "Bezeichnung",
+          "labelPlaceholder": "Zum Beispiel Empfang",
+          "preferred": "Bevorzugt",
+          "whoSees": "Wer Kontakt {n} sieht",
+          "public": "Öffentlich",
+          "private": "Privat",
+          "publicHelp": "Wird nach dem Veröffentlichen auf deiner Website gezeigt.",
+          "privateHelp": "Nur du und dein Team sehen das.",
+          "remove": "Kontakt entfernen",
+          "add": "Kontakt hinzufügen",
+          "full": "Du kannst bis zu {max} Kontakte hinzufügen.",
+          "websiteTitle": "Website",
+          "website": "Eigene Website",
+          "websiteHint": "Wird als Link auf der Seite der Person gezeigt.",
+          "privateTitle": "Private Notizen",
+          "privateHint": "Werden nie auf deiner Website gezeigt. Werden beim Tippen gespeichert.",
+          "privateState": {
+            "saving": "Wird gespeichert …",
+            "saved": "Gespeichert",
+            "error": "Nicht gespeichert. Wir versuchen es erneut."
+          },
+          "birthday": "Geburtstag",
+          "birthdayHint": "Nur für dich. Wird nie auf deiner Website gezeigt.",
+          "notes": "Notizen",
+          "notesHint": "Zum Beispiel, wie du diese Person erreichst.",
+          "privateDisabledWhy": "Private Angaben sind noch nicht verfügbar."
+        },
+        "profile": {
+          "photoTitle": "Foto",
+          "noPhoto": "Noch kein Foto",
+          "photoHelper": "Wird auf deiner Website neben dem Namen gezeigt.",
+          "photoHelperEmpty": "Ohne Foto werden die Initialen gezeigt.",
+          "changePhoto": "Foto ändern",
+          "addPhoto": "Foto hinzufügen",
+          "removePhoto": "Foto entfernen",
+          "namesTitle": "Name",
+          "firstName": "Vorname",
+          "lastName": "Nachname",
+          "nameRequired": "Erforderlich",
+          "displayName": "Angezeigt als",
+          "displayNameHint": "Leer lassen, um „{name}“ zu zeigen.",
+          "titleSection": "Titel und Rolle",
+          "honorific": "Titel auf {language}",
+          "honorificHint": "Zum Beispiel „Dr.“ oder „Prof.“",
+          "jobTitle": "Rolle auf {language}",
+          "jobTitleHint": "Zum Beispiel „Psychotherapeut“.",
+          "groupsTitle": "Gruppen",
+          "groupsHelper": "Gruppen ordnen die Personen auf deiner Website, zum Beispiel Team oder Lehrende.",
+          "shortBioTitle": "Kurzvorstellung",
+          "shortBio": "Kurzvorstellung auf {language}",
+          "shortBioHint": "{count} von {max} Zeichen",
+          "shorten": "Vorstellung kürzen",
+          "shortening": "Wird gekürzt …",
+          "shortenHelper": "Schreibt eine Kurzfassung aus dem längeren Text im Bereich „Über“.",
+          "shortenNeedsBio": "Schreibe zuerst den längeren Text auf {language} im Bereich „Über“.",
+          "shortenUnavailable": "Die Schreibhilfe ist für deine Website gerade nicht verfügbar.",
+          "shortenTooLong": "Der Text ist zu lang, um ihn auf einmal zu kürzen. Kürze ihn zuerst ein wenig.",
+          "shortenFailed": "Wir konnten den Text nicht kürzen. Bitte versuche es erneut.",
+          "suggestionTitle": "Vorschlag",
+          "useSuggestion": "Übernehmen",
+          "dismissSuggestion": "Nein, danke",
+          "dismiss": "Schließen",
+          "suggestionUsed": "Vorschlag übernommen. Du kannst ihn weiter bearbeiten."
+        },
+        "about": {
+          "bioTitle": "Über",
+          "bio": "Ausführliche Vorstellung auf {language}",
+          "bioHint": "Wird auf der eigenen Seite der Person gezeigt.",
+          "bioReference": "Zur Orientierung: der Text auf {language}",
+          "bioLabel": "Ausführliche Vorstellung auf {language}",
+          "bioPlaceholder": "Erzähle den Besuchern, wer diese Person ist und was sie tut.",
+          "languagesTitle": "Gesprochene Sprachen",
+          "languagesHelper": "Besucher sehen, welche Sprachen diese Person spricht.",
+          "qualificationsTitle": "Qualifikationen",
+          "qualificationsHint": "Abschlüsse, Zertifikate und Mitgliedschaften.",
+          "qualificationsNone": "Noch keine Qualifikationen.",
+          "qualificationTitle": "Qualifikation {n} auf {language}",
+          "qualificationTitleNeeded": "Gib dieser Qualifikation einen Titel",
+          "removeQualification": "Qualifikation {n} entfernen",
+          "issuer": "Ausgestellt von",
+          "issuedOn": "Ausgestellt am",
+          "expiresOn": "Gültig bis",
+          "expiresBeforeIssued": "Das Enddatum liegt vor dem Startdatum.",
+          "addQualification": "Qualifikation hinzufügen",
+          "qualificationsFull": "Du kannst bis zu {max} Qualifikationen hinzufügen."
+        },
+        "website": {
+          "title": "Auf der Website",
+          "options": {
+            "listed": "In Listen zeigen",
+            "page": "In Listen und auf eigener Seite zeigen",
+            "off": "Nicht auf der Website zeigen",
+            "listedHelp": "Erscheint auf Seiten mit Personenlisten, ohne eigene Seite.",
+            "pageHelp": "Bekommt zusätzlich eine Seite mit der ausführlichen Vorstellung.",
+            "offHelp": "Bleibt in deiner Liste, ist aber für Besucher unsichtbar."
+          },
+          "explain": {
+            "listed": "Diese Person erscheint in Listen, ohne eigene Seite.",
+            "off": "Besucher sehen diese Person nirgends."
+          },
+          "addressTitle": "Seitenadresse",
+          "address": "Adresse auf {language}",
+          "addressHint": "Der letzte Teil der Webadresse. Buchstaben, Zahlen und Bindestriche.",
+          "addressHintOther": "Anders als auf {language}. Jede Sprache hat ihre eigene Adresse.",
+          "addressNeeded": "Gib eine Adresse für die Seite ein",
+          "useSuggestion": "„{slug}“ verwenden",
+          "redirectNote": "Wenn du die Adresse später änderst, funktioniert die alte weiter und leitet auf die neue."
+        }
+      }
     }
   },
   "app": {
@@ -3499,6 +3843,38 @@
       "addressAutocomplete": {
         "suggestions": "Adressvorschläge",
         "attribution": "Powered by Google"
+      },
+      "personPicker": {
+        "noneSingle": "Noch niemand ausgewählt",
+        "none": "Noch niemand ausgewählt",
+        "drag": "{name} verschieben, Position {position} von {total}",
+        "archived": "Archiviert",
+        "remove": "{name} entfernen",
+        "orderHint": "Die erste Person ist: {primary}. Zieh zum Ändern der Reihenfolge.",
+        "change": "Ändern",
+        "choose": "Person auswählen",
+        "add": "Person hinzufügen",
+        "full": "Du kannst bis zu {max} Personen auswählen.",
+        "createTitle": "Neue Person",
+        "title": "Personen auswählen",
+        "search": "Personen suchen",
+        "searchPlaceholder": "Nach Name suchen",
+        "retry": "Erneut versuchen",
+        "loadFailed": "Wir konnten die Personen nicht laden. Bitte versuche es erneut.",
+        "noMatch": "Niemand gefunden für „{query}“.",
+        "empty": "Noch keine Personen.",
+        "select": "{name} auswählen",
+        "addNew": "Neue Person hinzufügen",
+        "done": "Fertig, {count, plural, one {# Person ausgewählt} other {# Personen ausgewählt}}",
+        "close": "Schließen",
+        "createFailed": "Wir konnten die Person nicht hinzufügen. Bitte versuche es erneut.",
+        "createIntro": "Gib jetzt den Namen ein. Den Rest kannst du später unter Personen ergänzen.",
+        "firstName": "Vorname",
+        "lastName": "Nachname",
+        "namesNeeded": "Gib Vor- und Nachnamen ein, um fortzufahren.",
+        "back": "Zurück",
+        "creating": "Wird hinzugefügt …",
+        "create": "Person hinzufügen"
       }
     },
     "analytics": {

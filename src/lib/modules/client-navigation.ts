@@ -101,8 +101,8 @@ export function buildClientNavItems(
 /** The Media screen segment (`/{projectSlug}/media`), from the registry. */
 export const MEDIA_SEGMENT = segmentOf('media') as string
 
-/** The People screen segment (`/{projectSlug}/people`), from the registry. */
-export const PEOPLE_SEGMENT = segmentOf('people') as string
+/** The Users screen segment (`/{projectSlug}/users`), from the registry. */
+export const USERS_SEGMENT = segmentOf('users') as string
 
 /**
  * @deprecated Use `buildClientNavItems`. Thin filter kept for existing callers

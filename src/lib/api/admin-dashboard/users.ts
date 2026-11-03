@@ -13,7 +13,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readAllRows } from '@/lib/supabase/read-all'
 import { assertAbluoAdmin } from '@/lib/api/admin-dashboard/projects'
-import { safeAvatarUrl } from '@/lib/people/service'
+import { safeAvatarUrl } from '@/lib/users/service'
 import {
   buildAdminPeople,
   projectOptions,

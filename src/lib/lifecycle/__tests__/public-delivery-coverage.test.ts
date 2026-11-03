@@ -262,6 +262,7 @@ const OTHER_READERS: Record<string, string> = {
   'src/lib/api/catalogue-lifecycle.ts': 'catalogue lifecycle descriptors — referrer checks before archive/delete (authenticated dashboard)',
   'src/lib/api/faq-sets.ts': 'client dashboard FAQ set editor and library (authenticated, project-scoped after assertModuleAction) — lists every state on purpose',
   'src/lib/api/faq-lifecycle.ts': 'FAQ set lifecycle descriptor — referrer checks before archive/delete (authenticated dashboard)',
+  'src/lib/api/persons-lifecycle.ts': 'People usage and delete-referrer checks (ADR-043) — which pages, posts and events name a person; authenticated dashboard, never content',
   'src/lib/modules/catalogue/validation.ts': 'catalogue save-time validation — slug namespace and currency-change counts (authenticated Studio/dashboard)',
 }
 

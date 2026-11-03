@@ -1271,6 +1271,21 @@ export const LAB_REGISTRY: LabEntry[] = [
     demo: () => import('./demos/field.demo'),
   },
   {
+    id: 'person-picker',
+    name: 'PersonPicker',
+    exports: ['PersonPicker'],
+    source: 'src/components/app/ui/PersonPicker.tsx',
+    group: 'selection',
+    status: 'canonical',
+    summary: 'Chooses one or several people for a page, event or post; the first one can be the main person.',
+    rules: [
+      'search and onCreate are injected: the picker never reaches a backend itself.',
+      'Order is the order of value; drag to reorder, and primaryLabel marks the first.',
+      'Archived people stay visible with a label so nothing silently disappears.',
+    ],
+    demo: () => import('./demos/person-picker.demo'),
+  },
+  {
     id: 'skeleton',
     name: 'Skeleton',
     exports: ['Skeleton'],

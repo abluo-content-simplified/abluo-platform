@@ -1,6 +1,6 @@
 /**
  * Admin Projects list — filters and sort (client-side, on the loaded list),
- * the same shape as the client's people-filter.ts. Pure, so it is unit-tested.
+ * the same shape as the client's users-filter.ts. Pure, so it is unit-tested.
  *
  * Status filter default is `current`: everything except `inactive` projects
  * (retired sites stay reachable with "Inactive" or "All").

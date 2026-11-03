@@ -12,6 +12,7 @@ import {
   designSystemQuery,
   projectDomainQuery,
   eventSiteContextQuery,
+  projectModuleConfigQuery,
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
@@ -49,6 +50,9 @@ import {
   type EventSiteContext,
 } from '@/lib/modules/events/structured'
 import { multiline } from '@/lib/multiline-text'
+import { getEnabledModuleIds, type ProjectModuleConfig } from '@/lib/modules/config'
+import { isPeopleModuleOn, namedPeople, profileSegmentFor } from '@/lib/modules/people/website'
+import { PersonByline } from '@/components/people/PersonByline'
 interface PageProps {
   params: Promise<{ tenant: string; locale: string; slug: string }>
   searchParams?: Promise<{ from?: string }>
@@ -144,7 +148,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
   // Fetch event and design system in parallel.
-  const [sanityEvent, designSystem, sanityEvents, siteContext, customDomain] = await Promise.all([
+  const [sanityEvent, designSystem, sanityEvents, siteContext, customDomain, moduleConfig] = await Promise.all([
     fetchForTenant<Event>(eventBySlugQuery, { slug, locale: locale as SupportedLocale, defaultLocale }),
     (async () => {
       const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
@@ -153,6 +157,8 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
     fetchForTenant<Event[]>(eventsQuery, { locale: locale as SupportedLocale, defaultLocale }),
     fetchForTenant<EventSiteContext | null>(eventSiteContextQuery, { locale: locale as SupportedLocale, defaultLocale }),
     fetchForTenant<string | null>(projectDomainQuery, {}),
+    // ADR-043 — gates the hosts from the People module.
+    fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale }),
   ])
   // ADR-038 C3 — dates from the schedule (Supabase) when one exists; Sanity's otherwise.
   const [event, allEvents] = await Promise.all([
@@ -195,6 +201,8 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
   await localizeSiteLinks([event, relatedEvents], locale, () => getSitePageSlugs(String(tenantId)))
 
   const msg = getEventMessages(locale)
+  // ADR-043 — stored host references win over the legacy inline hosts.
+  const hostPeople = namedPeople(event.hostPeople, event.hostPeopleCount, isPeopleModuleOn(getEnabledModuleIds(moduleConfig)))
 
   const hasPrices = validPriceOptions(event.priceOptions).length > 0
 
@@ -309,7 +317,17 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                 </div>
               )}
             </div>
-            <EventHostsLine hosts={event.hosts} locale={locale} tenantId={tenantId} hostScoped={hostScoped} className="-mt-4 mb-8 text-sm" />
+            {hostPeople ? (
+              <PersonByline
+                people={hostPeople}
+                locale={locale}
+                links={{ siteBase, segment: profileSegmentFor(moduleConfig, locale) }}
+                label={msg.hostedBy}
+                className="-mt-4 mb-8 text-sm"
+              />
+            ) : (
+              <EventHostsLine hosts={event.hosts} locale={locale} tenantId={tenantId} hostScoped={hostScoped} className="-mt-4 mb-8 text-sm" />
+            )}
           </SlideUp>
 
           {/* ── Short description ────────────────────────────────── */}

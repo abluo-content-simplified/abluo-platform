@@ -42,6 +42,7 @@ export function ReviewStep({
   const t = useTranslations('clientDashboard.create.review')
   const tg = useTranslations('clientDashboard.gallery.post')
   const tf = useTranslations('clientDashboard.faq.post')
+  const ta = useTranslations('clientDashboard.create.authors')
   const tm = useTranslations('clientDashboard.create.menu')
   const tp = useTranslations('clientDashboard.create.publish')
   const ui = useLocale()
@@ -84,6 +85,10 @@ export function ReviewStep({
       }
       case 'gallery':
         return (site.galleries ?? []).find((g) => g.id === draft.gallery)?.title ?? tg('none')
+      case 'authors': {
+        const names = (draft.authors ?? []).map((id) => site.people?.initial.find((p) => p.id === id)?.name ?? ta('unknownPerson'))
+        return names.length ? names.join(', ') : ta('summaryNone')
+      }
       case 'faq': {
         const n = faqSummary(draft.faqSets, site.faqSets)
         return n.sets ? `${tf('summarySets', { count: n.sets })} · ${tf('summaryQuestions', { count: n.questions })}` : tf('summaryNone')
@@ -119,7 +124,7 @@ export function ReviewStep({
 
       <ul className="mt-8 divide-y divide-border-subtle border-y border-border-subtle">
         {overviewSections(draft, site).map(({ id, state }) => {
-          const name = id === 'gallery' ? tg('section') : id === 'faq' ? tf('section') : t(`sections.${id}`)
+          const name = id === 'gallery' ? tg('section') : id === 'faq' ? tf('section') : id === 'authors' ? ta('section') : t(`sections.${id}`)
           return (
             <li key={id} className="flex items-start gap-4 py-5">
               {id === 'cover' && draft.cover?.url ? (

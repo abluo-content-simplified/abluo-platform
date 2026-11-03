@@ -27,7 +27,7 @@ import { ViewAsClient } from '@/components/admin/projects/ViewAsClient'
 import { GoogleCard } from '@/components/admin/projects/GoogleCard'
 import { InviteOwnerCard } from '@/components/admin/projects/InviteOwnerCard'
 import { BillingCard } from '@/components/admin/projects/BillingCard'
-import { listOwnershipCandidates, tenantOfProject } from '@/lib/people/ownership'
+import { listOwnershipCandidates, tenantOfProject } from '@/lib/users/ownership'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'

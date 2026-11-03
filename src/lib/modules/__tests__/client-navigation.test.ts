@@ -9,7 +9,7 @@ import {
   resolveProjectGrant,
   MODULE_DASHBOARD_ROUTES,
   MEDIA_SEGMENT,
-  PEOPLE_SEGMENT,
+  USERS_SEGMENT,
   segmentOf,
   isNavItemActive,
   phoneNavLayout,
@@ -71,18 +71,18 @@ describe('buildClientNavItems', () => {
     expect(navWithoutSupport(grantWith(['events'], ['forms.submission.read']))).toEqual([])
   })
 
-  it('shows Media on the permission alone (no module) and People on invite OR manage', () => {
+  it('shows Media on the permission alone (no module) and Users on invite OR manage', () => {
     expect(navWithoutSupport(grantWith([], ['media.library.manage'])).map((i) => i.moduleId)).toEqual(['media', 'taxonomy']) // Categories & Tags: the media's internal tags
-    expect(navWithoutSupport(grantWith([], ['users.invite'])).map((i) => i.moduleId)).toEqual(['people'])
-    expect(navWithoutSupport(grantWith([], ['users.manage'])).map((i) => i.moduleId)).toEqual(['people'])
+    expect(navWithoutSupport(grantWith([], ['users.invite'])).map((i) => i.moduleId)).toEqual(['users'])
+    expect(navWithoutSupport(grantWith([], ['users.manage'])).map((i) => i.moduleId)).toEqual(['users'])
   })
 
-  it('modules first in the shared PLAT-3 order (Publish · Show · Visitors), then Media, People, Categories & Tags', () => {
+  it('modules first in the shared PLAT-3 order (Publish · Show · Visitors), then Media, Categories & Tags, Users', () => {
     const all = grantWith(
       ['blog', 'forms', 'gallery'],
       ['blog.post.read', 'forms.submission.read', 'gallery.gallery.read', 'media.library.manage', 'users.invite'],
     )
-    expect(navWithoutSupport(all).map((i) => i.moduleId)).toEqual(['blog', 'gallery', 'forms', 'media', 'people', 'taxonomy'])
+    expect(navWithoutSupport(all).map((i) => i.moduleId)).toEqual(['blog', 'gallery', 'forms', 'media', 'taxonomy', 'users'])
   })
 
   it('builds the href from the grant projectSlug + the registry segment', () => {
@@ -92,9 +92,9 @@ describe('buildClientNavItems', () => {
   })
 
   it('derives the exported segments from the registry', () => {
-    expect(MODULE_DASHBOARD_ROUTES).toEqual({ blog: 'posts', events: 'agenda', forms: 'submissions', gallery: 'galleries', faq: 'faq-sets', documents: 'document-library', members: 'access', catalogue: 'catalogue' })
+    expect(MODULE_DASHBOARD_ROUTES).toEqual({ blog: 'posts', events: 'agenda', forms: 'submissions', gallery: 'galleries', faq: 'faq-sets', documents: 'document-library', members: 'access', catalogue: 'catalogue', people: 'people' })
     expect(MEDIA_SEGMENT).toBe('media')
-    expect(PEOPLE_SEGMENT).toBe('people')
+    expect(USERS_SEGMENT).toBe('users')
     expect(segmentOf('blog')).toBe('posts')
     expect(segmentOf('nope')).toBeUndefined()
   })
@@ -188,9 +188,9 @@ describe('phoneNavLayout (Home · Content · Requests · Media · More)', () => 
     item('catalogueOptions', 'catalogue/option-lists', 'catalogue'),
     item('forms', 'submissions', 'visitors'),
     item('media', 'media', 'library'),
-    item('people', 'people', 'library'),
     item('taxonomy', 'taxonomy', 'library'),
     item('analytics', 'analytics', 'insights'),
+    item('users', 'users', 'project'),
     item('settings', 'settings', 'project'),
     item('support', 'support', 'bottom'),
   ]
@@ -200,7 +200,7 @@ describe('phoneNavLayout (Home · Content · Requests · Media · More)', () => 
     expect(ids(l.content)).toEqual(['blog', 'events', 'gallery', 'documents', 'catalogueItems', 'catalogueCollections', 'catalogueOptions'])
     expect(l.requests?.moduleId).toBe('forms')
     expect(l.media?.moduleId).toBe('media')
-    expect(ids(l.overflow)).toEqual(['people', 'taxonomy', 'analytics', 'settings', 'support'])
+    expect(ids(l.overflow)).toEqual(['taxonomy', 'analytics', 'users', 'settings', 'support'])
     placedOnce(tmz)
   })
 
@@ -232,10 +232,10 @@ describe('phoneNavLayout (Home · Content · Requests · Media · More)', () => 
   })
 
   it('no Content or Catalogue destination → no Content tab; Requests only when the person has forms', () => {
-    const l = phoneNavLayout([item('media', 'media', 'library'), item('people', 'people', 'library')])
+    const l = phoneNavLayout([item('media', 'media', 'library'), item('users', 'users', 'project')])
     expect(l.content).toEqual([])
     expect(l.requests).toBeNull()
-    expect(ids(l.overflow)).toEqual(['people'])
+    expect(ids(l.overflow)).toEqual(['users'])
     placedOnce([])
   })
 

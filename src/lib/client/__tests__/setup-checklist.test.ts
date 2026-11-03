@@ -15,7 +15,7 @@ const EDITOR = { permissions: ['blog.post.read', 'blog.post.write', 'media.libra
 
 const NOTHING_DONE: SetupFacts = { publishedPosts: 0, mediaAssets: 0, teamSize: 1, analyticsConnected: false, domainConnected: false }
 const ALL_DONE: SetupFacts = { publishedPosts: 3, mediaAssets: 12, teamSize: 2, analyticsConnected: true, domainConnected: true }
-const HREFS = { firstPost: '/s/posts', photos: '/s/media/add', team: '/s/people', analytics: '/s/analytics' }
+const HREFS = { firstPost: '/s/posts', photos: '/s/media/add', team: '/s/users', analytics: '/s/analytics' }
 
 const build = (over: Partial<Parameters<typeof buildSetupChecklist>[0]> = {}) =>
   buildSetupChecklist({ grant: OWNER, facts: NOTHING_DONE, hrefs: HREFS, dismissed: false, ...over })
@@ -25,7 +25,7 @@ describe('setup checklist — which items a person sees', () => {
   it('an Owner with the blog sees all five, in order, with links where they act', () => {
     const c = build()
     expect(ids(c)).toEqual(['firstPost', 'photos', 'team', 'analytics', 'domain'])
-    expect(c.items.map((i) => i.href)).toEqual(['/s/posts', '/s/media/add', '/s/people', '/s/analytics', null])
+    expect(c.items.map((i) => i.href)).toEqual(['/s/posts', '/s/media/add', '/s/users', '/s/analytics', null])
   })
 
   it('an Editor sees only what they can do: no team, no analytics, no domain', () => {

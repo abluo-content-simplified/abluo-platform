@@ -1,6 +1,7 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
 import { validateUniquePublicId } from '@/lib/sanity/fields/public-id'
 import { CategorySelectInput } from '@/lib/sanity/fields/CategorySelectInput'
+import { peopleRefsField } from '@/lib/modules/people/fields'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/lib/sanity/fields/shared'
 import { isValidTimeZone, timeZoneOptions } from '@/lib/time/zones'
 
@@ -594,6 +595,16 @@ const eventType = defineType({
           },
         }),
       ],
+    }),
+    // ADR-043 D5 — additive. Hosts from the People module, in this order.
+    // While empty, the inline `hosts` above are read as a fallback (D10).
+    // Session instructors stay in Supabase (instructor_public_ids, by publicId).
+    peopleRefsField({
+      name: 'hostPeople',
+      title: 'Hosts (People)',
+      group: 'content',
+      description: 'Optional. People from this website’s People list who lead this event, in the order to show them.',
+      max: 50,
     }),
     // ── Registration ───────────────────────────────────────────────────────────
     // Additive (2026-09-30). All optional — an event with none of these renders

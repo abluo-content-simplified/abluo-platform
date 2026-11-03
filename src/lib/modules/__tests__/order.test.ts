@@ -30,7 +30,7 @@ describe('the approved table', () => {
   it('Publish · Show · Visitors · Tools, with Documents after Catalogue and Live at the end of Publish', () => {
     expect(MODULE_GROUPS.map((g) => [g.label, [...g.modules]])).toEqual([
       ['Publish', ['blog', 'news', 'events', 'faq', 'live']],
-      ['Show', ['gallery', 'catalogue', 'documents']],
+      ['Show', ['gallery', 'catalogue', 'documents', 'people']],
       ['Visitors', ['forms', 'whatsapp', 'members']],
       ['Tools', ['translate', 'brand-hub']],
     ])
@@ -51,7 +51,7 @@ describe('the approved table', () => {
 describe('deterministic regardless of registry or install order', () => {
   it('the Studio list order is the same for any registry order', () => {
     const expected = groupModules(MODULE_REGISTRY, []).flatMap((g) => g.modules.map((m) => m.module.id))
-    expect(expected).toEqual(['blog', 'news', 'events', 'faq', 'live', 'gallery', 'catalogue', 'documents', 'forms', 'whatsapp', 'members', 'translate', 'brand-hub'])
+    expect(expected).toEqual(['blog', 'news', 'events', 'faq', 'live', 'gallery', 'catalogue', 'documents', 'people', 'forms', 'whatsapp', 'members', 'translate', 'brand-hub'])
     for (const seed of [1, 7, 42, 1234]) {
       expect(groupModules(shuffled(MODULE_REGISTRY, seed), shuffled(MODULE_REGISTRY, seed + 1).map((m) => m.id)).flatMap((g) => g.modules.map((m) => m.module.id))).toEqual(expected)
     }
@@ -82,9 +82,9 @@ describe('both surfaces use the same source', () => {
       ['blog', 'content'], ['events', 'content'], ['faq', 'content'], ['gallery', 'content'], ['documents', 'content'],
       ['catalogueItems', 'catalogue'], ['catalogueCollections', 'catalogue'], ['catalogueOptions', 'catalogue'],
       ['forms', 'visitors'], ['members', 'visitors'],
-      ['media', 'library'], ['people', 'library'], ['taxonomy', 'library'],
+      ['people', 'library'], ['media', 'library'], ['taxonomy', 'library'],
       ['analytics', 'insights'],
-      ['connections', 'project'], ['settings', 'project'],
+      ['users', 'project'], ['connections', 'project'], ['settings', 'project'],
       ['support', 'bottom'],
     ])
   })

@@ -11,6 +11,8 @@ import { AFFILIATE_SHOP_IDS } from '@/lib/affiliate/shops'
 import { LOCATION_KEY_PATTERN } from '@/lib/maps/locations'
 import { LocationPinInput } from '@/lib/sanity/fields/LocationPinInput'
 import { bodyLinkAnnotation } from '@/lib/sanity/fields/body-link'
+import { peopleRefsField } from '@/lib/modules/people/fields'
+import { isValidTermKey } from '@/lib/taxonomy/ids'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, headlineAccentField, BACKGROUND_SURFACE_OPTIONS } from '@/lib/sanity/fields/shared'
 import {
   VentureListWireframe,
@@ -1711,6 +1713,22 @@ const teamSectionType = defineType({
       title: 'Members',
       type: 'array',
       of: [defineArrayMember({ type: 'teamMemberObject' })],
+    }),
+    // ADR-043 D5 — additive. People from the People module, hand-picked in
+    // this order, and/or every person of one group in the site-wide order.
+    // Hand-picked wins. While both are empty the inline `members` above render
+    // (deprecated fallback until each site is migrated, ADR-043 D10).
+    peopleRefsField({
+      name: 'people',
+      title: 'People',
+      description: 'Optional. People from this website’s People list, in the order to show them. Leave empty to show a group below.',
+    }),
+    defineField({
+      name: 'groupFilter',
+      title: 'Group',
+      type: 'string',
+      description: 'Optional. The key of one People group (Categories & Tags): shows everyone in it, in the site-wide order. Ignored when people are picked above.',
+      validation: (Rule) => Rule.custom((value?: string) => (!value || isValidTermKey(value) ? true : 'Not a group key.')),
     }),
   ],
   preview: {

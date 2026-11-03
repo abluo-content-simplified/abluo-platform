@@ -304,6 +304,17 @@ FAQs are the FAQ **module** (`src/lib/modules/faq/`): a library of `faqSet` docu
 - **One `FAQPage` per URL** (`buildFaqPageSchema`), merged from every rendered placement, de-duplicated.
 - **`faqSection` is module-gated.** A project that shows FAQs needs the `faq` installation (migration 007).
 
+### People (ADR-043)
+
+People are the People **module** (`src/lib/modules/people/`): one `person` list per site, referenced everywhere a person is linked (team section, post authors, event hosts, schedule instructors — never copies). Rules that are easy to break:
+
+- **Public in Sanity, private in Supabase.** The public profile is the `person` document; birthday, private contacts and notes live in `person_private` (migration 063, server-only). Never add a private field to `person`.
+- **One projection.** Website reads use `PERSON_PUBLIC_FIELDS` / `personRefsProjection()` (`src/lib/modules/people/projection.ts`); `projection.test.ts` fails on any other person projection.
+- **Visibility (D4):** `off` or anonymised → rendered nowhere; archived → kept on content that names them, gone from listings and own page.
+- **Ownership:** any write that stores person ids goes through `personRefs()` / `assertPeopleBelongToProject()` (`src/lib/api/persons-guard.ts`); schedule writes use `saveOneOffGuarded`, never `store.saveOneOff`.
+- **Fallbacks:** `peopleCount`/`authorCount`/`hostPeopleCount` > 0 wins over the deprecated inline `members` / `author` / `hosts`, which stay until every tenant is migrated (`scripts/people/`).
+- The logins page (ADR-028) is **Users** (`/{project}/users`, Project group); **People** (`/{project}/people`, Library group) is this module.
+
 ### Rule
 
 Animations belong to section components. Sanity stores content — not timing, easing, motion, or animation logic.

@@ -1,0 +1,29 @@
+{
+  "clientDashboard": {
+    "create": {
+      "stepNames": {
+        "authors": "Autori"
+      },
+      "authors": {
+        "section": "Autori",
+        "title": "Chi ha scritto questo articolo?",
+        "helper": "Scegli le persone dal tuo elenco Persone. La prima è l’autore principale. È facoltativo.",
+        "label": "Autori",
+        "primary": "Autore principale",
+        "unknownPerson": "Persona non trovata",
+        "summaryNone": "Nessuno"
+      }
+    },
+    "events": {
+      "editor": {
+        "hosts": {
+          "title": "Relatori",
+          "helper": "Scegli chi conduce questo evento dal tuo elenco Persone. Vengono mostrati in quest’ordine.",
+          "unknownPerson": "Persona non trovata",
+          "legacyTitle": "Relatori aggiunti in precedenza",
+          "legacyBody": "Questo evento mostra ancora relatori aggiunti prima dell’elenco Persone: {names}. Restano così finché non scegli le persone qui sopra; Abluo può spostarli per te."
+        }
+      }
+    }
+  }
+}

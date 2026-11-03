@@ -36,6 +36,8 @@ import {
   type EventCapabilities,
 } from '@/lib/modules/events/capabilities'
 import { assertModuleAction } from '@/lib/api/module-action-guard'
+import { personRefIds, personRefs } from '@/lib/api/persons-guard'
+import { PEOPLE_READ_PERMISSION, PersonError } from '@/lib/api/persons-lifecycle'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
@@ -88,6 +90,8 @@ const isChoiceField = (f: string): f is ChoiceField => Object.prototype.hasOwnPr
  * `venue:<id>` (a saved venue of this project).
  */
 export type EventPlaceToken = string
+/** Hosts from the People module on one event; mirrors the schema's max (ADR-043). */
+export const MAX_EVENT_HOST_PEOPLE = 50
 /** An event can carry this many categories at most. */
 const MAX_EVENT_CATEGORIES = 50
 const PLACE_TOKEN = /^(location:[a-z0-9_-]{1,64}|venue:[A-Za-z0-9][A-Za-z0-9._-]{0,127})$/
@@ -447,6 +451,10 @@ export type EventSnapshot = {
   categoryOptions: EventCategoryOption[]
   /** ADR-038 D6 — what this project's client can use (Studio → Modules → Events). */
   capabilities: EventCapabilities
+  /** ADR-043 — hosts from the People module in order: person document ids. */
+  hostPeople: string[]
+  /** ADR-043 — the old inline hosts (read-only in the dashboard; kept until migrated). */
+  legacyHosts: { name: string; role: string }[]
 }
 
 function snapshotOf(id: string, doc: Doc, draft: Doc | undefined, published: Doc | undefined, site: EventSite, cover: EventCover | null, now: Date, placeOptions: EventPlaceOptions = { locations: [], venues: [] }, categoryOptions: EventCategoryOption[] = [], capabilities: EventCapabilities = resolveEventCapabilities(null)): EventSnapshot {
@@ -468,7 +476,8 @@ function snapshotOf(id: string, doc: Doc, draft: Doc | undefined, published: Doc
     timing: eventTiming(doc, now),
     cover,
     publicSlug: typeof slug === 'string' && slug ? slug : null,
-    hasStudioContent: ['fullDescription', 'schedule', 'hosts', 'priceOptions', 'gallery'].some((f) => nonEmpty(doc[f])),
+    // With the Hosts capability on, inline hosts are shown in the editor (read-only), so they no longer count as Studio-only content.
+    hasStudioContent: ['fullDescription', 'schedule', ...(capabilities.hosts ? [] : ['hosts']), 'priceOptions', 'gallery'].some((f) => nonEmpty(doc[f])),
     visibility: choice(doc, 'visibility'),
     eventStatus: choice(doc, 'eventStatus'),
     attendanceMode: choice(doc, 'attendanceMode'),
@@ -477,7 +486,18 @@ function snapshotOf(id: string, doc: Doc, draft: Doc | undefined, published: Doc
     categories: categoryKeysOfDoc(doc),
     categoryOptions,
     capabilities,
+    hostPeople: personRefIds(doc.hostPeople),
+    legacyHosts: legacyHostsOf(doc.hosts, site.defaultLocale),
   }
+}
+
+/** The inline `hosts` as name + role (default language), for the read-only hint. */
+function legacyHostsOf(value: unknown, defaultLocale: string): { name: string; role: string }[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((h) => {
+    const name = typeof (h as { name?: unknown })?.name === 'string' ? (h as { name: string }).name.trim() : ''
+    return name ? [{ name, role: pick((h as { role?: unknown }).role, defaultLocale) }] : []
+  })
 }
 
 /** The stored category keys of an event: text entries only (a legacy reference entry is not a key). */
@@ -679,6 +699,7 @@ export async function patchEventDraft(
       path === 'registrationUrl' ||
       path === 'place' ||
       path === 'categories' ||
+      path === 'hostPeople' ||
       isChoiceField(path) ||
       (field in EVENT_TEXT_FIELDS && !!locale && rest.length === 0)
     if (!ok) throw new EventError('invalid_field', `Field "${path}" cannot be changed here.`)
@@ -715,10 +736,27 @@ export async function patchEventDraft(
     if (!eventFieldAllowed(caps, field)) throw new EventError('invalid_field', `Field "${path}" is not available on this site.`)
   }
 
+  // ADR-043: hosts from People also need the People module and people.person.read (the capability check above covers `hosts`).
+  if ('hostPeople' in input.set) assertModuleAction(ctx, projectId, PEOPLE_READ_PERMISSION)
+
   const set: Record<string, unknown> = {}
   const unset: string[] = []
   const ensure: Record<string, unknown> = {}
   for (const [path, value] of Object.entries(input.set)) {
+    if (path === 'hostPeople') {
+      if (value === null || (Array.isArray(value) && value.length === 0)) {
+        unset.push('hostPeople')
+        continue
+      }
+      try {
+        set.hostPeople = await personRefs(grant.projectSlug, value, { max: MAX_EVENT_HOST_PEOPLE, stored: draft.hostPeople }, { client })
+      } catch (error) {
+        if (error instanceof PersonError && error.code === 'failed') throw new EventError('failed', 'Could not save.')
+        if (error instanceof PersonError) throw new EventError('invalid_value', 'Unknown person.')
+        throw error
+      }
+      continue
+    }
     if (path === 'startDate') {
       set.startDate = parseEventDate(value)
       continue

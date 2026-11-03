@@ -29,6 +29,8 @@ import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 import { ArticleJsonLd } from '@/components/JsonLd'
 import { FaqPageJsonLd } from '@/components/faq/FaqPageJsonLd'
 import { getEnabledModuleIds } from '@/lib/modules/config'
+import { isPeopleModuleOn, namedPeople, profileSegmentFor } from '@/lib/modules/people/website'
+import { personDisplayName } from '@/lib/modules/people/model'
 
 export const dynamic = 'force-dynamic'
 
@@ -155,6 +157,9 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
   // ADR-037 D5 — a post's FAQs render only while the FAQ module is active;
   // an unresolved module list fails open, like the gallery.
   const showFaq = enabledModuleIds === null || enabledModuleIds.includes('faq')
+  // ADR-043 — post authors from the People module, only while it is active.
+  const peopleOn = isPeopleModuleOn(enabledModuleIds)
+  const peopleSegment = peopleOn ? profileSegmentFor(moduleConfig, locale) : null
 
   const [post, designSystem, customDomain] = await Promise.all([
     fetchForTenant<Post>(postBySlugQuery, {
@@ -228,7 +233,13 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
         description={post.excerpt}
         imageUrl={post.coverImage?.asset ? ogImageUrl(post.coverImage) : null}
         datePublished={post.publishedAt}
-        authorName={post.author?.name}
+        authorName={namedPeople(post.authors, post.authorCount, peopleOn) ? undefined : post.author?.name}
+        authors={(namedPeople(post.authors, post.authorCount, peopleOn) ?? []).map((a) => ({
+          name: personDisplayName(a),
+          url: a.hasPage && a.slug.current && peopleSegment
+            ? canonicalUrl(canonicalOrigin(customDomain), locale, peopleSegment, a.slug.current)
+            : undefined,
+        }))}
       />
       {showFaq && (
         <FaqPageJsonLd
@@ -252,6 +263,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
         backUrl={backUrl}
         showGallery={showGallery}
         showFaq={showFaq}
+        people={peopleOn ? { segment: peopleSegment } : undefined}
       />
     </SlugMapProvider>
   )

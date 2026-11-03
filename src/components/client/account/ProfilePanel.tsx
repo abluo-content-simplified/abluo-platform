@@ -6,7 +6,7 @@ import { FactRow } from '@/components/app/ui/FactRow'
 import { SidePanel } from '@/components/app/ui/SidePanel'
 import { AvatarEditor } from '@/components/client/account/AvatarEditor'
 import { NameEditor } from '@/components/client/account/NameEditor'
-import { TwoFactorPill } from '@/components/client/people/people-bits'
+import { TwoFactorPill } from '@/components/client/users/users-bits'
 
 /**
  * The person's profile in place (Tom, 2026-10-08): a side panel on computers,

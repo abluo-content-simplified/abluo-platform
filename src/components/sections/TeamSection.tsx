@@ -5,12 +5,15 @@ import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
-import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
-import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { getTeamSectionMessages } from '@/lib/i18n/team-section-messages'
-import { multiline } from '@/lib/multiline-text'
+import { getPeopleMessages } from '@/lib/i18n/people-messages'
+import { PeopleGrid } from '@/components/people/PeopleGrid'
+import { memberToCardData, personToCardData, type PersonCardData } from '@/components/people/PersonCard'
+import { isPeopleModuleOn, profileSegmentFor, teamSource } from '@/lib/modules/people/website'
+import type { ProjectModuleConfig } from '@/lib/modules/config'
+import { siteBasePath } from '@/lib/sanity/href'
 
 interface Props {
   section: TeamSection
@@ -18,6 +21,17 @@ interface Props {
   designSystem: DesignSystem | null
   /** Page locale — picks the dictionary label for member website links. */
   locale?: string
+  /**
+   * ADR-043 — the People module gates ref rendering exactly like module
+   * sections are gated (null/absent = unresolved = available). Not installed:
+   * the section shows its inline `members`, as before.
+   */
+  enabledModuleIds?: string[] | null
+  /** Module config — the People profile segment (per language). */
+  moduleConfig?: ProjectModuleConfig
+  /** URL project segment + host scope, for profile links. */
+  tenantSlug?: string
+  hostScoped?: boolean
 }
 
 // ─── Shared rich-text rendering ───────────────────────────────────────────────
@@ -155,9 +169,22 @@ function RichText({ blocks }: { blocks: PortableTextContent }) {
   return <div className="space-y-3">{elements}</div>
 }
 
-export function TeamSection({ section, surface, designSystem, locale }: Props) {
+export function TeamSection({ section, surface, designSystem, locale, enabledModuleIds, moduleConfig, tenantSlug, hostScoped }: Props) {
   const { title, subtitle, intro, members } = section
   const msg = getTeamSectionMessages(locale)
+
+  // ADR-043 / CONTRACTS §6.3 — peopleCount > 0 ⇒ the hand-picked people; else a
+  // group filter ⇒ that group; else the inline members. Both end up as the same
+  // card view model, so they render with identical markup.
+  const source = teamSource(section, isPeopleModuleOn(enabledModuleIds))
+  const profileLinks =
+    locale && tenantSlug
+      ? { siteBase: siteBasePath(locale, tenantSlug, hostScoped), segment: profileSegmentFor(moduleConfig, locale) }
+      : null
+  const cards: PersonCardData[] =
+    source.kind === 'people'
+      ? source.people.map((p) => personToCardData(p, profileLinks))
+      : (members ?? []).map(memberToCardData)
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   // Motion tokens
@@ -194,108 +221,7 @@ export function TeamSection({ section, surface, designSystem, locale }: Props) {
       </SlideUp>
 
       {/* Members grid — 1 col → 2 col (sm) → 3 col (lg) → 4 col (xl) */}
-      {members && members.length > 0 && (
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {members.map((member, index) => {
-            const src = imageUrl(member.photo, 600)
-            const srcSet = imageSrcSet(member.photo, [300, 600, 900])
-
-            return (
-              <SlideUp key={member._key} duration={duration} ease={ease} delay={index * 0.07}>
-                {/* anchorId lets other pages deep-link to one member (/teachers#florian-parra). */}
-                <div id={member.anchorId || undefined} className="group flex scroll-mt-24 flex-col">
-                  {/* Photo or initials placeholder */}
-                  <div
-                    className="relative mb-6 w-full overflow-hidden"
-                    style={{
-                      aspectRatio: '3 / 4',
-                      backgroundColor: 'var(--color-surface)',
-                      // Border radius uses the DS token — will become a DS media token in future
-                      borderRadius: 'var(--radius-lg)',
-                    }}
-                  >
-                    {src ? (
-                      <img
-                        src={src}
-                        srcSet={srcSet}
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                        alt={[member.honorific, member.name].filter(Boolean).join(' ')}
-                        className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <span
-                          className="text-3xl font-light"
-                          style={{ color: 'var(--color-text-muted)' }}
-                          aria-hidden="true"
-                        >
-                          {member.name
-                            .split(' ')
-                            .filter((w) => w.length > 1)
-                            .slice(0, 2)
-                            .map((w) => w[0])
-                            .join('')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Name */}
-                  <p
-                    className="mb-1 text-base font-semibold"
-                    style={{ color: 'var(--color-text-primary)' }}
-                  >
-                    {[member.honorific, member.name].filter(Boolean).join(' ')}
-                  </p>
-
-                  {/* Role */}
-                  {member.role && (
-                    <p
-                      className="mb-4 text-xs font-medium uppercase tracking-wide"
-                      style={{ color: 'var(--color-text-muted)' }}
-                    >
-                      {member.role}
-                    </p>
-                  )}
-
-                  {/* Divider */}
-                  <div
-                    className="mb-4 h-[1px] w-8 transition-all duration-300 group-hover:w-14"
-                    style={{ backgroundColor: 'var(--color-border)' }}
-                  />
-
-                  {/* Bio */}
-                  {member.bio && (
-                    <p
-                      className={multiline('text-sm leading-relaxed')}
-                      style={{ color: 'var(--color-text-secondary)' }}
-                    >
-                      {member.bio}
-                    </p>
-                  )}
-
-                  {/* Website */}
-                  {member.website && (
-                    <a
-                      href={member.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-4 inline-flex items-center gap-1 self-start text-sm font-medium underline-offset-4 hover:underline"
-                      style={{ color: 'var(--color-primary)' }}
-                    >
-                      {msg.website}
-                      <span aria-hidden="true">↗</span>
-                      <span className="sr-only"> ({msg.opensInNewTab})</span>
-                    </a>
-                  )}
-                </div>
-              </SlideUp>
-            )
-          })}
-        </div>
-      )}
+      <PeopleGrid cards={cards} msg={msg} profileLabel={getPeopleMessages(locale).viewProfile} duration={duration} ease={ease} />
     </SectionContainer>
   )
 }

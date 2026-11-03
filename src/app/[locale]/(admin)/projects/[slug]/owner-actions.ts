@@ -25,7 +25,7 @@ import { isUuid, ownerInviteOrigin } from '@/lib/admin/provisioning/model'
 import { createInvitation, normalizeEmail } from '@/lib/invitations/service'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { INTERFACE_LOCALES, type InterfaceLocale } from '@/lib/i18n/locales'
-import { transferOwnership, type OwnershipError } from '@/lib/people/ownership'
+import { transferOwnership, type OwnershipError } from '@/lib/users/ownership'
 
 export type InviteOwnerError = 'forbidden' | 'invalid_email' | 'not_found' | 'already_owner' | 'already_invited' | 'failed'
 

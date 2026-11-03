@@ -1,6 +1,6 @@
 /**
  * Forms (contact requests) list filters, sort, summary and CSV — client-side,
- * on the loaded list, the same shape as posts-filter.ts / people-filter.ts.
+ * on the loaded list, the same shape as posts-filter.ts / users-filter.ts.
  * Pure, so it is unit-tested (__tests__/submissions-filter.test.ts).
  */
 import type { DashboardSubmission, SubmissionStatus } from '@/lib/api/client-dashboard'

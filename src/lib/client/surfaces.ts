@@ -168,6 +168,8 @@ const MODULE_NAV: readonly NavSurface[] = sortByModuleOrder(
     moduleNav('forms', 'submissions', 'forms', 'forms.submission.read', 'visitors'),
     // ADR-040 B2.5 / §15 — Access (groups, passwords, who can see each page): next to Forms (PLAT-3).
     moduleNav('members', 'access', 'members', 'members.access.read', 'visitors'),
+    // ADR-043 — People: one list of the site's people (team, teachers, authors), in the Library group next to Media.
+    moduleNav('people', 'people', 'people', 'people.person.read', 'library'),
   ],
   (s) => s.requires.module as string
 )
@@ -178,8 +180,6 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   ...MODULE_NAV,
   // 2. Content work that is not a module.
   { kind: 'nav', id: 'media', segment: 'media', group: 'library', requires: { permission: 'media.library.manage' } },
-  // People sits with the content work (Tom, 2026-10-22).
-  { kind: 'nav', id: 'people', segment: 'people', group: 'library', requires: { anyPermission: ['users.invite', 'users.manage'] } },
   // ADR-033 Amendment J: Categories & Tags, one manager for every module that declares a taxonomy.
   // Shown when the person may manage terms (`<module>.taxonomy.write`) or at least read them
   // (the module's read permission; viewers list read-only) in one of those modules, or the internal
@@ -192,7 +192,7 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
     group: 'library',
     requires: {
       anyOf: [
-        { anyModule: ['blog', 'catalogue', 'documents', 'events', 'news'], anyPermission: ['blog.taxonomy.write', 'blog.post.read', 'catalogue.taxonomy.write', 'catalogue.item.read', 'documents.taxonomy.write', 'documents.document.read', 'events.taxonomy.write', 'events.event.read', 'news.taxonomy.write', 'news.article.read'] },
+        { anyModule: ['blog', 'catalogue', 'documents', 'events', 'news', 'people'], anyPermission: ['blog.taxonomy.write', 'blog.post.read', 'catalogue.taxonomy.write', 'catalogue.item.read', 'documents.taxonomy.write', 'documents.document.read', 'events.taxonomy.write', 'events.event.read', 'news.taxonomy.write', 'news.article.read', 'people.taxonomy.write', 'people.person.read'] },
         // Internal tags of the media library and of galleries (Media and Galleries tabs).
         { permission: 'media.library.manage' },
         { module: 'gallery', anyPermission: ['gallery.gallery.read', 'gallery.gallery.write'] },
@@ -207,6 +207,8 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   // 4. Support & configuration ("What's new" opens this group in the sidebar).
   // Support (Tom, 2026-10-22): a "coming soon" page for everyone on the project until ticketing exists.
   { kind: 'nav', id: 'support', segment: 'support', group: 'bottom', requires: {} },
+  // Users (was "People"; Tom, 2026-11-03): who can log in to the site. ADR-043 gives `/people` to the People module.
+  { kind: 'nav', id: 'users', segment: 'users', group: 'project', requires: { anyPermission: ['users.invite', 'users.manage'] } },
   // ADR-031: partner apps reading this site. Owners and Site admins only; always listed (calm empty state).
   { kind: 'nav', id: 'connections', segment: 'apps', group: 'project', requires: { permission: 'connections.manage' } },
   // Settings (Tom, 2026-10-18; 2026-10-28): the client's own settings — today Form notifications (who receives form emails).

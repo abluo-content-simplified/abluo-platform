@@ -1,0 +1,508 @@
+{
+  "schema": "people-proposal/1",
+  "generatedAt": "2026-11-03T10:59:09.284Z",
+  "dataset": "production",
+  "projectSlug": "studiomartegani",
+  "projectId": "90b7cb26-b192-4e8c-8378-d16c085540fd",
+  "peopleModuleInstalled": false,
+  "stats": {
+    "teamSections": 1,
+    "teamMembers": 8,
+    "authors": 1,
+    "postsWithAuthor": 0,
+    "events": 0,
+    "hosts": 0
+  },
+  "checks": [],
+  "proposals": [
+    {
+      "key": "4ecbe3123a75",
+      "id": "person-studiomartegani-4ecbe3123a75",
+      "publicId": "1484f624-86b5-4a0c-a5e2-5005bdcbd5cf",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1000,
+      "displayName": "Paolo Martegani",
+      "person": {
+        "firstName": "Paolo",
+        "lastName": "Martegani",
+        "honorific": {
+          "en": "Dr.",
+          "it": "Dott."
+        },
+        "jobTitle": {
+          "en": "Dentist · Oral Surgery & Prosthodontics",
+          "it": "Odontoiatra · Chirurgia e Protesi"
+        },
+        "shortBio": {
+          "en": "Graduated in Dentistry and Dental Prosthetics, Dr. Martegani has been practising with passion for over twenty years. His main areas of expertise are Implantology and Oral Surgery.\n\nI graduated in Dentistry in Pavia in 2000, after a hard-earned but much-loved classical high school diploma at the Liceo Cairoli in Varese. Straight after graduating I served as a medical officer in the Italian Navy, and that is where my working life began.\n\nI see myself as a passionate and methodical professional. I had excellent mentors and, after years of research and teaching in oral surgery and prosthodontics, I devoted myself entirely to clinical practice, growing year after year with my patients and my wonderful team. I love this work and everything it has taught me.",
+          "it": "Laureato in Odontoiatria e Protesi Dentaria, il Dott. Martegani esercita con passione da oltre vent'anni. Si occupa prevalentemente di Implantologia e Chirurgia Orale.\n\nMi sono laureato in Odontoiatria a Pavia nel 2000, dopo un diploma di liceo classico al Cairoli di Varese, sudato ma quanto mai amato. Appena laureato ho prestato servizio come ufficiale medico (AUC) nella Marina Militare: da lì è cominciata la mia vita lavorativa.\n\nMi ritengo un professionista appassionato e metodico. Ho avuto ottimi maestri e, dopo anni di ricerca e didattica in campo chirurgico e protesico, mi sono dedicato completamente all'attività clinica, cercando di crescere anno dopo anno con i miei pazienti e il mio bravissimo personale. Amo questo lavoro e tutto ciò che mi ha insegnato."
+        },
+        "website": null,
+        "legacyAnchors": [],
+        "photoImageAssetRef": "image-03316642dc9a2d0a5354b9f43a57958589d46da2-2560x1707-jpg",
+        "photoMediaAssetId": "39f3c614-0e7b-42c3-925f-20e3a4b76cb0",
+        "photoMediaAssetName": "Paolo Martegani "
+      },
+      "flags": [],
+      "conflicts": {
+        "jobTitle": [
+          {
+            "value": {
+              "en": "Dentist · Oral Surgery & Prosthodontics",
+              "it": "Odontoiatra · Chirurgia e Protesi"
+            },
+            "from": "teamMember"
+          },
+          {
+            "value": {
+              "en": "The Doctor",
+              "it": "Il Dottore"
+            },
+            "from": "postAuthor"
+          }
+        ]
+      },
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Paolo Martegani",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "8856db48-8120-4282-81be-19f9ecb118b6",
+            "type": "page",
+            "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\""
+          },
+          "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\" / team section / #1"
+        },
+        {
+          "source": "postAuthor",
+          "rawName": "Paolo Martegani",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "0684bcdc-f510-43f6-9315-cfd3efd97955",
+            "type": "postAuthor",
+            "label": "Paolo Martegani"
+          },
+          "label": "postAuthor 0684bcdc-f510-43f6-9315-cfd3efd97955"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "8856db48-8120-4282-81be-19f9ecb118b6",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"839f30da908e\"]",
+          "memberKey": "e3f76f50b6d9",
+          "index": 0,
+          "memberCount": 8,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "954e4279ec40",
+      "id": "person-studiomartegani-954e4279ec40",
+      "publicId": "b9a54edc-2e1b-4d91-baf0-c5b55d021212",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1001,
+      "displayName": "Chiara Canale",
+      "person": {
+        "firstName": "Chiara",
+        "lastName": "Canale",
+        "honorific": {
+          "en": "Dr.",
+          "it": "Dott.ssa"
+        },
+        "jobTitle": {
+          "en": "Dentist · Orthodontics & Facial Aesthetic Medicine",
+          "it": "Odontoiatra · Ortodonzia e Medicina Estetica del distretto facciale"
+        },
+        "shortBio": {
+          "en": "Specialist in Orthodontics and expert in Facial Aesthetic Medicine. Graduated with honours in Dentistry and Dental Prosthetics from the University of Pavia in 2000, and completed her specialisation with honours at the University of Pavia in 2007.\n\nMy name is Chiara, and I have been working with Dr. Martegani’s practice since 2013. Someone once said that “a smile is a curve that sets everything straight”, and that has become my mantra. There is always a good reason to have orthodontic treatment, and it is always the right time for it. Orthodontic treatment is often not only about the wellbeing of the mouth, but of the spirit too. A beautiful smile makes us more confident, boosts our self-esteem, and is an invaluable asset in an increasingly “social” world.\n\nIt is in this spirit that, in recent years, I decided to also dedicate myself to Facial Aesthetic Medicine. Our mouth is connected to everything around it, and my goal has been to offer patients a complete, multidisciplinary approach.",
+          "it": "Specialista in Ortognatodonzia ed esperta di Medicina Estetica del volto. Laureata con lode nel 2000 in Odontoiatria e Protesi Dentaria presso l’Università degli Studi di Pavia e specializzata con lode nel 2007 presso l’Università degli Studi di Pavia.\n\nMi chiamo Chiara e collaboro con lo studio del Dottor Martegani dal 2013. Qualcuno ha detto che “un sorriso è una curva che raddrizza tutto” e questo è diventato il mio mantra. C’è sempre un buon motivo per fare ortodonzia, ed è sempre il momento giusto per fare ortodonzia. Un trattamento ortodontico spesso non significa soltanto benessere della bocca ma anche dell’animo. Un bel sorriso rende più sicuri, aumenta la nostra autostima, ed è una risorsa importantissima in questo mondo sempre più “social”.\n\nÈ con questo spirito che negli anni recenti ho deciso di dedicarmi anche alla Medicina Estetica del volto. La nostra bocca è interconnessa a tutto ciò che le sta intorno e il mio obiettivo è stato quello di poter offrire ai pazienti un approccio completo e multidisciplinare."
+        },
+        "website": null,
+        "legacyAnchors": [],
+        "photoImageAssetRef": "image-529f6b92bdb579477a4322751bc9f54269d5da1f-1707x2560-jpg",
+        "photoMediaAssetId": "a4750fe3-a3ad-4f3b-a142-350a38b5b6e5",
+        "photoMediaAssetName": "Chiara Canale"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Chiara Canale",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "8856db48-8120-4282-81be-19f9ecb118b6",
+            "type": "page",
+            "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\""
+          },
+          "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\" / team section / #2"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "8856db48-8120-4282-81be-19f9ecb118b6",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"839f30da908e\"]",
+          "memberKey": "38c5ac5af887",
+          "index": 1,
+          "memberCount": 8,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "d5d102b25828",
+      "id": "person-studiomartegani-d5d102b25828",
+      "publicId": "2e4d2137-20a8-4679-8c65-c4740fba5f87",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1002,
+      "displayName": "Ilaria Mazza",
+      "person": {
+        "firstName": "Ilaria",
+        "lastName": "Mazza",
+        "honorific": {
+          "it": "Dott.ssa"
+        },
+        "jobTitle": {
+          "en": "Dental Hygienist",
+          "it": "Igienista Dentale"
+        },
+        "shortBio": {
+          "en": "My name is Ilaria, and I have been part of Dr. Paolo Martegani’s Dental Practice for the past 19 years. As a dental hygienist, I carry out my work with passion, dedication, and professionalism.\n\nWith my warm and positive approach, I strive to create an atmosphere of trust and comfort for every patient. I am proud of the journey I have shared with the practice and of the lasting relationships I have built with the people I care for over the years.\n\nI believe that listening, empathy, and prevention are the foundations of lifelong oral health and a healthy smile.",
+          "it": "Mi chiamo Ilaria e collaboro con lo Studio Dentistico Dott. Paolo Martegani da 19 anni. Sono igienista dentale e svolgo il mio lavoro con passione e professionalità.\nGrazie al mio approccio solare e dinamico, cerco di creare un clima di fiducia e serenità con ogni paziente. Sono orgogliosa del percorso condiviso con lo studio e dei rapporti costruiti nel tempo con le persone che seguo.\nCredo che ascolto, empatia e prevenzione siano alla base del benessere e della salute del sorriso."
+        },
+        "website": null,
+        "legacyAnchors": [],
+        "photoImageAssetRef": "image-71e7166efdd92d1c29aa5c0d8dfdbdffffdb7692-1707x2560-jpg",
+        "photoMediaAssetId": "e17de1c2-09bb-4c93-87a5-573bb2827351",
+        "photoMediaAssetName": "Ilaria Mazza"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Ilaria Mazza",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "8856db48-8120-4282-81be-19f9ecb118b6",
+            "type": "page",
+            "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\""
+          },
+          "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\" / team section / #3"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "8856db48-8120-4282-81be-19f9ecb118b6",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"839f30da908e\"]",
+          "memberKey": "ea4a98133f64",
+          "index": 2,
+          "memberCount": 8,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "f660caa60264",
+      "id": "person-studiomartegani-f660caa60264",
+      "publicId": "a1787970-4c4b-488a-a1d0-8a18515346d2",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1003,
+      "displayName": "Maurizio Collura",
+      "person": {
+        "firstName": "Maurizio",
+        "lastName": "Collura",
+        "honorific": {
+          "it": "Dott."
+        },
+        "jobTitle": {
+          "en": "Dental Hygienist",
+          "it": "Dottore Igienista"
+        },
+        "shortBio": {
+          "en": "My name is Maurizio, and I am a dental hygienist. I have been working with Dr. Paolo Martegani’s practice since 2022, bringing my passion for oral health and patient care to every appointment. I believe that every patient is unique, which is why I approach my work with the utmost care and attention to detail, always accompanied by a warm smile and genuine kindness. My goal is to build a relationship of trust with every patient, helping them feel comfortable, understood, and cared for throughout their treatment.",
+          "it": "Mi chiamo Maurizio e sono un igienista dentale. Collaboro con lo studio del Dr. Paolo Martegani dal 2022, portando ogni giorno con me una grande passione per la cura e la salute del sorriso. Per me, ogni paziente è unico: mi piace lavorare con massima attenzione e scrupolosità, ma sempre con il sorriso e la gentilezza. Il mio obiettivo è instaurare un rapporto di fiducia profondo, trasmettendo serenità ed empatia a chiunque si affidi alle nostre cure."
+        },
+        "website": null,
+        "legacyAnchors": [],
+        "photoImageAssetRef": "image-b27533288df22b75a561a24d8769b3f968d3616a-1707x2560-jpg",
+        "photoMediaAssetId": "838cfc7c-cc05-44b9-8625-5628a90caf72",
+        "photoMediaAssetName": "Maurizio Collura"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Maurizio Collura",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "8856db48-8120-4282-81be-19f9ecb118b6",
+            "type": "page",
+            "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\""
+          },
+          "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\" / team section / #4"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "8856db48-8120-4282-81be-19f9ecb118b6",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"839f30da908e\"]",
+          "memberKey": "9f7550071334",
+          "index": 3,
+          "memberCount": 8,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "bbb7df4af1bb",
+      "id": "person-studiomartegani-bbb7df4af1bb",
+      "publicId": "54bd3f88-be2d-4783-bc6b-145eb082439e",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1004,
+      "displayName": "Marco Zaboia",
+      "person": {
+        "firstName": "Marco",
+        "lastName": "Zaboia",
+        "honorific": {
+          "en": "Dr.",
+          "it": "Dott."
+        },
+        "jobTitle": {
+          "en": "Dentist · Restorative Dentistry & Endodontics",
+          "it": "Odontoiatra · Conservativa ed Endodonzia"
+        },
+        "shortBio": {
+          "en": "I am Dr Marco Zaboia. I graduated with honours in Dentistry and Dental Prosthetics in 2000.\n\nFrom the beginning of my career, I have focused on restorative dentistry and endodontics, which remains my greatest passion. Locating, shaping and precisely filling root canals is a fascinating challenge that gives me immense professional satisfaction.\n\nIn 2001, I completed the annual course taught by Dr Fabio Giorni, followed in 2003 by Dr Sandro Marcoli’s Master’s programme in Minimally Invasive Clinical Endodontics. I have also attended numerous conferences on restorative dentistry.\n\nMy philosophy is simple: every patient is a person, not a number, and deserves to be treated with passion and dedication.\n\nOutside dentistry, I am a keen sportsman and enjoy playing beach tennis and padel.",
+          "it": "Sono dott Marco Zaboia laureato in Odontoiatria e protesi dentaria nel 2000 a pieni voti. Sin dall' inizio mi sono dedicato alla Conservativa e all' Endodonzia che rimane la mia prima passione:, ricercare i canali del dente, sagomarli e otturarli in maniera accurata la trovo una sfida molto intrigante e che mi dà grandi soddisfazioni. Ho partecipato al corso annuale tenuto da dott.Fabio giorni nell' anno 2001 ed il Master in Endodonzia clinica minimamente invasiva del dott Sandro Marcoli nell' anno 2003,oltre a vari congressi inerenti la Conservativa.\nLa mia filosofia è:\nil paziente non è un numero ma deve essere curato con passione e dedizione.\nMi ritengo uno sportivo, praticando beach tennis e padel."
+        },
+        "website": null,
+        "legacyAnchors": [],
+        "photoImageAssetRef": "image-45701678a9ff9e15d6e3497db200f9e8d3add37d-1707x2560-jpg",
+        "photoMediaAssetId": "0c16ba5a-96e1-48b8-a2d3-de0547cd3094",
+        "photoMediaAssetName": "Marco Zaboia"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Marco Zaboia",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "8856db48-8120-4282-81be-19f9ecb118b6",
+            "type": "page",
+            "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\""
+          },
+          "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\" / team section / #5"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "8856db48-8120-4282-81be-19f9ecb118b6",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"839f30da908e\"]",
+          "memberKey": "12a3fe5cc3e5",
+          "index": 4,
+          "memberCount": 8,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "5ecd727fb43f",
+      "id": "person-studiomartegani-5ecd727fb43f",
+      "publicId": "420313f9-40a3-4ba4-98e4-4c35957a02d0",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1005,
+      "displayName": "Diana Zanoni Martins",
+      "person": {
+        "firstName": "Diana Zanoni",
+        "lastName": "Martins",
+        "honorific": null,
+        "jobTitle": {
+          "en": "Clinic Management",
+          "it": "Dottoressa in Clinic Management"
+        },
+        "shortBio": {
+          "en": "I am Dr. Diana Zanoni, a dentist who graduated in Brazil, where I also earned an MBA in Clinic Management. With more than ten years of clinical and management experience, I specialised in Paediatric Dentistry, focusing on the care of children, including those with special needs. In my daily practice, I regularly use conscious sedation with nitrous oxide to help young patients feel comfortable and at ease. I have a true passion for working with children, and I am delighted to call Italy my home.",
+          "it": "Sono la dott.ssa Diana Zanoni, odontoiatra laureata in Brasile, con un MBA in Clinic Management e oltre dieci anni di esperienza clinica e gestionale. \nMi sono perfezionata in Brasile in Pedodonzia (odontoiatria  infantile) con particolare attenzione e cura di pazienti pediatrici disabili attraverso l’uso nella mia pratica quotidiana  della sedazione cosciente con protossido d’azoto. Adoro i bambini e l’Italia e’ bellissima!!!"
+        },
+        "website": null,
+        "legacyAnchors": [],
+        "photoImageAssetRef": "image-d8a20189a868fb7af676b0e4ab85158c8862afde-1707x2560-jpg",
+        "photoMediaAssetId": "d33cd6b2-1a8e-46c0-ad76-484c3c4d6d96",
+        "photoMediaAssetName": "Diana Zanoni Martins"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Diana Zanoni Martins",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "8856db48-8120-4282-81be-19f9ecb118b6",
+            "type": "page",
+            "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\""
+          },
+          "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\" / team section / #6"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "8856db48-8120-4282-81be-19f9ecb118b6",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"839f30da908e\"]",
+          "memberKey": "c187026a3889",
+          "index": 5,
+          "memberCount": 8,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "de3689364c08",
+      "id": "person-studiomartegani-de3689364c08",
+      "publicId": "1ea96a74-da01-47a5-abee-04d6e2563e6c",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1006,
+      "displayName": "Marta D'Amico",
+      "person": {
+        "firstName": "Marta",
+        "lastName": "D'Amico",
+        "honorific": null,
+        "jobTitle": {
+          "en": "Dental Assistant",
+          "it": "Assistente alla Poltrona"
+        },
+        "shortBio": {
+          "en": "Hello, I’m Marta D’Amico. I’m 24 years old and have been part of the Martegani Dental Practice team for the past five years.\n\nAt the practice, I work as both a dental assistant and receptionist. My role includes welcoming patients, coordinating appointments, and supporting the day-to-day activities of the practice.\n\nI enjoy working with people and helping to create a calm, professional, and welcoming environment where every patient feels comfortable and cared for from the very first moment.",
+          "it": "Ciao, sono Marta D'Amico, ho 24 anni e faccio parte del team dello Studio Martegani da cinque anni.\nAll'interno dello studio svolgo il ruolo di assistente alla poltrona e segretaria, occupandomi dell'accoglienza dei pazienti, dell'organizzazione degli appuntamenti e del supporto alle attività quotidiane dello studio.\nMi piace lavorare a contatto con le persone e contribuire a creare un ambiente sereno, professionale e accogliente, affinché ogni paziente possa sentirsi a proprio agio fin dal primo momento."
+        },
+        "website": null,
+        "legacyAnchors": [],
+        "photoImageAssetRef": "image-f199d8792b2ac7e7c8cf010ba7975e21a39e9671-1707x2560-jpg",
+        "photoMediaAssetId": "e5b76930-8a1e-46a8-b42c-deb68ae2c49c",
+        "photoMediaAssetName": "Marta D'Amico"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Marta D'Amico",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "8856db48-8120-4282-81be-19f9ecb118b6",
+            "type": "page",
+            "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\""
+          },
+          "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\" / team section / #7"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "8856db48-8120-4282-81be-19f9ecb118b6",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"839f30da908e\"]",
+          "memberKey": "a3b3eef9a366",
+          "index": 6,
+          "memberCount": 8,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "19c2b65ef875",
+      "id": "person-studiomartegani-19c2b65ef875",
+      "publicId": "be340ec5-32c0-49e6-b805-ce1bae8f3872",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1007,
+      "displayName": "Valentina Cervara",
+      "person": {
+        "firstName": "Valentina",
+        "lastName": "Cervara",
+        "honorific": null,
+        "jobTitle": {
+          "en": "Dental Assistant",
+          "it": "Assistente alla Poltrona"
+        },
+        "shortBio": {
+          "en": "My name is Valentina, and I have been working as a dental assistant for several years. I am a positive, approachable person who is always ready to listen and help others. I am passionate about my work and strive to ensure that every patient feels comfortable and at ease throughout their treatment. At the same time, I am committed to maintaining the highest standards of sterilization, hygiene, and patient safety.",
+          "it": "Mi chiamo Valentina, sono assistente alla poltrona da diversi anni. Sono una persona solare, disponibile, sempre pronta ad ascoltare e aiutare il prossimo . Faccio questo lavoro con passione e mi impegno per fare in modo che ogni paziente si senta a suo agio durante i trattamenti , rimanendo sempre nei protocolli di massima sterilizzazione e pulizia."
+        },
+        "website": null,
+        "legacyAnchors": [],
+        "photoImageAssetRef": "image-e9c0248fa54cb2a6155d7887e296f5a1fa4ddefc-1707x2560-jpg",
+        "photoMediaAssetId": "44871e83-ed9c-4bab-b622-00ec642c0432",
+        "photoMediaAssetName": "Valentina Cervara"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Valentina Cervara",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "8856db48-8120-4282-81be-19f9ecb118b6",
+            "type": "page",
+            "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\""
+          },
+          "label": "page 8856db48-8120-4282-81be-19f9ecb118b6 \"Our team\" / team section / #8"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "8856db48-8120-4282-81be-19f9ecb118b6",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"839f30da908e\"]",
+          "memberKey": "75460efb16a3",
+          "index": 7,
+          "memberCount": 8,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    }
+  ]
+}

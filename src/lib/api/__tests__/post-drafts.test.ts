@@ -494,6 +494,7 @@ describe('getPostDraft', () => {
       cta: null,
       gallery: null,
       faqSets: [],
+      authors: [],
       faqTitle: {},
       faqSubtitle: {},
       hasChanges: false,

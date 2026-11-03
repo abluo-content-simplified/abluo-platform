@@ -1,0 +1,28 @@
+{
+  "clientDashboard": {
+    "discover": {
+      "modules": {
+        "people": "Keep your team, teachers and authors in one list, and show them wherever they belong on your site."
+      }
+    },
+    "persons": {
+      "errors": {
+        "forbidden": "You don’t have permission to do this.",
+        "not_found": "This person no longer exists.",
+        "invalid_field": "This can’t be changed here.",
+        "invalid_value": "Something isn’t right. Check what you entered and try again.",
+        "too_large": "That’s too much at once.",
+        "conflict": "Someone else changed this person in the meantime. Reload to see the latest version.",
+        "in_use": "This person is still shown somewhere. Remove them there first.",
+        "archive_first": "Archive this person before deleting them.",
+        "archived": "This person is archived. Restore them to make changes.",
+        "anonymised": "This person was anonymised and can’t be changed anymore.",
+        "missing_name": "First and last name are required.",
+        "missing_slug": "A person with their own page needs a web address in the main language.",
+        "slug_taken": "Another person already uses this web address.",
+        "private_unavailable": "Private details can’t be saved yet. Everything else works.",
+        "failed": "Something went wrong. Please try again."
+      }
+    }
+  }
+}

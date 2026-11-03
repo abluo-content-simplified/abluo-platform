@@ -63,7 +63,7 @@ export function useRoleLabel() {
 
 /** Name of an extra permission (falls back to the stored id). */
 export function useExtraLabel() {
-  const t = useTranslations('clientDashboard.people.extras')
+  const t = useTranslations('clientDashboard.users.extras')
   return (id: string) => {
     const key = id.replace(/\.(\w)/g, (_, c: string) => c.toUpperCase())
     return t.has(key) ? t(key) : id

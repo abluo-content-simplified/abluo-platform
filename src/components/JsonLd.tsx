@@ -149,6 +149,12 @@ export interface ArticleSchemaInput {
   dateModified?: string | null
   authorName?: string | null
   /**
+   * ADR-043 — People-module authors, first = main author. When present they
+   * replace `authorName`: one Person each, with the profile `url` when the
+   * person has a page. Empty/absent = `authorName` as before.
+   */
+  authors?: { name: string; url?: string | null }[] | null
+  /**
    * When the content type has no author field (news articles), the site's own
    * organisation is the author — the same entity already named as publisher.
    * An authored `authorName` always wins. Never a guessed person.
@@ -185,7 +191,14 @@ export function buildArticleSchema(input: ArticleSchemaInput): Record<string, un
     ...(input.imageUrl && { image: input.imageUrl }),
     ...(input.datePublished && { datePublished: input.datePublished }),
     ...(input.datePublished && input.dateModified && { dateModified: input.dateModified }),
-    ...(input.authorName
+    ...(input.authors && input.authors.some((a) => a.name)
+      ? (() => {
+          const people = input.authors
+            .filter((a) => a.name)
+            .map((a) => ({ '@type': 'Person', name: a.name, ...(a.url ? { url: a.url } : {}) }))
+          return { author: people.length === 1 ? people[0] : people }
+        })()
+      : input.authorName
       ? { author: { '@type': 'Person', name: input.authorName } }
       : input.authorIsPublisher && origin
         ? { author: { '@id': `${origin}#organization` } }

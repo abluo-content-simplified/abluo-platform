@@ -1,149 +1,178 @@
 'use server'
 
 /**
- * Client dashboard — People (ADR-028). Every action re-resolves the caller's
- * grants server-side and re-validates the URL project; the services decide
- * with checkGrant before any write. Results are small codes the screen maps
- * to localized text.
+ * Client dashboard — People server actions (ADR-043).
+ *
+ * Thin wrappers over `src/lib/api/persons.ts`, which holds every check.
+ * Identity is re-resolved server-side on each call; the URL's projectSlug only
+ * picks one of the caller's own grants. Failures collapse to opaque codes
+ * (`PersonErrorCode`); `detail.usedIn` says where a person is used (in_use).
  */
-import { revalidatePath } from 'next/cache'
-import { headers } from 'next/headers'
+
 import { resolveProjectAction } from '@/lib/api/project-action'
-import { createInvitation } from '@/lib/invitations/service'
-import { mayTransferOwnership, tenantOfProject, transferOwnership } from '@/lib/people/ownership'
-import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
+import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
+import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
+import { searchLinkTargets, PostLinkSearchError, type LinkTargetResult } from '@/lib/api/post-link-search'
+import { BODY_LINK_TARGET_TYPES } from '@/lib/links/target-types'
 import {
-  archiveProjectMember,
-  cancelProjectInvitation,
-  resendProjectInvitation,
-  restoreProjectMember,
-  updateProjectMember,
-} from '@/lib/people/service'
+  anonymisePerson,
+  createPerson,
+  discardPersonDraft,
+  getPersonActivity,
+  getPersonForEdit,
+  listPersons,
+  movePersonContact,
+  openPersonForEdit,
+  PEOPLE_WRITE_PERMISSION,
+  PersonError,
+  publishPersonDraft,
+  reorderPersons,
+  runPersonLifecycle,
+  savePersonDraft,
+  savePersonPrivate,
+  searchPersons,
+  type PersonErrorCode,
+  type PersonListItem,
+  type PersonPickerItem,
+  type PersonLifecycleOp,
+  type PersonSite,
+  type PersonSnapshot,
+  type PersonUsage,
+} from '@/lib/api/persons'
+import { shortenPersonBio } from '@/lib/api/person-ai'
+import { PostAiError, type PostAiErrorCode } from '@/lib/api/post-ai'
+import type { ActivityItem } from '@/lib/lifecycle/activity'
 
-export type PeopleActionResult = { ok: true; emailSent?: boolean } | { ok: false; error: string }
+export type PersonActionError = 'unauthenticated' | PersonErrorCode | PostAiErrorCode
+type Fail = { ok: false; error: PersonActionError; detail?: { usedIn?: PersonUsage[] } }
+type Result<T> = ({ ok: true } & T) | Fail
 
-async function scope(projectSlug: string) {
+async function run<T>(projectSlug: unknown, fn: (ctx: TenantAuthorizationContext, projectId: string) => Promise<T>): Promise<Result<T>> {
   const access = await resolveProjectAction(projectSlug)
-  return access.ok ? { ctx: access.ctx, grant: access.grant } : null
-}
-
-async function requestOrigin(): Promise<string | null> {
+  if (!access.ok) return { ok: false, error: access.error }
+  const { ctx, grant } = access
   try {
-    const h = await headers()
-    const host = h.get('x-forwarded-host') ?? h.get('host')
-    const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https')
-    return host ? `${proto}://${host}` : null // validated against Abluo hosts by invitationOrigin()
-  } catch {
-    return null // outside a request (tests): the link falls back to https://abluo.app
+    return { ok: true, ...(await fn(ctx, grant.projectId)) }
+  } catch (error) {
+    if (error instanceof PersonError) return { ok: false, error: error.code, ...(error.detail && { detail: error.detail as { usedIn?: PersonUsage[] } }) }
+    if (error instanceof PostAiError) return { ok: false, error: error.code }
+    if (error instanceof PostLinkSearchError) return { ok: false, error: 'invalid_value' }
+    if (error instanceof TenantAuthorizationError) return { ok: false, error: 'forbidden' }
+    return { ok: false, error: 'failed' }
   }
 }
 
-const refresh = (locale: string, projectSlug: string) => revalidatePath(`/${locale}/${projectSlug}/people`)
+export async function listPersonsAction(input: { projectSlug: string }): Promise<Result<{ persons: PersonListItem[]; site: PersonSite }>> {
+  return run(input?.projectSlug, (ctx, pid) => listPersons(ctx, pid))
+}
 
-export async function invitePersonAction(input: {
-  projectSlug: string
-  locale: string
-  email: string
-  role: string
-  extras: string[]
-}): Promise<PeopleActionResult> {
-  const s = await scope(input.projectSlug)
-  if (!s) return { ok: false, error: 'forbidden' }
-  const r = await createInvitation(s.ctx, {
-    target: { scope: 'project', projectId: s.grant.projectId },
-    email: input.email,
-    role: input.role,
-    extras: input.extras,
-    locale: input.locale,
-    requestOrigin: await requestOrigin(),
+export async function getPersonAction(input: { projectSlug: string; id: string }): Promise<Result<{ person: PersonSnapshot }>> {
+  return run(input?.projectSlug, async (ctx, pid) => ({ person: await getPersonForEdit(ctx, pid, input.id) }))
+}
+
+export async function createPersonAction(input: { projectSlug: string; firstName: string; lastName: string }): Promise<Result<{ id: string; publicId: string; rev: string }>> {
+  return run(input?.projectSlug, (ctx, pid) => createPerson(ctx, pid, { firstName: input.firstName, lastName: input.lastName }))
+}
+
+/** Creates drafts.<id> from the published person when missing. Call before the first edit. */
+export async function openPersonForEditAction(input: { projectSlug: string; id: string }): Promise<Result<{ id: string; rev: string; created: boolean }>> {
+  return run(input?.projectSlug, (ctx, pid) => openPersonForEdit(ctx, pid, { id: input.id }))
+}
+
+export async function savePersonDraftAction(input: { projectSlug: string; id: string; rev: string; set: Record<string, unknown> }): Promise<Result<{ rev: string }>> {
+  return run(input?.projectSlug, (ctx, pid) => savePersonDraft(ctx, pid, { id: input.id, rev: input.rev, set: input.set }))
+}
+
+export async function publishPersonDraftAction(input: { projectSlug: string; id: string; rev: string }): Promise<Result<{ rev: string }>> {
+  return run(input?.projectSlug, (ctx, pid) => publishPersonDraft(ctx, pid, { id: input.id, rev: input.rev }))
+}
+
+export async function discardPersonDraftAction(input: { projectSlug: string; id: string; rev: string }): Promise<Result<object>> {
+  return run(input?.projectSlug, async (ctx, pid) => {
+    await discardPersonDraft(ctx, pid, { id: input.id, rev: input.rev })
+    return {}
   })
-  if (!r.ok) return { ok: false, error: r.error }
-  refresh(input.locale, input.projectSlug)
-  return { ok: true, emailSent: r.emailSent }
 }
 
-export async function cancelInvitationAction(input: { projectSlug: string; locale: string; invitationId: string }): Promise<PeopleActionResult> {
-  const s = await scope(input.projectSlug)
-  if (!s) return { ok: false, error: 'forbidden' }
-  const r = await cancelProjectInvitation(s.ctx, s.grant.projectId, input.invitationId)
-  if (!r.ok) return r
-  refresh(input.locale, input.projectSlug)
-  return { ok: true }
-}
-
-export async function updatePersonAction(input: {
+/** Private details (Supabase): birthday, notes, private contacts — saved directly, never through the draft. */
+export async function savePersonPrivateAction(input: {
   projectSlug: string
-  locale: string
-  membershipId: string
-  role: string
-  extras: string[]
-}): Promise<PeopleActionResult> {
-  const s = await scope(input.projectSlug)
-  if (!s) return { ok: false, error: 'forbidden' }
-  const r = await updateProjectMember(s.ctx, s.grant.projectId, input.membershipId, { role: input.role, extras: input.extras })
-  if (!r.ok) return r
-  refresh(input.locale, input.projectSlug)
-  return { ok: true }
-}
-
-/** Archive: access ends at once; the person stays in the list as Archived (ADR-028, migration 031). */
-export async function archivePersonAction(input: { projectSlug: string; locale: string; membershipId: string }): Promise<PeopleActionResult> {
-  const s = await scope(input.projectSlug)
-  if (!s) return { ok: false, error: 'forbidden' }
-  const r = await archiveProjectMember(s.ctx, s.grant.projectId, input.membershipId)
-  if (!r.ok) return r
-  refresh(input.locale, input.projectSlug)
-  return { ok: true }
-}
-
-export async function restorePersonAction(input: { projectSlug: string; locale: string; archiveId: string }): Promise<PeopleActionResult> {
-  const s = await scope(input.projectSlug)
-  if (!s) return { ok: false, error: 'forbidden' }
-  const r = await restoreProjectMember(s.ctx, s.grant.projectId, input.archiveId, { locale: input.locale, requestOrigin: await requestOrigin() })
-  if (!r.ok) return r
-  refresh(input.locale, input.projectSlug)
-  return { ok: true, emailSent: r.emailSent }
-}
-
-export async function resendInvitationAction(input: { projectSlug: string; locale: string; invitationId: string }): Promise<PeopleActionResult> {
-  const s = await scope(input.projectSlug)
-  if (!s) return { ok: false, error: 'forbidden' }
-  const r = await resendProjectInvitation(s.ctx, s.grant.projectId, input.invitationId, { locale: input.locale, requestOrigin: await requestOrigin() })
-  if (!r.ok) return r
-  refresh(input.locale, input.projectSlug)
-  return { ok: true, emailSent: r.emailSent }
-}
-
-/**
- * "Make owner" (PLAT-2): an Owner of this client makes a person who is already
- * in it an Owner, optionally stepping down to Site admin on every site. Only
- * an Owner passes (never a support visit); the client comes from the project
- * row, never from the browser.
- */
-export async function makeOwnerAction(input: {
-  projectSlug: string
-  locale: string
-  userId: string
-  stepDown: boolean
-}): Promise<PeopleActionResult> {
-  const s = await scope(input.projectSlug)
-  if (!s) return { ok: false, error: 'forbidden' }
-  // Before any service-role read: the caller must be an Owner of SOME client.
-  if (!(s.ctx.tenants ?? []).some((t) => mayTransferOwnership(s.ctx, t.tenantId))) return { ok: false, error: 'forbidden' }
-  const place = await runAsTrustedSystemOperation(
-    `people: client of project ${s.grant.projectId} for "Make owner" by user ${s.ctx.userId} — caller is an Owner of a client`,
-    (admin) => tenantOfProject(admin, s.grant.projectId)
+  id: string
+  version: number | null
+  birthday?: string | null
+  notes?: string
+  contacts?: unknown
+}): Promise<Result<{ version: number }>> {
+  return run(input?.projectSlug, (ctx, pid) =>
+    savePersonPrivate(ctx, pid, {
+      id: input.id,
+      version: input.version,
+      ...(input.birthday !== undefined && { birthday: input.birthday }),
+      ...(input.notes !== undefined && { notes: input.notes }),
+      ...(input.contacts !== undefined && { contacts: input.contacts as never }),
+    })
   )
-  if (!place) return { ok: false, error: 'not_found' }
-  const r = await transferOwnership(s.ctx, {
-    tenantId: place.tenantId,
-    newOwnerUserId: input.userId,
-    stepDownUserId: input.stepDown === true ? s.ctx.userId : null,
-    locale: input.locale,
-    requestOrigin: await requestOrigin(),
-    projectSlug: place.slug,
+}
+
+export async function movePersonContactAction(input: {
+  projectSlug: string
+  id: string
+  rev: string
+  key: string
+  to: 'public' | 'private'
+  privateVersion: number | null
+}): Promise<Result<{ rev: string; privateVersion: number }>> {
+  return run(input?.projectSlug, (ctx, pid) => movePersonContact(ctx, pid, { id: input.id, rev: input.rev, key: input.key, to: input.to, privateVersion: input.privateVersion }))
+}
+
+/** The site-wide order: the full list of person ids, in their new order. */
+export async function reorderPersonsAction(input: { projectSlug: string; ids: string[] }): Promise<Result<object>> {
+  return run(input?.projectSlug, async (ctx, pid) => {
+    await reorderPersons(ctx, pid, { ids: input.ids })
+    return {}
   })
-  if (!r.ok) return r
-  refresh(input.locale, input.projectSlug)
-  return { ok: true, emailSent: r.emailsSent > 0 }
+}
+
+/** The PersonPicker's search (and the lookup of already chosen people by id). */
+export async function searchPersonsAction(input: {
+  projectSlug: string
+  query?: string
+  limit?: number
+  includeArchived?: boolean
+  ids?: string[]
+}): Promise<Result<{ items: PersonPickerItem[] }>> {
+  return run(input?.projectSlug, async (ctx, pid) => ({
+    items: await searchPersons(ctx, pid, { query: input.query, limit: input.limit, includeArchived: input.includeArchived, ids: input.ids }),
+  }))
+}
+
+/** Archive / restore (owner), delete a never-published draft or an archived person for good (owner, only when unreferenced). */
+export async function personLifecycleAction(input: { projectSlug: string; id: string; op: PersonLifecycleOp }): Promise<Result<{ rev: string | null; privateRemoved?: boolean }>> {
+  return run(input?.projectSlug, (ctx, pid) => runPersonLifecycle(ctx, pid, { id: input.id, op: input.op }))
+}
+
+/** Anonymise (owner): clears photo, bios, contacts, links and private data; cannot be undone. */
+export async function anonymisePersonAction(input: { projectSlug: string; id: string }): Promise<Result<{ rev: string; privateRemoved: boolean }>> {
+  return run(input?.projectSlug, (ctx, pid) => anonymisePerson(ctx, pid, { id: input.id }))
+}
+
+export async function getPersonActivityAction(input: { projectSlug: string; id: string }): Promise<Result<{ items: ActivityItem[] }>> {
+  return run(input?.projectSlug, async (ctx, pid) => ({ items: await getPersonActivity(ctx, pid, { id: input.id }) }))
+}
+
+/** The bio editor's link search: pages, posts, news, events and Catalogue items/collections (same targets as FAQ answers). */
+export async function searchPersonLinkTargetsAction(input: {
+  projectSlug: string
+  locale: string
+  query?: string
+  ids?: string[]
+}): Promise<Result<{ results: LinkTargetResult[] }>> {
+  return run(input?.projectSlug, async (ctx, pid) => ({
+    results: await searchLinkTargets(ctx, pid, { locale: input.locale, query: input.query, ids: input.ids }, { permission: PEOPLE_WRITE_PERMISSION, types: BODY_LINK_TARGET_TYPES }),
+  }))
+}
+
+/** "Shorten": a suggested short bio derived from the long bio. Writes nothing. */
+export async function shortenPersonBioAction(input: { projectSlug: string; locale: string; blocks: unknown[] }): Promise<Result<{ text: string }>> {
+  return run(input?.projectSlug, (ctx, pid) => shortenPersonBio(ctx, pid, { locale: input.locale, blocks: input.blocks }))
 }

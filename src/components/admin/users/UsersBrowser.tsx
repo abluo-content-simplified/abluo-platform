@@ -10,7 +10,7 @@ import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToo
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
 import { ListRow } from '@/components/app/ui/list/ListRow'
 import { CellPill, CellText } from '@/components/app/ui/list/cells'
-import { TwoFactorPill } from '@/components/client/people/people-bits'
+import { TwoFactorPill } from '@/components/client/users/users-bits'
 import {
   applyUserFilters,
   DEFAULT_USER_FILTERS,

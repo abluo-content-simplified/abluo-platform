@@ -1,0 +1,958 @@
+{
+  "schema": "people-proposal/1",
+  "generatedAt": "2026-11-03T10:59:09.284Z",
+  "dataset": "production",
+  "projectSlug": "cyce",
+  "projectId": "cyce-project",
+  "peopleModuleInstalled": false,
+  "stats": {
+    "teamSections": 1,
+    "teamMembers": 15,
+    "authors": 0,
+    "postsWithAuthor": 0,
+    "events": 3,
+    "hosts": 4
+  },
+  "checks": [],
+  "proposals": [
+    {
+      "key": "e6ee6d9b9889",
+      "id": "person-cyce-e6ee6d9b9889",
+      "publicId": "543efb92-00b9-4e0d-b4b3-4adcc3b33507",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1000,
+      "displayName": "Anne-Marie Raison",
+      "person": {
+        "firstName": "Anne-Marie",
+        "lastName": "Raison",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "Anne-Marie Raison offers a practice grounded in relaxation. Varied postures that stretch, strengthen and loosen the body… presence to oneself and to one’s breath… respect for each person’s limits… The aim of the yoga session is also to learn to cultivate relaxation everywhere, all the time. Imperceptibly, yoga settles by itself into everyday life. The session begins with gentle preparatory movements. The varied postures unfold in harmony with the breath and with what is possible in the moment. Relaxation emerges naturally from the postural work. Her teaching is inspired by A. Van Lysebeth, B.K.S. Iyengar and A. Desjardins.",
+          "fr": "Anne-Marie Raison offre une pratique sur fond de détente. Des postures variées qui étirent, renforcent, assouplissent le corps…. présence à soi et à sa respiration… respect des limites de  chacun…. le but de la séance de yoga est aussi d’apprendre à cultiver la détente partout, tout le temps. Imperceptiblement, le yoga se met de lui-même en place dans la vie courante. La séance commence par des mouvements doux préparatoires. Les postures variées se placent  en accord avec le souffle et  avec les possibilités de l’instant. La détente émerge naturellement du travail postural. Enseignement inspiré de A.Van Lysebeth, B.K.S. Iyengar, A. Desjardins."
+        },
+        "website": null,
+        "legacyAnchors": [
+          "anne-marie-raison"
+        ],
+        "photoImageAssetRef": "image-eaba7fdd01dc642ecb41d62a4fe4f13060be5cb4-749x908-png",
+        "photoMediaAssetId": "cyce-media-teacher-anne-marie-raison",
+        "photoMediaAssetName": "Teacher — Anne-Marie Raison"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [
+        "anne-marie-raison"
+      ],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Anne-Marie Raison",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #1"
+        },
+        {
+          "source": "eventHost",
+          "rawName": "Anne-Marie Raison",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-event-tibetan-bowls",
+            "type": "event",
+            "label": "Yoga and sound relaxation with Tibetan singing bowls, with Anne-Marie Raison and Henri-Denis Golenvaux"
+          },
+          "label": "event cyce-event-tibetan-bowls / host #1"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "m2",
+          "index": 0,
+          "memberCount": 15,
+          "hasPeople": false
+        },
+        {
+          "kind": "eventHost",
+          "docId": "cyce-event-tibetan-bowls",
+          "index": 0,
+          "hostKey": "hostq",
+          "hostCount": 2,
+          "hasHostPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "32b786acbe56",
+      "id": "person-cyce-32b786acbe56",
+      "publicId": "3a09561e-1b9c-4e99-acfb-e164d8ef05c6",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1001,
+      "displayName": "Florian Parra",
+      "person": {
+        "firstName": "Florian",
+        "lastName": "Parra",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "Florian Parra is a yoga teacher certified in the method of B.K.S. Iyengar. “Yoga came into my life by chance, at a time when I was looking for an activity that worked through the body. From the very first class I was struck by how demanding the practice was, but also by the well-being it gave me, despite my physical limitations. For 10 years I practised as a student, then joined the training to become a certified Iyengar teacher. In a spirit of openness and freedom, I care deeply about bringing yoga to different places and to very different audiences. So I teach with joy, respect, rigour and simplicity.” The method is characterised by attention to the alignment of the different parts of the body in space, the organisation of postures into sequences, and the use of props (straps, bricks, blankets, chairs, ropes…). These basic principles help develop better physical and mental balance. The teaching is progressive and adapted to each person’s physical abilities.",
+          "fr": "Florian Parra est enseignant de yoga certifié par BKS Iyengar. Le yoga est entré dans ma vie par hasard, dans un moment où je souhaitais une activité qui passe par le corps. Dès le premier cours, je fus impacté par l’exigence de cette pratique mais aussi par le bien-être qu’elle m’apportait et ce, malgré mes limites corporelles. Pendant 10 années, j’ai pratiqué en tant qu’élève puis intégré la formation pour devenir professeur certifié Iyengar. Dans un esprit d’ouverture et de liberté, il me tient à cœur de diffuser le yoga dans différents lieux avec des publics totalement différents. J’enseigne donc avec joie, respect, rigueur et simplicité. La méthode se caractérise par l’attention portée sur l’alignement des différentes parties du corps dans l’espace, l’organisation des postures en séquences et l’emploi de supports (sangles, briques, couvertures, chaises, cordes…). Ces principes de base permettent de développer un meilleur équilibre et mental. L’enseignement est progressif et adapté aux capacités physiques de chacun."
+        },
+        "website": "https://www.florianparra.com/",
+        "legacyAnchors": [
+          "florian-parra"
+        ],
+        "photoImageAssetRef": "image-40be84771529983f681d0db8351a5bef6e2bd769-1200x1021-jpg",
+        "photoMediaAssetId": "cyce-media-teacher-florian-parra",
+        "photoMediaAssetName": "Teacher — Florian Parra"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Florian Parra",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #2"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "m3",
+          "index": 1,
+          "memberCount": 15,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "b37350bae6ba",
+      "id": "person-cyce-b37350bae6ba",
+      "publicId": "38a81ae1-d51c-4927-9643-73354ab2b1b4",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1002,
+      "displayName": "Gustavo Miranda",
+      "person": {
+        "firstName": "Gustavo",
+        "lastName": "Miranda",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "Gustavo Miranda is a dedicated Iyengar Yoga teacher, founder and coordinator of the studio A Yoga ayogabrussels.be. Trained & certified with Willy Bok, Gustavo works as Willy’s assistant in therapeutic classes since his teacher’s training and yet now. Also part of an approach dedicated to knowledge in Yoga, he continuously studies with Advanced Senior teacher David Meloni and with authentic meditation masters from Tibet’s highest tradition University, Dzogchen Sri Singha. «Keeping a down to earth, clear & comprehensible teaching language is my commitment». As a side track, before Yoga, Gustavo is a trained contemporary dancer having studied many matters around movement & body: martial arts, Alexander technique, Feldenkrais, Body mind centering among others. As a dance teacher he has given workshop in many countries and different contexts: Universities, Festivals, Schools, Seminaries for professionals and amateurs with the same respect and clarity. Gustavo is fluent in a few languages and has experience in effortlessly teaching Yoga class in 5 languages.",
+          "fr": "Gustavo Miranda est un professeur de yoga Iyengar passionné, fondateur et coordinateur du studio A Yoga ayogabrussels.be. Formé et certifié auprès de Willy Bok, il est depuis sa formation – et aujourd’hui encore – l’assistant de Willy lors des cours thérapeutiques. Engagé dans une démarche de connaissance du yoga, il étudie en continu avec le professeur senior avancé David Meloni ainsi qu’avec d’authentiques maîtres de méditation de la plus haute université de la tradition tibétaine, Dzogchen Sri Singha. « Garder un langage d’enseignement concret, clair et compréhensible, tel est mon engagement. » Avant le yoga, Gustavo s’est formé à la danse contemporaine et a étudié de nombreuses disciplines liées au mouvement et au corps : arts martiaux, technique Alexander, Feldenkrais, Body-Mind Centering, entre autres. En tant que professeur de danse, il a animé des ateliers dans de nombreux pays et contextes – universités, festivals, écoles, séminaires – pour professionnels comme amateurs, avec le même respect et la même clarté. Gustavo parle plusieurs langues et enseigne aisément le yoga en cinq langues."
+        },
+        "website": "https://ayogabrussels.be/",
+        "legacyAnchors": [
+          "gustavo-miranda"
+        ],
+        "photoImageAssetRef": "image-1f666e2a8382a32f104337b0f80e559df141e84c-600x600-jpg",
+        "photoMediaAssetId": "cyce-media-teacher-gustavo-miranda",
+        "photoMediaAssetName": "Teacher — Gustavo Miranda"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Gustavo Miranda",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #3"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "m4",
+          "index": 2,
+          "memberCount": 15,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "4b4d78c1ba89",
+      "id": "person-cyce-4b4d78c1ba89",
+      "publicId": "dfd9de88-8c89-4212-a309-7af256850466",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1003,
+      "displayName": "Julie Van Brabant",
+      "person": {
+        "firstName": "Julie",
+        "lastName": "Van Brabant",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "Julie Van Brabant trained as a business engineer and worked in China and Belgium for several years. Back in Belgium, she decided to move towards a more human profession and trained in yoga for four years with her father (Thierry Van Brabant) and with other teachers (Indian, American…). She realised the immense benefits yoga can bring by nurturing a serene relationship with oneself, with others and with the world. Her classes usually begin with a short introduction, followed by a warm-up and postures, and end with relaxation.",
+          "fr": "Julie Van Brabant est ingénieur commercial de formation, elle a travaillé en Chine et en Belgique pendant quelques années. De retour en Belgique, elle décide de s’orienter professionnellement vers une discipline plus humaine et se forme au yoga pendant 4 ans avec son papa (Thierry Van Brabant) ainsi qu’avec d’autres professeurs (indiens, américains…).  Elle se rend compte des immenses bénéfices que le yoga peut apporter par la valorisation de la relation sereine à soi, à l’autre et au monde. Ses séances commencent en général par une petite introduction, suivie d’un échauffement, des postures et se terminent par une relaxation."
+        },
+        "website": null,
+        "legacyAnchors": [
+          "julie-van-brabant"
+        ],
+        "photoImageAssetRef": "image-eaa9149fb32e38ecb8c678ae1e1d9e011f783d6b-750x908-png",
+        "photoMediaAssetId": "cyce-media-teacher-julie-van-brabant",
+        "photoMediaAssetName": "Teacher — Julie Van Brabant"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Julie Van Brabant",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #4"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "m5",
+          "index": 3,
+          "memberCount": 15,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "1e6bcefbefd3",
+      "id": "person-cyce-1e6bcefbefd3",
+      "publicId": "54d9cc47-3260-47e3-b99f-60914f497c0b",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1004,
+      "displayName": "Elena Constantinides",
+      "person": {
+        "firstName": "Elena",
+        "lastName": "Constantinides",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "Elena Constantinides is a Movement Educator, Mobility Therapist and a Holistic Health Coach. She started practicing yoga in the early 2000s, initially with Hatha Yoga and then with Ashtanga Yoga. Beyond the scope of yoga, her inquisitive nature and her thirst for learning and deeply understanding the human body, movement, breath and prana, have led her to expand her knowledge. Through her Yoga classes and teaching, she wishes to help people to make informed decisions taking agency of their own bodies and how they move, taking control of their mind and their overall health, reconnecting to their heart and joy. Her classes are infused with joint mobility work, strength and flexibility as an explorative journey. She integrates her varied knowledge in her classes, teaching people to connect with their bodies, to take a moment to pause and feel, listen, and explore.",
+          "fr": "Elena Constantinides est éducatrice du mouvement, thérapeute de la mobilité et coach en santé holistique. Elle a commencé le yoga au début des années 2000, d’abord le Hatha yoga puis l’Ashtanga yoga. Au-delà du yoga, sa curiosité et sa soif de comprendre en profondeur le corps humain, le mouvement, le souffle et le prana l’ont amenée à élargir ses connaissances. À travers ses cours et son enseignement, elle souhaite aider chacun à faire des choix éclairés, à reprendre la maîtrise de son corps et de sa façon de bouger, de son mental et de sa santé en général, et à se reconnecter à son cœur et à sa joie. Ses cours intègrent un travail de mobilité articulaire, de force et de souplesse, vécu comme un voyage d’exploration. Elle y met à profit ses connaissances variées pour apprendre à chacun à se connecter à son corps, à prendre un moment pour s’arrêter et ressentir, écouter et explorer."
+        },
+        "website": null,
+        "legacyAnchors": [
+          "elena-constantinides"
+        ],
+        "photoImageAssetRef": "image-8d82130a5245201a7beca2acb3eba374be45ac8f-529x480-jpg",
+        "photoMediaAssetId": "cyce-media-teacher-elena-constantinides",
+        "photoMediaAssetName": "Teacher — Elena Constantinides"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [
+        "elena-constantinides"
+      ],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Elena Constantinides",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #5"
+        },
+        {
+          "source": "eventHost",
+          "rawName": "Elena Constantinides",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-event-pranayama",
+            "type": "event",
+            "label": "Introduction to Pranayama: Breathe Better, Work Better, with Elena"
+          },
+          "label": "event cyce-event-pranayama / host #1"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "m6",
+          "index": 4,
+          "memberCount": 15,
+          "hasPeople": false
+        },
+        {
+          "kind": "eventHost",
+          "docId": "cyce-event-pranayama",
+          "index": 0,
+          "hostKey": "host12",
+          "hostCount": 1,
+          "hasHostPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "83c03b73c146",
+      "id": "person-cyce-83c03b73c146",
+      "publicId": "1778da8d-2215-4e7f-94d4-ad04c4895deb",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1005,
+      "displayName": "Melissa Watkins",
+      "person": {
+        "firstName": "Melissa",
+        "lastName": "Watkins",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "Melissa Watkins first became passionate about wellness and movement through dance, where she became acutely aware of the importance of the mind, body, spirit connection. This passion led to her studying Dance Movement Therapy at a Master’s level. She then launched herself into the fitness industry, obtaining certifications in ACE Personal Training, Schwinn Spinning, AFAA, Basixs & Synergy, and Piloxing Knock Out. She then added Relax Kids coach to her backpack of training tools. This was after witnessing the effects of stress on children, and realising this was a need she could address. Consequently, she now gives stress management workshops to children and teens of all ages. Her yoga training began as an inquiry into how to help people with scoliosis. She discovered that the best training was yoga-based, so went on to certify in Anusara Yoga and Yoga for Scoliosis. Anusara Yoga quickly became a passion. She is now Anusara Inspired and has studied with Jayendra Henley, Adam Ballenger, Jaye Martin, Jacalyn Prete, and William Mahony.",
+          "fr": "Melissa Watkins s’est d’abord passionnée pour le bien-être et le mouvement à travers la danse, qui lui a fait prendre pleinement conscience de l’importance du lien entre le corps, l’esprit et l’âme. Cette passion l’a conduite à étudier la danse-thérapie au niveau master. Elle s’est ensuite lancée dans le secteur du fitness, où elle a obtenu des certifications en ACE Personal Training, Schwinn Spinning, AFAA, Basixs & Synergy et Piloxing Knock Out. Elle a ensuite ajouté à sa boîte à outils la formation de coach Relax Kids, après avoir constaté les effets du stress sur les enfants et compris qu’elle pouvait y répondre. Elle anime désormais des ateliers de gestion du stress pour enfants et adolescents de tous âges. Sa formation en yoga a commencé par une question : comment aider les personnes atteintes de scoliose ? Découvrant que la meilleure approche était fondée sur le yoga, elle s’est certifiée en Anusara Yoga et en Yoga pour la scoliose. L’Anusara est vite devenu une passion. Elle est aujourd’hui « Anusara Inspired » et a étudié avec Jayendra Henley, Adam Ballenger, Jaye Martin, Jacalyn Prete et William Mahony."
+        },
+        "website": null,
+        "legacyAnchors": [
+          "melissa-watkins"
+        ],
+        "photoImageAssetRef": "image-cf0efa18f1695e4869c3b7fd53c818f5dc1dd400-925x1200-jpg",
+        "photoMediaAssetId": "cyce-media-teacher-melissa-watkins",
+        "photoMediaAssetName": "Teacher — Melissa Watkins"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Melissa Watkins",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #6"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "m7",
+          "index": 5,
+          "memberCount": 15,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "73197e742434",
+      "id": "person-cyce-73197e742434",
+      "publicId": "71b68eae-72fa-49ec-bf73-b45cb86361a9",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1006,
+      "displayName": "Palle Dyrvall",
+      "person": {
+        "firstName": "Palle",
+        "lastName": "Dyrvall",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "Before dedicating himself completely to the oriental arts of health of yoga, do-in and to shiatsu, Palle Dyrvall managed a career as a dancer, during which he practiced several somatic techniques such as Release Technique, Alexander Technique and Body Mind Centering, which allowed him to develop a deep knowledge of the human body and its energetic system. Applying these experiences to Yoga has allowed him to propose a class that promotes a natural way of using the body and that listens to the whole body and mind together. The aim of his class is also to be in motion through the asanas, to get the most out of the practice in terms of well being and to prevent injuries on and off the yoga mat.  The main influences on his class have been the style of Sivananda with its use of the sun salutations and the 12 main postures, Ashtanga characterized by the linking of the postures in a long flowing sequences “vinyasa”, Iyengar for its use of blocks, belts and blankets to help for a better alignment and Yoga Nidra for a final relaxation and integration of the practice. Palle is a qualified shiatsu practitioner and teacher of Shiatsu, has studied Chinese medicine and practices the oriental arts of health Do-In and Qi Gong.",
+          "fr": "Avant de se consacrer entièrement aux arts orientaux de santé que sont le yoga, le do-in et le shiatsu, Palle Dyrvall a mené une carrière de danseur, au cours de laquelle il a pratiqué plusieurs techniques somatiques telles que la Release Technique, la technique Alexander et le Body-Mind Centering. Il a ainsi acquis une connaissance approfondie du corps humain et de son système énergétique. En appliquant ces expériences au yoga, il propose un cours qui encourage une utilisation naturelle du corps et qui écoute ensemble le corps et l’esprit. Son cours vise aussi à être en mouvement à travers les asanas, afin de tirer le meilleur de la pratique pour le bien-être et de prévenir les blessures, sur le tapis comme en dehors. Ses principales influences sont le Sivananda, avec ses salutations au soleil et ses 12 postures principales ; l’Ashtanga, caractérisé par l’enchaînement des postures en longues séquences fluides (« vinyasa ») ; l’Iyengar, pour l’utilisation de blocs, de sangles et de couvertures au service d’un meilleur alignement ; et le Yoga Nidra, pour la relaxation finale et l’intégration de la pratique. Palle est praticien et professeur de shiatsu qualifié ; il a étudié la médecine chinoise et pratique les arts orientaux de santé Do-In et Qi Gong."
+        },
+        "website": null,
+        "legacyAnchors": [
+          "palle-dyrvall"
+        ],
+        "photoImageAssetRef": "image-339ef5708998ebfe2aeb57ed600ad4c249166e00-600x600-svg",
+        "photoMediaAssetId": "cyce-media-teacher-placeholder",
+        "photoMediaAssetName": "Neutral placeholder for any teacher without a photo (made 2026-09-30) (teacher-placeholder.svg)"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Palle Dyrvall",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #7"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "m8",
+          "index": 6,
+          "memberCount": 15,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "eaa683f53606",
+      "id": "person-cyce-eaa683f53606",
+      "publicId": "fede2433-3e15-4f40-b652-36066cb92d0c",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1007,
+      "displayName": "Sabrina Messal",
+      "person": {
+        "firstName": "Sabrina",
+        "lastName": "Messal",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "Sabrina Messal: “I started yoga more than 20 years ago to relieve severe back pain. Not only did I recover completely physically, I also discovered a wonderful mental and human adventure… which gave me a strong desire to share it. Trained in Hatha yoga, I then became interested in yoga therapy, yin yoga and yoga for children. I continue to explore and draw on everything that yoga, meditation and music can bring me.”",
+          "fr": "Sabrina Messal débutant le yoga il y a plus de 20 ans dans le but de soulager de graves maux de dos, je me suis sentie non seulement complètement rétablie physiquement mais j’ai également découvert une magnifique aventure mentale et humaine… ce qui m’a amené à une grande envie de partage. Formée en Hatha yoga, je me suis ensuite intéressée à la yoga thérapie, au yin yoga et au yoga pour enfant. Je continue actuellement à naviguer et à me nourrir dans tout ce que le yoga, méditation et la musique peuvent m’apporter."
+        },
+        "website": null,
+        "legacyAnchors": [
+          "sabrina-messal"
+        ],
+        "photoImageAssetRef": "image-32ddfae8aa2eb3b8658cd90ea6d7b0eec5ab7b36-1200x800-jpg",
+        "photoMediaAssetId": "cyce-media-teacher-sabrina-messal",
+        "photoMediaAssetName": "Teacher — Sabrina Messal"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Sabrina Messal",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #8"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "m9",
+          "index": 7,
+          "memberCount": 15,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "68a10ff413c1",
+      "id": "person-cyce-68a10ff413c1",
+      "publicId": "5367711b-bdd1-4788-8c40-569434f06ae2",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1008,
+      "displayName": "Stefania Righetti",
+      "person": {
+        "firstName": "Stefania",
+        "lastName": "Righetti",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "Stefania Righetti began practising yoga in her youth. Later, while studying Philosophy at university, she became passionate about Eastern philosophy, Vipassana meditation and mindfulness. She first qualified as a teacher of traditional Hatha Yoga, but when Iyengar yoga crossed her path she was captivated by its precision and intensity, understanding that the body can be placed at the centre of one’s quest – full self-awareness through the asanas (postures) – using props to allow adaptation (viniyoga: adaptation to age, condition, gender, body type, etc.), along with many therapeutic applications. Certified since 2010, she also spent several years as an assistant in therapeutic classes. She continues to attend workshops, courses and conventions in Italy and across Europe, and regularly travels to India to the Ramamani Iyengar Memorial Yoga Institute (RIMYI) in Pune.",
+          "fr": "Stefania Righetti a commencé la pratique du yoga depuis sa jeunesse, puis pendant ses études universitaires en Philosophie elle s’est passionnée pour la philosophie orientale, la méditation Vipassana et à la Mindfulness. Elle a d’abord obtenu le diplôme de professeur en «Hatha Yoga» Traditionnel, mais quand le yoga Iyengar a croisé son chemin elle est restée fascinée par sa précision et son intensité en comprenant qu’on peut mettre le corps au centre de sa quête, la pleine conscience de soi à travers les asanas (postures) en utilisant des accessoires pour permettre l’adaptation (viniyoga = adaptation selon l’âge, l’état, le genre, le type de corps, etc) ainsi que de nombreuses applications thérapeutiques. Certifiée depuis 2010 a été aussi pour plusieurs années assistante dans les classes thérapeutiques; elle continue à suivre des stages, cours et conventions en Italie, en Europe et se joindre régulièrement en Inde au Ramamani Iyengar Memorial Yoga Institute (RIMYI) de Pune."
+        },
+        "website": null,
+        "legacyAnchors": [
+          "stefania-righetti"
+        ],
+        "photoImageAssetRef": "image-16c131de5fd7b0b51d419ad69d16a0b3844c53eb-1200x841-jpg",
+        "photoMediaAssetId": "cyce-media-teacher-stefania-righetti",
+        "photoMediaAssetName": "Teacher — Stefania Righetti"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Stefania Righetti",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #9"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "ma",
+          "index": 8,
+          "memberCount": 15,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "7c9c0964511f",
+      "id": "person-cyce-7c9c0964511f",
+      "publicId": "5fdfd41a-bd95-462f-902e-8c40d51c2b04",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1009,
+      "displayName": "Thierry Van Brabant",
+      "person": {
+        "firstName": "Thierry",
+        "lastName": "Van Brabant",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "Thierry Van Brabant holds a degree in physiotherapy, trains yoga teachers, teaches yoga full-time and is a member of the teaching committee of ABEPY (the Belgian association of yoga teachers and practitioners). He sees his classes as a pleasant walk through the mechanics of the body: “My goodness, how well our bodies are made!” His classes are also a philosophical walk through the great yogic ideas which, when applied, are known to calm the mind. The meditative side is not forgotten, so that we can connect harmoniously with ourselves and with everything around us. https://santosha.be/",
+          "fr": "Thierry Van Brabant est licencié en kinésithérapie, formateur d’enseignants de yoga, professeur de yoga à temps plein et membre du comité pédagogique de l’ABEPY (Association belge des enseignants et des pratiquants de yoga). Il envisage ses cours comme une promenade agréable à travers la mécanique du corps : Mon Dieu que nos corps sont bien faits ! Ses cours sont également une promenade philosophique à travers les grandes pensées yoguiques qui lorsqu’elles sont appliquées, sont connues pour apaiser notre mental. L’aspect méditatif n’est pas oublié, question de nous relier harmonieusement à nous-même et à tout ce qui nous entoure. https://santosha.be/"
+        },
+        "website": "https://santosha.be/",
+        "legacyAnchors": [
+          "thierry-van-brabant"
+        ],
+        "photoImageAssetRef": "image-be44c7a7aa9f9969577607845fea03d50f848963-750x908-png",
+        "photoMediaAssetId": "cyce-media-teacher-thierry-van-brabant",
+        "photoMediaAssetName": "Teacher — Thierry Van Brabant"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [
+        "thierry-van-brabant"
+      ],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Thierry Van Brabant",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #10"
+        },
+        {
+          "source": "eventHost",
+          "rawName": "Thierry Van Brabant",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-event-yoga-sutras",
+            "type": "event",
+            "label": "The fourth chapter of the Yoga Sutras, illuminated through Hatha Yoga practice"
+          },
+          "label": "event cyce-event-yoga-sutras / host #1"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "mb",
+          "index": 9,
+          "memberCount": 15,
+          "hasPeople": false
+        },
+        {
+          "kind": "eventHost",
+          "docId": "cyce-event-yoga-sutras",
+          "index": 0,
+          "hostKey": "host1w",
+          "hostCount": 1,
+          "hasHostPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "ec45c7639999",
+      "id": "person-cyce-ec45c7639999",
+      "publicId": "6990fec5-9a84-4dc5-aec3-35c7fa18e12d",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1010,
+      "displayName": "Cristina Monti",
+      "person": {
+        "firstName": "Cristina",
+        "lastName": "Monti",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "Cristina Monti is a certified Yoga Alliance teacher and an accredited Crystal Tones® Alchemy Crystal Bowl sound healer. Her yoga journey began as a search for a physical practice centered on breathing, flexibility, and strength. Little did she know, it would unfold into a discovery of the profound benefits that yoga offers in managing stress and fostering mental and emotional balance – all while infusing an element of joy. Cristina teaches both dynamic yoga styles like vinyasa and power flow, as well as more restorative practices like Yin-Yang, Yoga Nidra and Antastha yoga. The latter, practiced with a blindfold, delves into a realm of deeper inner connection, amplifying the mind-body experience. She loves to combine her classes with sound baths, creating an immersive journey that guides participants into a meditational state. Cristina aspires to share the tools of holistic well-being to empower others to live their most meaningful lives. Join her on the path to vibrant health, inner harmony, and a balanced existence.",
+          "fr": "Cristina Monti est professeure de yoga certifiée Yoga Alliance et praticienne accréditée en soins sonores aux bols de cristal Crystal Tones® Alchemy. Son parcours a commencé par la recherche d’une pratique physique axée sur la respiration, la souplesse et la force. Elle était loin d’imaginer qu’elle y découvrirait les bienfaits profonds du yoga pour gérer le stress et favoriser l’équilibre mental et émotionnel – le tout avec une bonne dose de joie. Cristina enseigne aussi bien des styles dynamiques comme le vinyasa et le power flow que des pratiques plus réparatrices comme le Yin-Yang, le Yoga Nidra et l’Antastha yoga. Ce dernier, pratiqué les yeux bandés, invite à une connexion intérieure plus profonde et amplifie l’expérience du corps et de l’esprit. Elle aime associer ses cours à des bains sonores, créant un voyage immersif qui guide les participants vers un état méditatif. Cristina souhaite transmettre les outils d’un bien-être holistique pour aider chacun à vivre une vie pleine de sens. Rejoignez-la sur le chemin d’une santé rayonnante, d’une harmonie intérieure et d’une existence équilibrée."
+        },
+        "website": null,
+        "legacyAnchors": [
+          "cristina-monti"
+        ],
+        "photoImageAssetRef": "image-db6081408e039fed61cf2a21c6ae69412fb0b431-1032x696-jpg",
+        "photoMediaAssetId": "cyce-media-teacher-cristina-monti",
+        "photoMediaAssetName": "Teacher — Cristina Monti"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Cristina Monti",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #11"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "mc",
+          "index": 10,
+          "memberCount": 15,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "809e4a7e224f",
+      "id": "person-cyce-809e4a7e224f",
+      "publicId": "dca73f65-d8af-4df7-bbc2-a8a795e28777",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1011,
+      "displayName": "Alain Daligault",
+      "person": {
+        "firstName": "Alain",
+        "lastName": "Daligault",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "Trained in the Hatha Yoga lineage (Iyengar, Ashtanga and energy yoga), in various martial arts (Tai Chi, Karate), in danza sensibile (Claude Coldy) and in traditional Thai massage (Master Pichest Boothumme, Chiang Mai), Alain Daligault likes to teach an informal yoga in a relaxed, friendly atmosphere: practising postures in pairs for personal guidance and support, using props (balls, gym ball, strap) to help with support and direction, and offering massage and self-massage techniques (the legacy of 20 years of Thai massage practice).",
+          "fr": "Issu d’un enseignement de lignée Hatha Yoga (Iyengar, Ashtanga et yoga de l’énergie), de divers arts martiaux (Tai chi, Karaté), de danza sensibile (Claude Coldy) et massage traditionnel thaïlandais (Maître Pichest Boothumme, Chiang Mai). Alain Daligault aime enseigner un yoga non formel, dans une ambiance détendue et conviviale, pratiquer les postures en duo pour un accompagnement et soutien personnalisé, utiliser des supports (balles, ballon, sangle) facilitant les appuis/directions, proposer des techniques de massage et auto-massage (héritage d’une pratique de 20 ans de massage thaï)."
+        },
+        "website": "https://www.tradition-massage.com/about-alain",
+        "legacyAnchors": [
+          "alain-daligault"
+        ],
+        "photoImageAssetRef": "image-99d7916a96a23db312ecaa194a722f880dd4902f-490x496-jpg",
+        "photoMediaAssetId": "cyce-media-teacher-alain-daligault",
+        "photoMediaAssetName": "Teacher — Alain Daligault"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Alain Daligault",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #12"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "md",
+          "index": 11,
+          "memberCount": 15,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "13359acbd975",
+      "id": "person-cyce-13359acbd975",
+      "publicId": "ead1c77b-6ea4-4963-9951-e47e56138eeb",
+      "decision": "review",
+      "mergeInto": null,
+      "order": 1012,
+      "displayName": "Emmanuelle",
+      "person": {
+        "firstName": "Emmanuelle",
+        "lastName": "",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "Emmanuelle is a yoga teacher and explorer of sound and vibrations. She offers a gentle, mindful approach to well-being, combining yoga, sound relaxation, and voice work, with careful attention to the body, mind, and individual needs. She proposes explorations such as yoga & sound relaxation, sound baths with voice & instruments, sound circles. emmasana.be/",
+          "fr": "Emmanuelle est professeure de yoga et exploratrice du son et des vibrations. Elle propose une approche douce et attentive du bien-être, qui associe yoga, relaxation sonore et travail de la voix, avec une attention particulière au corps, à l’esprit et aux besoins de chacun. Elle propose notamment : yoga & relaxation sonore, bains sonores avec voix & instruments, cercles sonores. emmasana.be/"
+        },
+        "website": "https://www.emmasana.be/",
+        "legacyAnchors": [
+          "emmanuelle"
+        ],
+        "photoImageAssetRef": "image-dd0f3b5cee9bb9dbb1a06c5df2970242018e20a0-892x972-jpg",
+        "photoMediaAssetId": "cyce-media-teacher-emmanuelle",
+        "photoMediaAssetName": "Teacher — Emmanuelle"
+      },
+      "flags": [
+        "single-word name: lastName is empty and must be filled in the report before apply"
+      ],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Emmanuelle",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #13"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "me",
+          "index": 12,
+          "memberCount": 15,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "1b9e9e8bbdfd",
+      "id": "person-cyce-1b9e9e8bbdfd",
+      "publicId": "284a012c-5e6a-43a0-8bde-dcf5416b3926",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 1013,
+      "displayName": "Agnieszka Paluch",
+      "person": {
+        "firstName": "Agnieszka",
+        "lastName": "Paluch",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "Agnieszka Paluch is a certified yoga teacher in Hatha, Vinyasa and Power yoga. She has been practicing yoga for more than 10 years. Her classes are filled with a careful, sensitive and respectful approach to working with the body and mind. She loves to share her passion for yoga and its philosophy with beginners and advanced students. As a teacher she focuses on clear and empathetic communication by creating a trustful atmosphere and safe spaces. During her classes, Agnieszka invites each of her students to find peace and clarity through meditation, work with breath and prana, as well as asanas.",
+          "fr": "Agnieszka Paluch est professeure de yoga certifiée en Hatha, Vinyasa et Power yoga. Elle pratique le yoga depuis plus de 10 ans. Ses cours se distinguent par une approche attentive, sensible et respectueuse du travail du corps et de l’esprit. Elle aime partager sa passion pour le yoga et sa philosophie avec les débutants comme avec les pratiquants avancés. En tant que professeure, elle privilégie une communication claire et empathique, en créant une atmosphère de confiance et un espace sûr. Pendant ses cours, Agnieszka invite chacun à trouver la paix et la clarté par la méditation, le travail du souffle et du prana, ainsi que par les asanas."
+        },
+        "website": null,
+        "legacyAnchors": [
+          "agnieszka-paluch"
+        ],
+        "photoImageAssetRef": "image-7bf6bda65e9c41c510668e1b2b958283c5fc6502-960x1200-jpg",
+        "photoMediaAssetId": "cyce-media-teacher-agnieszka-paluch",
+        "photoMediaAssetName": "Teacher — Agnieszka Paluch"
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Agnieszka Paluch",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #14"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "mf",
+          "index": 13,
+          "memberCount": 15,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "1fd86ddd25c6",
+      "id": "person-cyce-1fd86ddd25c6",
+      "publicId": "f6f70dac-daf8-4e68-b70b-a2ccb5d89031",
+      "decision": "review",
+      "mergeInto": null,
+      "order": 1014,
+      "displayName": "Dorota",
+      "person": {
+        "firstName": "Dorota",
+        "lastName": "",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": {
+          "en": "I have been passionate about yoga for more than 20 years, and for the past few years especially about Iyengar yoga. I have followed many classes and trainings in various schools (yoga teacher training with Thierry Van Brabant, and KiddyYoga – yoga for children – with his daughter Julie).\nIyengar yoga appeals to me for its precision. For me, the value of yoga goes far beyond practice on the mat. It continues, and grows stronger, once we have rolled up our mat.",
+          "fr": "Je suis passionnée de Yoga depuis plus de 20 ans, et plus particulièrement depuis quelques années par le Yoga Iyengar. J'ai suivi de nombreux cours et formations dans diverses écoles (Thierry Van Brabant à l'enseignement du Yoga et sa fille, Julie, au KiddyYoga - Yoga pour enfants).\nLe Yoga Iyengar me séduit par sa précision. L'intérêt du Yoga va pour moi bien au-delà de sa pratique sur le tapis. Il se poursuit et se potentialise une fois que nous avons rangé notre tapis."
+        },
+        "website": null,
+        "legacyAnchors": [
+          "dorota"
+        ],
+        "photoImageAssetRef": "image-cbc4e3ec2322dfb3eeec459552dd87ce93e3eef6-794x843-jpg",
+        "photoMediaAssetId": "cyce-media-teacher-dorota",
+        "photoMediaAssetName": "Teacher — Dorota"
+      },
+      "flags": [
+        "single-word name: lastName is empty and must be filled in the report before apply"
+      ],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "teamMember",
+          "rawName": "Dorota",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-page-teachers",
+            "type": "page",
+            "label": "page cyce-page-teachers \"Our Teachers\""
+          },
+          "label": "page cyce-page-teachers \"Our Teachers\" / team section / #15"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "teamSection",
+          "docId": "cyce-page-teachers",
+          "docType": "page",
+          "sectionPath": "sections[_key==\"team1\"]",
+          "memberKey": "mg",
+          "index": 14,
+          "memberCount": 15,
+          "hasPeople": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "key": "c182f69bb80e",
+      "id": "person-cyce-c182f69bb80e",
+      "publicId": "246c19a6-4f5c-4844-83fc-56b644df1b96",
+      "decision": "create",
+      "mergeInto": null,
+      "order": 800000001,
+      "displayName": "Henri-Denis Golenvaux",
+      "person": {
+        "firstName": "Henri-Denis",
+        "lastName": "Golenvaux",
+        "honorific": null,
+        "jobTitle": null,
+        "shortBio": null,
+        "website": null,
+        "legacyAnchors": [],
+        "photoImageAssetRef": null,
+        "photoMediaAssetId": null
+      },
+      "flags": [],
+      "conflicts": {},
+      "hostAnchors": [],
+      "sources": [
+        {
+          "source": "eventHost",
+          "rawName": "Henri-Denis Golenvaux",
+          "strippedHonorific": null,
+          "doc": {
+            "id": "cyce-event-tibetan-bowls",
+            "type": "event",
+            "label": "Yoga and sound relaxation with Tibetan singing bowls, with Anne-Marie Raison and Henri-Denis Golenvaux"
+          },
+          "label": "event cyce-event-tibetan-bowls / host #2"
+        }
+      ],
+      "placements": [
+        {
+          "kind": "eventHost",
+          "docId": "cyce-event-tibetan-bowls",
+          "index": 1,
+          "hostKey": "hostr",
+          "hostCount": 2,
+          "hasHostPeople": false
+        }
+      ],
+      "checks": []
+    }
+  ]
+}

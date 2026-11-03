@@ -23,7 +23,7 @@ import { getGalleryDashboard } from '@/lib/api/dashboard/gallery'
 import { getGalleriesDescribed } from '@/lib/api/dashboard/gallery-described'
 import { getCatalogueGlance } from '@/lib/api/catalogue-drafts'
 import { getMediaDashboard } from '@/lib/api/dashboard/media'
-import { getPeopleDashboard } from '@/lib/api/dashboard/people'
+import { getUsersDashboard } from '@/lib/api/dashboard/users'
 import { getSiteStatus } from '@/lib/api/dashboard/site'
 import { readDismissal, SETUP_CHECKLIST_DISMISSAL } from '@/lib/api/dashboard/dismissals'
 import { buildSetupChecklist, setupFactsWanted, type SetupItemId } from '@/lib/client/setup-checklist'
@@ -104,7 +104,7 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
     enabled.has('gallery') && (show('glance.galleries') || show('latest.galleries') || (show('continueEditing') && canEditGalleries) || rules.has('staleGalleryDrafts'))
   const wantMedia = show('glance.media') || rules.has('missingAltText') || setup.has('photos')
   const wantPeople = rules.has('pendingInvites') || setup.has('team')
-  const peopleHref = link('people')
+  const usersHref = link('users')
 
   // Support requests that need this person (waiting for their reply, or news). Fail-safe: [] on any error.
   const supportAccess = show('attention') ? ticketAccess(ctx, projectSlug) : null
@@ -146,8 +146,8 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
         })
       : null,
     wantMedia ? getMediaDashboard(ctx, grant.projectId, { attentionHref: rules.has('missingAltText') ? link('media') : null }) : null,
-    wantPeople && peopleHref
-      ? getPeopleDashboard(ctx, grant.projectId, { attentionHref: rules.has('pendingInvites') ? peopleHref : null })
+    wantPeople && usersHref
+      ? getUsersDashboard(ctx, grant.projectId, { attentionHref: rules.has('pendingInvites') ? usersHref : null })
       : null,
     // Website traffic (ADR-029 §3.4): the stored daily snapshot, never a live Google call.
     show('traffic') || setup.has('analytics') ? getProjectAnalytics(ctx, grant.projectId).catch(() => null) : null,
@@ -193,7 +193,7 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
     ((rules.has('stalePostDrafts') || rules.has('scheduledSoon') || rules.has('missingLanguage')) && !!(blog?.list || blog?.drafts)) ||
     (rules.has('staleGalleryDrafts') && gallery !== null) ||
     (rules.has('missingAltText') && media !== null) ||
-    (rules.has('pendingInvites') && !!link('people')) ||
+    (rules.has('pendingInvites') && !!link('users')) ||
     supportItems.length > 0
 
   // ── Continue editing (unchanged behaviour: posts then galleries, ⋯ menu) ──
@@ -391,7 +391,7 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
           hrefs: {
             firstPost: link('blog'),
             photos: mediaHref ? `${mediaHref}/add` : null,
-            team: peopleHref,
+            team: usersHref,
             analytics: link('analytics'),
           },
         })

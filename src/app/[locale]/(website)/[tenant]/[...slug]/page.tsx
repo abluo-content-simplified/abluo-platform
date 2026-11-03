@@ -29,6 +29,15 @@ import { ACCESS_FORM_FIELDS, accessFormActions, parseAccessNotice } from '@/lib/
 import { promptNotice, promptNoticeKind } from '@/lib/access/prompt'
 import { getAccessMessages } from '@/lib/i18n/access-messages'
 import { resolveBodyLinks, siteHostsForProject } from '@/lib/links/link-target'
+import { PersonRoute, personRouteMetadata, type PersonRouteRecord } from '@/components/people/PersonRoute'
+import {
+  PEOPLE_PAGE_EXISTS_QUERY,
+  archivedTarget,
+  isPeopleModuleOn,
+  planPeopleRoute,
+  profileSegmentFor,
+} from '@/lib/modules/people/website'
+import { loadPersonRoute } from '@/lib/modules/people/route'
 
 export const dynamic = 'force-dynamic'
 
@@ -97,6 +106,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       siteBase: '',
       siteConfig: config,
     })
+  }
+
+  // ── People profile dispatch (ADR-043 D7) — the same decision the page makes ──
+  const peopleDispatch = planPeopleRoute(
+    slugSegments,
+    isPeopleModuleOn(getEnabledModuleIds(moduleConfig)) ? profileSegmentFor(moduleConfig, locale) : null,
+  )
+  if (peopleDispatch) {
+    const outcome = await loadPersonRoute<PersonRouteRecord>(fetchForTenant, { slug: peopleDispatch.slug, locale, defaultLocale })
+    if (outcome.kind === 'found') {
+      return personRouteMetadata({ person: outcome.person, moduleConfig, siteConfig: config, tenantId, locale, defaultLocale })
+    }
   }
 
   // ADR-040 — the page is read through the gate: a restricted page arrives
@@ -222,6 +243,37 @@ export default async function WebsitePageRoute({ params, searchParams }: PagePro
         hostScoped={hostScoped}
       />
     )
+  }
+
+  // ── People profile dispatch (ADR-043 D7) ────────────────────────────────────
+  // After the catalogue, before the page lookup: /{profileSegment}/{slug} in this
+  // language. Found → the profile; a retired slug → 308 to the current one; an
+  // archived person → 308 to the people page (or the site root). Anything else
+  // falls through to the page lookup, so a real page at the same path still wins
+  // when no person matches.
+  const peopleSegment = isPeopleModuleOn(getEnabledModuleIds(moduleConfig)) ? profileSegmentFor(moduleConfig, locale) : null
+  const peopleDispatch = planPeopleRoute(slugSegments, peopleSegment)
+  if (peopleDispatch && peopleSegment) {
+    const outcome = await loadPersonRoute<PersonRouteRecord>(fetchForTenant, { slug: peopleDispatch.slug, locale, defaultLocale })
+    if (outcome.kind === 'found') {
+      return (
+        <PersonRoute
+          person={outcome.person}
+          moduleConfig={moduleConfig}
+          siteConfig={siteConfig}
+          fetchForTenant={fetchForTenant}
+          tenantId={String(tenantId)}
+          locale={locale}
+          defaultLocale={defaultLocale}
+          siteBase={siteBase}
+        />
+      )
+    }
+    if (outcome.kind === 'redirect') permanentRedirect(`${siteBase}/${peopleSegment}/${outcome.slug}`)
+    if (outcome.kind === 'archived') {
+      const pageAtSegmentExists = await fetchForTenant<boolean>(PEOPLE_PAGE_EXISTS_QUERY, { locale, segment: peopleSegment })
+      permanentRedirect(archivedTarget({ siteBase, segment: peopleSegment, pageAtSegmentExists: !!pageAtSegmentExists }))
+    }
   }
 
   // ── Read the page through the access gate (ADR-040 §9) ─────────────────────

@@ -113,6 +113,8 @@ export const EVENT_FIELD_CAPABILITY: Readonly<Record<string, (caps: EventCapabil
   registrationLabel: (caps) => caps.registration === 'externalLink',
   fullDescription: (caps) => caps.fullDescription,
   hosts: (caps) => caps.hosts,
+  // ADR-043: hosts from the People module follow the same capability as the inline hosts.
+  hostPeople: (caps) => caps.hosts,
   schedule: (caps) => caps.programme,
   priceOptions: (caps) => caps.pricing,
   gallery: (caps) => caps.gallery,

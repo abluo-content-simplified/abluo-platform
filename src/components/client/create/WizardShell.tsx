@@ -35,7 +35,7 @@ import {
   type OverviewSection,
   type WizardFlowStep,
 } from '@/lib/client/wizard-steps'
-import type { DraftSnapshot, SiteFaqSet, SiteInfo, StepProps } from './types'
+import type { DraftSnapshot, SiteFaqSet, SiteInfo, SitePerson, StepProps } from './types'
 import { pickerLabel, type PickerTerm } from '@/components/client/taxonomy/term-picker-model'
 import { applyToSnapshot } from './snapshot'
 import { CategoryStep } from './steps/CategoryStep'
@@ -55,6 +55,7 @@ import { ReviewStep } from './steps/ReviewStep'
 import { CtaStep } from './steps/CtaStep'
 import { GalleryPickStep } from './steps/GalleryPickStep'
 import { FaqStep } from './steps/FaqStep'
+import { AuthorsStep } from './steps/AuthorsStep'
 import { FaqPublishChoice } from '@/components/client/faq/post/FaqPublishChoice'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { DeletePermanentlyDialog } from '@/components/app/lifecycle/DeletePermanentlyDialog'
@@ -125,20 +126,27 @@ export function WizardShell({
   const [addedCategories, setAddedCategories] = useState<PickerTerm[]>([])
   // FAQ sets created or changed from this editor (ADR-037): they replace the server's entry.
   const [changedFaqSets, setChangedFaqSets] = useState<SiteFaqSet[]>([])
+  // People chosen or created in the Authors step (ADR-043): joined to site.people so the overview names them.
+  const [knownPeople, setKnownPeople] = useState<SitePerson[]>([])
   const site = useMemo<SiteInfo>(() => {
     const fresh = addedCategories.filter((c) => !initialSite.categories.some((x) => x.value === c.value))
-    const withFaq =
+    const withFaq0 =
       initialSite.faqSets && changedFaqSets.length
         ? { ...initialSite, faqSets: [...changedFaqSets, ...initialSite.faqSets.filter((s) => !changedFaqSets.some((c) => c.id === s.id))] }
         : initialSite
+    const withFaq =
+      withFaq0.people && knownPeople.length
+        ? { ...withFaq0, people: { ...withFaq0.people, initial: [...knownPeople, ...withFaq0.people.initial.filter((p) => !knownPeople.some((k) => k.id === p.id))] } }
+        : withFaq0
     if (fresh.length === 0) return withFaq
     return {
       ...withFaq,
       categories: [...initialSite.categories, ...fresh.map((c) => ({ value: c.value, label: pickerLabel(c, ui, initialSite.defaultLocale) }))],
       categoryTerms: initialSite.categoryTerms ? [...initialSite.categoryTerms, ...fresh.filter((c) => !initialSite.categoryTerms!.some((x) => x.value === c.value))] : initialSite.categoryTerms,
     }
-  }, [initialSite, addedCategories, changedFaqSets, ui])
+  }, [initialSite, addedCategories, changedFaqSets, knownPeople, ui])
   const addCategory = useCallback((term: PickerTerm) => setAddedCategories((a) => (a.some((x) => x.value === term.value) ? a : [...a, term])), [])
+  const rememberPeople = useCallback((people: SitePerson[]) => setKnownPeople((a) => [...people, ...a.filter((x) => !people.some((p) => p.id === x.id))]), [])
   const upsertFaqSet = useCallback((set: SiteFaqSet) => setChangedFaqSets((a) => [set, ...a.filter((x) => x.id !== set.id)]), [])
   const projectSlug = site.projectSlug
   const locale = site.defaultLocale
@@ -566,6 +574,7 @@ export function WizardShell({
     goBack,
     addCategory,
     upsertFaqSet,
+    rememberPeople,
     flush: flushForStep,
     onServerWrite,
   }
@@ -731,6 +740,8 @@ export function WizardShell({
             <GalleryPickStep {...props} />
           ) : step === 'faq' ? (
             <FaqStep {...props} />
+          ) : step === 'authors' ? (
+            <AuthorsStep {...props} />
           ) : step === 'languages' ? (
             <LanguagesStep {...props} choices={choices} onChoice={(l, c) => setChoices((s) => ({ ...s, [l]: c }))} />
           ) : step === 'preview' ? (

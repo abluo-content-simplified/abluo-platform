@@ -17,6 +17,8 @@ import {
   SITEMAP_PAGES_QUERY,
   SITEMAP_POSTS_QUERY,
 } from '@/lib/seo/sitemap-queries'
+import { peopleSitemapEntries, type PeopleSitemapRow } from '@/lib/seo/sitemap-people'
+import { SITEMAP_PEOPLE_QUERY } from '@/lib/modules/people/queries'
 import { catalogueSitemapEntries, type CatalogueLandingSitemapRow, type CatalogueSitemapRow } from '@/lib/seo/sitemap-catalogue'
 
 // ─── projectSlug → URL tenant slug ───────────────────────────────────────────
@@ -47,6 +49,8 @@ interface TenantSitemapData {
   defaultLocale?: string
   /** News module enabled + a published newsPage → /{locale}/news exists. */
   hasNewsIndex?: boolean
+  /** ADR-043 — the People module's per-language profile base path (localizedString), when installed. */
+  peopleSegment?: Record<string, unknown> | null
 }
 
 interface PageSitemapData {
@@ -166,7 +170,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           siteConfig->defaultLocale,
           *[_type == "siteConfig" && projectSlug == ^.projectSlug][0].defaultLocale
         ),
-        ${HAS_NEWS_INDEX_PROJECTION}
+        ${HAS_NEWS_INDEX_PROJECTION},
+        "peopleSegment": moduleInstallations[moduleId == "people" && enabled != false][0].config.profileSegment
       }`
     )
 
@@ -226,7 +231,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // indexability classifier normalises it (lowercased, port stripped).
     const requestHost = normalizeHost((await headers()).get('host'))
 
-    for (const { projectSlug, customDomain, supportedLocales, defaultLocale, hasNewsIndex } of projects) {
+    for (const { projectSlug, customDomain, supportedLocales, defaultLocale, hasNewsIndex, peopleSegment } of projects) {
       // Skip tenants without a custom domain — no canonical URL to emit.
       if (!customDomain) continue
 
@@ -329,6 +334,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           primaryLocale,
         }),
       )
+
+      // People profile pages (ADR-043 D7) — only for a project that installed the
+      // module and set a profile segment; one read per such project.
+      if (peopleSegment) {
+        const rows = await sanityClient.fetch<PeopleSitemapRow[]>(SITEMAP_PEOPLE_QUERY, { projectSlug })
+        entries.push(
+          ...peopleSitemapEntries({ rows, profileSegment: peopleSegment, origin: tenantBase, locales, primaryLocale }),
+        )
+      }
 
       const projectNews = newsByProject.get(projectSlug) ?? []
       for (const item of projectNews) {

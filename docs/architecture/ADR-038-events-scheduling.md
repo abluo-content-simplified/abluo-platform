@@ -6,6 +6,9 @@
 **Relates:** ADR-031 (Connections — see Amendment C, which this ADR triggers), ADR-032 (content lifecycle, DST rules), ADR-021 (consent), ADR-022 (Gallery), ADR-025/029 (tenant editor and dashboard), ADR-028 (roles), ADR-033 Amendment I (capabilities pattern)
 **Working papers:** project docs `events-2.0-phase1-proposal-2026-10-19`, `events-2.0-architecture-v2-2026-10-20`, `events-2.0-phase1-final-plan-2026-10-20`
 
+> **Amended by ADR-043 (2026-11-03):** `eventInstructor` is not built. Instructors, hosts and speakers are People-module `person` documents, referenced by `publicId` as in D2; `events.instructor.*` permissions become `people.*`. Every write must also check the person belongs to the project.
+
+
 ---
 
 ## Context

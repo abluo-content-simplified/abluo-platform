@@ -1,0 +1,350 @@
+{
+  "clientDashboard": {
+    "persons": {
+      "list": {
+        "title": "People",
+        "new": "New Person",
+        "emptyTitle": "No people yet",
+        "emptyBody": "Add your team, teachers or authors once, then show them wherever they belong on your site.",
+        "undo": "Undo",
+        "anonymisedName": "Anonymised person",
+        "notUsed": "Not used yet",
+        "usedInOpen": "{name}: shown in {count, plural, one {# place} other {# places}}. Show where.",
+        "usedInTitle": "Where {name} is shown",
+        "menu": "Actions for {name}",
+        "drag": "Move {name}, position {position} of {total}",
+        "columns": {
+          "name": "Name",
+          "groups": "Groups",
+          "visibility": "On the website",
+          "usedIn": "Used in",
+          "status": "Status",
+          "updated": "Updated",
+          "actions": "Actions",
+          "order": "Order"
+        },
+        "view": {
+          "label": "View",
+          "list": "List",
+          "cards": "Cards"
+        },
+        "actions": {
+          "edit": "Edit",
+          "usedIn": "Where it’s shown",
+          "anonymise": "Anonymise…"
+        },
+        "done": {
+          "archived": "{name} is archived. It’s no longer on your website.",
+          "restored": "{name} is restored.",
+          "deleted": "{name} is deleted.",
+          "ordered": "New order saved."
+        },
+        "filters": {
+          "label": "Filter people",
+          "search": "Search people",
+          "searchPlaceholder": "Search by name, title or group",
+          "group": "Group",
+          "groupAll": "All groups",
+          "status": "Status",
+          "statusAll": "All",
+          "visibility": "On the website",
+          "visibilityAll": "Everywhere",
+          "sort": "Sort by",
+          "sort_order_asc": "Your order",
+          "sort_order_desc": "Your order, reversed",
+          "sort_name_asc": "Name, A to Z",
+          "sort_name_desc": "Name, Z to A",
+          "sort_updated_desc": "Recently updated",
+          "sort_updated_asc": "Least recently updated",
+          "showing": "{shown} of {total} people",
+          "clear": "Clear filters",
+          "noMatch": "No one matches these filters."
+        }
+      },
+      "visibility": {
+        "off": "Hidden",
+        "listed": "In lists",
+        "page": "In lists and own page"
+      },
+      "usedIn": {
+        "pages": "{count, plural, one {# page} other {# pages}}",
+        "posts": "{count, plural, one {# post} other {# posts}}",
+        "events": "{count, plural, one {# event} other {# events}}",
+        "sessions": "{count, plural, one {# session} other {# sessions}}",
+        "none": "Not shown anywhere yet.",
+        "published": "Published",
+        "notPublished": "Not published",
+        "kind": {
+          "page": "Page",
+          "post": "Post",
+          "event": "Event",
+          "sessions": "Sessions"
+        },
+        "untitled": {
+          "page": "Untitled page",
+          "post": "Untitled post",
+          "event": "Untitled event"
+        },
+        "loadFailed": "We couldn’t load where this person is shown. Please try again."
+      },
+      "newPerson": {
+        "title": "New person",
+        "intro": "Start with a name. You can add the rest afterwards.",
+        "firstName": "First name",
+        "lastName": "Last name",
+        "namesNeeded": "Add a first and a last name to continue.",
+        "cancel": "Cancel",
+        "creating": "Creating…",
+        "create": "Create Person",
+        "errors": {
+          "forbidden": "You don’t have permission to add people.",
+          "tooMany": "You’ve reached the number of people your plan includes.",
+          "missingName": "First and last name are required.",
+          "failed": "We couldn’t create this person. Please try again."
+        }
+      },
+      "anonymise": {
+        "title": "Anonymise {name}?",
+        "body": "This removes the name, photo, texts and every private detail for good. It can’t be undone. Pages that show this person will show “Anonymised person”.",
+        "confirm": "Anonymise",
+        "understood": "I understand this can’t be undone",
+        "done": "{name} is anonymised."
+      },
+      "errors": {
+        "in_use_where": "This person is still shown in: {places}. Remove them there first.",
+        "offline": "You’re offline. Your changes will save when you’re back online."
+      },
+      "screen": {
+        "loadFailed": "We couldn’t load your people. Please try again.",
+        "retry": "Try again"
+      },
+      "editor": {
+        "language": "Editing language",
+        "back": "Back to people",
+        "untitled": "New person",
+        "anonymisedName": "Anonymised person",
+        "publish": "Publish",
+        "publishing": "Publishing…",
+        "published": "Published. Your changes are on your website.",
+        "publishedUsed": "Published. Your changes now show in {count, plural, one {# place} other {# places}} on your site.",
+        "publishReason": {
+          "upToDate": "Nothing new to publish."
+        },
+        "publishBlocked": "Before you can publish:",
+        "blockers": {
+          "slug": "Add a page address in {language}"
+        },
+        "discarded": "Your unpublished changes are discarded.",
+        "archived": "Archived. This person is no longer on your website.",
+        "restored": "Restored.",
+        "archivedTitle": "This person is archived",
+        "archivedBody": "Restore them to make changes.",
+        "anonymisedTitle": "This person is anonymised",
+        "anonymisedBody": "Their details were removed for good, so there is nothing left to edit.",
+        "readOnly": "You can look but not change anything here.",
+        "dismiss": "Dismiss",
+        "undo": "Undo",
+        "usedInTitle": "Where this person is shown",
+        "tabsLabel": "Sections",
+        "tabs": {
+          "profile": "Profile",
+          "about": "About",
+          "contact": "Contact",
+          "website": "On the Website"
+        },
+        "menu": {
+          "label": "More actions",
+          "discard": "Discard unpublished changes…",
+          "anonymise": "Anonymise…"
+        },
+        "confirm": {
+          "discardTitle": "Discard your unpublished changes?",
+          "discardBody": "The published version stays as it is.",
+          "discard": "Discard Changes",
+          "deleteTitle": "Delete {name} for good?",
+          "deleteBody": "This person and their private details are removed for good."
+        },
+        "contact": {
+          "removed": "Removed {value}.",
+          "movedPublic": "Moved to public. It shows on your website after you publish.",
+          "movedPrivate": "Moved to private. It’s no longer shown on your website.",
+          "privateUnavailableTitle": "Private details aren’t available yet",
+          "privateUnavailable": "Public contact details still work. Private ones will appear here once your site is updated.",
+          "title": "Contact details",
+          "hint": "Choose for each one who gets to see it.",
+          "none": "No contact details yet.",
+          "kind": "Type",
+          "kinds": {
+            "email": "Email",
+            "phone": "Phone",
+            "whatsapp": "WhatsApp",
+            "instagram": "Instagram",
+            "linkedin": "LinkedIn",
+            "website": "Website",
+            "url": "Other link"
+          },
+          "placeholders": {
+            "email": "name@example.com",
+            "phone": "+39 02 1234567",
+            "whatsapp": "+39 333 1234567",
+            "instagram": "@yourname",
+            "linkedin": "@yourname",
+            "website": "https://",
+            "url": "https://"
+          },
+          "value": "Contact",
+          "valueNeeded": "Add the contact detail",
+          "problems": {
+            "email": "This doesn’t look like an email address.",
+            "phone": "Use digits, spaces and a leading +, for example +39 02 1234567.",
+            "handle": "Enter a username like @yourname, or a link starting with https://.",
+            "url": "Links start with http:// or https://."
+          },
+          "label": "Label",
+          "labelPlaceholder": "For example Reception",
+          "preferred": "Preferred",
+          "whoSees": "Who sees contact {n}",
+          "public": "Public",
+          "private": "Private",
+          "publicHelp": "Shown on your website after you publish.",
+          "privateHelp": "Only you and your team see this.",
+          "remove": "Remove contact",
+          "add": "Add Contact",
+          "full": "You can add up to {max} contacts.",
+          "websiteTitle": "Website",
+          "website": "Personal website",
+          "websiteHint": "Shown as a link on the person’s page.",
+          "privateTitle": "Private notes",
+          "privateHint": "Never shown on your website. Saved as you type.",
+          "privateState": {
+            "saving": "Saving…",
+            "saved": "Saved",
+            "error": "Not saved. We’ll try again."
+          },
+          "birthday": "Birthday",
+          "birthdayHint": "Only for you. Never shown on your website.",
+          "notes": "Notes",
+          "notesHint": "For example how to reach this person.",
+          "privateDisabledWhy": "Private details aren’t available yet."
+        },
+        "profile": {
+          "photoTitle": "Photo",
+          "noPhoto": "No photo yet",
+          "photoHelper": "Shown next to the name on your site.",
+          "photoHelperEmpty": "Without a photo, the initials are shown.",
+          "changePhoto": "Change Photo",
+          "addPhoto": "Add Photo",
+          "removePhoto": "Remove Photo",
+          "namesTitle": "Name",
+          "firstName": "First name",
+          "lastName": "Last name",
+          "nameRequired": "Required",
+          "displayName": "Shown as",
+          "displayNameHint": "Leave empty to show “{name}”.",
+          "titleSection": "Title and role",
+          "honorific": "Title in {language}",
+          "honorificHint": "For example “Dr.” or “Prof.”",
+          "jobTitle": "Role in {language}",
+          "jobTitleHint": "For example “Psychotherapist”.",
+          "groupsTitle": "Groups",
+          "groupsHelper": "Groups sort people on your site, for example Team or Teachers.",
+          "shortBioTitle": "Short introduction",
+          "shortBio": "Short introduction in {language}",
+          "shortBioHint": "{count} of {max} characters",
+          "shorten": "Shorten Introduction",
+          "shortening": "Shortening…",
+          "shortenHelper": "Writes a short version from the longer text on the About tab.",
+          "shortenNeedsBio": "Write the longer text in {language} on the About tab first.",
+          "shortenUnavailable": "Writing help isn’t available for your site right now.",
+          "shortenTooLong": "The text is too long to shorten in one go. Shorten it a little first.",
+          "shortenFailed": "We couldn’t shorten the text. Please try again.",
+          "suggestionTitle": "Suggestion",
+          "useSuggestion": "Use This",
+          "dismissSuggestion": "No Thanks",
+          "dismiss": "Dismiss",
+          "suggestionUsed": "Suggestion used. You can still edit it."
+        },
+        "about": {
+          "bioTitle": "About",
+          "bio": "Longer introduction in {language}",
+          "bioHint": "Shown on the person’s own page.",
+          "bioReference": "For reference: the text in {language}",
+          "bioLabel": "Longer introduction in {language}",
+          "bioPlaceholder": "Tell visitors who this person is and what they do.",
+          "languagesTitle": "Languages spoken",
+          "languagesHelper": "Visitors can see which languages this person speaks.",
+          "qualificationsTitle": "Qualifications",
+          "qualificationsHint": "Degrees, certificates and memberships.",
+          "qualificationsNone": "No qualifications yet.",
+          "qualificationTitle": "Qualification {n} in {language}",
+          "qualificationTitleNeeded": "Add a title to this qualification",
+          "removeQualification": "Remove qualification {n}",
+          "issuer": "Issued by",
+          "issuedOn": "Issued on",
+          "expiresOn": "Valid until",
+          "expiresBeforeIssued": "The end date is before the start date.",
+          "addQualification": "Add Qualification",
+          "qualificationsFull": "You can add up to {max} qualifications."
+        },
+        "website": {
+          "title": "On the website",
+          "options": {
+            "listed": "Show in lists",
+            "page": "Show in lists and on their own page",
+            "off": "Don’t show on the website",
+            "listedHelp": "Appears on pages that list people, without a page of their own.",
+            "pageHelp": "Also gets a page with the longer introduction.",
+            "offHelp": "Kept in your list, but not visible to visitors."
+          },
+          "explain": {
+            "listed": "This person appears in lists, without a page of their own.",
+            "off": "Visitors can’t see this person anywhere."
+          },
+          "addressTitle": "Page address",
+          "address": "Address in {language}",
+          "addressHint": "The last part of the web address. Letters, numbers and dashes.",
+          "addressHintOther": "Not the same as in {language}. Each language has its own address.",
+          "addressNeeded": "Add an address for the page",
+          "useSuggestion": "Use “{slug}”",
+          "redirectNote": "If you change the address later, the old one keeps working and leads to the new one."
+        }
+      }
+    }
+  },
+  "app": {
+    "ui": {
+      "personPicker": {
+        "noneSingle": "Nobody chosen yet",
+        "none": "Nobody chosen yet",
+        "drag": "Move {name}, position {position} of {total}",
+        "archived": "Archived",
+        "remove": "Remove {name}",
+        "orderHint": "The first person is the {primary}. Drag to change the order.",
+        "change": "Change",
+        "choose": "Choose Person",
+        "add": "Add Person",
+        "full": "You can choose up to {max} people.",
+        "createTitle": "New person",
+        "title": "Choose people",
+        "search": "Search people",
+        "searchPlaceholder": "Search by name",
+        "retry": "Try again",
+        "loadFailed": "We couldn’t load the people. Please try again.",
+        "noMatch": "No one found for “{query}”.",
+        "empty": "No people yet.",
+        "select": "Choose {name}",
+        "addNew": "Add New Person",
+        "done": "Done, {count, plural, one {# person chosen} other {# people chosen}}",
+        "close": "Close",
+        "createFailed": "We couldn’t add this person. Please try again.",
+        "createIntro": "Add a name now. You can fill in the rest later under People.",
+        "firstName": "First name",
+        "lastName": "Last name",
+        "namesNeeded": "Add a first and a last name to continue.",
+        "back": "Back",
+        "creating": "Adding…",
+        "create": "Add Person"
+      }
+    }
+  }
+}

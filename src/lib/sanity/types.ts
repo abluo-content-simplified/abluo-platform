@@ -8,6 +8,7 @@ import type { SupportedLocale as _SupportedLocale } from '@/lib/i18n/locales'
 export type { SupportedLocale } from '@/lib/i18n/locales'
 import type { IconName } from '@/components/icons/registry'
 import type { CatalogueNavTarget } from '@/lib/modules/catalogue/nav-target'
+import type { PersonPublic } from '@/lib/modules/people/projection'
 // Local alias so references later in this file resolve correctly.
 type SupportedLocale = _SupportedLocale
 
@@ -907,6 +908,10 @@ export interface Event {
   registrationLabel?: string
   priceOptions?: EventPriceOption[]
   hosts?: EventHost[]
+  /** ADR-043 — hosts from the People module (archived ones included, off/anonymised not). Preferred over `hosts`. */
+  hostPeople?: PersonPublic[] | null
+  /** Stored references, public or not: > 0 means never fall back to the inline `hosts`. */
+  hostPeopleCount?: number | null
 }
 
 /** One price row on an event (e.g. "Members — €30"). Labels resolved by GROQ. */
@@ -981,6 +986,10 @@ export interface Post {
   /** Computed in GROQ from body word count. Minimum 1. */
   readingTimeMinutes?: number
   author?: PostAuthor
+  /** ADR-043 — authors from the People module, first = main author. Preferred over `author`. */
+  authors?: PersonPublic[] | null
+  /** Stored references, public or not: > 0 means never fall back to `author`. */
+  authorCount?: number | null
   /** Stable category keys as stored. Resolve with resolveCategories(). */
   /** Raw `categories` — stable keys, or references while blogCategory lives. */
   categoryKeys?: (string | { _ref?: string; _type?: string } | null)[]
@@ -1307,6 +1316,14 @@ export interface TeamSection {
   subtitle?: string
   intro?: PortableTextContent
   members?: TeamMember[]
+  /** ADR-043 — hand-picked people (listing rule: archived, off, anonymised left out), editor's order. */
+  people?: PersonPublic[] | null
+  /** Stored references, public or not: > 0 means never fall back to `members`. */
+  peopleCount?: number | null
+  /** One People group key; the group's people in the site-wide order. */
+  groupFilter?: string | null
+  /** Computed only when no person is hand-picked and `groupFilter` is set. */
+  groupPeople?: PersonPublic[] | null
 }
 
 export interface TextSection {

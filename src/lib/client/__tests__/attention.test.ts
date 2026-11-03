@@ -69,12 +69,12 @@ describe('attention rules', () => {
   it('missing alt text and invitations', () => {
     expect(missingAltTextRule(0, '/media')).toBeNull()
     expect(missingAltTextRule(3, '/media')?.params).toEqual({ count: 3 })
-    const inv = invitationRules([{ status: 'invited' }, { status: 'invited' }, { status: 'expired' }, { status: 'active' }], '/people')
+    const inv = invitationRules([{ status: 'invited' }, { status: 'invited' }, { status: 'expired' }, { status: 'active' }], '/users')
     expect(inv.map((i) => [i.id, i.severity, i.params.count])).toEqual([
       ['expiredInvites', 'warn', 1],
       ['pendingInvites', 'info', 2],
     ])
-    expect(invitationRules([{ status: 'active' }], '/people')).toEqual([])
+    expect(invitationRules([{ status: 'active' }], '/users')).toEqual([])
   })
 })
 

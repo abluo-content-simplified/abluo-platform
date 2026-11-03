@@ -12,6 +12,8 @@ import { canDeletePublished, canOpenPublishedPost } from '@/lib/api/post-lifecyc
 import { getAiFeatureFlags } from '@/lib/ai/features'
 import { getViewerFirstName } from '@/lib/api/viewer-profile'
 import { taxonomyWritePermission } from '@/lib/taxonomy/permissions'
+import { searchPersons } from '@/lib/api/persons'
+import { PEOPLE_READ_PERMISSION, PEOPLE_WRITE_PERMISSION } from '@/lib/api/persons-lifecycle'
 
 /**
  * The guided creation wizard for one blog-post draft (ADR-025 · S2c):
@@ -49,6 +51,7 @@ function emptyPostDraft(): Awaited<ReturnType<typeof getPostDraft>> {
     cta: null,
     gallery: null,
     faqSets: [],
+    authors: [],
     faqTitle: {},
     faqSubtitle: {},
     hasChanges: false,
@@ -95,6 +98,15 @@ export default async function WriteDraftPage({
   }
 
   const firstName = await getViewerFirstName(ctx)
+  // ADR-043: the authors field shows only with the People module installed and people.person.read.
+  // The people already on the draft are resolved here so the picker can name them.
+  const people =
+    grant.enabledModuleIds.includes('people') && grant.permissions.includes(PEOPLE_READ_PERMISSION)
+      ? {
+          initial: draft.authors.length ? await searchPersons(ctx, grant.projectId, { ids: draft.authors, limit: 1 }).then((items) => draft.authors.flatMap((id) => items.filter((i) => i.id === id))).catch(() => []) : [],
+          canCreate: grant.permissions.includes(PEOPLE_WRITE_PERMISSION),
+        }
+      : undefined
   const snapshot: DraftSnapshot = { ...draft, body: draft.body as Record<string, PortableTextBlock[]> }
 
   return (
@@ -109,6 +121,7 @@ export default async function WriteDraftPage({
         canAddCategory: grant.permissions.includes(taxonomyWritePermission('blog')),
         galleries: grant.enabledModuleIds.includes('gallery') ? site.galleries : undefined,
         faqSets: grant.enabledModuleIds.includes('faq') ? site.faqSets : undefined,
+        people,
         faqWrite: grant.enabledModuleIds.includes('faq') && grant.permissions.includes('faq.set.write'),
       }}
       homeHref={dashboardHomeHref(projectSlug)}

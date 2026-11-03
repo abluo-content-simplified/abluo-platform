@@ -31,6 +31,8 @@ import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
 import { DateTimePicker } from '@/components/app/ui/DateTimePicker'
 import { Notice } from '@/components/app/ui/Notice'
 import { TermPicker } from '@/components/client/taxonomy/TermPicker'
+import type { PersonPickerPerson } from '@/components/app/ui/PersonPicker'
+import { PersonPickerField } from '@/components/client/persons/PersonPickerField'
 import { editingZone } from '@/components/app/lifecycle/zoned-time'
 
 const TEXT_FIELDS = ['title', 'shortDescription', 'location', 'registrationLabel'] as const
@@ -48,6 +50,8 @@ type Values = {
   place: string
   /** ADR-033 Amendment J — category keys. */
   categories: string[]
+  /** ADR-043 — hosts from the People module (person ids, in order). */
+  hostPeople: string[]
 }
 const CHOICES = ['visibility', 'eventStatus', 'attendanceMode', 'place'] as const
 
@@ -66,6 +70,7 @@ function valuesOf(e: EventSnapshot): Values {
     attendanceMode: e.attendanceMode,
     place: e.place,
     categories: [...e.categories],
+    hostPeople: [...e.hostPeople],
   }
 }
 
@@ -84,6 +89,7 @@ function diff(from: Values, to: Values, locales: string[]): Record<string, unkno
   if (from.url.trim() !== to.url.trim()) set.registrationUrl = to.url.trim()
   for (const f of CHOICES) if (from[f] !== to[f]) set[f] = to[f]
   if (from.categories.join('\n') !== to.categories.join('\n')) set.categories = to.categories
+  if (from.hostPeople.join('\n') !== to.hostPeople.join('\n')) set.hostPeople = to.hostPeople
   return set
 }
 
@@ -102,7 +108,7 @@ function ChoiceChips<V extends string>({ label, value, options, onChange, disabl
  * "Publish changes" updates the website. The rest of an event (full text,
  * programme, prices, photos, streaming) is kept as it is and edited by Abluo.
  */
-export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddCategory = false }: { projectSlug: string; initial: EventSnapshot; canWrite: boolean; canDelete: boolean; /** Holds events.taxonomy.write: the category field offers "+ Add category" (and shows even with no category yet). */ canAddCategory?: boolean }) {
+export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddCategory = false, people }: { projectSlug: string; initial: EventSnapshot; canWrite: boolean; canDelete: boolean; /** Holds events.taxonomy.write: the category field offers "+ Add category" (and shows even with no category yet). */ canAddCategory?: boolean; /** ADR-043 — present only with the People module and people.person.read: the hosts field. `initial` = the hosts already on the event, named; `canCreate` = people.person.write. */ people?: { initial: PersonPickerPerson[]; canCreate: boolean } }) {
   const t = useTranslations('clientDashboard.events.editor')
   const te = useTranslations('clientDashboard.events.errors')
   const ui = useLocale()
@@ -114,6 +120,8 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
   const base = `/${projectSlug}/agenda`
 
   const [values, setValues] = useState<Values>(() => valuesOf(initial))
+  // The people the hosts picker shows (names of people added here are kept for the session).
+  const [knownPeople, setKnownPeople] = useState<PersonPickerPerson[]>(people?.initial ?? [])
   const saved = useRef<Values>(valuesOf(initial))
   /** The last saved values, as state (render reads this; the save queue reads the ref). */
   const [savedValues, setSavedValues] = useState<Values>(() => valuesOf(initial))
@@ -483,6 +491,37 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
             disabled={disabled}
           />
           <p className="text-sm leading-5 text-muted-foreground">{t('categories.helper')}</p>
+        </section>
+      ) : null}
+
+      {/* Hosts — ADR-043: people from the People list; the Hosts capability (ADR-038 D6) governs it */}
+      {caps.hosts && (people || initial.legacyHosts.length > 0) ? (
+        <section aria-labelledby="event-hosts" className="space-y-3">
+          <h2 id="event-hosts" className="text-[1.0625rem] leading-7 font-semibold text-foreground">
+            {t('hosts.title')}
+          </h2>
+          {people ? (
+            <>
+              <PersonPickerField
+                projectSlug={projectSlug}
+                label={t('hosts.title')}
+                max={50}
+                canCreate={people.canCreate && canWrite}
+                disabled={disabled}
+                value={values.hostPeople.map((pid) => knownPeople.find((p) => p.id === pid) ?? { id: pid, name: t('hosts.unknownPerson') })}
+                onChange={(next) => {
+                  setKnownPeople((k) => [...next, ...k.filter((p) => !next.some((n) => n.id === p.id))])
+                  setValues((v) => ({ ...v, hostPeople: next.map((p) => p.id) }))
+                }}
+              />
+              <p className="text-sm leading-5 text-muted-foreground">{t('hosts.helper')}</p>
+            </>
+          ) : null}
+          {initial.legacyHosts.length > 0 ? (
+            <Notice tone="info" title={t('hosts.legacyTitle')}>
+              {t('hosts.legacyBody', { names: initial.legacyHosts.map((h) => (h.role ? `${h.name} (${h.role})` : h.name)).join(', ') })}
+            </Notice>
+          ) : null}
         </section>
       ) : null}
 

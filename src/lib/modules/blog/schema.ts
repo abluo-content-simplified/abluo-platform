@@ -3,6 +3,7 @@ import { CategorySelectInput } from '@/lib/sanity/fields/CategorySelectInput'
 import { PUBLISHING_GROUP, publishingStatusField, publishOnField, unpublishOnField, archivedFields } from '@/lib/sanity/fields/publishing'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/lib/sanity/fields/shared'
 import { faqSetsField } from '@/lib/modules/faq/fields'
+import { peopleRefsField } from '@/lib/modules/people/fields'
 
 // ── Blog module — Sanity schema types ─────────────────────────────────────────
 //
@@ -533,6 +534,16 @@ const postType = defineType({
       to: [{ type: 'postAuthor' }],
       group: 'relations',
       options: { filter: scopedRef },
+    }),
+    // ADR-043 D5 — additive. Authors from the People module; the FIRST is the
+    // main author (byline, Person JSON-LD). While empty, the old single
+    // `author` (postAuthor) above is read as a fallback (ADR-043 D10).
+    peopleRefsField({
+      name: 'authors',
+      title: 'Authors',
+      group: 'relations',
+      description: 'Optional. People from this website’s People list; the first is the main author.',
+      max: 10,
     }),
     defineField({
       name: 'categories',

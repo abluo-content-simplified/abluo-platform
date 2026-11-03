@@ -14,6 +14,8 @@ import { FaqPlacement } from '@/components/faq/FaqPlacement'
 import { placementFaqGroups } from '@/lib/faq/items'
 import { getFaqMessages } from '@/lib/i18n/faq-messages'
 import { multiline } from '@/lib/multiline-text'
+import { PersonByline } from '@/components/people/PersonByline'
+import { namedPeople } from '@/lib/modules/people/website'
 
 /**
  * The blog post article — everything between the site header and footer on a
@@ -37,6 +39,12 @@ export interface PostArticleProps {
   showFaq?: boolean
   /** End-of-post call to action (rendered by the caller: `<PostCallToAction …/>`). */
   callToAction?: React.ReactNode
+  /**
+   * ADR-043 — present only while the People module is active for this website.
+   * Absent = the legacy `author` byline. `segment` is the profile base path in
+   * this language (null = no profile pages), so names link to a person's page.
+   */
+  people?: { segment: string | null }
 }
 
 export function PostArticle({
@@ -50,6 +58,7 @@ export function PostArticle({
   showGallery,
   showFaq = false,
   callToAction,
+  people,
 }: PostArticleProps) {
   const coverSrc = imageUrl(post.coverImage, 1600)
   const coverSrcSet = imageSrcSet(post.coverImage, [800, 1200, 1600, 2400])
@@ -68,6 +77,15 @@ export function PostArticle({
     ? placementFaqGroups({ faqSets: post.faqSets, faqSetCount: post.faqSetCount, legacyItems: post.legacyFaq })
     : []
   const faqHeading = post.faqTitle?.trim() || getFaqMessages(locale).defaultHeading
+  // ADR-043 — stored author references win over the legacy `author`, even if
+  // none of them is publicly renderable (never silently fall back to the old copy).
+  const authors = namedPeople(post.authors, post.authorCount, !!people)
+  const dateLine = (
+    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+      {publishedDate}
+      {post.readingTimeMinutes && ` · ${post.readingTimeMinutes} min read`}
+    </p>
+  )
   return (
     <div style={{ backgroundColor: 'var(--color-background)' }}>
       <div className="mx-auto max-w-[780px] px-5 py-12 md:px-8">
@@ -114,6 +132,22 @@ export function PostArticle({
 
         {/* ── Author + date + reading time ──────────────────────── */}
         <SlideUp delay={0.12} duration={0.5}>
+          {authors ? (
+            <div className="mb-10 pb-8" style={{ borderBottom: '1px solid var(--color-border)' }}>
+              {authors.length > 0 ? (
+                <PersonByline
+                  people={authors}
+                  locale={locale}
+                  links={{ siteBase, segment: people?.segment ?? null }}
+                  variant="post"
+                >
+                  {dateLine}
+                </PersonByline>
+              ) : (
+                dateLine
+              )}
+            </div>
+          ) : (
           <div
             className="flex items-center gap-3 mb-10 pb-8"
             style={{ borderBottom: '1px solid var(--color-border)' }}
@@ -136,12 +170,10 @@ export function PostArticle({
                   )}
                 </p>
               )}
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                {publishedDate}
-                {post.readingTimeMinutes && ` · ${post.readingTimeMinutes} min read`}
-              </p>
+              {dateLine}
             </div>
           </div>
+          )}
         </SlideUp>
 
         {/* ── Cover image ───────────────────────────────────────── */}

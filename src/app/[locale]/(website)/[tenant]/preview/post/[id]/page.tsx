@@ -12,6 +12,7 @@ import { resolveCategoriesFor, categoryKeysOf, charsPerMinute } from '@/lib/modu
 import type { Post, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import { SlugMapProvider } from '@/components/SlugMapContext'
 import { PostArticle } from '@/components/blog/PostArticle'
+import { isPeopleModuleOn, profileSegmentFor } from '@/lib/modules/people/website'
 import { asUrlProjectSegment, unbrand } from '@/lib/tenancy/ids'
 import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { siteBasePath } from '@/lib/sanity/href'
@@ -117,6 +118,7 @@ export default async function DraftPostPreviewPage({ params, searchParams }: Pag
         backUrl={siteBase}
         showGallery={showGallery}
         showFaq={showFaq}
+        people={isPeopleModuleOn(enabledModuleIds) ? { segment: profileSegmentFor(moduleConfig, locale) } : undefined}
       />
     </SlugMapProvider>
   )

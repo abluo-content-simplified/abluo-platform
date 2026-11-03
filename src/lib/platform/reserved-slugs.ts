@@ -68,7 +68,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'settings',
   'support',   // admin Support Tickets and the client's Support page (/<tenant>/support)
   'translations',
-  'users',
+  'users',   // admin Users, and the client's Users page (/<tenant>/users, was People; ADR-043)
   'whats-new',
 
   // ── Client dashboard — top level ──────────────────────────────────────────

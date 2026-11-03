@@ -1,0 +1,28 @@
+{
+  "clientDashboard": {
+    "discover": {
+      "modules": {
+        "people": "Führe dein Team, deine Lehrkräfte und Autor:innen in einer Liste und zeig sie überall dort, wo sie auf deiner Website hingehören."
+      }
+    },
+    "persons": {
+      "errors": {
+        "forbidden": "Dafür hast du keine Berechtigung.",
+        "not_found": "Diese Person gibt es nicht mehr.",
+        "invalid_field": "Das kann hier nicht geändert werden.",
+        "invalid_value": "Etwas stimmt nicht. Prüf deine Eingabe und versuch es noch einmal.",
+        "too_large": "Das ist zu viel auf einmal.",
+        "conflict": "Jemand anderes hat diese Person inzwischen geändert. Lade neu, um die aktuelle Version zu sehen.",
+        "in_use": "Diese Person wird noch irgendwo angezeigt. Entferne sie zuerst dort.",
+        "archive_first": "Archiviere diese Person, bevor du sie löschst.",
+        "archived": "Diese Person ist archiviert. Stell sie wieder her, um etwas zu ändern.",
+        "anonymised": "Diese Person wurde anonymisiert und kann nicht mehr geändert werden.",
+        "missing_name": "Vor- und Nachname sind Pflichtfelder.",
+        "missing_slug": "Eine Person mit eigener Seite braucht eine Webadresse in der Hauptsprache.",
+        "slug_taken": "Diese Webadresse wird schon von einer anderen Person verwendet.",
+        "private_unavailable": "Private Angaben können noch nicht gespeichert werden. Alles andere funktioniert.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuch es noch einmal."
+      }
+    }
+  }
+}

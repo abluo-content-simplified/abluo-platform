@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-26T17:19:34.074Z",
+  "generatedAt": "2026-11-03T11:36:54.448Z",
   "usage": {
     "button": [
       "src/app/(platform)/(auth)/forgot-password/page.tsx",
@@ -13,12 +13,16 @@
       "src/app/[locale]/(admin)/projects/page.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/error.tsx",
       "src/app/[locale]/(client)/[tenant]/faq-sets/error.tsx",
+      "src/app/[locale]/(client)/[tenant]/people/error.tsx",
       "src/app/[locale]/(client)/sites/page.tsx",
       "src/components/admin/analytics/RefreshNowButton.tsx",
       "src/components/admin/backlog/BacklogBrowser.tsx",
       "src/components/admin/backlog/BacklogForm.tsx",
       "src/components/admin/partners/PartnersBrowser.tsx",
+      "src/components/admin/projects/BillingAlertsList.tsx",
+      "src/components/admin/projects/BillingCardView.tsx",
       "src/components/admin/projects/GoogleSetupPanel.tsx",
+      "src/components/admin/projects/InviteOwnerCard.tsx",
       "src/components/admin/projects/NewProjectWizard.tsx",
       "src/components/admin/projects/ProjectsBrowser.tsx",
       "src/components/admin/projects/ProvisioningRunPanel.tsx",
@@ -35,16 +39,22 @@
       "src/components/app/lifecycle/UnpublishDateSheet.tsx",
       "src/components/app/ui/AttachmentPicker.tsx",
       "src/components/app/ui/CodeInput.tsx",
+      "src/components/app/ui/CountryPicker.tsx",
+      "src/components/app/ui/DatePicker.tsx",
       "src/components/app/ui/DateRangePicker.tsx",
       "src/components/app/ui/DateTimePicker.tsx",
       "src/components/app/ui/MessageComposer.tsx",
       "src/components/app/ui/Notice.tsx",
+      "src/components/app/ui/PersonPicker.tsx",
       "src/components/app/ui/ScreenshotGrid.tsx",
+      "src/components/billing/BillingProfilePanel.tsx",
       "src/components/client/access/AccessGroupsBrowser.tsx",
       "src/components/client/access/AccessScreen.tsx",
       "src/components/client/access/access-bits.tsx",
       "src/components/client/account/AvatarEditor.tsx",
       "src/components/client/account/NameEditor.tsx",
+      "src/components/client/billing/BillingNotice.tsx",
+      "src/components/client/billing/BillingScreen.tsx",
       "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/catalogue/ChangeTypeSheet.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
@@ -66,6 +76,7 @@
       "src/components/client/create/steps/CoverStep.tsx",
       "src/components/client/create/steps/FaqStep.tsx",
       "src/components/client/create/steps/ReviewStep.tsx",
+      "src/components/client/discover/DiscoverModules.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
       "src/components/client/documents/DocumentsBrowser.tsx",
       "src/components/client/editor/BodyEditor.tsx",
@@ -87,20 +98,26 @@
       "src/components/client/gallery/wizard/PhotoAddStep.tsx",
       "src/components/client/gallery/wizard/PhotoDescribeStep.tsx",
       "src/components/client/gallery/wizard/kit.tsx",
+      "src/components/client/home/BillingAttentionCard.tsx",
       "src/components/client/home/SetupChecklist.tsx",
       "src/components/client/media/BatchSheet.tsx",
       "src/components/client/media/MediaLibraryPicker.tsx",
       "src/components/client/media/MediaLibraryScreen.tsx",
       "src/components/client/media/MediaPhotoSheet.tsx",
-      "src/components/client/people/PeopleBrowser.tsx",
-      "src/components/client/people/PeopleSheets.tsx",
+      "src/components/client/persons/NewPersonDialog.tsx",
+      "src/components/client/persons/PeopleBrowser.tsx",
+      "src/components/client/persons/PeopleCards.tsx",
+      "src/components/client/persons/PeopleTable.tsx",
+      "src/components/client/persons/PersonEditor.tsx",
+      "src/components/client/persons/PersonEditorTabs.tsx",
       "src/components/client/posts/PostActivitySheet.tsx",
       "src/components/client/posts/PostSheets.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
       "src/components/client/posts/post-bits.tsx",
-      "src/components/client/settings/SettingsForm.tsx",
+      "src/components/client/settings/FormNotifications.tsx",
       "src/components/client/support/SupportAccessNotice.tsx",
       "src/components/client/support/SupportBanner.tsx",
+      "src/components/client/support/SupportReplyNotice.tsx",
       "src/components/client/taxonomy/InlineAdd.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TermPicker.tsx",
@@ -108,18 +125,27 @@
       "src/components/client/tickets/NewRequestForm.tsx",
       "src/components/client/tickets/SupportTicketsBrowser.tsx",
       "src/components/client/tickets/TicketConversation.tsx",
+      "src/components/client/users/UsersBrowser.tsx",
+      "src/components/client/users/UsersSheets.tsx",
       "src/components/client/whats-new/WhatsNew.tsx",
       "src/components/system/NewVersionNotice.tsx"
     ],
     "text-input": [
       "src/components/admin/backlog/BacklogForm.tsx",
       "src/components/admin/partners/PartnersBrowser.tsx",
+      "src/components/admin/projects/BillingAlertsList.tsx",
+      "src/components/admin/projects/BillingCardView.tsx",
+      "src/components/admin/projects/InviteOwnerCard.tsx",
       "src/components/admin/projects/NewProjectWizard.tsx",
       "src/components/admin/projects/ProvisioningRunPanel.tsx",
       "src/components/admin/whats-new/AnnouncementsAdmin.tsx",
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
+      "src/components/app/ui/AddressAutocomplete.tsx",
+      "src/components/app/ui/CountryPicker.tsx",
       "src/components/app/ui/MessageComposer.tsx",
+      "src/components/app/ui/PersonPicker.tsx",
       "src/components/auth/auth-ui.tsx",
+      "src/components/billing/BillingProfilePanel.tsx",
       "src/components/client/access/AccessGroupsBrowser.tsx",
       "src/components/client/access/access-bits.tsx",
       "src/components/client/account/NameEditor.tsx",
@@ -141,13 +167,15 @@
       "src/components/client/gallery/wizard/kit.tsx",
       "src/components/client/media/BatchSheet.tsx",
       "src/components/client/media/PhotoCard.tsx",
-      "src/components/client/people/PeopleSheets.tsx",
-      "src/components/client/settings/SettingsForm.tsx",
+      "src/components/client/persons/NewPersonDialog.tsx",
+      "src/components/client/persons/PersonEditorTabs.tsx",
+      "src/components/client/settings/FormNotifications.tsx",
       "src/components/client/taxonomy/InlineAdd.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TermPicker.tsx",
       "src/components/client/taxonomy/TermSheet.tsx",
-      "src/components/client/tickets/NewRequestForm.tsx"
+      "src/components/client/tickets/NewRequestForm.tsx",
+      "src/components/client/users/UsersSheets.tsx"
     ],
     "field-label": [
       "src/components/admin/backlog/BacklogForm.tsx",
@@ -171,7 +199,7 @@
       "src/components/client/faq/FaqQuestionCard.tsx",
       "src/components/client/media/BatchSheet.tsx",
       "src/components/client/media/PhotoCard.tsx",
-      "src/components/client/settings/SettingsForm.tsx",
+      "src/components/client/persons/PersonEditorTabs.tsx",
       "src/components/client/taxonomy/InlineAdd.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TermPicker.tsx",
@@ -179,30 +207,35 @@
     ],
     "segmented-control": [
       "src/components/admin/lab/DemoCanvas.tsx",
+      "src/components/admin/projects/BillingCardView.tsx",
       "src/components/admin/projects/SupportRolePicker.tsx",
       "src/components/admin/whats-new/AnnouncementsAdmin.tsx",
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
       "src/components/app/ui/MessageComposer.tsx",
-      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/billing/BillingProfilePanel.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/ItemEditor.tsx",
       "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/create/LanguageChoices.tsx",
       "src/components/client/create/PreviewPane.tsx",
       "src/components/client/create/steps/FaqStep.tsx",
+      "src/components/client/documents/DocumentEditor.tsx",
       "src/components/client/editor/BodyEditor.tsx",
       "src/components/client/events/EventEditor.tsx",
       "src/components/client/faq/FaqSetEditor.tsx",
       "src/components/client/faq/post/FaqPickSheet.tsx",
       "src/components/client/gallery/GallerySteps.tsx",
       "src/components/client/media/MediaGrid.tsx",
-      "src/components/client/media/PhotoCard.tsx"
+      "src/components/client/media/PhotoCard.tsx",
+      "src/components/client/persons/PersonEditorTabs.tsx"
     ],
     "tabs": [
       "src/components/client/documents/DocumentsBrowser.tsx",
+      "src/components/client/persons/PersonEditor.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx"
     ],
     "drag-grip": [
+      "src/components/app/ui/PersonPicker.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
       "src/components/client/catalogue/item-fields.tsx",
@@ -210,7 +243,8 @@
       "src/components/client/create/steps/FaqStep.tsx",
       "src/components/client/documents/DocumentPagesRecap.tsx",
       "src/components/client/faq/FaqQuestionCard.tsx",
-      "src/components/client/settings/SettingsForm.tsx",
+      "src/components/client/persons/PeopleCards.tsx",
+      "src/components/client/persons/PeopleTable.tsx",
       "src/components/client/taxonomy/TermSection.tsx"
     ],
     "pill": [
@@ -221,6 +255,7 @@
       "src/components/admin/backlog/backlog-bits.tsx",
       "src/components/admin/lab/LabIndex.tsx",
       "src/components/admin/partners/PartnersBrowser.tsx",
+      "src/components/admin/projects/BillingAlertsList.tsx",
       "src/components/admin/projects/GoogleSetupPanel.tsx",
       "src/components/admin/projects/ProjectStatusPill.tsx",
       "src/components/admin/projects/ProjectsBrowser.tsx",
@@ -234,7 +269,10 @@
       "src/components/admin/whats-new/AnnouncementsAdmin.tsx",
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
       "src/components/app/lifecycle/LifecycleBadge.tsx",
+      "src/components/app/ui/BillingStatusPill.tsx",
+      "src/components/app/ui/PersonPicker.tsx",
       "src/components/client/access/AccessGroupsBrowser.tsx",
+      "src/components/client/billing/BillingScreen.tsx",
       "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
@@ -262,19 +300,27 @@
       "src/components/client/home/SiteStatus.tsx",
       "src/components/client/media/MediaPhotoSheet.tsx",
       "src/components/client/media/MediaTable.tsx",
-      "src/components/client/people/PeopleSheets.tsx",
-      "src/components/client/people/PeopleTable.tsx",
-      "src/components/client/people/people-bits.tsx",
+      "src/components/client/persons/PeopleTable.tsx",
+      "src/components/client/persons/person-bits.tsx",
       "src/components/client/posts/PostsTable.tsx",
       "src/components/client/taxonomy/TermSection.tsx",
       "src/components/client/tickets/SupportTicketsBrowser.tsx",
-      "src/components/client/tickets/ticket-bits.tsx"
+      "src/components/client/tickets/ticket-bits.tsx",
+      "src/components/client/users/UsersSheets.tsx",
+      "src/components/client/users/UsersTable.tsx",
+      "src/components/client/users/users-bits.tsx"
+    ],
+    "billing-status-pill": [
+      "src/components/admin/projects/BillingCardView.tsx",
+      "src/components/admin/projects/ProjectsBrowser.tsx",
+      "src/components/client/billing/BillingScreen.tsx"
     ],
     "checkbox": [
       "src/components/admin/projects/NewProjectWizard.tsx",
       "src/components/admin/whats-new/AnnouncementsAdmin.tsx",
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
       "src/components/app/ui/CheckboxCard.tsx",
+      "src/components/app/ui/PersonPicker.tsx",
       "src/components/app/ui/list/ContentCard.tsx",
       "src/components/app/ui/list/DataTable.tsx",
       "src/components/app/ui/list/ListRow.tsx",
@@ -283,32 +329,41 @@
       "src/components/client/connections/AffiliatePrograms.tsx",
       "src/components/client/connections/ConsentScreen.tsx",
       "src/components/client/gallery/GalleryCards.tsx",
-      "src/components/client/people/PeopleSheets.tsx",
+      "src/components/client/persons/PersonAnonymiseDialog.tsx",
+      "src/components/client/persons/PersonEditorTabs.tsx",
       "src/components/client/posts/PostCards.tsx",
-      "src/components/client/settings/SettingsForm.tsx"
+      "src/components/client/users/UsersSheets.tsx"
     ],
     "checkbox-card": [
       "src/components/client/access/access-bits.tsx",
       "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
-      "src/components/client/faq/post/FaqPublishChoice.tsx"
+      "src/components/client/faq/post/FaqPublishChoice.tsx",
+      "src/components/client/users/UsersBrowser.tsx"
     ],
     "count-badge": [
-      "src/components/app/shell/AppSidebar.tsx",
+      "src/components/app/ui/SidebarGroup.tsx",
+      "src/components/app/ui/SidebarLink.tsx",
+      "src/components/app/ui/TabBarButton.tsx",
+      "src/components/client/ClientSidebar.tsx",
       "src/components/client/catalogue/catalogue-ui.tsx",
       "src/components/client/whats-new/WhatsNew.tsx"
     ],
     "switch": [
+      "src/components/app/shell/AppQuickAddSwitch.tsx",
       "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/editor/BodyEditor.tsx"
     ],
     "toast": [
       "src/components/admin/backlog/BacklogBrowser.tsx",
       "src/components/admin/partners/PartnersBrowser.tsx",
+      "src/components/admin/projects/BillingAlertsList.tsx",
+      "src/components/admin/projects/BillingCardView.tsx",
       "src/components/admin/tickets/AdminTicketView.tsx",
       "src/components/admin/whats-new/AnnouncementsAdmin.tsx",
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
       "src/components/client/access/AccessScreen.tsx",
+      "src/components/client/billing/BillingScreen.tsx",
       "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/ItemEditor.tsx",
@@ -324,10 +379,12 @@
       "src/components/client/home/ContinueEditing.tsx",
       "src/components/client/media/MediaLibraryScreen.tsx",
       "src/components/client/media/UploadsProvider.tsx",
-      "src/components/client/people/PeopleBrowser.tsx",
+      "src/components/client/persons/PeopleBrowser.tsx",
+      "src/components/client/persons/PersonEditor.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
-      "src/components/client/taxonomy/TaxonomyManager.tsx"
+      "src/components/client/taxonomy/TaxonomyManager.tsx",
+      "src/components/client/users/UsersBrowser.tsx"
     ],
     "empty-state": [
       "src/app/[locale]/(admin)/analytics/[slug]/page.tsx",
@@ -349,6 +406,7 @@
       "src/components/admin/backlog/BacklogBrowser.tsx",
       "src/components/admin/lab/LabIndex.tsx",
       "src/components/admin/partners/PartnersBrowser.tsx",
+      "src/components/admin/projects/BillingCardView.tsx",
       "src/components/admin/projects/ProjectsBrowser.tsx",
       "src/components/admin/tickets/AdminTicketsBrowser.tsx",
       "src/components/admin/translations/TranslationsBrowser.tsx",
@@ -357,6 +415,7 @@
       "src/components/admin/whats-new/AnnouncementsAdmin.tsx",
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
       "src/components/app/ui/AttentionList.tsx",
+      "src/components/app/ui/PersonPicker.tsx",
       "src/components/client/access/AccessGroupsBrowser.tsx",
       "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
@@ -365,6 +424,7 @@
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
       "src/components/client/connections/ConsentScreen.tsx",
       "src/components/client/create/steps/FaqStep.tsx",
+      "src/components/client/discover/DiscoverModules.tsx",
       "src/components/client/documents/DocumentPagesRecap.tsx",
       "src/components/client/documents/DocumentsBrowser.tsx",
       "src/components/client/events/EventList.tsx",
@@ -375,12 +435,13 @@
       "src/components/client/gallery/GalleryDetail.tsx",
       "src/components/client/gallery/GalleryList.tsx",
       "src/components/client/media/MediaLibraryScreen.tsx",
-      "src/components/client/people/PeopleBrowser.tsx",
+      "src/components/client/persons/PeopleBrowser.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
-      "src/components/client/settings/SettingsForm.tsx",
+      "src/components/client/settings/FormNotifications.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TermSection.tsx",
-      "src/components/client/tickets/SupportTicketsBrowser.tsx"
+      "src/components/client/tickets/SupportTicketsBrowser.tsx",
+      "src/components/client/users/UsersBrowser.tsx"
     ],
     "back-link": [
       "src/app/[locale]/(admin)/users/[key]/page.tsx",
@@ -393,6 +454,7 @@
       "src/components/client/events/NewEventForm.tsx",
       "src/components/client/faq/FaqSetEditor.tsx",
       "src/components/client/gallery/GalleryDetail.tsx",
+      "src/components/client/persons/PersonEditor.tsx",
       "src/components/client/tickets/NewRequestForm.tsx",
       "src/components/client/tickets/TicketConversation.tsx"
     ],
@@ -414,13 +476,32 @@
       "src/app/(platform)/(auth)/mfa/page.tsx"
     ],
     "tab-bar-button": [
+      "src/components/admin/AdminSidebar.tsx",
       "src/components/client/ClientSidebar.tsx"
     ],
     "picker-button": [
+      "src/components/app/ui/CountryPicker.tsx",
       "src/components/client/ProjectSwitcher.tsx"
     ],
     "sidebar-row-button": [
       "src/components/client/whats-new/WhatsNew.tsx"
+    ],
+    "sidebar-link": [
+      "src/components/app/shell/AppSidebar.tsx"
+    ],
+    "sidebar-group": [
+      "src/components/app/shell/AppSidebar.tsx"
+    ],
+    "rail-item": [
+      "src/components/app/shell/AppSidebar.tsx",
+      "src/components/app/ui/RailFlyout.tsx",
+      "src/components/client/whats-new/WhatsNew.tsx"
+    ],
+    "rail-flyout": [
+      "src/components/app/shell/AppSidebar.tsx"
+    ],
+    "sidebar-collapse-toggle": [
+      "src/components/app/shell/AppSidebar.tsx"
     ],
     "page-header": [
       "src/app/[locale]/(admin)/analytics/[slug]/page.tsx",
@@ -450,11 +531,13 @@
       "src/components/admin/users/UserDetail.tsx",
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
       "src/components/client/access/AccessScreen.tsx",
+      "src/components/client/billing/BillingScreen.tsx",
       "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/ItemEditor.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
+      "src/components/client/discover/DiscoverModules.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
       "src/components/client/documents/DocumentsBrowser.tsx",
       "src/components/client/events/EventEditor.tsx",
@@ -465,13 +548,15 @@
       "src/components/client/gallery/GalleryDetail.tsx",
       "src/components/client/gallery/GalleryList.tsx",
       "src/components/client/media/MediaLibraryScreen.tsx",
-      "src/components/client/people/PeopleBrowser.tsx",
+      "src/components/client/persons/PeopleBrowser.tsx",
+      "src/components/client/persons/PersonEditor.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
       "src/components/client/settings/SettingsForm.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx",
       "src/components/client/tickets/NewRequestForm.tsx",
       "src/components/client/tickets/SupportTicketsBrowser.tsx",
-      "src/components/client/tickets/TicketConversation.tsx"
+      "src/components/client/tickets/TicketConversation.tsx",
+      "src/components/client/users/UsersBrowser.tsx"
     ],
     "section-heading": [
       "src/app/[locale]/(admin)/analytics/[slug]/page.tsx",
@@ -484,7 +569,11 @@
       "src/components/admin/analytics/AdminAnalyticsSummary.tsx",
       "src/components/admin/analytics/ProjectAnalyticsBlock.tsx",
       "src/components/admin/lab/LabIndex.tsx",
+      "src/components/admin/projects/BillingAlertsList.tsx",
+      "src/components/admin/projects/BillingCard.tsx",
+      "src/components/admin/projects/BillingCardView.tsx",
       "src/components/admin/projects/GoogleCard.tsx",
+      "src/components/admin/projects/InviteOwnerCard.tsx",
       "src/components/admin/projects/NewProjectWizard.tsx",
       "src/components/admin/projects/ProvisioningRunPanel.tsx",
       "src/components/admin/projects/ViewAsClient.tsx",
@@ -494,15 +583,19 @@
       "src/components/admin/users/UserDetail.tsx",
       "src/components/admin/whats-new/AnnouncementsAdmin.tsx",
       "src/components/app/analytics/AnalyticsOverview.tsx",
+      "src/components/client/billing/BillingScreen.tsx",
       "src/components/client/connections/AffiliatePrograms.tsx",
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
+      "src/components/client/discover/DiscoverModules.tsx",
       "src/components/client/home/ContinueEditing.tsx",
       "src/components/client/home/LatestList.tsx",
-      "src/components/client/settings/SettingsForm.tsx"
+      "src/components/client/settings/FormNotifications.tsx"
     ],
     "confirm-dialog": [
       "src/components/admin/backlog/BacklogBrowser.tsx",
       "src/components/admin/partners/PartnersBrowser.tsx",
+      "src/components/admin/projects/BillingAlertsList.tsx",
+      "src/components/admin/projects/BillingCardView.tsx",
       "src/components/admin/tickets/AdminTicketView.tsx",
       "src/components/app/lifecycle/DeletePermanentlyDialog.tsx",
       "src/components/client/access/AccessGroupsBrowser.tsx",
@@ -511,24 +604,33 @@
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
       "src/components/client/create/WizardShell.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
+      "src/components/client/documents/DocumentsBrowser.tsx",
       "src/components/client/events/EventEditor.tsx",
       "src/components/client/faq/FaqSetEditor.tsx",
       "src/components/client/forms/SubmissionsBrowser.tsx",
       "src/components/client/gallery/GalleryDetail.tsx",
       "src/components/client/gallery/GalleryList.tsx",
       "src/components/client/gallery/GalleryWizard.tsx",
-      "src/components/client/people/PeopleBrowser.tsx",
+      "src/components/client/persons/PersonAnonymiseDialog.tsx",
+      "src/components/client/persons/PersonEditor.tsx",
+      "src/components/client/settings/FormNotifications.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TermSheet.tsx",
-      "src/components/client/tickets/TicketConversation.tsx"
+      "src/components/client/tickets/TicketConversation.tsx",
+      "src/components/client/users/UsersBrowser.tsx"
     ],
     "bottom-sheet": [
       "src/components/admin/partners/PartnersBrowser.tsx",
+      "src/components/admin/projects/InviteOwnerCard.tsx",
       "src/components/admin/tickets/RedactPartsDialog.tsx",
       "src/components/app/lifecycle/UnpublishDateSheet.tsx",
       "src/components/app/shell/AccountMenu.tsx",
+      "src/components/app/ui/CountryPicker.tsx",
+      "src/components/app/ui/DatePicker.tsx",
       "src/components/app/ui/DateRangePicker.tsx",
       "src/components/app/ui/DateTimePicker.tsx",
+      "src/components/app/ui/PersonPicker.tsx",
+      "src/components/client/ClientSidebar.tsx",
       "src/components/client/ProjectSwitcher.tsx",
       "src/components/client/access/AccessGroupsBrowser.tsx",
       "src/components/client/catalogue/ChangeTypeSheet.tsx",
@@ -544,12 +646,14 @@
       "src/components/client/media/BatchSheet.tsx",
       "src/components/client/media/MediaLibraryPicker.tsx",
       "src/components/client/media/PhotoEditSheet.tsx",
-      "src/components/client/people/PeopleSheets.tsx",
+      "src/components/client/persons/NewPersonDialog.tsx",
+      "src/components/client/persons/PeopleBrowser.tsx",
       "src/components/client/posts/PostActivitySheet.tsx",
       "src/components/client/posts/PostSheets.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
-      "src/components/client/taxonomy/TermSheet.tsx"
+      "src/components/client/taxonomy/TermSheet.tsx",
+      "src/components/client/users/UsersSheets.tsx"
     ],
     "card-menu": [
       "src/components/admin/partners/PartnersBrowser.tsx",
@@ -566,6 +670,7 @@
       "src/components/client/create/steps/ReviewStep.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
       "src/components/client/documents/DocumentPagesRecap.tsx",
+      "src/components/client/documents/DocumentsBrowser.tsx",
       "src/components/client/events/EventEditor.tsx",
       "src/components/client/faq/FaqSetCards.tsx",
       "src/components/client/faq/FaqSetEditor.tsx",
@@ -577,10 +682,13 @@
       "src/components/client/gallery/wizard/kit.tsx",
       "src/components/client/home/ContinueEditing.tsx",
       "src/components/client/media/MediaTable.tsx",
-      "src/components/client/people/PeopleTable.tsx",
+      "src/components/client/persons/PeopleCards.tsx",
+      "src/components/client/persons/PeopleTable.tsx",
+      "src/components/client/persons/PersonEditor.tsx",
       "src/components/client/posts/PostCards.tsx",
       "src/components/client/posts/PostsTable.tsx",
-      "src/components/client/taxonomy/InternalTagsPanel.tsx"
+      "src/components/client/taxonomy/InternalTagsPanel.tsx",
+      "src/components/client/users/UsersTable.tsx"
     ],
     "list-toolbar": [
       "src/components/admin/analytics/PortfolioBrowser.tsx",
@@ -599,11 +707,12 @@
       "src/components/client/forms/SubmissionsFilters.tsx",
       "src/components/client/gallery/GalleriesFilters.tsx",
       "src/components/client/media/MediaLibraryScreen.tsx",
-      "src/components/client/people/PeopleBrowser.tsx",
+      "src/components/client/persons/PeopleFilters.tsx",
       "src/components/client/posts/PostsFilters.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx",
-      "src/components/client/tickets/SupportTicketsBrowser.tsx"
+      "src/components/client/tickets/SupportTicketsBrowser.tsx",
+      "src/components/client/users/UsersBrowser.tsx"
     ],
     "date-range-picker": [
       "src/components/app/ui/ListToolbar.tsx"
@@ -611,6 +720,7 @@
     "filter-bar": [
       "src/components/admin/lab/LabIndex.tsx",
       "src/components/app/ui/ListToolbar.tsx",
+      "src/components/app/ui/PersonPicker.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
       "src/components/client/create/steps/CoverStep.tsx",
@@ -638,11 +748,12 @@
       "src/components/client/forms/SubmissionsTable.tsx",
       "src/components/client/gallery/GalleriesTable.tsx",
       "src/components/client/media/MediaTable.tsx",
-      "src/components/client/people/PeopleTable.tsx",
+      "src/components/client/persons/PeopleTable.tsx",
       "src/components/client/posts/PostsTable.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TermSection.tsx",
-      "src/components/client/tickets/SupportTicketsBrowser.tsx"
+      "src/components/client/tickets/SupportTicketsBrowser.tsx",
+      "src/components/client/users/UsersTable.tsx"
     ],
     "content-card": [
       "src/components/client/catalogue/CatalogueBrowser.tsx",
@@ -651,6 +762,7 @@
       "src/components/client/gallery/GalleryCards.tsx",
       "src/components/client/gallery/GalleryList.tsx",
       "src/components/client/media/MediaLibraryScreen.tsx",
+      "src/components/client/persons/PeopleCards.tsx",
       "src/components/client/posts/PostCards.tsx",
       "src/components/client/posts/PostsBrowser.tsx"
     ],
@@ -687,13 +799,16 @@
       "src/components/client/gallery/GalleryCards.tsx",
       "src/components/client/gallery/GalleryDetail.tsx",
       "src/components/client/media/MediaTable.tsx",
-      "src/components/client/people/PeopleSheets.tsx",
-      "src/components/client/people/PeopleTable.tsx",
+      "src/components/client/persons/PeopleCards.tsx",
+      "src/components/client/persons/PeopleTable.tsx",
+      "src/components/client/persons/PersonEditorTabs.tsx",
       "src/components/client/posts/PostsTable.tsx",
       "src/components/client/posts/post-bits.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TermSection.tsx",
-      "src/components/client/tickets/SupportTicketsBrowser.tsx"
+      "src/components/client/tickets/SupportTicketsBrowser.tsx",
+      "src/components/client/users/UsersSheets.tsx",
+      "src/components/client/users/UsersTable.tsx"
     ],
     "file-cells": [
       "src/components/client/media/MediaTable.tsx"
@@ -713,6 +828,7 @@
     ],
     "selection-bar": [
       "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/documents/DocumentsBrowser.tsx",
       "src/components/client/forms/SubmissionsBrowser.tsx",
       "src/components/client/gallery/GalleryList.tsx",
       "src/components/client/media/MediaLibraryScreen.tsx",
@@ -725,6 +841,7 @@
       "src/components/client/faq/FaqSetsBrowser.tsx",
       "src/components/client/gallery/GalleryList.tsx",
       "src/components/client/media/MediaLibraryScreen.tsx",
+      "src/components/client/persons/PeopleBrowser.tsx",
       "src/components/client/posts/PostsBrowser.tsx"
     ],
     "auto-grid": [
@@ -760,16 +877,16 @@
       "src/app/[locale]/(client)/[tenant]/agenda/page.tsx",
       "src/app/[locale]/(client)/[tenant]/analytics/page.tsx",
       "src/app/[locale]/(client)/[tenant]/apps/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/billing/page.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/[id]/page.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/collections/[id]/page.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/collections/new/page.tsx",
-      "src/app/[locale]/(client)/[tenant]/catalogue/collections/page.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/error.tsx",
+      "src/app/[locale]/(client)/[tenant]/catalogue/list-screen.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/loading.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/option-lists/[id]/page.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/option-lists/new/page.tsx",
-      "src/app/[locale]/(client)/[tenant]/catalogue/option-lists/page.tsx",
-      "src/app/[locale]/(client)/[tenant]/catalogue/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/discover/page.tsx",
       "src/app/[locale]/(client)/[tenant]/document-library/[documentId]/page.tsx",
       "src/app/[locale]/(client)/[tenant]/document-library/new/page.tsx",
       "src/app/[locale]/(client)/[tenant]/document-library/page.tsx",
@@ -781,6 +898,9 @@
       "src/app/[locale]/(client)/[tenant]/galleries/page.tsx",
       "src/app/[locale]/(client)/[tenant]/home/page.tsx",
       "src/app/[locale]/(client)/[tenant]/media/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/people/[id]/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/people/error.tsx",
+      "src/app/[locale]/(client)/[tenant]/people/loading.tsx",
       "src/app/[locale]/(client)/[tenant]/people/page.tsx",
       "src/app/[locale]/(client)/[tenant]/posts/page.tsx",
       "src/app/[locale]/(client)/[tenant]/settings/page.tsx",
@@ -789,6 +909,7 @@
       "src/app/[locale]/(client)/[tenant]/support/new/page.tsx",
       "src/app/[locale]/(client)/[tenant]/support/page.tsx",
       "src/app/[locale]/(client)/[tenant]/taxonomy/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/users/page.tsx",
       "src/app/[locale]/(client)/account/page.tsx",
       "src/app/[locale]/(client)/sites/page.tsx"
     ],
@@ -798,23 +919,40 @@
     "app-icon": [
       "src/components/admin/AdminSidebar.tsx",
       "src/components/app/shell/AppSidebar.tsx",
+      "src/components/app/ui/RailItem.tsx",
+      "src/components/app/ui/SidebarCollapseToggle.tsx",
+      "src/components/app/ui/SidebarGroup.tsx",
+      "src/components/app/ui/SidebarLink.tsx",
       "src/components/app/ui/TabBarButton.tsx",
       "src/components/client/ClientSidebar.tsx",
+      "src/components/client/discover/DiscoverModules.tsx",
       "src/components/client/whats-new/WhatsNew.tsx"
     ],
     "link-card": [
       "src/app/[locale]/(admin)/projects/[slug]/page.tsx",
       "src/components/admin/lab/LabIndex.tsx",
+      "src/components/client/ClientSidebar.tsx",
       "src/components/client/faq/faq-bits.tsx",
-      "src/components/client/home/SiteStatus.tsx"
+      "src/components/client/home/SiteStatus.tsx",
+      "src/components/client/persons/person-bits.tsx"
+    ],
+    "create-action": [
+      "src/app/[locale]/(client)/[tenant]/posts/page.tsx",
+      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/events/EventList.tsx",
+      "src/components/client/faq/FaqSetsBrowser.tsx",
+      "src/components/client/gallery/GalleryList.tsx",
+      "src/components/client/media/MediaLibraryScreen.tsx",
+      "src/components/client/persons/PeopleBrowser.tsx",
+      "src/components/client/posts/PostsBrowser.tsx"
     ],
     "fab": [
       "src/components/app/ui/SelectionBar.tsx",
-      "src/components/client/create/AddContentRoot.tsx",
-      "src/components/client/create/AddContentSheet.tsx"
+      "src/components/client/create/AddContentRoot.tsx"
     ],
     "bar-button": [
       "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/documents/DocumentsBrowser.tsx",
       "src/components/client/editor/BodyEditor.tsx",
       "src/components/client/forms/SubmissionsBrowser.tsx",
       "src/components/client/gallery/GalleryList.tsx",
@@ -822,6 +960,7 @@
       "src/components/client/taxonomy/InternalTagsPanel.tsx"
     ],
     "choice-card": [
+      "src/components/admin/projects/BillingCardView.tsx",
       "src/components/admin/projects/NewProjectWizard.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/item-fields.tsx",
@@ -834,6 +973,7 @@
       "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/create/steps/CategoryStep.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
+      "src/components/client/persons/PersonEditorTabs.tsx",
       "src/components/client/taxonomy/TermPicker.tsx"
     ],
     "text-marker": [
@@ -842,10 +982,12 @@
     "side-panel": [
       "src/components/admin/backlog/BacklogBrowser.tsx",
       "src/components/admin/partners/PartnersBrowser.tsx",
+      "src/components/admin/projects/BillingCardView.tsx",
       "src/components/admin/translations/TranslationsBrowser.tsx",
       "src/components/admin/whats-new/AnnouncementsAdmin.tsx",
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
       "src/components/app/shell/AccountMenu.tsx",
+      "src/components/billing/BillingProfilePanel.tsx",
       "src/components/client/account/ProfilePanel.tsx",
       "src/components/client/connections/AffiliatePrograms.tsx",
       "src/components/client/forms/SubmissionsBrowser.tsx",
@@ -860,6 +1002,8 @@
       "src/components/client/create/WizardShell.tsx",
       "src/components/client/faq/FaqSetEditor.tsx",
       "src/components/client/faq/FaqSetsBrowser.tsx",
+      "src/components/client/persons/PeopleBrowser.tsx",
+      "src/components/client/persons/PersonEditor.tsx",
       "src/components/client/posts/PostsBrowser.tsx"
     ],
     "publication-date-field": [
@@ -885,6 +1029,7 @@
       "src/components/client/catalogue/ItemEditor.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
       "src/components/client/faq/faq-bits.tsx",
+      "src/components/client/persons/person-bits.tsx",
       "src/components/client/posts/post-bits.tsx"
     ],
     "stat-tile": [
@@ -930,11 +1075,13 @@
       "src/app/[locale]/(client)/account/page.tsx",
       "src/components/admin/backlog/BacklogBrowser.tsx",
       "src/components/admin/partners/PartnersBrowser.tsx",
+      "src/components/admin/projects/BillingCardView.tsx",
       "src/components/admin/projects/NewProjectWizard.tsx",
       "src/components/admin/tickets/AdminTicketView.tsx",
       "src/components/admin/translations/TranslationsBrowser.tsx",
       "src/components/admin/users/UserDetail.tsx",
       "src/components/client/account/ProfilePanel.tsx",
+      "src/components/client/billing/BillingScreen.tsx",
       "src/components/client/connections/AffiliatePrograms.tsx",
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
       "src/components/client/tickets/TicketConversation.tsx"
@@ -949,9 +1096,11 @@
       "src/components/admin/users/UsersBrowser.tsx",
       "src/components/app/shell/AccountMenu.tsx",
       "src/components/app/ui/MessageThread.tsx",
+      "src/components/app/ui/PersonPicker.tsx",
       "src/components/client/account/AvatarEditor.tsx",
-      "src/components/client/people/PeopleSheets.tsx",
-      "src/components/client/people/PeopleTable.tsx"
+      "src/components/client/persons/person-bits.tsx",
+      "src/components/client/users/UsersSheets.tsx",
+      "src/components/client/users/UsersTable.tsx"
     ],
     "analytics-overview": [
       "src/app/[locale]/(admin)/analytics/[slug]/page.tsx",
@@ -975,23 +1124,26 @@
       "src/components/admin/whats-new/AnnouncementsAdmin.tsx",
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
       "src/components/client/access/AccessGroupsBrowser.tsx",
+      "src/components/client/billing/BillingScreen.tsx",
       "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/documents/DocumentsBrowser.tsx",
       "src/components/client/events/EventList.tsx",
       "src/components/client/faq/FaqSetCards.tsx",
       "src/components/client/forms/SubmissionCards.tsx",
-      "src/components/client/people/PeopleTable.tsx",
+      "src/components/client/persons/PeopleCards.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TermSection.tsx",
-      "src/components/client/tickets/SupportTicketsBrowser.tsx"
+      "src/components/client/tickets/SupportTicketsBrowser.tsx",
+      "src/components/client/users/UsersTable.tsx"
     ],
     "radio-list": [
       "src/components/client/access/AccessGroupsBrowser.tsx",
       "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/connections/ConsentScreen.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
-      "src/components/client/people/PeopleSheets.tsx",
-      "src/components/client/taxonomy/InternalTagsPanel.tsx"
+      "src/components/client/persons/PersonEditorTabs.tsx",
+      "src/components/client/taxonomy/InternalTagsPanel.tsx",
+      "src/components/client/users/UsersSheets.tsx"
     ],
     "pill-select": [
       "src/components/admin/tickets/AdminTicketView.tsx",
@@ -1004,8 +1156,7 @@
       "src/components/client/media/MediaLibraryPicker.tsx",
       "src/components/client/media/PhotoCard.tsx",
       "src/components/client/media/UploadQueueList.tsx",
-      "src/components/client/posts/PostSheets.tsx",
-      "src/components/client/settings/SettingsForm.tsx"
+      "src/components/client/posts/PostSheets.tsx"
     ],
     "tile": [
       "src/components/client/create/steps/CoverStep.tsx",
@@ -1020,6 +1171,7 @@
       "src/components/client/media/UploadQueueList.tsx"
     ],
     "focal-point-picker": [
+      "src/components/client/events/EventEditor.tsx",
       "src/components/client/media/PhotoCard.tsx"
     ],
     "option-cards": [
@@ -1030,7 +1182,8 @@
     ],
     "assist-button": [
       "src/components/client/create/steps/StoryStep.tsx",
-      "src/components/client/create/steps/TitleStep.tsx"
+      "src/components/client/create/steps/TitleStep.tsx",
+      "src/components/client/persons/PersonEditorTabs.tsx"
     ],
     "popover-panel": [
       "src/components/client/posts/post-bits.tsx"
@@ -1042,6 +1195,7 @@
       "src/components/client/connections/AffiliatePrograms.tsx",
       "src/components/client/create/WizardHeader.tsx",
       "src/components/client/faq/FaqSetEditor.tsx",
+      "src/components/client/persons/PersonEditor.tsx",
       "src/components/client/settings/SettingsForm.tsx",
       "src/components/client/taxonomy/TermSheet.tsx"
     ],
@@ -1050,7 +1204,8 @@
       "src/components/client/catalogue/ItemEditor.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
       "src/components/client/create/WizardHeader.tsx",
-      "src/components/client/faq/FaqSetEditor.tsx"
+      "src/components/client/faq/FaqSetEditor.tsx",
+      "src/components/client/persons/PersonEditor.tsx"
     ],
     "notice": [
       "src/app/[locale]/(admin)/analytics/[slug]/page.tsx",
@@ -1063,18 +1218,26 @@
       "src/app/[locale]/(admin)/whats-new/page.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/error.tsx",
       "src/app/[locale]/(client)/[tenant]/faq-sets/error.tsx",
+      "src/app/[locale]/(client)/[tenant]/people/error.tsx",
       "src/app/[locale]/(client)/[tenant]/support/[ticketId]/page.tsx",
       "src/app/[locale]/(client)/[tenant]/support/page.tsx",
       "src/components/admin/backlog/BacklogBrowser.tsx",
       "src/components/admin/partners/PartnersBrowser.tsx",
+      "src/components/admin/projects/BillingCard.tsx",
+      "src/components/admin/projects/BillingCardView.tsx",
       "src/components/admin/projects/GoogleSetupPanel.tsx",
+      "src/components/admin/projects/InviteOwnerCard.tsx",
       "src/components/admin/projects/ViewAsClient.tsx",
       "src/components/admin/tickets/AdminTicketView.tsx",
       "src/components/admin/tickets/RedactPartsDialog.tsx",
       "src/components/admin/whats-new/AnnouncementsAdmin.tsx",
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
+      "src/components/app/ui/PersonPicker.tsx",
+      "src/components/billing/BillingProfilePanel.tsx",
       "src/components/client/access/AccessGroupsBrowser.tsx",
       "src/components/client/access/AccessScreen.tsx",
+      "src/components/client/billing/BillingNotice.tsx",
+      "src/components/client/billing/BillingScreen.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/ItemEditor.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
@@ -1090,9 +1253,15 @@
       "src/components/client/events/EventEditor.tsx",
       "src/components/client/faq/FaqSetEditor.tsx",
       "src/components/client/gallery/wizard/PhotoAddStep.tsx",
+      "src/components/client/home/BillingAttentionCard.tsx",
       "src/components/client/media/AddPhotos.tsx",
       "src/components/client/media/PhotoCard.tsx",
+      "src/components/client/persons/PersonEditor.tsx",
+      "src/components/client/persons/PersonEditorTabs.tsx",
+      "src/components/client/persons/PersonUsedInLoader.tsx",
+      "src/components/client/settings/FormNotifications.tsx",
       "src/components/client/settings/SettingsForm.tsx",
+      "src/components/client/support/SupportReplyNotice.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/tickets/NewRequestForm.tsx",
       "src/components/client/tickets/SupportTicketsBrowser.tsx",
@@ -1103,9 +1272,12 @@
     "panel": [
       "src/app/[locale]/(admin)/lab/todo/page.tsx",
       "src/app/[locale]/(client)/[tenant]/faq-sets/loading.tsx",
+      "src/app/[locale]/(client)/[tenant]/people/loading.tsx",
       "src/app/[locale]/(client)/account/page.tsx",
       "src/app/[locale]/(client)/sites/page.tsx",
       "src/components/admin/lab/DemoCanvas.tsx",
+      "src/components/admin/projects/BillingAlertsList.tsx",
+      "src/components/admin/projects/BillingCardView.tsx",
       "src/components/admin/tickets/AdminSupportCard.tsx",
       "src/components/admin/tickets/AdminTicketView.tsx",
       "src/components/admin/users/ActiveNowStrip.tsx",
@@ -1113,6 +1285,7 @@
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
       "src/components/auth/AuthLayout.tsx",
       "src/components/client/access/AccessGroupsBrowser.tsx",
+      "src/components/client/billing/BillingScreen.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
       "src/components/client/catalogue/item-fields.tsx",
@@ -1125,27 +1298,35 @@
       "src/components/client/create/steps/CoverStep.tsx",
       "src/components/client/create/steps/CtaStep.tsx",
       "src/components/client/create/steps/FaqStep.tsx",
+      "src/components/client/discover/DiscoverModules.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
       "src/components/client/documents/DocumentPagesRecap.tsx",
+      "src/components/client/events/EventEditor.tsx",
       "src/components/client/faq/FaqQuestionCard.tsx",
       "src/components/client/faq/FaqSetEditor.tsx",
       "src/components/client/faq/post/FaqPickSheet.tsx",
       "src/components/client/gallery/wizard/PhotoAddStep.tsx",
-      "src/components/client/settings/SettingsForm.tsx",
+      "src/components/client/persons/PersonEditor.tsx",
+      "src/components/client/persons/PersonEditorTabs.tsx",
+      "src/components/client/settings/FormNotifications.tsx",
       "src/components/client/support/SupportAccessNotice.tsx",
       "src/components/client/tickets/TicketConversation.tsx"
     ],
     "select": [
       "src/components/admin/backlog/BacklogBrowser.tsx",
       "src/components/admin/backlog/BacklogForm.tsx",
+      "src/components/admin/projects/InviteOwnerCard.tsx",
       "src/components/admin/projects/NewProjectWizard.tsx",
       "src/components/app/ui/DateTimePicker.tsx",
       "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/connections/AffiliatePrograms.tsx",
-      "src/components/client/settings/SettingsForm.tsx"
+      "src/components/client/persons/PersonEditorTabs.tsx"
     ],
-    "date-input": [],
+    "date-input": [
+      "src/components/client/persons/PersonEditorTabs.tsx"
+    ],
     "calendar": [
+      "src/components/app/ui/DatePicker.tsx",
       "src/components/app/ui/DateRangePicker.tsx",
       "src/components/app/ui/DateTimePicker.tsx"
     ],
@@ -1156,12 +1337,26 @@
       "src/components/client/events/EventEditor.tsx",
       "src/components/client/events/NewEventForm.tsx"
     ],
+    "date-picker": [
+      "src/components/admin/projects/BillingCardView.tsx"
+    ],
+    "country-picker": [
+      "src/components/billing/BillingProfilePanel.tsx"
+    ],
+    "address-autocomplete": [
+      "src/components/billing/BillingProfilePanel.tsx"
+    ],
     "field": [
       "src/components/admin/backlog/BacklogForm.tsx",
       "src/components/admin/partners/PartnersBrowser.tsx",
+      "src/components/admin/projects/BillingAlertsList.tsx",
+      "src/components/admin/projects/BillingCardView.tsx",
+      "src/components/admin/projects/InviteOwnerCard.tsx",
       "src/components/admin/projects/NewProjectWizard.tsx",
       "src/components/admin/whats-new/AnnouncementsAdmin.tsx",
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
+      "src/components/app/ui/PersonPicker.tsx",
+      "src/components/billing/BillingProfilePanel.tsx",
       "src/components/client/access/AccessGroupsBrowser.tsx",
       "src/components/client/access/access-bits.tsx",
       "src/components/client/connections/AffiliatePrograms.tsx",
@@ -1170,15 +1365,23 @@
       "src/components/client/faq/FaqSetEditor.tsx",
       "src/components/client/faq/NewFaqSetDialog.tsx",
       "src/components/client/faq/post/FaqPickSheet.tsx",
-      "src/components/client/people/PeopleSheets.tsx",
-      "src/components/client/settings/SettingsForm.tsx",
-      "src/components/client/tickets/NewRequestForm.tsx"
+      "src/components/client/persons/NewPersonDialog.tsx",
+      "src/components/client/persons/PersonEditorTabs.tsx",
+      "src/components/client/settings/FormNotifications.tsx",
+      "src/components/client/tickets/NewRequestForm.tsx",
+      "src/components/client/users/UsersSheets.tsx"
+    ],
+    "person-picker": [
+      "src/components/client/persons/PersonPickerField.tsx"
     ],
     "skeleton": [
       "src/app/[locale]/(client)/[tenant]/catalogue/loading.tsx",
       "src/app/[locale]/(client)/[tenant]/faq-sets/loading.tsx",
+      "src/app/[locale]/(client)/[tenant]/people/loading.tsx",
+      "src/components/app/ui/PersonPicker.tsx",
       "src/components/client/create/OpenForEdit.tsx",
-      "src/components/client/create/PreviewPane.tsx"
+      "src/components/client/create/PreviewPane.tsx",
+      "src/components/client/persons/PersonUsedInLoader.tsx"
     ]
   }
 }

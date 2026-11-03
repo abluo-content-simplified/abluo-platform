@@ -35,6 +35,7 @@ import { publicFilterFor, publicFilterForAnyType } from '@/lib/lifecycle/public-
 import { visibilityFilter } from '@/lib/modules/catalogue/visibility'
 import { catalogueCategoryTermsGroq, catalogueTermsGroq, moduleRoutableTermsGroq, moduleTermsGroq } from '@/lib/taxonomy/vocabulary'
 import { catalogueTaxonomyGroq } from '@/lib/modules/catalogue/taxonomy/read'
+import { EVENT_HOST_PEOPLE_FIELDS, POST_AUTHORS_FIELDS, TEAM_SECTION_PEOPLE_FIELDS } from '@/lib/modules/people/queries'
 
 // ─── ADR-032 D3 — the public-visibility rule ─────────────────────────────────
 // Every public read of a lifecycle type (post, newsArticle, event, gallery) —
@@ -119,7 +120,9 @@ const EVENT_ENGAGEMENT_FIELDS = /* groq */ `
     name,
     "role": ${loc('role')},
     url
-  }
+  },
+  // ADR-043 D5 — hosts from the People module (preferred over the inline hosts).
+  ${EVENT_HOST_PEOPLE_FIELDS}
 `
 
 // ─── navigationLink fragment ──────────────────────────────────────────────────
@@ -493,6 +496,9 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         website,
         anchorId,
       },
+      // teamSection (ADR-043 D5) — People module references, read before the
+      // deprecated inline members above. Person fields: PERSON_PUBLIC_FIELDS only.
+      ${TEAM_SECTION_PEOPLE_FIELDS},
       "content": ${loc('content')},
       items[] {
         _key,
@@ -1123,6 +1129,7 @@ export const postsQuery = /* groq */ `
     "readingTimeMinutes": math::max([1, round(
       length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / $charsPerMinute
     )]),
+    ${POST_AUTHORS_FIELDS},
     "author": author-> {
       name,
       "role": ${loc('role')},
@@ -1247,6 +1254,7 @@ export const postBySlugQuery = /* groq */ `
     "readingTimeMinutes": math::max([1, round(
       length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / $charsPerMinute
     )]),
+    ${POST_AUTHORS_FIELDS},
     "author": author-> {
       _id,
       name,
@@ -1316,6 +1324,7 @@ export const postsByCategoryQuery = /* groq */ `
     "readingTimeMinutes": math::max([1, round(
       length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / $charsPerMinute
     )]),
+    ${POST_AUTHORS_FIELDS},
     "author": author-> {
       name,
       "role": ${loc('role')},
@@ -1354,6 +1363,7 @@ export const relatedPostsQuery = /* groq */ `
     "readingTimeMinutes": math::max([1, round(
       length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / $charsPerMinute
     )]),
+    ${POST_AUTHORS_FIELDS},
     "author": author-> {
       name,
       "role": ${loc('role')},
@@ -1388,7 +1398,8 @@ const blogListingCardFields = /* groq */ `
   "readingTimeMinutes": math::max([1, round(
     length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / $charsPerMinute
   )]),
-  "author": author-> {
+  ${POST_AUTHORS_FIELDS},
+    "author": author-> {
     name,
     "role": coalesce(role[$locale], role[$defaultLocale], role.en, role),
     ${focalImage('avatar')}
@@ -1993,6 +2004,9 @@ export const homePageQuery = /* groq */ `
         website,
         anchorId,
       },
+      // teamSection (ADR-043 D5) — People module references, read before the
+      // deprecated inline members above. Person fields: PERSON_PUBLIC_FIELDS only.
+      ${TEAM_SECTION_PEOPLE_FIELDS},
       "content": ${loc('content')},
       items[] {
         _key,

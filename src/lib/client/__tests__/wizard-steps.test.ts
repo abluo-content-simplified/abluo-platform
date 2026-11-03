@@ -265,3 +265,21 @@ describe('FAQs (ADR-037)', () => {
     expect(moveFaqSet(['a', 'b'], 'x', 1)).toEqual(['a', 'b'])
   })
 })
+
+describe('Authors (ADR-043)', () => {
+  const draft = { title: { it: 'T' }, body: { it: block('x') } }
+  const site = { categories: [], languages: ['it'], defaultLocale: 'it' }
+  it('the authors step comes right after the FAQ step, only when site.people is present', () => {
+    expect(wizardSteps({ categories: [], languages: ['it'] })).not.toContain('authors')
+    expect(wizardSteps({ categories: [], languages: ['it'], faqSets: [], people: {} })).toEqual(['title', 'story', 'cover', 'cta', 'faq', 'authors', 'preview', 'publish', 'done'])
+  })
+  it('a stored authors step resumes at the next step on a site without the People module', () => {
+    expect(resumeStep('authors', wizardSteps({ categories: [], languages: ['it'] }))).toBe('preview')
+  })
+  it('overview: optional while empty, done with authors; never blocks publishing', () => {
+    expect(overviewSections(draft, site).map((s) => s.id)).not.toContain('authors')
+    expect(overviewSections(draft, { ...site, people: {} }).at(-1)).toEqual({ id: 'authors', state: 'optional' })
+    expect(overviewSections({ ...draft, authors: ['p1'] }, { ...site, people: {} }).at(-1)).toEqual({ id: 'authors', state: 'done' })
+    expect(canPublish(draft, 'it')).toBe(true)
+  })
+})

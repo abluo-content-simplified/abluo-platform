@@ -1,6 +1,6 @@
 /**
  * Media library filters and sort (client-side, on the loaded library) — the
- * same shape as posts-filter.ts / people-filter.ts. Pure, so it is unit-tested.
+ * same shape as posts-filter.ts / users-filter.ts. Pure, so it is unit-tested.
  *
  * Search: every word must appear in the name, file name, description (alt),
  * title, caption (any language) or tags — accents and case ignored.

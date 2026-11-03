@@ -10,7 +10,7 @@
  * role (`people/service.ts`); the avatar rule is shared via `safeAvatarUrl`.
  */
 import { createClient } from '@/lib/supabase/server'
-import { safeAvatarUrl } from '@/lib/people/service'
+import { safeAvatarUrl } from '@/lib/users/service'
 
 export type ViewerAccount = {
   /** Full name, or '' when the person has none yet. */

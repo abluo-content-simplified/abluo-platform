@@ -27,6 +27,8 @@ export type DraftSnapshot = {
   gallery?: string | null
   /** FAQ sets shown below the post, in order (set ids, ADR-037). */
   faqSets?: string[]
+  /** Authors (People module, ADR-043), first = main: person document ids. */
+  authors?: string[]
   /** The post's FAQ heading per language; empty = the website default ("Frequently Asked Questions"). */
   faqTitle?: Record<string, string>
   faqSubtitle?: Record<string, string>
@@ -59,12 +61,20 @@ export type SiteInfo = {
   galleries?: { id: string; title: string; count: number }[]
   /** This project's FAQ sets — present only with the FAQ module and faq.set.read (may be empty). */
   faqSets?: SiteFaqSet[]
+  /**
+   * The People module's authors field (ADR-043) — present only with the module installed AND people.person.read.
+   * `initial` = the people already on the draft (names resolved on the server); `canCreate` = people.person.write.
+   */
+  people?: { initial: SitePerson[]; canCreate: boolean }
   /** Holds faq.set.write: the FAQ sheet offers "Create new" and publishing offers "Publish the FAQ set too". */
   faqWrite?: boolean
   ctas?: { id: string; name: string; isDefault: boolean; heading: string | null; buttonLabel: string | null }[]
   /** The signed-in person's first name, for a friendlier message (null = unknown). */
   firstName?: string | null
 }
+
+/** One person as the author picker shows them (PersonPickerPerson). */
+export type SitePerson = { id: string; name: string; photoUrl?: string | null; jobTitle?: string; groups?: string[]; archived?: boolean }
 
 /** One FAQ set as the post editor knows it (PostEditorFaqSet in post-drafts.ts). */
 export type SiteFaqSet = {
@@ -89,6 +99,8 @@ export type StepProps = {
   addCategory?: (term: { value: string; label: Record<string, string>; color: string | null }) => void
   /** A FAQ set created (or changed) from the post editor: added to `site.faqSets` so the step and overview show it. */
   upsertFaqSet?: (set: SiteFaqSet) => void
+  /** People chosen or created in the Authors step: added to `site.people` so the overview shows their names. */
+  rememberPeople?: (people: SitePerson[]) => void
   /**
    * For steps that write through their OWN server action (e.g. Cover):
    * waits until every queued autosave is confirmed and returns the draft's

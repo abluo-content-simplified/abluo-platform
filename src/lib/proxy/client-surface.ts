@@ -61,6 +61,7 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   'agenda',
   'media',
   'people',
+  'users',
   'analytics',
   'apps',
   // ADR-033: the Catalogue (reserved as a public segment, so no clash with a tenant's catalogue URL).

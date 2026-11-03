@@ -9,7 +9,7 @@
  * installed on a project.
  *
  *   | Publish  | Blog, News, Events, FAQ (+ Live)      |
- *   | Show     | Gallery, Catalogue (+ Documents)      |
+ *   | Show     | Gallery, Catalogue (+ Documents, People) |
  *   | Visitors | Forms, WhatsApp, Access               |
  *   | Tools    | Translate, Brand Hub                  |
  *
@@ -33,7 +33,8 @@ export type ModuleGroupDef = {
 
 export const MODULE_GROUPS: readonly ModuleGroupDef[] = [
   { id: 'publish', label: 'Publish', modules: ['blog', 'news', 'events', 'faq', 'live'] },
-  { id: 'show', label: 'Show', modules: ['gallery', 'catalogue', 'documents'] },
+  // ADR-043: People (a shared list other modules pick from) closes Show.
+  { id: 'show', label: 'Show', modules: ['gallery', 'catalogue', 'documents', 'people'] },
   // `members` is the Access module (label "Access").
   { id: 'visitors', label: 'Visitors', modules: ['forms', 'whatsapp', 'members'] },
   { id: 'tools', label: 'Tools', modules: ['translate', 'brand-hub'] },

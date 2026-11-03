@@ -499,7 +499,7 @@ export function SectionRenderer({
     case 'treatmentsSection':
       return <TreatmentsSection section={section} surface={surface} designSystem={designSystem} />
     case 'teamSection':
-      return <TeamSection section={section} surface={surface} designSystem={designSystem} locale={locale} />
+      return <TeamSection section={section} surface={surface} designSystem={designSystem} locale={locale} enabledModuleIds={enabledModuleIds} moduleConfig={moduleConfig} tenantSlug={tenantSlug} hostScoped={hostScoped} />
     case 'textSection':
       return <TextSection section={section} surface={surface} designSystem={designSystem} />
     // faqSection is owned by the FAQ module (ADR-037) — rendered through SECTION_MAP above.
