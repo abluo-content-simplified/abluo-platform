@@ -195,11 +195,18 @@ describe('D3 pack history on tmz', () => {
     const cfg = configOf(after)
     expect(readSetupState(cfg)).toEqual({ completedAt: TMZ_APPLIED_AT, source: 'pack' })
     expect(isSetupComplete(cfg)).toBe(true)
-    expect(cfg.appliedPreset).toEqual({ id: 'bookshop', version: 1, appliedAt: TMZ_APPLIED_AT })
+    const preset = catalogueProjects(after)[0].appliedPreset
+    expect(preset).toEqual({ id: 'bookshop', version: 1, appliedAt: TMZ_APPLIED_AT }) // kept at installation level
+    expect(cfg.appliedPreset).toBeUndefined() // never inside config
     expect(cfg.defaultItemProfile).toBe('product') // never changed automatically (D-13 part 3)
-    expect(readPackHistory({ applied: hist.applied, appliedPreset: cfg.appliedPreset }).map((h) => [h._key, h.source])).toEqual([['bookshop@1', 'history']])
+    expect(readPackHistory({ applied: hist.applied, appliedPreset: preset }).map((h) => [h._key, h.source])).toEqual([['bookshop@1', 'history']])
     expect(verification.pass).toBe(true)
     expect(groupsOf(packHistoryStep.plan(after, CTX))).toEqual([])
+  })
+
+  it('regression 2026-11-03: the preset is read from the installation, not from config (pre-flight converted 0)', () => {
+    const { plan } = run(packHistoryStep, tmzProduction())
+    expect(plan.projects[0].counts).toEqual({ converted: 1 })
   })
 
   it('revert deletes the history document', () => {

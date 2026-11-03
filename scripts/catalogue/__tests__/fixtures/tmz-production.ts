@@ -65,8 +65,9 @@ export function tmzProduction(): Doc[] {
               { _key: 'c1', _type: 'catalogueCategoryOption', value: 'design', label: label('Design', 'Design', 'Design') },
               { _key: 'c2', _type: 'catalogueCategoryOption', value: 'technology', label: label('Technology', 'Tecnologia', 'Technologie') },
             ],
-            appliedPreset: { id: 'bookshop', version: 1, appliedAt: TMZ_APPLIED_AT },
           },
+          // Installation level, next to config — exactly as stored in production (2026-11-03 pre-flight finding).
+          appliedPreset: { id: 'bookshop', version: 1, appliedAt: TMZ_APPLIED_AT },
         },
       ],
     },

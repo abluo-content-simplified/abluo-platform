@@ -65,7 +65,7 @@ export P=backups/catalogue/p-production-<stamp>
 ```bash
 npx tsx scripts/catalogue/preflight-catalogue.mjs --dataset production --from $P --label p --audit-for staging
 ```
-Expected for tmz (2026-11-02): items published=10 drafts=6 versions=0; D1 3 categories / 7 tags / 15 item documents assigned, 1 without category; D2 4 priced documents, no channels; D3 `bookshop@1`; D4 copy `{en: Books, it: Libri, de: Bücher}`. Findings to read (decided, not refusals): `item.multiCategory` (the two-category draft → primary `technology`, additional `literature`, D-15), `taxonomy.configListIgnored` (stale `config.categories`, terms win), `publicName.copy`.
+Expected for tmz (2026-11-02): items published=10 drafts=6 versions=0; D1 3 categories / 7 tags / 14 item documents assigned, 2 without category (the Zinnebir and Vernaccia drafts); D2 4 priced documents, no channels; D3 `bookshop@1`; D4 copy `{en: Books, it: Libri, de: Bücher}`. Findings to read (decided, not refusals): `item.multiCategory` (the two-category draft → primary `technology`, additional `literature`, D-15), `taxonomy.configListIgnored` (stale `config.categories`, terms win), `publicName.copy`.
 **Any `REFUSE` → stop.**
 
 ## 4. S — staging rehearsal

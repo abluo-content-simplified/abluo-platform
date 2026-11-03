@@ -42,16 +42,16 @@ export const isPublished = (d: Doc) => idClassOf(d._id) === 'published'
 /** Stable order for every output (exports, reports): by _id. */
 export const sortDocs = (docs: readonly Doc[]): Doc[] => [...docs].sort((a, b) => (a._id < b._id ? -1 : a._id > b._id ? 1 : 0))
 
-export type CatalogueInstallation = { index: number; key: string | null; config: Record<string, unknown> }
+export type CatalogueInstallation = { index: number; key: string | null; config: Record<string, unknown>; /** Installation-level legacy preset record (NOT inside config). */ appliedPreset: unknown }
 
 /** The Catalogue installation of a project document (first one, as every reader does). */
 export function catalogueInstallation(project: Doc | null | undefined): CatalogueInstallation | null {
   const list = Array.isArray(project?.moduleInstallations) ? (project!.moduleInstallations as unknown[]) : []
   const index = list.findIndex((m) => (m as { moduleId?: unknown } | null)?.moduleId === 'catalogue')
   if (index < 0) return null
-  const m = list[index] as { _key?: unknown; config?: unknown }
+  const m = list[index] as { _key?: unknown; config?: unknown; appliedPreset?: unknown }
   const config = m.config && typeof m.config === 'object' && !Array.isArray(m.config) ? (m.config as Record<string, unknown>) : {}
-  return { index, key: typeof m._key === 'string' && m._key ? m._key : null, config }
+  return { index, key: typeof m._key === 'string' && m._key ? m._key : null, config, appliedPreset: m.appliedPreset ?? null }
 }
 
 export type ProjectView = {
@@ -60,6 +60,8 @@ export type ProjectView = {
   docs: Doc[]
   published: Doc | null
   config: Record<string, unknown>
+  /** The installation's legacy `appliedPreset` (installation level, next to `config`). */
+  appliedPreset: unknown
   site: Doc | null
 }
 
@@ -69,16 +71,20 @@ export function catalogueProjects(docs: readonly Doc[]): ProjectView[] {
   for (const d of sortDocs(docs)) {
     if (d._type !== 'project' || typeof d.projectSlug !== 'string' || idClassOf(d._id) === 'version') continue
     if (!catalogueInstallation(d)) continue
-    const v = bySlug.get(d.projectSlug) ?? { slug: d.projectSlug, docs: [], published: null, config: {}, site: null }
+    const v = bySlug.get(d.projectSlug) ?? { slug: d.projectSlug, docs: [], published: null, config: {}, appliedPreset: null, site: null }
     v.docs.push(d)
     if (isPublished(d)) {
       v.published = d
       v.config = catalogueInstallation(d)!.config
+      v.appliedPreset = catalogueInstallation(d)!.appliedPreset
     }
     bySlug.set(d.projectSlug, v)
   }
   for (const v of bySlug.values()) {
-    if (!v.published && v.docs[0]) v.config = catalogueInstallation(v.docs[0])!.config
+    if (!v.published && v.docs[0]) {
+      v.config = catalogueInstallation(v.docs[0])!.config
+      v.appliedPreset = catalogueInstallation(v.docs[0])!.appliedPreset
+    }
     v.site = docs.find((d) => d._type === 'siteConfig' && d.projectSlug === v.slug && isPublished(d)) ?? null
   }
   return [...bySlug.values()].sort((a, b) => (a.slug < b.slug ? -1 : 1))

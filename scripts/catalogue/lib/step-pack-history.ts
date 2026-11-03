@@ -42,7 +42,7 @@ function plan(docs: readonly Doc[], ctx: StepContext): StepPlan {
   for (const view of catalogueProjects(docs)) {
     if (ctx.project && view.slug !== ctx.project) continue
     const slug = view.slug
-    const preset = view.config.appliedPreset
+    const preset = view.appliedPreset
     if (preset === undefined || preset === null) {
       projects.push({ slug, groups: [], counts: { converted: 0 } })
       continue
@@ -77,13 +77,13 @@ function verify(before: readonly Doc[], after: readonly Doc[], ctx: StepContext)
   const afterViews = new Map(catalogueProjects(after).map((v) => [v.slug, v]))
   for (const view of catalogueProjects(before)) {
     if (ctx.project && view.slug !== ctx.project) continue
-    const rec = legacyPresetRecord(view.config.appliedPreset)
+    const rec = legacyPresetRecord(view.appliedPreset)
     const a = afterViews.get(view.slug)
     if (!rec || !a) continue
     // guard/legacy-preset against the real record: the history lists exactly the legacy record, now stored.
     const beforeApplied = appliedOf(historyOf(before, view.slug))
     const afterApplied = appliedOf(historyOf(after, view.slug))
-    const history = readPackHistory({ applied: afterApplied, appliedPreset: a.config.appliedPreset })
+    const history = readPackHistory({ applied: afterApplied, appliedPreset: a.appliedPreset })
     const entry = history.find((h) => h._key === rec._key)
     if (!entry || entry.source !== 'history') histDiffs.push({ project: view.slug, missing: rec._key })
     else {
@@ -94,7 +94,7 @@ function verify(before: readonly Doc[], after: readonly Doc[], ctx: StepContext)
     const expectedKeys = [...new Set([...beforeApplied.map((e) => e?._key), rec._key])].sort()
     const gotKeys = afterApplied.map((e) => e?._key).sort()
     if (expectedKeys.join(',') !== gotKeys.join(',')) histDiffs.push({ project: view.slug, keys: { expected: expectedKeys, got: gotKeys } })
-    if (!sameValue(view.config.appliedPreset, a.config.appliedPreset)) histDiffs.push({ project: view.slug, note: 'appliedPreset must be kept until R3' })
+    if (!sameValue(view.appliedPreset, a.appliedPreset)) histDiffs.push({ project: view.slug, note: 'appliedPreset must be kept until R3' })
     if (!isSetupComplete(a.config)) setupDiffs.push({ project: view.slug, setup: readSetupState(a.config) })
     if (!isSetupComplete(view.config)) {
       const sourceWasUnset = view.config.setupSource === undefined || view.config.setupSource === null || view.config.setupSource === ''
@@ -138,7 +138,7 @@ export const packHistoryStep: StepDefinition<'migration.pack_history'> = {
   verify,
   auditDetail(slug, before, _after, ctx) {
     const view = catalogueProjects(before).find((v) => v.slug === slug)
-    const rec = legacyPresetRecord(view?.config.appliedPreset)
+    const rec = legacyPresetRecord(view?.appliedPreset)
     return { migrationId: ctx.migrationId, converted: rec ? [{ packId: rec.id, packVersion: rec.version }] : [] }
   },
   revert,
