@@ -134,6 +134,22 @@ export function itemHref(projectSlug: string, item: Pick<TermUsageItem, 'id' | '
 // ── Errors ────────────────────────────────────────────────────────────────────
 
 const KNOWN_ERRORS = ['label_required', 'label_too_long', 'too_many_terms', 'conflict', 'forbidden', 'unauthenticated', 'in_use', 'has_redirects', 'not_found', 'invalid_value'] as const
+/** The Catalogue taxonomy service's codes that mean the same as a generic one (for the shared picker messages). */
+const CATALOGUE_ALIASES: Readonly<Record<string, string>> = {
+  category_label_required: 'label_required',
+  tag_label_required: 'label_required',
+  category_label_too_long: 'label_too_long',
+  tag_label_too_long: 'label_too_long',
+  category_limit: 'too_many_terms',
+  tag_limit: 'too_many_terms',
+  category_conflict: 'conflict',
+  tag_conflict: 'conflict',
+  invalid_input: 'invalid_value',
+}
+export function catalogueErrorAlias(code: string | undefined): string | undefined {
+  return code && CATALOGUE_ALIASES[code] ? CATALOGUE_ALIASES[code] : code
+}
+
 /** Message key (`clientDashboard.taxonomy.errors.<key>`) for an action error code. */
 export function errorKey(code: string | undefined): string {
   return (KNOWN_ERRORS as readonly string[]).includes(code ?? '') ? (code as string) : 'failed'

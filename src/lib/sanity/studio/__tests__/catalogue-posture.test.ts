@@ -88,11 +88,12 @@ describe('T-1 every-catalogue-document-type-readonly (layer 1)', () => {
     for (const f of ['projectSlug', 'publicId', 'readinessOverrides', 'complianceTasks']) expect(item.fields!.find((x) => x.name === f)?.readOnly, f).toBe(true)
   })
 
-  it('a shared type keeps its own readOnly (OR-ed), and is not locked in R1', () => {
+  it('a shared type keeps its own readOnly (OR-ed); from R2 a Catalogue term is locked, other modules\' terms are not', () => {
     const term = withCataloguePosture({ name: 'taxonomyTerm', type: 'document', readOnly: ({ document }: { document?: { locked?: boolean } }) => document?.locked === true, fields: [] }, () => NONE, () => NOW)
     const ro = term.readOnly as (c: unknown) => boolean
-    expect(ro({ document: { module: 'catalogue', projectSlug: 'p' } })).toBe(false)
-    expect(ro({ document: { module: 'catalogue', projectSlug: 'p', locked: true } })).toBe(true)
+    expect(ro({ document: { module: 'catalogue', projectSlug: 'p' } })).toBe(true)
+    expect(ro({ document: { module: 'blog', projectSlug: 'p' } })).toBe(false)
+    expect(ro({ document: { module: 'blog', projectSlug: 'p', locked: true } })).toBe(true)
   })
 })
 
@@ -105,10 +106,11 @@ describe('T-10 fails-closed / T-15 lock-phases', () => {
     expect(catalogueReadOnly({ type: 'catalogueItem', doc: {}, state: OPEN, now: NOW })).toBe(true)
   })
 
-  it('R1: catalogueItem read-only, Catalogue taxonomyTerm writable; R2: both read-only', () => {
-    expect(CATALOGUE_LOCK_PHASE).toBe('R1')
+  it('R1: catalogueItem read-only, Catalogue taxonomyTerm writable; R2 (current): both read-only', () => {
+    expect(CATALOGUE_LOCK_PHASE).toBe('R2')
     expect(catalogueReadOnly({ type: 'catalogueItem', doc: { projectSlug: 'p' }, state: NONE, now: NOW })).toBe(true)
-    expect(catalogueReadOnly({ type: 'taxonomyTerm', doc: { module: 'catalogue', projectSlug: 'p' }, state: NONE, now: NOW })).toBe(false)
+    expect(catalogueReadOnly({ type: 'taxonomyTerm', doc: { module: 'catalogue', projectSlug: 'p' }, state: NONE, now: NOW, phase: 'R1' })).toBe(false)
+    expect(catalogueReadOnly({ type: 'taxonomyTerm', doc: { module: 'catalogue', projectSlug: 'p' }, state: NONE, now: NOW })).toBe(true)
     expect(catalogueReadOnly({ type: 'taxonomyTerm', doc: { module: 'catalogue', projectSlug: 'p' }, state: NONE, now: NOW, phase: 'R2' })).toBe(true)
     expect(catalogueReadOnly({ type: 'taxonomyTerm', doc: { module: 'blog', projectSlug: 'p' }, state: NONE, now: NOW, phase: 'R2' })).toBe(false)
     expect(CATALOGUE_STUDIO_SCOPED.map((s) => [s.type, s.lockFrom])).toEqual([['taxonomyTerm', 'R2']])

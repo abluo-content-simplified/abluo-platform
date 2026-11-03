@@ -16,6 +16,18 @@ import type { ModuleManifest } from '@/lib/modules/types'
 import { MAX_TERMS_PER_KIND } from '../rules'
 import { TaxonomyError, createTerm, deleteTerm, listTerms, reorderTerms, updateTerm, type TaxonomyDeps, type TaxonomyErrorCode } from '../service'
 
+/**
+ * Catalogue V2 R2 (K-4): the REAL Catalogue manifest no longer declares taxonomies — its terms are
+ * written only by CatalogueTaxonomyService, and the generic service refuses them (asserted below and
+ * in catalogue/taxonomy/__tests__/single-writer.test.ts). These tests exercise the GENERIC machinery
+ * through a fixture manifest that still declares the two kinds (same ids, same usage fields).
+ */
+const FIXTURE_REGISTRY: ModuleManifest[] = MODULE_REGISTRY.map((m) =>
+  m.id === 'catalogue'
+    ? { ...m, taxonomies: [{ kind: 'category' as const, usedBy: [{ type: 'catalogueItem', field: 'categories' }] }, { kind: 'tag' as const, usedBy: [{ type: 'catalogueItem', field: 'tags' }] }] }
+    : m,
+)
+
 const SLUG = 'trattoria'
 const grant = (o: Partial<ProjectGrant> = {}): ProjectGrant => ({
   projectId: 'project-a',
@@ -102,7 +114,7 @@ function fake(seed: Doc[] = []) {
   })
   const del = vi.fn(async (id: string) => void store.delete(id))
   const client = { getDocument: vi.fn(async (id: string) => store.get(id)), fetch, createIfNotExists, patch, transaction, delete: del }
-  const deps: TaxonomyDeps = { client: client as never, now: () => new Date('2026-10-17T09:00:00Z') }
+  const deps: TaxonomyDeps = { client: client as never, now: () => new Date('2026-10-17T09:00:00Z'), registry: FIXTURE_REGISTRY }
   const terms = (slug = SLUG) => [...store.values()].filter((d) => d._type === 'taxonomyTerm' && d.projectSlug === slug)
   const touched = () => fetch.mock.calls.length + client.getDocument.mock.calls.length + createIfNotExists.mock.calls.length + patch.mock.calls.length + transaction.mock.calls.length + del.mock.calls.length
   return { client, deps, store, fetchCalls, terms, touched }

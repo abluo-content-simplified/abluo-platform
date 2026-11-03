@@ -527,6 +527,15 @@ export type ModuleManifest = {
    */
   taxonomies?: ModuleTaxonomyDef[]
 
+  // ── Configuration surface (C9 §9.3) ───────────────────────────────────────
+  /**
+   * Where the module's `config` is edited. Absent / 'studio' = the Studio
+   * Modules pane (ADR-020). 'dashboard' = a dashboard surface owns it (the
+   * Catalogue: Catalogue → Setup, ADR-014); the Modules pane and the project
+   * form then show the config read-only (status toggling stays).
+   */
+  configSurface?: 'studio' | 'dashboard'
+
   // ── Public contract ────────────────────────────────────────────────────────
   // Reserved for future inter-module communication surface.
   // Empty stub in Phase A2.

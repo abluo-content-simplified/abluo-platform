@@ -1282,10 +1282,47 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           defaultRoles: ['owner'],
         },
         {
+          // C8 §8.3 (D-3): narrowed — create (also inline), rename/translate, reorder siblings, delete an
+          // UNUSED leaf, every tag operation. Structure, availability rules and packs are setup.manage.
           id: 'catalogue.taxonomy.write',
-          label: 'Manage categories, dietary tags and service channels',
-          description: 'Create, edit and delete the catalogue vocabularies.',
+          label: 'Manage Categories And Tags',
+          description: 'Create, rename, translate and delete unused categories and tags.',
           defaultRoles: ['owner', 'editor'],
+        },
+        // ── C8 §8.2 (Catalogue V2 R2) ── 'owner' = Owner and Site admin (moduleRoleFor).
+        {
+          id: 'catalogue.setup.manage',
+          label: 'Manage Catalogue Setup',
+          description:
+            'Starter packs, service channels and their default availability, category structure and availability rules, item defaults, currency, publication standards and public website settings.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'catalogue.import.use',
+          label: 'Import Catalogue Data',
+          description: 'Start, confirm and undo a Catalogue import.',
+          defaultRoles: ['owner'],
+        },
+        {
+          // Never in support mode (SUPPORT_NEVER_WRITES, D-21).
+          id: 'catalogue.export.use',
+          label: 'Export Catalogue Data',
+          description: 'Data exports, printed menus and the allergen register.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          // D-16: never in support mode (SUPPORT_NEVER_WRITES).
+          id: 'catalogue.allergen.update',
+          label: 'Review Allergens',
+          description: 'Mark a food item’s allergen declaration as reviewed.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          // D-17: Owner and Site admin only.
+          id: 'catalogue.readiness.update',
+          label: 'Override Readiness Warnings',
+          description: 'Silence a recommended readiness warning on an item, with a reason.',
+          defaultRoles: ['owner'],
         },
       ],
 
@@ -1477,11 +1514,15 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       },
     },
 
-    // ADR-033 Amendment J — categories and tags are taxonomyTerm records.
-    taxonomies: [
-      { kind: 'category', usedBy: [{ type: 'catalogueItem', field: 'categories' }] },
-      { kind: 'tag', usedBy: [{ type: 'catalogueItem', field: 'tags' }] },
-    ],
+    // Catalogue V2 R2 (C1.2, C1.10, K-4): Catalogue categories and tags live in the
+    // Catalogue-owned `catalogue-taxonomy.<slug>` document, written ONLY by
+    // CatalogueTaxonomyService. No `taxonomies` declaration: the generic taxonomy
+    // service refuses the Catalogue (`kind_not_declared`) and Categories & Tags has
+    // no Catalogue tab. (Legacy `taxonomyTerm` records stay readable until R3.)
+
+    // C9 §9.3 (R2 config lock): configured in the dashboard (Catalogue → Setup);
+    // the Studio Modules pane and the project form show this config read-only.
+    configSurface: 'dashboard',
 
     publicContract: {},
 

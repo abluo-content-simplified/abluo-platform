@@ -3,6 +3,7 @@ import type { SchemaTypeDefinition } from 'sanity'
 import { MODULE_REGISTRY } from './registry'
 import type { ModuleConfigFieldDef, ModuleManifest } from './types'
 import { activeFormReferenceFilter } from '@/lib/sanity/form-reference-filter'
+import { configSurfaceIsDashboard } from '@/lib/sanity/studio/config-lock'
 
 // ── Module config schema derivation ───────────────────────────────────────────
 // ADR-020 Decision 1 — the `config` slot on ModuleInstallation gains "a real,
@@ -372,6 +373,8 @@ function buildInstallationType(manifest: ModuleManifest): SchemaTypeDefinition {
         name: 'config',
         title: 'Configuration',
         type: moduleConfigTypeName(manifest),
+        // C9 §9.3 R2 config lock: a dashboard-configured module (the Catalogue → Setup) is read-only here.
+        readOnly: ({ parent }) => configSurfaceIsDashboard((parent as { moduleId?: unknown } | undefined)?.moduleId ?? manifest.id),
       }),
     ],
     preview: {

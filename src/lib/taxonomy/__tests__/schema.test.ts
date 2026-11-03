@@ -22,15 +22,12 @@ describe('taxonomyTerm schema', () => {
 })
 
 describe('manifest taxonomies', () => {
-  it('catalogue declares a category and a tag used by catalogueItem; events a coloured category used by event.categories', () => {
+  it('events declares a coloured category used by event.categories; the Catalogue declares none (R2: its own taxonomy document, K-4)', () => {
     const declaring = MODULE_REGISTRY.filter((m) => m.taxonomies)
-    expect(declaring.map((m) => m.id)).toEqual(expect.arrayContaining(['catalogue', 'events']))
+    expect(declaring.map((m) => m.id)).toContain('events')
+    expect(declaring.map((m) => m.id)).not.toContain('catalogue')
     expect(MODULE_REGISTRY.find((m) => m.id === 'events')!.taxonomies).toEqual([
       { kind: 'category', color: true, usedBy: [{ type: 'event', field: 'categories' }] },
-    ])
-    expect(declaring.find((m) => m.id === 'catalogue')!.taxonomies).toEqual([
-      { kind: 'category', usedBy: [{ type: 'catalogueItem', field: 'categories' }] },
-      { kind: 'tag', usedBy: [{ type: 'catalogueItem', field: 'tags' }] },
     ])
   })
 })

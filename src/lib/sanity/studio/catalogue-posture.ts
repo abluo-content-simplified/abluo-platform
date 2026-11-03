@@ -58,8 +58,11 @@ export const CATALOGUE_STUDIO_SCOPED: ReadonlyArray<{ type: string; lockFrom: Lo
   { type: 'taxonomyTerm', lockFrom: 'R2', owns: (d) => d.module === 'catalogue' },
 ]
 
-/** Bumped to 'R2' by the R2 release (C10-6). The config lock (moduleInstallations[].config) also ships with R2, not here. */
-export const CATALOGUE_LOCK_PHASE: LockPhase = 'R1'
+/**
+ * 'R2' since the R2 release (C10-6): Catalogue Setup and the Catalogue taxonomy/config writers exist,
+ * so Catalogue `taxonomyTerm`s are read-only and the Catalogue config is locked (config-lock.ts).
+ */
+export const CATALOGUE_LOCK_PHASE: LockPhase = 'R2'
 
 const phaseRank = (p: LockPhase) => (p === 'R1' ? 1 : 2)
 

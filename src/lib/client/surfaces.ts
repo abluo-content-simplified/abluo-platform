@@ -135,7 +135,7 @@ export const CATALOGUE_SETUP_ROUTE_EXISTS = false
 
 /** The Setup permission. Flip `CATALOGUE_SETUP_PERMISSION_DEFINED` when it is added to the catalogue manifest (a test keeps the two in step). */
 export const CATALOGUE_SETUP_PERMISSION = 'catalogue.setup.manage'
-export const CATALOGUE_SETUP_PERMISSION_DEFINED = false
+export const CATALOGUE_SETUP_PERMISSION_DEFINED = true
 
 /** Permissions that open Catalogue → Setup: the Setup permission once it exists (false until then), and the category permission (K-4/D-3). */
 export function catalogueSetupPermissions(): string[] {
@@ -192,7 +192,8 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
     group: 'library',
     requires: {
       anyOf: [
-        { anyModule: ['blog', 'catalogue', 'documents', 'events', 'news', 'people'], anyPermission: ['blog.taxonomy.write', 'blog.post.read', 'catalogue.taxonomy.write', 'catalogue.item.read', 'documents.taxonomy.write', 'documents.document.read', 'events.taxonomy.write', 'events.event.read', 'news.taxonomy.write', 'news.article.read', 'people.taxonomy.write', 'people.person.read'] },
+        // Catalogue V2 R2 (K-4, C8 §8.3): no Catalogue here — its categories and tags are edited in Catalogue → Setup.
+        { anyModule: ['blog', 'documents', 'events', 'news', 'people'], anyPermission: ['blog.taxonomy.write', 'blog.post.read', 'documents.taxonomy.write', 'documents.document.read', 'events.taxonomy.write', 'events.event.read', 'news.taxonomy.write', 'news.article.read', 'people.taxonomy.write', 'people.person.read'] },
         // Internal tags of the media library and of galleries (Media and Galleries tabs).
         { permission: 'media.library.manage' },
         { module: 'gallery', anyPermission: ['gallery.gallery.read', 'gallery.gallery.write'] },

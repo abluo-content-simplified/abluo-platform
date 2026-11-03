@@ -7,7 +7,8 @@ import { TextInput } from '@/components/app/ui/TextInput'
 import { FieldError } from '@/components/app/ui/FieldLabel'
 import { ToggleChips } from '@/components/app/ui/ToggleChips'
 import { createTaxonomyTermAction } from '@/app/[locale]/(client)/[tenant]/taxonomy/actions'
-import { errorKey } from './taxonomy-view'
+import { createCatalogueTermInlineAction } from '@/app/[locale]/(client)/[tenant]/catalogue/setup/taxonomy-actions'
+import { catalogueErrorAlias, errorKey } from './taxonomy-view'
 import {
   canOfferCreate,
   filterTerms,
@@ -88,9 +89,11 @@ export function TermPicker({
     if (!labels || busy) return
     setBusy(true)
     setError(null)
-    const r = await createTaxonomyTermAction({ projectSlug, module, kind, labels })
+    // K-4: Catalogue terms are written only by the Catalogue taxonomy service (the same call as Setup);
+    // every other module keeps the generic taxonomy service.
+    const r = module === 'catalogue' ? await createCatalogueTermInlineAction({ projectSlug, kind, labels }) : await createTaxonomyTermAction({ projectSlug, module, kind, labels })
     setBusy(false)
-    if (!r.ok) return setError(t(`errors.${errorKey(r.error)}` as 'errors.failed'))
+    if (!r.ok) return setError(t(`errors.${errorKey(catalogueErrorAlias(r.error))}` as 'errors.failed'))
     const term = toPickerTerm(r.term)
     const nextAll = mergeTerms(all, [term])
     setAdded((a) => mergeTerms(a, [term]))

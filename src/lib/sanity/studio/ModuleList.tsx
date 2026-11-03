@@ -36,6 +36,8 @@ import {
 } from '../../modules/config-validators'
 import { applyPreset, previewPreset } from '../../modules/presets'
 import { buildInstallationPatch, CONFLICT_MESSAGE, isEmptyPatch, isRevisionConflict } from './module-save'
+import { configSurfaceIsDashboard } from './config-lock'
+import { LockedModuleConfig } from './LockedModuleConfig'
 
 /**
  * ModuleList — the Modules pane. ADR-020 Decision 1.
@@ -501,6 +503,9 @@ function ModuleDetail({
   onSaved: (entry: FetchedInstallation, rev?: string | null) => void
 }) {
   const configSchema = manifest.platformContract.configSchema
+  // C9 §9.3 R2 lock: an installed dashboard-configured module (Catalogue → Setup) shows its config
+  // read-only here and its save writes status only. The first install still asks for its config.
+  const configLocked = !!installation && configSurfaceIsDashboard(manifest.id)
 
   const [enabled, setEnabled] = useState<boolean>(
     installation ? installation.enabled !== false : false
@@ -682,7 +687,7 @@ function ModuleDetail({
     // Validate config only while the module is on. An inactive module's config
     // is not in force, so blocking deactivation on an incomplete field would
     // trap an admin in exactly the state they are trying to leave.
-    if (enabled) {
+    if (enabled && !configLocked) {
       const errs: Record<string, string> = {}
       for (const field of configSchema) {
         if (!isVisible(field) && !placementFieldIds.has(field.id)) continue
@@ -698,7 +703,7 @@ function ModuleDetail({
 
     // Change guards (e.g. currency): a changed value that reinterprets existing
     // content is confirmed first, with the count of what it touches.
-    if (installation) {
+    if (installation && !configLocked) {
       const unconfirmed = pendingGuards(configSchema, vals, installation.config, data).filter(
         (g) => !confirmedRef.current.includes(g.key)
       )
@@ -730,7 +735,7 @@ function ModuleDetail({
     setSaving(true)
     try {
       const config: Record<string, unknown> = { _type: moduleConfigTypeName(manifest) }
-      for (const field of configSchema) {
+      for (const field of configLocked ? [] : configSchema) {
         const value = vals[field.id]
         // Omit empty optional values rather than storing empty strings — an
         // unset reference must be absent, not a malformed reference object.
@@ -738,7 +743,7 @@ function ModuleDetail({
         config[field.id] = value
       }
       // Values a field's validator maintains alongside it (segment history).
-      for (const [k, v] of Object.entries(persistedExtras(configSchema, vals, installation?.config, data))) {
+      for (const [k, v] of Object.entries(configLocked ? {} : persistedExtras(configSchema, vals, installation?.config, data))) {
         if (v === undefined || v === null || v === '') continue
         config[k] = v
       }
@@ -780,7 +785,8 @@ function ModuleDetail({
         ...((applied?.appliedPreset ?? installation?.appliedPreset)
           ? { appliedPreset: applied?.appliedPreset ?? installation?.appliedPreset }
           : {}),
-        config,
+        // Locked: the stored config travels unchanged, so the patch touches status fields only.
+        config: configLocked ? (installation?.config as Record<string, unknown> | undefined) : config,
       }
 
       // Key-level patch + revision guard (see module-save.ts): only what this
@@ -831,6 +837,7 @@ function ModuleDetail({
     projectRev,
     onSaved,
     validateField,
+    configLocked,
   ])
 
   return (
@@ -986,7 +993,9 @@ function ModuleDetail({
       {/* ── Configuration ───────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 32 }}>
         <div style={sectionHeadingStyle}>Configuration</div>
-        {configFields.length === 0 ? (
+        {configLocked ? (
+          <LockedModuleConfig fields={configFields} config={installation?.config} />
+        ) : configFields.length === 0 ? (
           <div style={{ fontSize: 13, color: '#bbb' }}>
             This module has no settings — everything it does is controlled by its content.
           </div>

@@ -55,6 +55,9 @@ const HISTORY_ALLOWED = [
 /** Only Setup may read how setup was completed (D-14); `registry.ts` declares the config field. */
 const SETUP_SOURCE_ALLOWED = [
   'lib/modules/catalogue/packs/',
+  // R2: the Setup config writer (catalogueSettingsService) and its Setup actions write and return it to Setup.
+  'lib/modules/catalogue/settings/',
+  'app/[locale]/(client)/[tenant]/catalogue/setup/',
   'components/client/catalogue/setup/',
   'lib/modules/registry.ts',
   'lib/modules/__tests__/applied-preset-guard.test.ts',

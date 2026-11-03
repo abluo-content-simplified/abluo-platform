@@ -40,28 +40,18 @@ describe('registry entry', () => {
   })
 })
 
-describe('Catalogue kinds (slice 7)', () => {
-  it('declares category and tag, each used by one item field, and the manager lists both kinds', () => {
-    const cat = MODULE_REGISTRY.find((m) => m.id === 'catalogue')!
-    expect(cat.taxonomies).toEqual([
-      { kind: 'category', usedBy: [{ type: 'catalogueItem', field: 'categories' }] },
-      { kind: 'tag', usedBy: [{ type: 'catalogueItem', field: 'tags' }] },
-    ])
-    const mod = manageableTaxonomyModules(grantFor('owner', ['catalogue']) as never).find((m) => m.module === 'catalogue')
-    expect(mod?.kinds).toEqual(['category', 'tag'])
+describe('Catalogue kinds (R2, K-4)', () => {
+  it('the Catalogue declares no taxonomies: the manager never lists it (its categories and tags live in Catalogue → Setup)', () => {
+    expect(MODULE_REGISTRY.find((m) => m.id === 'catalogue')!.taxonomies).toBeUndefined()
+    expect(manageableTaxonomyModules(grantFor('owner', ['catalogue']) as never)).toEqual([])
   })
 })
 
 describe('who sees "Categories & Tags"', () => {
-  it('owner and editor of a project with the Catalogue', () => {
-    expect(navIds(grantFor('owner', ['catalogue']))).toContain('taxonomy')
-    expect(navIds(grantFor('editor', ['catalogue']))).toContain('taxonomy')
-  })
-
-  it('a viewer (read only) sees it too', () => {
-    const viewer = grantFor('viewer', ['catalogue'])
-    expect(viewer.permissions).not.toContain('catalogue.taxonomy.write')
-    expect(navIds(viewer)).toContain('taxonomy')
+  it('the Catalogue alone no longer opens it (R2: Catalogue → Setup → Categories & Tags)', () => {
+    const catalogueOnly = ['catalogue.taxonomy.write', 'catalogue.item.read', 'catalogue.setup.manage']
+    expect(buildTenantSurfaces({ enabledModuleIds: ['catalogue'], permissions: catalogueOnly }).nav.map((n) => n.id)).not.toContain('taxonomy')
+    expect(navIds(grantFor('viewer', ['catalogue']))).not.toContain('taxonomy')
   })
 
   it('nobody sees it without a module that declares a taxonomy, or media or galleries', () => {
@@ -78,20 +68,21 @@ describe('who sees "Categories & Tags"', () => {
   })
 
   it('needs a permission of that module, not just the install', () => {
-    expect(buildTenantSurfaces({ enabledModuleIds: ['catalogue'], permissions: [] }).nav.map((n) => n.id)).not.toContain('taxonomy')
-    expect(buildTenantSurfaces({ enabledModuleIds: ['catalogue'], permissions: ['catalogue.taxonomy.write'] }).nav.map((n) => n.id)).toContain('taxonomy')
+    expect(buildTenantSurfaces({ enabledModuleIds: ['events'], permissions: [] }).nav.map((n) => n.id)).not.toContain('taxonomy')
+    expect(buildTenantSurfaces({ enabledModuleIds: ['events'], permissions: ['events.taxonomy.write'] }).nav.map((n) => n.id)).toContain('taxonomy')
   })
 })
 
 describe('manageableTaxonomyModules', () => {
   it('lists the installed modules with a taxonomy and whether the person can change it', () => {
-    expect(manageableTaxonomyModules(grantFor('editor', ['catalogue', 'gallery']))).toEqual([{ module: 'catalogue', kinds: ['category', 'tag'], canWrite: true }])
-    expect(manageableTaxonomyModules(grantFor('viewer', ['catalogue']))).toEqual([{ module: 'catalogue', kinds: ['category', 'tag'], canWrite: false }])
+    expect(manageableTaxonomyModules(grantFor('editor', ['events', 'gallery']))).toEqual([{ module: 'events', kinds: ['category'], canWrite: true }])
+    expect(manageableTaxonomyModules(grantFor('viewer', ['events']))).toEqual([{ module: 'events', kinds: ['category'], canWrite: false }])
   })
 
   it('is empty without the module, without permission, or when the module declares nothing', () => {
     expect(manageableTaxonomyModules(grantFor('owner', ['gallery']))).toEqual([])
-    expect(manageableTaxonomyModules({ enabledModuleIds: ['catalogue'], permissions: [] })).toEqual([])
+    expect(manageableTaxonomyModules({ enabledModuleIds: ['events'], permissions: [] })).toEqual([])
+    expect(manageableTaxonomyModules(grantFor('owner', ['catalogue']))).toEqual([])
   })
 })
 
