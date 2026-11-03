@@ -273,11 +273,15 @@ describe('catalogue group (ADR-033 spec §10.1, ADR-042 N2 / N2a)', () => {
     expect(byId('catalogueItems').owns).toEqual({ base: 'catalogue', except: ['collections', 'option-lists', 'setup'] })
   })
 
-  it('Setup is declared but hidden until its route exists, whatever the permissions', () => {
+  it('Setup is available now that its route exists (R2-B), and shown with the Setup permission or the category permission', () => {
     const setup = TENANT_SURFACES.find((t): t is NavSurface => t.kind === 'nav' && t.id === 'catalogueSetup')!
-    expect(setup.available).toBe(CATALOGUE_SETUP_ROUTE_EXISTS)
-    const all = buildTenantSurfaces({ enabledModuleIds: ['catalogue'], permissions: [...READ, 'catalogue.taxonomy.write', CATALOGUE_SETUP_PERMISSION] })
-    expect(ids(all.nav)).not.toContain('catalogueSetup')
+    expect(CATALOGUE_SETUP_ROUTE_EXISTS).toBe(true)
+    expect(setup.available).toBe(true)
+    const visible = (permissions: string[]) => ids(buildTenantSurfaces({ enabledModuleIds: ['catalogue'], permissions }).nav)
+    expect(visible([...READ, CATALOGUE_SETUP_PERMISSION])).toContain('catalogueSetup')
+    expect(visible([...READ, 'catalogue.taxonomy.write'])).toContain('catalogueSetup')
+    expect(visible(READ)).not.toContain('catalogueSetup')
+    expect(ids(buildTenantSurfaces({ enabledModuleIds: [], permissions: [...READ, CATALOGUE_SETUP_PERMISSION] }).nav)).not.toContain('catalogueSetup')
   })
 
   it('once its route exists: Setup permission or catalogue.taxonomy.write opens it, plain readers do not (N2a)', () => {
@@ -313,7 +317,7 @@ describe('navigation groups (ADR-042 N1, section 3)', () => {
   it('places every destination as Tom confirmed (2026-11-02)', () => {
     const by = (g: string) => ids(buildTenantSurfaces(owner).nav.filter((n) => n.group === g))
     expect(by('content')).toEqual(['blog', 'events', 'faq', 'gallery', 'documents'])
-    expect(by('catalogue')).toEqual(['catalogueItems', 'catalogueCollections', 'catalogueOptions'])
+    expect(by('catalogue')).toEqual(['catalogueItems', 'catalogueCollections', 'catalogueOptions', 'catalogueSetup'])
     expect(by('visitors')).toEqual(['forms', 'members'])
     expect(by('library')).toEqual(['people', 'media', 'taxonomy'])
     expect(by('insights')).toEqual(['analytics'])

@@ -8,11 +8,19 @@ import type { CategoryNode } from '@/lib/modules/catalogue/taxonomy/types'
 import { DemoBlock, DemoStack } from '../demo-kit'
 import { DEMO_NODES, applyDemoMove, demoLabel, demoTree } from './catalogue-demo-fixtures'
 
+function moveFlat(keys: string[], key: string, index: number): string[] {
+  const rest = keys.filter((k) => k !== key)
+  rest.splice(Math.max(0, Math.min(rest.length, index)), 0, key)
+  return rest
+}
+
 export default function TreeEditorDemo() {
   const [nodes, setNodes] = useState<CategoryNode[]>(DEMO_NODES)
   const [renaming, setRenaming] = useState<string | null>(null)
   const tree = useMemo(() => demoTree(nodes), [nodes])
   const labelOf = demoLabel(tree)
+  const [flatKeys, setFlatKeys] = useState(['New', 'House favourite', 'Spicy', 'Seasonal'])
+  const flat = useMemo(() => demoTree(flatKeys.map((key, i) => ({ key, label: { en: key }, parentKey: null, order: (i + 1) * 1000, channelRules: {}, defaultOptionListIds: [], archivedAt: null }))), [flatKeys])
   const rename = (key: string, label: string) => setNodes((ns) => ns.map((n) => (n.key === key ? { ...n, label: { en: label } } : n)))
   return (
     <DemoStack>
@@ -46,6 +54,16 @@ export default function TreeEditorDemo() {
           )}
           renderMeta={(key) => (tree.nodes.get(key)?.archivedAt ? <Pill>Archived</Pill> : null)}
           menuItems={(key) => [{ key: 'rename', label: 'Rename', onSelect: () => setRenaming(key) }]}
+        />
+      </DemoBlock>
+      <DemoBlock title="Order only (a flat list, or reorder without restructuring)" note="parentChangeDisabledReason: ↑ / ↓ still reorder; → / ← and drops into another row are refused with the reason.">
+        <TreeEditor
+          className="w-full max-w-xl"
+          label="Tags"
+          tree={flat}
+          labelOf={(k) => k}
+          onMove={(req) => setFlatKeys((ks) => moveFlat(ks, req.key, req.index ?? ks.length))}
+          parentChangeDisabledReason="Tags have no levels: only their order can change."
         />
       </DemoBlock>
       <DemoBlock title="Read-only order (while searching)" note="reorderable={false} hides the grips and move items, and says why.">

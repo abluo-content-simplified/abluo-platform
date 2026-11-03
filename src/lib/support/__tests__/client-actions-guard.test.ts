@@ -110,7 +110,8 @@ describe('client-dashboard pages and layouts', () => {
       .filter((f) => /purpose\s*:\s*['"]render['"]/.test(readFileSync(f, 'utf8')))
       .map((f) => relative(process.cwd(), f).split(sep).join('/'))
       // `catalogue/list-screen.tsx`: the one screen behind the three Catalogue list routes (ADR-042 N2); each page.tsx just names its list.
-      .filter((f) => !/\/(page|layout)\.tsx$/.test(f) && !f.includes('/__tests__/') && !f.endsWith('/catalogue/list-screen.tsx'))
+      // `catalogue/setup/setup-route.ts`: the one permission check every Catalogue → Setup page.tsx runs first (R2-B, N2a); only pages call it.
+      .filter((f) => !/\/(page|layout)\.tsx$/.test(f) && !f.includes('/__tests__/') && !f.endsWith('/catalogue/list-screen.tsx') && !f.endsWith('/catalogue/setup/setup-route.ts'))
     expect(offenders).toEqual([])
   })
 })

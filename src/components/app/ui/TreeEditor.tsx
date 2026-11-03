@@ -27,6 +27,12 @@ export type TreeEditorProps = {
   reorderable?: boolean
   /** Why reordering is off — shown above the list (disabled actions say why). */
   reorderDisabledReason?: string
+  /**
+   * Reordering among siblings only: moving into or out of another parent is off, and this is
+   * why (shown above the list, announced on → / ← and on a drop into another parent). A flat
+   * list (tags, channels) or a permission that may reorder but not restructure.
+   */
+  parentChangeDisabledReason?: string
   /** Keys whose children are hidden. Omitted = the editor keeps its own state (everything open). */
   collapsed?: ReadonlySet<CategoryKey>
   onCollapsedChange?: (next: Set<CategoryKey>) => void
@@ -72,6 +78,7 @@ export function TreeEditor({
   validate,
   reorderable = true,
   reorderDisabledReason,
+  parentChangeDisabledReason,
   collapsed: collapsedProp,
   onCollapsedChange,
   renamingKey = null,
@@ -125,6 +132,10 @@ export function TreeEditor({
   const blockedText = (b: TreeMoveBlocked, key: CategoryKey) => t(`blocked.${b}`, { name: labelOf(key) })
 
   function attempt(req: MoveRequest, focus: boolean) {
+    if (parentChangeDisabledReason && req.newParentKey !== parentOf(tree, req.key)) {
+      setMessage(parentChangeDisabledReason)
+      return false
+    }
     const plan = check(req)
     if (!plan.ok) {
       setMessage(refusal(plan.code, req))
@@ -173,7 +184,7 @@ export function TreeEditor({
             },
           }
           const moves: CardMenuItem[] = reorderable
-            ? (['up', 'down', 'indent', 'outdent'] as const).flatMap((action) => {
+            ? (parentChangeDisabledReason ? (['up', 'down'] as const) : (['up', 'down', 'indent', 'outdent'] as const)).flatMap((action) => {
                 const r = stepRequest(tree, key, action)
                 if (!r.ok) return []
                 const target = r.request.newParentKey
@@ -247,7 +258,8 @@ export function TreeEditor({
   return (
     <div className={className}>
       {!reorderable && reorderDisabledReason ? <p className="mb-2 text-sm text-muted-foreground">{reorderDisabledReason}</p> : null}
-      {reorderable ? <p className="sr-only">{t('instructions')}</p> : null}
+      {reorderable && parentChangeDisabledReason ? <p className="mb-2 text-sm text-muted-foreground">{parentChangeDisabledReason}</p> : null}
+      {reorderable ? <p className="sr-only">{parentChangeDisabledReason ? t('instructionsFlat') : t('instructions')}</p> : null}
       {renderLevel(tree.roots, 0)}
       <span role="status" aria-live="polite" className="sr-only">
         {message}

@@ -80,7 +80,7 @@ describe('both surfaces use the same source', () => {
     const nav = buildTenantSurfaces({ permissions: grantPermissions('owner', all), enabledModuleIds: all }).nav
     expect(nav.map((n) => [n.id, n.group])).toEqual([
       ['blog', 'content'], ['events', 'content'], ['faq', 'content'], ['gallery', 'content'], ['documents', 'content'],
-      ['catalogueItems', 'catalogue'], ['catalogueCollections', 'catalogue'], ['catalogueOptions', 'catalogue'],
+      ['catalogueItems', 'catalogue'], ['catalogueCollections', 'catalogue'], ['catalogueOptions', 'catalogue'], ['catalogueSetup', 'catalogue'],
       ['forms', 'visitors'], ['members', 'visitors'],
       ['people', 'library'], ['media', 'library'], ['taxonomy', 'library'],
       ['analytics', 'insights'],

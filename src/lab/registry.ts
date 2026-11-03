@@ -1311,6 +1311,7 @@ export const LAB_REGISTRY: LabEntry[] = [
       'The caller saves the move (CatalogueTaxonomyService) and passes the new tree back; the editor then announces the new place and returns focus to the grip.',
       'No hover-only controls: on a phone the ⋯ menu offers Move up / Move down / Move into / Move out.',
       'Pass reorderable={false} (with reorderDisabledReason) while a search or filter hides part of the tree.',
+      'Pass parentChangeDisabledReason for order-only lists (tags, channels, size templates) or a permission that may reorder but not restructure: → / ← and drops into another parent are refused with that reason, and the menu offers only Move up / Move down.',
     ],
     replaces: ['hand-built indented category lists with arrow buttons'],
     demo: () => import('./demos/tree-editor.demo'),

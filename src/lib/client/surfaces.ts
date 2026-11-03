@@ -131,7 +131,7 @@ export const FEATURE_CONTROL_ALLOWLIST: readonly string[] = [
 export const CATALOGUE_OWN_ROUTES: readonly string[] = ['collections', 'option-lists', 'setup']
 
 /** Flip with the `catalogue/setup` route (a test refuses the flag when the folder is missing, or the folder when the flag is off). */
-export const CATALOGUE_SETUP_ROUTE_EXISTS = false
+export const CATALOGUE_SETUP_ROUTE_EXISTS = true
 
 /** The Setup permission. Flip `CATALOGUE_SETUP_PERMISSION_DEFINED` when it is added to the catalogue manifest (a test keeps the two in step). */
 export const CATALOGUE_SETUP_PERMISSION = 'catalogue.setup.manage'
