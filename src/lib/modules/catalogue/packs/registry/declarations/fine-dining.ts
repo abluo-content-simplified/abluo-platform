@@ -1,5 +1,5 @@
 import type { PackDeclaration } from '../../types'
-import { FOOD_PROFILE, FORMAT, L, LABEL, TAG, delivery, dineIn, hours, section, takeaway } from '../shared'
+import { FOOD, FOOD_PROFILE, FORMAT, L, LABEL, TAG, delivery, hours, section, takeaway, dineIn } from '../shared'
 
 /** C7.10 Fine dining — `fine-dining` v3. Tasting menus at dinner only: baseline unavailable + 19:00–23:00 Tue–Sun (D-6). */
 export const fineDining: PackDeclaration = {
@@ -16,27 +16,27 @@ export const fineDining: PackDeclaration = {
   suggestedDefaultProfile: FOOD_PROFILE,
   channels: [dineIn(true), takeaway(false), delivery(false)],
   categories: [
-    { key: 'amuse', label: L('Amuse-bouche', 'Amuse-bouche', 'Amuse-Bouche'), parent: null },
+    { key: 'amuse', label: L('Amuse-bouche', 'Amuse-bouche', 'Amuse-Bouche'), parent: null, useFor: FOOD },
     {
       key: 'tasting_menus',
       label: L('Tasting menus', 'Menu degustazione', 'Degustationsmenüs'),
-      parent: null,
+      parent: null, useFor: FOOD,
       channelRules: { 'dine-in': { state: 'unavailable', overrides: [hours('dinner', '19:00', '23:00', ['tue', 'wed', 'thu', 'fri', 'sat', 'sun'])] } },
     },
-    { key: 'a_la_carte', label: L('À la carte', 'Alla carta', 'À la carte'), parent: null },
+    { key: 'a_la_carte', label: L('À la carte', 'Alla carta', 'À la carte'), parent: null, useFor: FOOD },
     { key: 'starters', label: LABEL.starters, parent: 'a_la_carte' },
     { key: 'fish', label: LABEL.fish, parent: 'a_la_carte' },
     { key: 'meat', label: LABEL.meat, parent: 'a_la_carte' },
     { key: 'vegetarian', label: L('Vegetarian', 'Vegetariani', 'Vegetarisch'), parent: 'a_la_carte' },
-    { key: 'cheese', label: L('Cheese', 'Formaggi', 'Käse'), parent: null },
-    { key: 'desserts', label: L('Desserts and petits fours', 'Dolci e piccola pasticceria', 'Desserts und Petits Fours'), parent: null },
-    { key: 'wine', label: LABEL.wine, parent: null },
+    { key: 'cheese', label: L('Cheese', 'Formaggi', 'Käse'), parent: null, useFor: FOOD },
+    { key: 'desserts', label: L('Desserts and petits fours', 'Dolci e piccola pasticceria', 'Desserts und Petits Fours'), parent: null, useFor: FOOD },
+    { key: 'wine', label: LABEL.wine, parent: null, useFor: FOOD },
     { key: 'wine_red', label: LABEL.red, parent: 'wine' },
     { key: 'wine_white', label: LABEL.white, parent: 'wine' },
     { key: 'wine_sparkling', label: L('Sparkling and Champagne', 'Bollicine e Champagne', 'Schaumweine und Champagner'), parent: 'wine' },
     { key: 'wine_sweet', label: LABEL.sweet, parent: 'wine' },
-    { key: 'pairings', label: L('Pairings', 'Abbinamenti', 'Weinbegleitung'), parent: null },
-    { key: 'beverages', label: LABEL.beverages, parent: null },
+    { key: 'pairings', label: L('Pairings', 'Abbinamenti', 'Weinbegleitung'), parent: null, useFor: FOOD },
+    { key: 'beverages', label: LABEL.beverages, parent: null, useFor: FOOD },
   ],
   tags: [TAG.signature, TAG.seasonal],
   collections: [

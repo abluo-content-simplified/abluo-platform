@@ -18,6 +18,7 @@ import { ORDER_STEP } from '@/lib/taxonomy/rules'
 import { SLUG_PART_PATTERN } from '@/lib/taxonomy/ids'
 import { catalogueCategoryVocabulary, cleanTextMap, tagVocabulary, type CategoryTermRow, type VocabularyEntry } from '@/lib/taxonomy/vocabulary'
 import { readRuleRows } from '../commerce/read'
+import { fieldsFromUseFor } from './profile-applicability'
 import { buildTree, legacyCategoriesToAssignment, treeOrder } from './tree'
 import type { CategoryAssignment, CategoryNode, CategoryTree, ChannelRules, TagNode } from './types'
 
@@ -39,7 +40,7 @@ export function catalogueTaxonomyId(projectSlug: string): string {
  * a document without one of the arrays → that member null (= "has no such kind").
  */
 export function catalogueTaxonomyGroq(labelExpr: string): string {
-  return `*[_type == "${CATALOGUE_TAXONOMY_TYPE}" && _id == "${CATALOGUE_TAXONOMY_ID_PREFIX}" + $projectSlug && projectSlug == $projectSlug][0]{ "categories": categories[]{ key, "label": ${labelExpr}, parentKey, order, channelRules, defaultOptionListIds, archivedAt }, "tags": tags[]{ key, "label": ${labelExpr}, order, archivedAt } }`
+  return `*[_type == "${CATALOGUE_TAXONOMY_TYPE}" && _id == "${CATALOGUE_TAXONOMY_ID_PREFIX}" + $projectSlug && projectSlug == $projectSlug][0]{ "categories": categories[]{ key, "label": ${labelExpr}, parentKey, order, channelRules, defaultOptionListIds, archivedAt, useFor }, "tags": tags[]{ key, "label": ${labelExpr}, order, archivedAt, useFor } }`
 }
 
 // ── raw shapes ───────────────────────────────────────────────────────────────
@@ -52,8 +53,10 @@ export type RawTaxonomyCategory = {
   channelRules?: unknown
   defaultOptionListIds?: unknown
   archivedAt?: unknown
+  /** D-22 (C1.12): roots only; readers ignore it on a child. */
+  useFor?: unknown
 }
-export type RawTaxonomyTag = { key?: unknown; label?: unknown; order?: unknown; archivedAt?: unknown }
+export type RawTaxonomyTag = { key?: unknown; label?: unknown; order?: unknown; archivedAt?: unknown; useFor?: unknown }
 export type RawCatalogueTaxonomy = { categories?: readonly (RawTaxonomyCategory | null)[] | null; tags?: readonly (RawTaxonomyTag | null)[] | null } | null | undefined
 
 const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
@@ -93,6 +96,7 @@ export function readCategoryNodes(rows: unknown): CategoryNode[] {
       channelRules: readCategoryChannelRules(row.channelRules),
       defaultOptionListIds: (Array.isArray(row.defaultOptionListIds) ? row.defaultOptionListIds : []).filter((x): x is string => typeof x === 'string' && x !== ''),
       archivedAt: str(row.archivedAt) || null,
+      ...fieldsFromUseFor(row.useFor),
     })
   })
   return out
@@ -106,7 +110,7 @@ export function readTagNodes(rows: unknown): TagNode[] {
     const key = str(row?.key)
     if (!row || !key || seen.has(key)) return
     seen.add(key)
-    out.push({ key, label: labelMap(row.label), order: finiteOr(row.order, (at + 1) * ORDER_STEP), archivedAt: str(row.archivedAt) || null })
+    out.push({ key, label: labelMap(row.label), order: finiteOr(row.order, (at + 1) * ORDER_STEP), archivedAt: str(row.archivedAt) || null, ...fieldsFromUseFor(row.useFor) })
   })
   return out.sort((a, b) => a.order - b.order || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
 }
@@ -122,8 +126,8 @@ export function flatTree(keys: readonly string[]): CategoryTree {
 
 export type VocabularySource = 'document' | 'terms' | 'config'
 
-/** A vocabulary entry; `parentKey`/`archived` only for document-sourced categories. */
-export type CatalogueVocabularyEntry = VocabularyEntry & { parentKey?: string | null; archived?: boolean }
+/** A vocabulary entry; `parentKey`/`archived`/`useFor` only for document-sourced entries. */
+export type CatalogueVocabularyEntry = VocabularyEntry & { parentKey?: string | null; archived?: boolean; useFor?: readonly string[]; useForCorrupt?: true }
 
 export type CatalogueVocabulary<C> = {
   categories: CatalogueVocabularyEntry[] | C
@@ -190,7 +194,7 @@ export function catalogueVocabulary<C>(input: {
     }
     tags = readTagNodes(doc.tags).map((t) => {
       const raw = rawByKey.get(t.key)
-      return { value: t.key, label: isLabel(raw?.label) ? raw?.label : undefined, archived: !!t.archivedAt }
+      return { value: t.key, label: isLabel(raw?.label) ? raw?.label : undefined, archived: !!t.archivedAt, ...(t.useFor && { useFor: t.useFor }), ...(t.useForCorrupt && { useForCorrupt: true as const }) }
     })
     tagSource = 'document'
   } else {

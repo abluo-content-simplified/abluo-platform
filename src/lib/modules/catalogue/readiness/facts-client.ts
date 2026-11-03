@@ -19,7 +19,7 @@ import { declarationPatch, type ItemState } from '../dashboard-form'
 import type { ItemIssueContext, ItemIssueState } from '../item-issues'
 import { asFormatKey, asChannelKey } from '../commerce/commerce-types'
 import { writerChannels, writerTree } from '../item-writer'
-import { activationMarkers, modelFacts } from './facts-model'
+import { activationMarkers, applicabilityNames, modelFacts } from './facts-model'
 import type { ItemReadinessInput } from './types'
 
 /** The implicit default format's key (C3: an item without formats has exactly one). */
@@ -37,6 +37,16 @@ export function itemReadinessInputFromState(s: ClientFactsState, ctx: ItemIssueC
     tree: writerTree(ctx.tree, []),
     channels,
     timeZone: ctx.timeZone ?? null,
+    ...(ctx.applicability && {
+      applicability: {
+        profile: s.itemProfile ?? null,
+        tags: s.tags ?? [],
+        optionListIds: s.options.map((o) => o.listId),
+        taxonomyTags: ctx.applicability.tags,
+        optionLists: new Map(ctx.applicability.optionLists.map((l) => [l.id, l])),
+        nameOf: applicabilityNames(writerTree(ctx.tree, []), ctx.applicability.tags, ctx.defaultLocale, (id) => ctx.applicability!.optionLists.find((l) => l.id === id)?.name),
+      },
+    }),
   })
   return {
     id: s.id ?? '',

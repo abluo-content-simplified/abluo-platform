@@ -1,5 +1,5 @@
 import type { PackDeclaration } from '../../types'
-import { FOOD_PROFILE, FORMAT, L, LABEL, TAG, delivery, dineIn, hours, roomService, section, takeaway } from '../shared'
+import { FOOD, FOOD_PROFILE, FORMAT, L, LABEL, TAG, delivery, hours, section, takeaway, dineIn, roomService } from '../shared'
 
 const LUNCH_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 const lunch = { state: 'unavailable' as const, overrides: [hours('lunch', '12:00', '15:00', [...LUNCH_DAYS])] }
@@ -19,23 +19,23 @@ export const traditionalRestaurant: PackDeclaration = {
   suggestedDefaultProfile: FOOD_PROFILE,
   channels: [dineIn(true), takeaway(true), delivery(false), roomService(false)],
   categories: [
-    { key: 'lunch_specials', label: L('Lunch specials', 'Piatti del giorno', 'Mittagsgerichte'), parent: null, channelRules: { 'dine-in': lunch, takeaway: lunch } },
-    { key: 'starters', label: LABEL.starters, parent: null },
-    { key: 'first_courses', label: L('First courses', 'Primi piatti', 'Erste Gänge'), parent: null },
+    { key: 'lunch_specials', label: L('Lunch specials', 'Piatti del giorno', 'Mittagsgerichte'), parent: null, useFor: FOOD, channelRules: { 'dine-in': lunch, takeaway: lunch } },
+    { key: 'starters', label: LABEL.starters, parent: null, useFor: FOOD },
+    { key: 'first_courses', label: L('First courses', 'Primi piatti', 'Erste Gänge'), parent: null, useFor: FOOD },
     { key: 'pasta', label: L('Pasta', 'Pasta', 'Pasta'), parent: 'first_courses' },
     { key: 'soups_risotto', label: L('Soups and risotto', 'Zuppe e risotti', 'Suppen und Risotto'), parent: 'first_courses' },
-    { key: 'main_courses', label: L('Main courses', 'Secondi piatti', 'Hauptgerichte'), parent: null, defaultOptionGroups: ['side_choice'] },
+    { key: 'main_courses', label: L('Main courses', 'Secondi piatti', 'Hauptgerichte'), parent: null, useFor: FOOD, defaultOptionGroups: ['side_choice'] },
     { key: 'meat', label: LABEL.meat, parent: 'main_courses', defaultOptionGroups: ['cooking_point'] },
     { key: 'fish', label: LABEL.fish, parent: 'main_courses' },
     { key: 'vegetarian_mains', label: L('Vegetarian', 'Vegetariani', 'Vegetarisch'), parent: 'main_courses' },
-    { key: 'sides', label: L('Side dishes', 'Contorni', 'Beilagen'), parent: null },
-    { key: 'desserts', label: LABEL.desserts, parent: null },
-    { key: 'beverages', label: LABEL.beverages, parent: null },
+    { key: 'sides', label: L('Side dishes', 'Contorni', 'Beilagen'), parent: null, useFor: FOOD },
+    { key: 'desserts', label: LABEL.desserts, parent: null, useFor: FOOD },
+    { key: 'beverages', label: LABEL.beverages, parent: null, useFor: FOOD },
     { key: 'soft_drinks', label: LABEL.softDrinks, parent: 'beverages' },
     { key: 'beer', label: LABEL.beer, parent: 'beverages' },
     { key: 'coffee', label: LABEL.coffee, parent: 'beverages' },
     { key: 'digestifs', label: L('Digestifs', 'Digestivi', 'Digestifs'), parent: 'beverages' },
-    { key: 'wine', label: LABEL.wine, parent: null, channelRules: { takeaway: { state: 'unavailable' } } },
+    { key: 'wine', label: LABEL.wine, parent: null, useFor: FOOD, channelRules: { takeaway: { state: 'unavailable' } } },
     { key: 'wine_red', label: LABEL.red, parent: 'wine' },
     { key: 'wine_white', label: LABEL.white, parent: 'wine' },
     { key: 'wine_rose', label: LABEL.rose, parent: 'wine' },
@@ -69,6 +69,7 @@ export const traditionalRestaurant: PackDeclaration = {
     {
       key: 'side_choice',
       name: L('Side choice', 'Scelta del contorno', 'Beilage nach Wahl'),
+      useFor: FOOD,
       min: 1,
       max: 1,
       choices: [
@@ -80,6 +81,7 @@ export const traditionalRestaurant: PackDeclaration = {
     {
       key: 'cooking_point',
       name: L('Cooking point', 'Cottura', 'Garstufe'),
+      useFor: FOOD,
       min: 1,
       max: 1,
       choices: [

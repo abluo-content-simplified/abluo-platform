@@ -41,6 +41,10 @@ export type PackIssueCode =
   /** An option group without choices, min > max, or a format with an invalid quantity (the dashboard would refuse them). */
   | 'pack_shape_invalid'
   | 'pack_runtime_branch'
+  /** D-22 (C1.12.8): a root category or option group of a non-empty pack without "Use for". */
+  | 'pack_use_for_missing'
+  /** D-22: "Use for" on a child category (descendants inherit their root's). */
+  | 'pack_use_for_not_root'
 
 export type PackIssue = { code: PackIssueCode; path: string; message: string }
 
@@ -148,7 +152,14 @@ export function validatePackDeclaration(pack: PackDeclaration, ctx: PackValidati
       else schedule(`categories[${i}].channelRules.${ch}`, rule)
     }
     for (const g of c.defaultOptionGroups ?? []) if (!groupKeys.has(g)) add('pack_option_ref_unknown', `categories[${i}].defaultOptionGroups`, `"${g}" is not an option group of this pack.`)
+    // D-22 (C1.12.8): roots declare "Use for"; children inherit it.
+    if (c.parent !== null && c.useFor !== undefined) add('pack_use_for_not_root', `categories[${i}].useFor`, `"${c.key}" is not top-level: it inherits its root's "Use for".`)
+    if (c.parent === null && !c.useFor?.length) add('pack_use_for_missing', `categories[${i}].useFor`, `Top-level category "${c.key}" declares no "Use for".`)
+    useFor(`categories[${i}].useFor`, c.useFor)
   })
+  function useFor(path: string, v: readonly unknown[] | undefined) {
+    for (const p of v ?? []) if (!isItemProfile(p)) add('pack_profile_unknown', path, `"${String(p)}" is not a profile.`)
+  }
   const tree = buildTree(packCategoryNodes(pack))
   for (const issue of tree.issues) {
     // Orphans are reported above as pack_parent_unknown; duplicates as pack_key_duplicate.
@@ -159,7 +170,10 @@ export function validatePackDeclaration(pack: PackDeclaration, ctx: PackValidati
   // tags
   unique('tags', pack.tags.map((t) => t.key), isValidTermKey)
   if (pack.tags.length > MAX_TAGS) add('pack_too_large', 'tags', `More than ${MAX_TAGS} tags.`)
-  pack.tags.forEach((t, i) => label(`tags[${i}].label`, t.label, PACK_LABEL_MAX))
+  pack.tags.forEach((t, i) => {
+    label(`tags[${i}].label`, t.label, PACK_LABEL_MAX)
+    useFor(`tags[${i}].useFor`, t.useFor)
+  })
 
   // collections + sections
   unique('collections', pack.collections.map((c) => c.key), isValidTermKey)
@@ -182,6 +196,8 @@ export function validatePackDeclaration(pack: PackDeclaration, ctx: PackValidati
   unique('optionGroups', pack.optionGroups.map((g) => g.key), isValidTermKey)
   pack.optionGroups.forEach((g, i) => {
     label(`optionGroups[${i}].name`, g.name, PACK_LABEL_MAX)
+    if (!g.useFor?.length) add('pack_use_for_missing', `optionGroups[${i}].useFor`, `Option group "${g.key}" declares no "Use for".`)
+    useFor(`optionGroups[${i}].useFor`, g.useFor)
     if (g.choices.length === 0) add('pack_shape_invalid', `optionGroups[${i}].choices`, 'An option list needs at least one option.')
     if (!Number.isInteger(g.min) || g.min < 0 || (g.max !== null && (!Number.isInteger(g.max) || g.max < g.min))) add('pack_shape_invalid', `optionGroups[${i}]`, 'Invalid min / max.')
     unique(`optionGroups[${i}].choices`, g.choices.map((c) => c.key), isValidTermKey)

@@ -19,6 +19,7 @@ export const CATALOGUE_AUDIT_KINDS = [
   'pack.updated',
   'category.rule_changed',
   'category.restructured',
+  'taxonomy.use_for_changed',
   'channel.activated',
   'channel.deactivated',
   'channel.removed',
@@ -76,6 +77,8 @@ export type CatalogueAuditPayload = {
   'pack.updated': { packId: string; fromVersion: number; toVersion: number; added: Record<string, number> }
   'category.rule_changed': { categoryKey: string; channel: string | null; before: RuleSummary; after: RuleSummary; impact: ImpactCounts }
   'category.restructured': { op: 'move' | 'delete' | 'reassign'; categoryKey: string; fromParent?: string | null; toParent?: string | null; reassignedTo?: string; impact: Counts }
+  /** D-22 (C1.12.7): registry profile ids only (never labels) + the count of items newly incompatible. */
+  'taxonomy.use_for_changed': { target: 'category' | 'tag' | 'optionList'; key: string; before: string[]; after: string[]; newlyIncompatible: number }
   'channel.activated': { channelKey: string; defaultAvailability: ChannelAvailabilityState; impact: ImpactCounts }
   'channel.deactivated': { channelKey: string; impact: ImpactCounts }
   'channel.default_changed': { channelKey: string; before: ScheduleSummary; after: ScheduleSummary; impact: ImpactCounts }
@@ -123,6 +126,7 @@ export const AUDIT_VISIBILITY: Readonly<Record<CatalogueAuditKind, 'item' | 'set
   'pack.updated': 'setup',
   'category.rule_changed': 'setup',
   'category.restructured': 'setup',
+  'taxonomy.use_for_changed': 'setup',
   'channel.activated': 'setup',
   'channel.deactivated': 'setup',
   'channel.removed': 'setup',
@@ -159,6 +163,9 @@ export function auditScopeOf<K extends CatalogueAuditKind>(kind: K, detail: Cata
     case 'category.rule_changed':
     case 'category.restructured':
       return 'category'
+    case 'taxonomy.use_for_changed':
+      // Categories and tags share the taxonomy scope; an option list is project-level (the SQL scope set has no option-list value).
+      return (detail as CatalogueAuditPayload['taxonomy.use_for_changed']).target === 'optionList' ? 'project' : 'category'
     case 'channel.activated':
     case 'channel.deactivated':
     case 'channel.removed':
@@ -203,6 +210,7 @@ export const AUDIT_DETAIL_KEYS: Readonly<Record<CatalogueAuditKind, readonly str
   'pack.updated': ['packId', 'fromVersion', 'toVersion', 'added'],
   'category.rule_changed': ['categoryKey', 'channel', 'before', 'after', 'impact'],
   'category.restructured': ['op', 'categoryKey', 'fromParent', 'toParent', 'reassignedTo', 'impact'],
+  'taxonomy.use_for_changed': ['target', 'key', 'before', 'after', 'newlyIncompatible'],
   'channel.activated': ['channelKey', 'defaultAvailability', 'impact'],
   'channel.deactivated': ['channelKey', 'impact'],
   'channel.default_changed': ['channelKey', 'before', 'after', 'impact'],

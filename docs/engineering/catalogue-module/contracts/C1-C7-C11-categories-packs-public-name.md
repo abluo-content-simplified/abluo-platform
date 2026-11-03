@@ -592,7 +592,7 @@ export type ProfileFinding =
   | { kind: 'option'; key: string /* list id */; useFor: ItemProfile[] }
 export function incompatibleAssignments(item: ApplicabilityItem, taxonomy: { tree: CategoryTree; tags: readonly TagNode[] }, optionLists: ReadonlyMap<string, UseFor | undefined>): ProfileFinding[]
 export function newIncompatibleAssignments(before: ApplicabilityItem, after: ApplicabilityItem, taxonomy, optionLists): ProfileFinding[]  // findings of `after` whose (kind,key) was not assigned in `before`
-export function narrowingImpact(items, taxonomy, optionLists, change): { items: number; sample: { id: string }[] }   // items newly incompatible after a useFor change
+export function narrowingImpact(items: { id; item: ApplicabilityItem }[], before: { taxonomy; optionLists? }, after: { taxonomy; optionLists? }): { items: number; sample: string[] }   // items (per id, drafts included) newly incompatible after a useFor change or a move
 // ApplicabilityItem = { profile: ItemProfile | null; assignment: CategoryAssignment; tags: readonly string[]; optionListIds: readonly string[] }
 ```
 
@@ -607,7 +607,7 @@ export function narrowingImpact(items, taxonomy, optionLists, change): { items: 
 |---|---|
 | Item writer (`item-writer.ts` `profileApplicabilityRefusal`, called by `cleanCatalogueSet` + the draft save) | Refuses a save that **adds** an incompatible assignment (`newIncompatibleAssignments` non-empty): `invalid_value`, field `primaryCategory`/`additionalCategories`/`tags`/`optionLists`, message names the term. **Never deletes** an existing assignment; a profile change is always saved and keeps every assignment (findings surface). |
 | Publish gate (`cataloguePublishGate`) | Required readiness finding `profileMismatch` per incompatible assignment → `not_ready` with the named findings (fix links: categories → item `category` step / content tab; tags → content tab; option lists → options tab). Runs **independently of the migration markers** (activation `always`): without any `useFor` in the project it can never fire, so unchanged data behaves exactly as before. Primary **and** additional categories, tags and option lists. |
-| Readiness (`readiness/rules.ts`, `facts-model.ts`) | Rule `profileMismatch`, level **required** in every context, gate `publish`, family `standard`, activation `always`; facts `profileFindings` built by the ONE shared `modelFacts` for editor and gate (R-30 equivalence). List chip `profileMismatch` ("Not used for this type") in every project. |
+| Readiness (`readiness/rules.ts`, `facts-model.ts`) | Rule `profileMismatch`, level **required** in every context, gate `publish`, family `standard`, activation `always`; facts `profileFindings` built by the ONE shared `modelFacts` for editor and gate (R-30 equivalence). List chip `profileMismatch` ("Doesn’t fit its type") in every project. |
 | Studio (critical validation) | `catalogueItem.itemProfile` carries an async `Rule.custom(...).error()` that reads the project's `catalogueTaxonomy` and the attached option lists and runs `incompatibleAssignments` (the same function); `catalogueCategory.useFor` refuses unknown ids and a value on a non-root node. Studio stays read-only (C9); this protects break-glass writes. |
 | Bulk edit | No Catalogue bulk-edit writer exists yet. D-19 `publishManyTogether` runs the publish gate per document, so it inherits the rule; a future bulk "set category / tag / profile" action **must** call `newIncompatibleAssignments` per item before writing (test required in that slice). |
 | Import | No import path exists yet (`import.*` operations are declared only). The import slice **must** call `incompatibleAssignments` per row in its dry-run and refuse rows that would add an incompatible assignment, with the same messages. Exported from the pure module for that purpose. |
@@ -620,8 +620,8 @@ export function narrowingImpact(items, taxonomy, optionLists, change): { items: 
 
 ### C1.12.6 Setup
 
-- **Categories & Tags:** a profile chip per root (`Pill`, one per profile; none = "All item types") and per tag; a **filter by item profile** above the tree and the tag list (shows the branches/tags applicable to that profile); "Use for" editor (`UseForField`: square checkboxes, "All item types" clears) in the category sheet for **root** categories only (children show "Inherited from <root>") and in a tag sheet.
-- **Options:** the option-list editor shows the same "Use for" field.
+- **Categories & Tags:** a profile chip per root (`Pill`, one per profile; none = "All item types") and per tag; a **"Show for" filter by item profile** (`ProfileFilter`) beside the search of the tree and of the tag list (shows the branches/tags applicable to that profile); "Use for" editor (`UseForField` inside `UseForSection`: square checkboxes, "All item types" clears, explicit Save) in the category sheet for **root** categories only (children show "Used for: … — set on <root>") and in a tag sheet (⋯ → Use for…).
+- **Options:** the option-list editor shows the same "Use for" section (saved through the list's draft autosave; disabled with the reason without Catalogue Setup); its narrowing count is computed from the project's item list (items whose type the list stops serving).
 - **Narrowing** a root's or tag's `useFor` shows an impact preview first — the number of items (drafts included) that become incompatible — and **never modifies items**; widening needs no preview.
 
 ### C1.12.7 Service operations, permissions, audit
@@ -633,7 +633,7 @@ export function narrowingImpact(items, taxonomy, optionLists, change): { items: 
 | Option list `useFor` via the existing draft writer (`saveCatalogueDraft`, kind `optionList`, field `useFor`) | `catalogue.setup.manage` in addition to `optionList.edit` | `optionList.setUseFor` |
 | `createCategory({ …, useFor })` — only when `parentKey === null` | `catalogue.taxonomy.write` | `term.create` |
 
-Audit (C12, through `recordCatalogueActivity`, content-free — profile ids are registry ids, not tenant content): **`taxonomy.use_for_changed`** `{ target: 'category' | 'tag' | 'optionList'; key: string; before: ItemProfile[]; after: ItemProfile[]; newlyIncompatible: number }`, scope `category` (category, tag) / `optionList`. Moves that drop a root's `useFor` are already audited as `category.restructured` (its `impact.items`).
+Audit (C12, through `recordCatalogueActivity`, content-free — profile ids are registry ids, not tenant content): **`taxonomy.use_for_changed`** `{ target: 'category' | 'tag' | 'optionList'; key: string; before: ItemProfile[]; after: ItemProfile[]; newlyIncompatible: number }`, scope `category` (category, tag) / `project` (option list — the SQL scope set of migration 061 has no option-list value). Moves that drop a root's `useFor` are already audited as `category.restructured` (its `impact.items`).
 
 Stable error codes added: `category_use_for_not_root`, `use_for_invalid` (unknown profile id or malformed list).
 

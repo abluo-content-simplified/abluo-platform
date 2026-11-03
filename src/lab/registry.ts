@@ -1414,6 +1414,23 @@ export const LAB_REGISTRY: LabEntry[] = [
     replaces: ['bare "Saved" toasts after a change that affects many items'],
     demo: () => import('./demos/impact-preview.demo'),
   },
+  {
+    id: 'use-for-field',
+    name: 'UseForField',
+    exports: ['UseForField', 'labelsForUseFor'],
+    source: 'src/components/app/ui/UseForField.tsx',
+    group: 'inputs',
+    status: 'canonical',
+    traits: ['selection'],
+    summary: '"Use for" (Catalogue D-22): which item types a top-level category, a tag or an option list applies to — square checkboxes (CheckboxCard), one per type, plus "All item types". Empty = all types.',
+    rules: [
+      'Store [] / absent for "All item types" — never a sentinel; ticking it clears the others, unticking the last type returns to it.',
+      'Narrowing must show how many items stop fitting first (previewCategoryUseFor / previewTagUseFor) — never change items.',
+      'Only on top-level categories: children inherit (show the inherited value as text instead).',
+    ],
+    replaces: ['hand-made checkbox groups for item types'],
+    demo: () => import('./demos/use-for-field.demo'),
+  },
 ]
 
 /**

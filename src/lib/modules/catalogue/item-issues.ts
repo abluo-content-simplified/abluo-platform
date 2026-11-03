@@ -23,6 +23,7 @@
 import type { ItemState, ItemStep } from './dashboard-form'
 import type { ChannelSet } from './commerce/channels'
 import type { CategoryTree } from './taxonomy/types'
+import type { UseForCarrier } from './taxonomy/profile-applicability'
 import type { CatalogueMigrationState } from './schema-commerce'
 import { WEBSITE, evaluateItem } from './readiness/engine'
 import { itemReadinessInputFromState } from './readiness/facts-client'
@@ -64,10 +65,15 @@ export type ItemIssueContext = {
   timeZone?: string | null
   /** R2 (C6 step 7): the project's C10-6 markers — the model-dependent rules run only when both data steps are verified. */
   migrations?: CatalogueMigrationState
+  /**
+   * D-22 (C1.12): the project's tags (labels + "Use for") and option lists ("Use for" + name). Absent =
+   * the profile-applicability rule is silent (an older caller).
+   */
+  applicability?: { tags: readonly ({ key: string; label?: Record<string, string> } & UseForCarrier)[]; optionLists: readonly ({ id: string; name: string } & UseForCarrier)[] }
 }
 
 /** The state `itemIssues` reads: an `ItemState` (the wizard's profile may still be null). */
-export type ItemIssueState = Pick<ItemState, 'itemProfile' | 'name' | 'bookDetails' | 'formats' | 'itemRules' | 'options' | 'allergenDeclaration' | 'hasPage' | 'slug'> & Partial<Pick<ItemState, 'assignment'>>
+export type ItemIssueState = Pick<ItemState, 'itemProfile' | 'name' | 'bookDetails' | 'formats' | 'itemRules' | 'options' | 'allergenDeclaration' | 'hasPage' | 'slug'> & Partial<Pick<ItemState, 'assignment' | 'tags'>>
 
 /**
  * C6 §6.6 legacy id of each projected finding (tests pin it). Only these codes
@@ -92,6 +98,8 @@ export const LEGACY_ID: Partial<Record<ReadinessCode, string>> = Object.freeze({
   'price.ambiguous': 'priceAmbiguous',
   'availability.conflictingRows': 'availabilityConflict',
   'availability.scheduleInvalid': 'scheduleInvalid',
+  // D-22 (C1.12): every project — fires only where "Use for" data exists. One issue per assignment (id suffixed).
+  profileMismatch: 'profileMismatch',
 })
 
 /**
@@ -100,14 +108,16 @@ export const LEGACY_ID: Partial<Record<ReadinessCode, string>> = Object.freeze({
  * the allergens (registry row 21 comes after the page rows 11–12). Kept so the
  * adapter's output is byte-identical (G-03).
  */
-const LEGACY_ORDER: readonly string[] = ['profile', 'name', 'price', 'priceTimes', 'priceOverlap', 'priceChannel', 'categoryMissing', 'primaryCategory', 'optionsMinMax', 'allergens', 'isbn', 'optionList', 'pageAddress', 'strayAddress', 'priceAmbiguous', 'availabilityConflict', 'scheduleInvalid']
+const LEGACY_ORDER: readonly string[] = ['profile', 'name', 'price', 'priceTimes', 'priceOverlap', 'priceChannel', 'categoryMissing', 'primaryCategory', 'profileMismatch', 'optionsMinMax', 'allergens', 'isbn', 'optionList', 'pageAddress', 'strayAddress', 'priceAmbiguous', 'availabilityConflict', 'scheduleInvalid']
 
 /** Pure, 1:1: severity from level + gate; step/tab/focus from the fix target; legacy id. Null when the finding has no editor form. */
 export function findingToItemIssue(f: Finding): ItemIssue | null {
   if (f.fix.surface !== 'item') return null
   const severity: ItemIssueSeverity = f.level === 'required' ? (f.gate === 'advance' ? 'blocksNext' : 'blocksPublish') : 'advice'
+  const base = LEGACY_ID[f.code] ?? f.code
   return {
-    id: LEGACY_ID[f.code] ?? f.code,
+    // One issue per incompatible assignment (D-22): the id stays stable per term.
+    id: f.code === 'profileMismatch' && f.values ? `${base}:${f.values.kind}:${f.values.key}` : base,
     severity,
     step: f.fix.step,
     tab: f.fix.tab,
@@ -127,7 +137,8 @@ export function itemIssues(s: ItemIssueState, ctx: ItemIssueContext): ItemIssue[
   // other recommended findings (photo, description, translation …) belong to the readiness panel.
   const findings = [...result.required, ...result.recommended.filter((f) => f.overridable === false)].filter((f) => LEGACY_ID[f.code] !== undefined)
   const issues = findings.map(findingToItemIssue).filter((i): i is ItemIssue => i !== null)
-  return issues.map((issue, i) => ({ issue, i })).sort((a, b) => LEGACY_ORDER.indexOf(a.issue.id) - LEGACY_ORDER.indexOf(b.issue.id) || a.i - b.i).map((x) => x.issue)
+  const rank = (id: string) => LEGACY_ORDER.indexOf(id.split(':')[0])
+  return issues.map((issue, i) => ({ issue, i })).sort((a, b) => rank(a.issue.id) - rank(b.issue.id) || a.i - b.i).map((x) => x.issue)
 }
 
 export const blocksNextOn = (issues: readonly ItemIssue[], step: ItemStep) => issues.filter((i) => i.severity === 'blocksNext' && i.step === step)

@@ -96,6 +96,8 @@ export type PlanItem = {
   choices?: number
   /** category (add): default option lists for NEW items (deterministic ids of groups added or already present). */
   optionListIds?: readonly string[]
+  /** D-22 (C1.12.8): category (add, ROOT only), tag (add), optionGroup (add): the "Use for" written. Absent = all item types. */
+  useFor?: readonly ItemProfile[]
 }
 
 export type PackConflictCode =
@@ -147,7 +149,7 @@ export type PackSelection = {
    */
   labels?: Readonly<Record<string, Localized>>
   /** Review-step additions: the person's own categories / tags, added with the pack (keys made from the name). */
-  extras?: { categories?: readonly { key: string; label: Localized; parent: string | null }[]; tags?: readonly { key: string; label: Localized }[] }
+  extras?: { categories?: readonly { key: string; label: Localized; parent: string | null; useFor?: ItemProfile[] }[]; tags?: readonly { key: string; label: Localized; useFor?: ItemProfile[] }[] }
 }
 
 /** The preview's starting selection: preselected channels, every setting, schedules applied, nothing excluded. */
@@ -260,7 +262,7 @@ export function planPack(current: CatalogueState, pack: PackDeclaration, selecti
   const groupIds = new Map<string, string>()
   for (const g of pack.optionGroups) {
     const id = optionListIdFor(current.projectSlug, g.key)
-    const item: PlanItem = { area: 'optionGroup', key: g.key, label: labelWith(selection, `optionGroup:${g.key}`, localizedFor(g.name, site), site), id, choices: g.choices.length }
+    const item: PlanItem = { area: 'optionGroup', key: g.key, label: labelWith(selection, `optionGroup:${g.key}`, localizedFor(g.name, site), site), id, choices: g.choices.length, ...(g.useFor?.length && { useFor: g.useFor }) }
     if (current.optionLists.some((l) => l.id === id)) {
       equivalent.push(item)
       groupIds.set(g.key, id)
@@ -278,7 +280,7 @@ export function planPack(current: CatalogueState, pack: PackDeclaration, selecti
   const target = (packKey: string | null): string | null => (packKey === null ? null : (mapped[`category:${packKey}`] ?? packKey))
   let addedCategories = 0
   const extraCategories = (selection.extras?.categories ?? []).filter((x) => !pack.categories.some((c) => c.key === x.key))
-  const categoryList = [...pack.categories.map((c) => ({ ...c, label: localizedFor(c.label, site) })), ...extraCategories.map((x) => ({ key: x.key, label: x.label, parent: x.parent, channelRules: undefined, defaultOptionGroups: undefined }))]
+  const categoryList = [...pack.categories.map((c) => ({ ...c, label: localizedFor(c.label, site) })), ...extraCategories.map((x) => ({ key: x.key, label: x.label, parent: x.parent, channelRules: undefined, defaultOptionGroups: undefined, useFor: x.useFor }))]
   for (const c of categoryList) {
     const label = labelWith(selection, `category:${c.key}`, c.label, site)
     const resolution = selection.resolutions[`category:${c.key}`]
@@ -319,7 +321,9 @@ export function planPack(current: CatalogueState, pack: PackDeclaration, selecti
       rules.push({ channel: ch, rule: toRule(r) })
     }
     const optionListIds = (c.defaultOptionGroups ?? []).flatMap((g) => (groupIds.has(g) ? [groupIds.get(g)!] : []))
-    add.push({ area: 'category', key: c.key, parentKey: target(c.parent), label, ...(rules.length && { rules }), ...(optionListIds.length && { optionListIds }) })
+    // D-22: a pack ROOT carries its "Use for"; a child (or a pack root attached under the person's own node) inherits.
+    const parentKey = target(c.parent)
+    add.push({ area: 'category', key: c.key, parentKey, label, ...(rules.length && { rules }), ...(optionListIds.length && { optionListIds }), ...(parentKey === null && c.useFor?.length && { useFor: c.useFor }) })
     addedCategories++
     if (resolution?.use !== 'add') {
       const want = fold(label[d] ?? '')
@@ -338,7 +342,7 @@ export function planPack(current: CatalogueState, pack: PackDeclaration, selecti
   // ── tags ──
   const tagsByKey = new Map(current.tags.map((t) => [t.key, t]))
   let addedTags = 0
-  const tagList = [...pack.tags.map((t) => ({ key: t.key, label: localizedFor(t.label, site) })), ...(selection.extras?.tags ?? []).filter((x) => !pack.tags.some((t) => t.key === x.key))]
+  const tagList: { key: string; label: Localized; useFor?: ItemProfile[] }[] = [...pack.tags.map((t) => ({ key: t.key, label: localizedFor(t.label, site), useFor: t.useFor })), ...(selection.extras?.tags ?? []).filter((x) => !pack.tags.some((t) => t.key === x.key))]
   for (const t of tagList) {
     const label = labelWith(selection, `tag:${t.key}`, t.label, site)
     const existing = tagsByKey.get(t.key)
@@ -357,7 +361,7 @@ export function planPack(current: CatalogueState, pack: PackDeclaration, selecti
       skipped.push({ area: 'tag', key: t.key, label, note: 'excluded' })
       continue
     }
-    add.push({ area: 'tag', key: t.key, label })
+    add.push({ area: 'tag', key: t.key, label, ...(t.useFor?.length && { useFor: t.useFor }) })
     addedTags++
     if (resolution?.use !== 'add') {
       const want = fold(label[d] ?? '')

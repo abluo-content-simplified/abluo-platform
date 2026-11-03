@@ -155,7 +155,7 @@ describe('Items list badges (C6 §6.6) — engine when migrated, legacy counts o
     expect(readinessGaps(BOTH, input, legacy)).toEqual(['noPhoto', 'noPrice', 'noPrimaryCategory'])
   })
   it('the mapping is one table; an overridden finding raises no badge', () => {
-    expect(Object.keys(GAP_CODES)).toEqual(['noPhoto', 'noPrice', 'allergensNotReviewed', 'noCategory', 'noPrimaryCategory'])
+    expect(Object.keys(GAP_CODES)).toEqual(['noPhoto', 'noPrice', 'allergensNotReviewed', 'noCategory', 'noPrimaryCategory', 'profileMismatch'])
     expect(gapsFromResult({ required: [], recommended: [] })).toEqual([])
   })
 })

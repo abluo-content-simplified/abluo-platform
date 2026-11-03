@@ -23,9 +23,10 @@ export const GAP_CODES: Readonly<Record<ItemGap, readonly ReadinessCode[]>> = Ob
   allergensNotReviewed: ['allergenReview'],
   noCategory: ['categoryMissing'],
   noPrimaryCategory: ['primaryCategoryMissing'],
+  profileMismatch: ['profileMismatch'],
 })
 
-const GAP_ORDER: readonly ItemGap[] = ['noPhoto', 'noPrice', 'allergensNotReviewed', 'noCategory', 'noPrimaryCategory']
+const GAP_ORDER: readonly ItemGap[] = ['noPhoto', 'noPrice', 'allergensNotReviewed', 'noCategory', 'noPrimaryCategory', 'profileMismatch']
 
 /** The badges of one readiness result (required ∪ recommended; an overridden finding raises none). */
 export function gapsFromResult(r: Pick<ReadinessResult, 'required' | 'recommended'>): ItemGap[] {
@@ -42,6 +43,10 @@ export function readinessGaps(
   engineInput: () => ItemReadinessInput,
   legacy: Parameters<typeof itemGaps>[0],
 ): ItemGap[] {
-  if (!modelRulesActive(migrations)) return itemGaps(legacy)
+  if (!modelRulesActive(migrations)) {
+    // D-22: the profile rule is active in every project (activation 'always'), so its badge is too.
+    const gaps = itemGaps(legacy)
+    return engineInput().profileFindings?.length ? [...gaps, 'profileMismatch'] : gaps
+  }
   return gapsFromResult(evaluateItem(engineInput(), WEBSITE))
 }

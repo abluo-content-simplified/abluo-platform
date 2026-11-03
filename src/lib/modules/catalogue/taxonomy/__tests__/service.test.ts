@@ -26,8 +26,13 @@ import {
   listTaxonomy,
   moveCategory,
   previewCategoryDeletion,
+  previewCategoryMove,
   previewCategoryRule,
+  previewCategoryUseFor,
+  previewTagUseFor,
   pruneChannelFromCategories,
+  setCategoryUseFor,
+  setTagUseFor,
   reassignCategory,
   reorderChildren,
   reorderTags,
@@ -557,5 +562,68 @@ describe('listTaxonomy', () => {
     expect(pizza.hash).toMatch(/^[0-9a-f]{16}$/)
     expect(v.tags[0]).toMatchObject({ key: 'spicy', items: 1 })
     expect(v.channels.map((c) => c.key)).toEqual(['dine-in', 'delivery'])
+  })
+})
+
+// ── "Use for" (D-22, C1.12.7) ────────────────────────────────────────────────
+
+describe('service/set-use-for (C1.12.7)', () => {
+  const FOODP = 'foodOrDrink'
+  it('sets a ROOT category "Use for" in one guarded patch, previews and audits the newly incompatible items; never changes items', async () => {
+    const g = fake([taxonomyDoc(), item('i1', { itemProfile: 'book', primaryCategory: 'pizza_bianche' }), item('drafts.i1', { itemProfile: 'book', primaryCategory: 'pizza' }), item('i2', { itemProfile: FOODP, primaryCategory: 'desserts' })])
+    const list = await listTaxonomy(owner(), P, g.deps)
+    const preview = await previewCategoryUseFor(owner(), P, { key: 'food', useFor: [FOODP] }, g.deps)
+    expect(preview).toMatchObject({ before: [], after: [FOODP], newlyIncompatible: 1, sample: ['i1'] })
+    const items = JSON.stringify([...g.store.values()].filter((d) => d._type === 'catalogueItem'))
+    const r = await setCategoryUseFor(owner(), P, { key: 'food', useFor: [FOODP], rev: list.rev }, g.deps)
+    expect(r.category.useFor).toEqual([FOODP])
+    expect(g.row('food')!.useFor).toEqual([FOODP])
+    expect(JSON.stringify([...g.store.values()].filter((d) => d._type === 'catalogueItem'))).toBe(items)
+    expect(g.commits.at(-1)!.transactionId).toMatch(/^abluo-setup-categoryUseFor-/)
+    expect(g.audits.at(-1)).toMatchObject({ kind: 'taxonomy.use_for_changed', scope: 'category', targetId: 'food', detail: { target: 'category', key: 'food', before: [], after: [FOODP], newlyIncompatible: 1 } })
+    expect(validateAuditDetail('taxonomy.use_for_changed', g.audits.at(-1)!.detail)).toBe(true)
+    // "All item types" clears the field (no sentinel).
+    const again = await setCategoryUseFor(owner(), P, { key: 'food', useFor: [], rev: r.rev }, g.deps)
+    expect(again.after).toEqual([])
+    expect(g.row('food')).not.toHaveProperty('useFor')
+  })
+
+  it('refuses a non-root, unknown profiles, editors (category) — before any write', async () => {
+    const g = fake([taxonomyDoc()])
+    const list = await listTaxonomy(owner(), P, g.deps)
+    expect(await code(setCategoryUseFor(owner(), P, { key: 'pizza', useFor: ['book'], rev: list.rev }, g.deps))).toBe('category_use_for_not_root')
+    expect(await code(setCategoryUseFor(owner(), P, { key: 'food', useFor: ['all'], rev: list.rev }, g.deps))).toBe('use_for_invalid')
+    const before = g.commits.length
+    expect(await code(setCategoryUseFor(editor(), P, { key: 'food', useFor: ['book'], rev: list.rev }, g.deps))).toBe('forbidden:catalogue.setup.manage')
+    expect(g.commits.length).toBe(before)
+  })
+
+  it('tags: editors may set "Use for" (D-3 manage tags), guarded by tag_conflict', async () => {
+    const g = fake([taxonomyDoc(), item('i1', { itemProfile: 'book', tags: ['spicy'] })])
+    const list = await listTaxonomy(editor(), P, g.deps)
+    expect((await previewTagUseFor(editor(), P, { key: 'spicy', useFor: [FOODP] }, g.deps)).newlyIncompatible).toBe(1)
+    const r = await setTagUseFor(editor(), P, { key: 'spicy', useFor: [FOODP], rev: list.rev }, g.deps)
+    expect(r.tag.useFor).toEqual([FOODP])
+    expect(g.audits.at(-1)).toMatchObject({ kind: 'taxonomy.use_for_changed', scope: 'category', detail: { target: 'tag', key: 'spicy' } })
+    expect(await code(setTagUseFor(editor(), P, { key: 'spicy', useFor: ['book'], rev: list.rev }, g.deps))).toBe('tag_conflict')
+  })
+
+  it('move/drops-use-for: a root moved under a parent drops its own "Use for"; the preview shows the change', async () => {
+    const withUse = T_FOOD.map((c) => (c.key === 'beverages' ? { ...c, useFor: [FOODP] } : c.key === 'food' ? { ...c, useFor: ['service'] } : c))
+    const g = fake([taxonomyDoc(withUse), item('b1', { itemProfile: FOODP, primaryCategory: 'liqueurs' })])
+    const preview = await previewCategoryMove(owner(), P, { key: 'beverages', newParentKey: 'food' }, g.deps)
+    expect(preview.profiles).toEqual({ before: [FOODP], after: ['service'] })
+    expect(preview.newlyIncompatible).toBe(1)
+    const list = await listTaxonomy(owner(), P, g.deps)
+    await moveCategory(owner(), P, { key: 'beverages', newParentKey: 'food', rev: list.rev }, g.deps)
+    expect(g.row('beverages')).not.toHaveProperty('useFor')
+    expect(g.row('beverages')!.parentKey).toBe('food')
+  })
+
+  it('inline creation: a new top-level category may carry the item profile; a child may not', async () => {
+    const g = fake([taxonomyDoc()])
+    const r = await createCategory(editor(), P, { labels: { en: 'Books' }, parentKey: null, useFor: ['book'] }, g.deps)
+    expect(r.category.useFor).toEqual(['book'])
+    expect(await code(createCategory(editor(), P, { labels: { en: 'Design' }, parentKey: 'food', useFor: ['book'] }, g.deps))).toBe('category_use_for_not_root')
   })
 })

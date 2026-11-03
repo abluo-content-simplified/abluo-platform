@@ -22,6 +22,8 @@ import { priceCoverage, priceIssues } from '../commerce/prices'
 import { categoryAssignmentState, primaryPath } from '../taxonomy/tree'
 import type { CategoryAssignment, CategoryTree } from '../taxonomy/types'
 import type { CatalogueMigrationState } from '../schema-commerce'
+import type { ItemProfile } from '../profiles'
+import { incompatibleAssignments, type ApplicabilityTaxonomy, type OptionListUseFor, type ProfileFinding } from '../taxonomy/profile-applicability'
 import { priceIssueFact, type FormatReadinessFacts, type ItemReadinessInput, type PriceIssueFact } from './types'
 
 /** C10-6 step 7: the markers the engine sees — both data steps verified, or none at all. */
@@ -42,6 +44,19 @@ export type ItemModel = {
   timeZone: string | null
   /** Shape problems of stored rows the model readers already dropped (`availability.conflictingRows` …), per item. */
   itemRuleIssues?: readonly string[]
+  /** D-22 (C1.12): what the profile-applicability rule needs; absent = no `profileFindings` (rule silent). */
+  applicability?: ApplicabilityFacts
+}
+
+/** D-22: the item's profile and tag/option assignments, the project's tag and option-list "Use for", and display names. */
+export type ApplicabilityFacts = {
+  profile: ItemProfile | null
+  tags: readonly string[]
+  optionListIds: readonly string[]
+  taxonomyTags: ApplicabilityTaxonomy['tags']
+  optionLists: OptionListUseFor
+  /** Display name of a finding's term in the site's main language (fallback: its key). */
+  nameOf: (f: ProfileFinding) => string
 }
 
 const contextKey = (oc: OfferingContext) => (oc.kind === 'general' ? 'general' : `channel:${oc.channel}`)
@@ -69,7 +84,7 @@ function formatFacts(model: ItemModel, inputs: AvailabilityInputs, oc: OfferingC
 }
 
 /** The model-dependent members of an ItemReadinessInput. */
-export function modelFacts(model: ItemModel): Pick<ItemReadinessInput, 'categories' | 'categoryTree' | 'categoryState' | 'primaryPath' | 'formats'> {
+export function modelFacts(model: ItemModel): Pick<ItemReadinessInput, 'categories' | 'categoryTree' | 'categoryState' | 'primaryPath' | 'formats' | 'profileFindings'> {
   const inputs = availabilityInputsOf(model.channels, { tree: model.tree, category: CATEGORY_RULES })
   const memo = new Map<string, FormatReadinessFacts[]>()
   return {
@@ -77,6 +92,7 @@ export function modelFacts(model: ItemModel): Pick<ItemReadinessInput, 'categori
     categoryTree: model.tree,
     categoryState: categoryAssignmentState(model.tree, model.assignment),
     primaryPath: primaryPath(model.tree, model.assignment.primary),
+    ...(model.applicability && { profileFindings: profileFindingsOf(model, model.applicability) }),
     formats: (oc) => {
       const k = contextKey(oc)
       let v = memo.get(k)
@@ -86,5 +102,24 @@ export function modelFacts(model: ItemModel): Pick<ItemReadinessInput, 'categori
       }
       return v
     },
+  }
+}
+
+/** D-22 (C1.12): the ONE place readiness asks the applicability rule (editor and gate alike, R-30). */
+function profileFindingsOf(model: ItemModel, a: ApplicabilityFacts): ReadonlyArray<ProfileFinding & { name: string }> {
+  return incompatibleAssignments(
+    { profile: a.profile, assignment: model.assignment, tags: a.tags, optionListIds: a.optionListIds },
+    { tree: model.tree, tags: a.taxonomyTags },
+    a.optionLists,
+  ).map((f) => ({ ...f, name: a.nameOf(f) }))
+}
+
+/** Default display names: a category's or tag's label in `defaultLocale` (else any label, else the key); option lists by `listName`. */
+export function applicabilityNames(tree: CategoryTree, tags: readonly { key: string; label?: Record<string, string> }[], defaultLocale: string, listName: (id: string) => string | undefined = () => undefined): (f: ProfileFinding) => string {
+  const pick = (label: Record<string, string> | undefined, key: string) => label?.[defaultLocale]?.trim() || Object.values(label ?? {}).find((v) => v?.trim()) || key
+  return (f) => {
+    if (f.kind === 'primary' || f.kind === 'additional') return pick(tree.nodes.get(f.key)?.label, f.key)
+    if (f.kind === 'tag') return pick(tags.find((t) => t.key === f.key)?.label, f.key)
+    return listName(f.key) || f.key
   }
 }

@@ -34,7 +34,7 @@ import { allergenContentChanged, isPublishableDeclaration, unreviewedChoices } f
 import { CatalogueError, slugsForPublish, slugLocalesWithoutName, type CatalogueKind } from '@/lib/modules/catalogue/dashboard-patch'
 import { can, profileOf } from '@/lib/modules/catalogue/profiles'
 import { SLUG_NAMESPACE_QUERY, namedSlugConflicts, toSlugOwners, type SlugRow } from '@/lib/modules/catalogue/validation'
-import { CATALOGUE_FOOD_USERS_COUNT_QUERY, CATALOGUE_OPTION_LIST_CHOICES_QUERY } from '@/lib/modules/catalogue/dashboard-queries'
+import { CATALOGUE_FOOD_USERS_COUNT_QUERY, CATALOGUE_OPTION_LIST_CHOICES_QUERY, CATALOGUE_OPTION_LIST_USE_FOR_QUERY } from '@/lib/modules/catalogue/dashboard-queries'
 import type { CatalogueSite } from '@/lib/api/catalogue-drafts'
 import { readChannels } from '@/lib/modules/catalogue/commerce/channels'
 import { buildTree } from '@/lib/modules/catalogue/taxonomy/tree'
@@ -42,6 +42,8 @@ import { WEBSITE, evaluateItem } from '@/lib/modules/catalogue/readiness/engine'
 import { MODEL_DEPENDENT_RULES, itemReadinessInputFromDoc } from '@/lib/modules/catalogue/readiness/facts-doc'
 import { modelRulesActive } from '@/lib/modules/catalogue/readiness/facts-model'
 import type { Finding } from '@/lib/modules/catalogue/readiness/types'
+import { DEFAULT_RULES } from '@/lib/modules/catalogue/readiness/rules'
+import { applicabilityTagsOf, optionListIdsOf, optionListUseForOf, type OptionListUseFor } from '@/lib/modules/catalogue/taxonomy/profile-applicability'
 
 /**
  * C10-6 step 7 / C6 §6.13 item 2: in a project whose taxonomy AND commerce data steps are verified
@@ -61,6 +63,38 @@ export function modelReadinessBlockers(site: Pick<CatalogueSite, 'defaultLocale'
     migrations: site.config.migrations,
   })
   return evaluateItem(input, WEBSITE, { families: ['standard', 'integrity'], rules: MODEL_DEPENDENT_RULES }).required
+}
+
+/** D-22 (C1.12.4): the profile-applicability rule alone — active in EVERY project (it can fire only where "Use for" data exists). */
+const PROFILE_RULES = Object.freeze(DEFAULT_RULES.filter((r) => r.code === 'profileMismatch'))
+
+/**
+ * D-22: required findings for every category (primary AND additional), tag and attached option list of
+ * the version to publish that is not used for its profile. Independent of the migration markers.
+ */
+export function profileReadinessBlockers(
+  site: Pick<CatalogueSite, 'defaultLocale' | 'locales' | 'timeZone'> & { config: Pick<CatalogueSite['config'], 'serviceChannels' | 'categoryNodes' | 'migrations' | 'tags'> },
+  id: string,
+  draft: Record<string, unknown>,
+  optionLists: OptionListUseFor,
+  listName?: (id: string) => string | undefined,
+): Finding[] {
+  const nodes = site.config?.categoryNodes ?? []
+  const tags = site.config?.tags ?? []
+  const restricted = (c: { useFor?: readonly unknown[]; useForCorrupt?: true } | undefined) => !!c && (!!c.useForCorrupt || (c.useFor?.length ?? 0) > 0)
+  // No "Use for" anywhere in the project (every project before D-22): nothing to judge, unchanged behaviour.
+  if (!nodes.some(restricted) && !tags.some(restricted) && ![...optionLists.values()].some(restricted)) return []
+  const input = itemReadinessInputFromDoc(draft, {
+    id,
+    defaultLocale: site.defaultLocale,
+    locales: site.locales,
+    channels: readChannels(site.config.serviceChannels).channels,
+    tree: buildTree(nodes),
+    timeZone: site.timeZone,
+    migrations: site.config.migrations,
+    applicability: { tags: applicabilityTagsOf(tags), optionLists, listName },
+  })
+  return evaluateItem(input, WEBSITE, { families: ['standard'], rules: PROFILE_RULES }).required
 }
 
 type FetchClient = Pick<typeof sanityWriteClient, 'fetch'>
@@ -131,7 +165,10 @@ export function cataloguePublishGate(
       }
       // C6 step 7: the model-dependent rules, only where the project's markers activate them (§6.7.1 `not_ready`).
       if (kind === 'item') {
-        const findings = modelReadinessBlockers(site, node.id, draft)
+        const ids = optionListIdsOf(draft as { optionLists?: unknown })
+        const rows = ids.length ? ((await x.client.fetch<Array<{ _id: string; useFor?: unknown; name?: unknown }> | null>(CATALOGUE_OPTION_LIST_USE_FOR_QUERY, { projectSlug: x.projectSlug, ids, draftIds: ids.map((i) => `drafts.${i}`), locale: site.defaultLocale }, RAW)) ?? []) : []
+        const names = new Map(rows.map((r) => [r._id.replace(/^drafts\./, ''), typeof r.name === 'string' ? r.name : undefined]))
+        const findings = [...modelReadinessBlockers(site, node.id, draft), ...profileReadinessBlockers(site, node.id, draft, optionListUseForOf(rows), (i) => names.get(i))]
         if (findings.length) throw new CatalogueError('not_ready', 'Complete the item before publishing.', { readiness: findings })
       }
       const doc: Record<string, unknown> = {}

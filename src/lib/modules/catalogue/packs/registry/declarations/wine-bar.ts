@@ -1,5 +1,5 @@
 import type { PackDeclaration } from '../../types'
-import { FOOD_PROFILE, FORMAT, L, LABEL, TAG, delivery, dineIn, section, takeaway } from '../shared'
+import { FOOD, FOOD_PROFILE, FORMAT, L, LABEL, TAG, delivery, section, takeaway, dineIn } from '../shared'
 
 /** C7.10 Wine bar — `wine-bar` v3. No schedules; wine stays available for takeaway (a bottle shop). */
 export const wineBar: PackDeclaration = {
@@ -16,17 +16,17 @@ export const wineBar: PackDeclaration = {
   suggestedDefaultProfile: FOOD_PROFILE,
   channels: [dineIn(true), { ...takeaway(false), label: L('Takeaway (bottle shop)', 'Da asporto (bottiglie)', 'Zum Mitnehmen (Flaschen)') }, delivery(false)],
   categories: [
-    { key: 'wine', label: LABEL.wine, parent: null, channelRules: { takeaway: { state: 'available' } } },
+    { key: 'wine', label: LABEL.wine, parent: null, useFor: FOOD, channelRules: { takeaway: { state: 'available' } } },
     { key: 'wine_red', label: LABEL.red, parent: 'wine' },
     { key: 'wine_white', label: LABEL.white, parent: 'wine' },
     { key: 'wine_rose', label: LABEL.rose, parent: 'wine' },
     { key: 'wine_orange', label: L('Orange', 'Orange', 'Orange Wein'), parent: 'wine' },
     { key: 'wine_sparkling', label: LABEL.sparkling, parent: 'wine' },
     { key: 'wine_sweet', label: L('Sweet and fortified', 'Passiti e liquorosi', 'Süß- und Likörweine'), parent: 'wine' },
-    { key: 'small_plates', label: L('Small plates', 'Piccoli piatti', 'Kleine Gerichte'), parent: null, channelRules: { takeaway: { state: 'unavailable' } } },
-    { key: 'boards', label: L('Cheese and charcuterie', 'Taglieri', 'Käse und Wurst'), parent: null },
-    { key: 'beer_spirits', label: L('Beer and spirits', 'Birre e distillati', 'Bier und Spirituosen'), parent: null },
-    { key: 'non_alcoholic', label: L('Non-alcoholic', 'Analcolici', 'Alkoholfrei'), parent: null },
+    { key: 'small_plates', label: L('Small plates', 'Piccoli piatti', 'Kleine Gerichte'), parent: null, useFor: FOOD, channelRules: { takeaway: { state: 'unavailable' } } },
+    { key: 'boards', label: L('Cheese and charcuterie', 'Taglieri', 'Käse und Wurst'), parent: null, useFor: FOOD },
+    { key: 'beer_spirits', label: L('Beer and spirits', 'Birre e distillati', 'Bier und Spirituosen'), parent: null, useFor: FOOD },
+    { key: 'non_alcoholic', label: L('Non-alcoholic', 'Analcolici', 'Alkoholfrei'), parent: null, useFor: FOOD },
   ],
   tags: [TAG.natural, TAG.organic, TAG.local, TAG.staffPick, TAG.limited],
   collections: [

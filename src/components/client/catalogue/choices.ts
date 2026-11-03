@@ -1,5 +1,6 @@
 import type { CatalogueLists } from '@/lib/api/catalogue-drafts'
 import type { OptionListChoice } from './item-fields'
+import type { ItemProfile } from '@/lib/modules/catalogue/profiles'
 
 /**
  * Option lists an item may attach: any not archived — drafts included and
@@ -10,7 +11,7 @@ import type { OptionListChoice } from './item-fields'
 export function optionListChoices(lists: CatalogueLists, defaultLocale: string): OptionListChoice[] {
   return lists.optionLists
     .filter((l) => l.status.status !== 'archived')
-    .map((l) => ({ id: l.id, name: l.names[defaultLocale] || l.name || l.id, optionCount: l.optionCount, isDraft: !l.isPublished }))
+    .map((l) => ({ id: l.id, name: l.names[defaultLocale] || l.name || l.id, optionCount: l.optionCount, isDraft: !l.isPublished, ...(l.useFor && { useFor: l.useFor }), ...(l.useForCorrupt && { useForCorrupt: true as const }) }))
 }
 
 export type ItemChoice = {
@@ -25,6 +26,9 @@ export type ItemChoice = {
   /** Never published (D-4): shown as a draft, never implying it is public. */
   isDraft: boolean
   allergensNotReviewed: boolean
+  /** D-22: the item's type and attached option lists (the option list's "Use for" preview counts with them). */
+  profile?: ItemProfile | null
+  optionListIds?: readonly string[]
 }
 
 /** Items a collection or an option may point at: not archived, drafts included (labelled, D-4). */
@@ -41,5 +45,7 @@ export function itemChoices(lists: CatalogueLists, defaultLocale: string): ItemC
       offerCount: i.offerCount,
       isDraft: !i.isPublished,
       allergensNotReviewed: i.allergensNotReviewed,
+      profile: i.itemProfile,
+      optionListIds: i.optionLists,
     }))
 }

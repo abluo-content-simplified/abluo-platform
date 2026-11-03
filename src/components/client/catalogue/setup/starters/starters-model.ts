@@ -55,7 +55,9 @@ export function withExtraCategory(s: PackSelection, pack: PackDeclaration, plan:
   const taken = new Set([...pack.categories.map((c) => c.key), ...(s.extras?.categories ?? []).map((c) => c.key), ...(plan ? [...plan.add, ...plan.equivalent, ...plan.skipped].filter((i) => i.area === 'category').map((i) => i.key) : [])])
   const key = extraKey(label[defaultLocale] ?? '', taken)
   if (!key) return s
-  return { ...s, extras: { ...s.extras, categories: [...(s.extras?.categories ?? []), { key, label, parent }] } }
+  // D-22 (C1.12.8): the person's own TOP-LEVEL category is used for the pack's item type (shown in the preview); a child inherits.
+  const useFor = parent === null && pack.suggestedDefaultProfile ? [pack.suggestedDefaultProfile] : undefined
+  return { ...s, extras: { ...s.extras, categories: [...(s.extras?.categories ?? []), { key, label, parent, ...(useFor && { useFor }) }] } }
 }
 
 export function withExtraTag(s: PackSelection, pack: PackDeclaration, label: Localized, defaultLocale: string): PackSelection {

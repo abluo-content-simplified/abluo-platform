@@ -29,6 +29,8 @@ import { ALLERGENS, type AllergenKey } from '@/lib/modules/catalogue/allergens'
 import { formatPrice } from '@/lib/modules/catalogue/resolve'
 import { CATALOGUE_LINK_LIMITS } from '@/lib/modules/catalogue/links'
 import type { CatalogueTerm } from '@/lib/api/catalogue-drafts'
+import { isOptionListCompatible } from '@/lib/modules/catalogue/taxonomy/profile-applicability'
+import { useProfileUseFor } from './use-for-ui'
 import type { ChannelSet } from '@/lib/modules/catalogue/commerce/channels'
 import type { Format } from '@/lib/modules/catalogue/commerce/formats'
 import type { NamedSlugConflict } from '@/lib/modules/catalogue/validation'
@@ -63,7 +65,8 @@ import { Panel } from '@/components/app/ui/Panel'
 import { TextArea, TextInput } from '@/components/app/ui/TextInput'
 
 export type ItemPhoto = { assetId: string; thumbUrl: string | null }
-export type OptionListChoice = { id: string; name: string; optionCount: number; isDraft: boolean }
+/** `useFor` (D-22, C1.12): the item types the list is used for; absent = all. */
+export type OptionListChoice = { id: string; name: string; optionCount: number; isDraft: boolean; useFor?: readonly ItemProfile[]; useForCorrupt?: true }
 
 /**
  * A photo shown whole (never cropped): natural aspect ratio on a neutral
@@ -736,13 +739,29 @@ export function FoodInfoField({
 
 // ── Option lists (attachments with min/max) ──────────────────────────────────
 
-export function OptionsField({ projectSlug, options, lists, onChange }: { projectSlug: string; options: AttachmentForm[]; lists: readonly OptionListChoice[]; onChange: (next: AttachmentForm[]) => void }) {
+export function OptionsField({
+  projectSlug,
+  options,
+  lists,
+  onChange,
+  profile = null,
+}: {
+  projectSlug: string
+  options: AttachmentForm[]
+  lists: readonly OptionListChoice[]
+  onChange: (next: AttachmentForm[]) => void
+  /** D-22 (C1.12.5): only lists used for this item type are offered; an attached one that is not stays, marked. */
+  profile?: ItemProfile | null
+}) {
   const t = useTranslations('catalogue.dashboard.item.options')
+  const tu = useTranslations('catalogue.useFor')
+  const useFor = useProfileUseFor()
   const id = useId()
   const byId = useMemo(() => new Map(lists.map((l) => [l.id, l])), [lists])
   const counts = useMemo(() => new Map(lists.map((l) => [l.id, l.optionCount])), [lists])
   const issues = attachmentIssues(options, counts)
-  const available = lists.filter((l) => !options.some((o) => o.listId === l.id))
+  const fits = (l: OptionListChoice) => !profile || isOptionListCompatible(l, profile)
+  const available = lists.filter((l) => !options.some((o) => o.listId === l.id) && fits(l))
   const set = (key: string, patch: Partial<AttachmentForm>) => onChange(options.map((o) => (o.key === key ? { ...o, ...patch } : o)))
   const num = (v: string) => (v.trim() === '' ? null : Math.max(0, Math.min(99, Math.floor(Number(v)) || 0)))
   return (
@@ -765,6 +784,7 @@ export function OptionsField({ projectSlug, options, lists, onChange }: { projec
                   <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                     {t('optionCount', { count: list.optionCount })}
                     {list.isDraft ? <Pill tone="outline">{t('draft')}</Pill> : null}
+                    {profile && !fits(list) ? <Pill tone="outline">{tu('notUsedFor', { profile: useFor.labelOf(profile) })}</Pill> : null}
                   </p>
                 ) : null}
               </div>

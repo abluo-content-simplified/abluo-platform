@@ -264,6 +264,7 @@ const OTHER_READERS: Record<string, string> = {
   'src/lib/api/faq-lifecycle.ts': 'FAQ set lifecycle descriptor — referrer checks before archive/delete (authenticated dashboard)',
   'src/lib/api/persons-lifecycle.ts': 'People usage and delete-referrer checks (ADR-043) — which pages, posts and events name a person; authenticated dashboard, never content',
   'src/lib/modules/catalogue/validation.ts': 'catalogue save-time validation — slug namespace and currency-change counts (authenticated Studio/dashboard)',
+  'src/lib/modules/catalogue/taxonomy/profile-applicability-docs.ts': 'D-22 Studio critical validation (the item\'s attached option lists and the taxonomy document, read through the editor\'s own Studio client) and the read-only report script; never delivery',
   'src/lib/modules/catalogue/taxonomy/service.ts': 'Catalogue taxonomy writer (Setup, authenticated, assertModuleAction first) — item category/tag usage and reassignment over every item copy incl. drafts (D-3); never delivery',
   'src/lib/modules/catalogue/taxonomy/availability-items.ts': 'Setup impact previews (C5-6): every non-archived item copy incl. drafts, read by the authenticated taxonomy/settings services; never delivery',
   'src/lib/modules/catalogue/packs/service.ts': 'Catalogue Setup starter-pack service (authenticated, catalogue.setup.manage first) — reads collection slugs/sections and item slugs incl. drafts to plan a pack (C7.4); never delivery',

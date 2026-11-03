@@ -164,7 +164,8 @@ describe('Starter Structures', () => {
     typeInto(body().querySelector('dialog[open] input[lang="en"]'), 'Focacce')
     click(inDialog('Add'))
     await flush()
-    expect(lastSelection().extras?.categories).toEqual([{ key: 'focacce', label: { en: 'Focacce' }, parent: null }])
+    // D-22 (C1.12.8): the person's own top-level category is used for the pack's item type.
+    expect(lastSelection().extras?.categories).toEqual([{ key: 'focacce', label: { en: 'Focacce' }, parent: null, useFor: [getPack('pizzeria')!.suggestedDefaultProfile] }])
     expect(text()).toContain('Yours')
   })
 

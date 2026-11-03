@@ -37,7 +37,7 @@ export const CATALOGUE_DASHBOARD_LIST_QUERY = /* groq */ `{
     "imageCount": count(images), "firstImage": images[0]._ref,
     // Dual-read (C10-4): formats when present, else legacy offers.
     "offerCount": ${COMMERCE_PRICE_COUNT_GROQ}, "prices": ${COMMERCE_PRICES_GROQ},
-    "lists": optionLists[].list._ref,
+    "lists": optionLists[].list._ref, tags,
     // R2 (C6 §6.6, step 7): the readiness engine judges each row in a migrated project — the model's raw fields.
     formats, offers, channelAvailability, allergenDeclaration
   },
@@ -46,7 +46,7 @@ export const CATALOGUE_DASHBOARD_LIST_QUERY = /* groq */ `{
     "sectionCount": count(sections), "sectionNames": sections[].name, "itemRefs": sections[].items[]._ref
   },
   "optionLists": *[_type == "catalogueOptionList" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{
-    _id, _rev, _createdAt, _updatedAt, name, ${LIFECYCLE}, "optionCount": count(options)
+    _id, _rev, _createdAt, _updatedAt, name, ${LIFECYCLE}, "optionCount": count(options), useFor
   }
 }`
 
@@ -85,6 +85,9 @@ export const CATALOGUE_GLANCE_QUERY = /* groq */ `{
  * D-3a — the choices of these option lists, published and draft versions
  * (the caller takes the published one, else the draft that is being published).
  */
+/** D-22 (C1.12.4): "Use for" (and name) of these option lists, drafts included — the writer and the publish gate apply published-else-draft. */
+export const CATALOGUE_OPTION_LIST_USE_FOR_QUERY = /* groq */ `*[_type == "catalogueOptionList" && projectSlug == $projectSlug && (_id in $ids || _id in $draftIds)]{ _id, useFor, "name": coalesce(name[$locale], name.en) }`
+
 export const CATALOGUE_OPTION_LIST_CHOICES_QUERY = /* groq */ `*[_type == "catalogueOptionList" && projectSlug == $projectSlug && (_id in $ids || _id in $draftIds)]{ _id, name, options[]{ _key, label, kind, item, allergenDeclaration } }`
 
 /** D-3a — whether a non-archived food-or-drink item (any version) uses this option list. */

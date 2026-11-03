@@ -44,6 +44,17 @@ export type CategoryPickerProps = {
   error?: string
   /** Additional categories allowed (C1 limit). */
   maxAdditional?: number
+  /**
+   * Catalogue D-22 ("Use for"): whether a category may be chosen for this item (its top-level
+   * category is used for the item's type). Absent = every category. Incompatible ones are not
+   * offered; one the item already carries stays visible with `incompatibleText` and a remove action
+   * — it is never removed automatically. Inline "Add category" offers only compatible parents.
+   */
+  compatible?: (key: CategoryKey) => boolean
+  /** E.g. "Not used for Food or drink" — shown beside an assigned category that `compatible` refuses. */
+  incompatibleText?: (key: CategoryKey) => string
+  /** Shown in the add form when "Top level" is chosen (e.g. which item type the new root is used for). */
+  topLevelHint?: string
 }
 
 /**
@@ -67,10 +78,14 @@ export function CategoryPicker({
   presentation = 'sheet',
   error,
   maxAdditional = MAX_ADDITIONAL_CATEGORIES,
+  compatible,
+  incompatibleText,
+  topLevelHint,
 }: CategoryPickerProps) {
   const t = useTranslations('app.ui.categoryPicker')
   const id = useId()
   const [open, setOpen] = useState(false)
+  const fits = (k: CategoryKey) => !compatible || compatible(k)
   const path = (k: CategoryKey) => pathOf(tree, k, pathContext)
   const selected = [value.primary, ...value.additional].filter((k): k is CategoryKey => k !== null)
   // Keys the item still carries that the tree no longer has (e.g. an old category): kept on save
@@ -93,25 +108,42 @@ export function CategoryPicker({
 
   const summary = (
     <div className="min-w-0 space-y-2">
-      {known.length ? (
+      {known.some(fits) ? (
         <ul aria-label={t('selectedList')} className="flex flex-wrap items-start gap-2">
-          {known.map((k) => (
-            <li key={k} className="flex max-w-full items-start gap-1.5 rounded-xl bg-muted px-3 py-2 text-sm text-foreground">
+          {known.filter(fits).map((k) => (
+            <li key={k} className="flex max-w-full flex-wrap items-start gap-1.5 rounded-xl bg-muted px-3 py-2 text-sm text-foreground">
               <span className="min-w-0 break-words">{path(k).text || k}</span>
               {k === value.primary ? <Pill tone="highlight">{t('primary')}</Pill> : null}
             </li>
           ))}
         </ul>
-      ) : unknown.length ? null : (
+      ) : unknown.length || known.length ? null : (
         <p className="text-[0.9375rem] text-muted-foreground">{t('none')}</p>
       )}
       {unknownChips}
     </div>
   )
 
+  // D-22: an assigned category that does not fit the item's type can be removed right here (replace = remove + choose another).
+  const incompatibleChips = known.some((k) => !fits(k)) ? (
+    <ul aria-label={t('selectedList')} className="flex flex-wrap items-start gap-2">
+      {known.filter((k) => !fits(k)).map((k) => (
+        <li key={k} className="flex items-start gap-1.5">
+          <Chip removable aria-label={t('remove', { path: path(k).text || k })} onClick={() => onChange(withoutKey(value, k))}>
+            {`${path(k).text || k} · ${incompatibleText?.(k) ?? ''}`}
+          </Chip>
+          {k === value.primary ? <Pill tone="highlight">{t('primary')}</Pill> : null}
+        </li>
+      ))}
+    </ul>
+  ) : null
+
   const browser = (
     <CategoryBrowser
       tree={tree}
+      compatible={compatible}
+      incompatibleText={incompatibleText}
+      topLevelHint={topLevelHint}
       pathContext={pathContext}
       value={value}
       onChange={onChange}
@@ -129,6 +161,7 @@ export function CategoryPicker({
         </FieldLabel>
         <div role="group" aria-labelledby={`${id}-label`} className="space-y-2">
           {unknownChips}
+          {incompatibleChips}
           {browser}
         </div>
         <FieldError>{error}</FieldError>
@@ -142,6 +175,7 @@ export function CategoryPicker({
         {label}
       </FieldLabel>
       {summary}
+      {incompatibleChips}
       <Button variant="secondary" onClick={() => setOpen(true)} aria-describedby={`${id}-label`}>
         {selected.length ? t('change') : t('choose')}
       </Button>
@@ -171,7 +205,10 @@ function CategoryBrowser({
   onCreate,
   createDisabledReason,
   maxAdditional,
-}: Pick<CategoryPickerProps, 'tree' | 'pathContext' | 'value' | 'onChange' | 'onCreate' | 'createDisabledReason'> & { maxAdditional: number }) {
+  compatible,
+  incompatibleText,
+  topLevelHint,
+}: Pick<CategoryPickerProps, 'tree' | 'pathContext' | 'value' | 'onChange' | 'onCreate' | 'createDisabledReason' | 'compatible' | 'incompatibleText' | 'topLevelHint'> & { maxAdditional: number }) {
   const t = useTranslations('app.ui.categoryPicker')
   const id = useId()
   const [query, setQuery] = useState('')
@@ -182,10 +219,12 @@ function CategoryBrowser({
 
   const keys = useMemo(() => {
     const q = query.trim()
-    if (q) return searchCategories(tree, q, pathContext)
-    return treeOrder(tree).filter((k) => !tree.nodes.get(k)?.archivedAt || selected.has(k))
+    // D-22: only branches used for the item's type are offered; an assigned one that does not fit stays listed (to remove it).
+    const offered = (k: CategoryKey) => selected.has(k) || !compatible || compatible(k)
+    if (q) return searchCategories(tree, q, pathContext).filter(offered)
+    return treeOrder(tree).filter((k) => (!tree.nodes.get(k)?.archivedAt || selected.has(k)) && offered(k))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tree, query, pathContext, value])
+  }, [tree, query, pathContext, value, compatible])
   const searching = query.trim() !== ''
   const full = value.additional.length >= maxAdditional && value.primary !== null
 
@@ -235,6 +274,7 @@ function CategoryBrowser({
                   <p className="text-[0.9375rem] leading-6 break-words text-foreground">{p.segments.at(-1) ?? k}</p>
                   {p.keys.length > 1 ? <p className="text-sm break-words text-muted-foreground">{p.text}</p> : null}
                   {archived ? <Pill>{t('archived')}</Pill> : null}
+                  {compatible && !compatible(k) ? <Pill tone="outline">{incompatibleText?.(k) ?? ''}</Pill> : null}
                 </div>
                 {on ? (
                   <Chip
@@ -258,6 +298,8 @@ function CategoryBrowser({
           <AddCategoryForm
             tree={tree}
             pathContext={pathContext}
+            compatible={compatible}
+            topLevelHint={topLevelHint}
             initialLabel={query.trim().split(/\s*(?:›|>|\/)\s*/).filter(Boolean).at(-1) ?? ''}
             onCreate={onCreate}
             onCancel={() => setAdding(false)}
@@ -293,9 +335,13 @@ function AddCategoryForm({
   onCreate,
   onCancel,
   onCreated,
+  compatible,
+  topLevelHint,
 }: {
   tree: CategoryTree
   pathContext: PathContext
+  compatible?: (key: CategoryKey) => boolean
+  topLevelHint?: string
   initialLabel: string
   onCreate: NonNullable<CategoryPickerProps['onCreate']>
   onCancel: () => void
@@ -308,7 +354,8 @@ function AddCategoryForm({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const preview = previewPath(tree, parent, name, pathContext)
-  const parents = treeOrder(tree).filter((k) => !tree.nodes.get(k)?.archivedAt)
+  // D-22: a new category goes under a branch used for the item's type, or to the top level.
+  const parents = treeOrder(tree).filter((k) => !tree.nodes.get(k)?.archivedAt && (!compatible || compatible(k)))
 
   async function submit() {
     const label = name.trim()
@@ -349,6 +396,7 @@ function AddCategoryForm({
       <p aria-live="polite" className="text-[0.9375rem] leading-6 break-words text-foreground">
         {t('preview', { path: preview.text || '…' })}
       </p>
+      {parent === null && topLevelHint ? <p className="text-sm text-muted-foreground">{topLevelHint}</p> : null}
       <FieldError>{error}</FieldError>
       <div className="flex flex-col gap-2 sm:flex-row">
         <Button variant="primary" onClick={submit} disabled={busy} aria-busy={busy || undefined}>

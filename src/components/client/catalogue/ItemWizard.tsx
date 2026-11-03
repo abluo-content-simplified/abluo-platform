@@ -16,6 +16,7 @@ import { readChannels } from '@/lib/modules/catalogue/commerce/channels'
 import { buildTree } from '@/lib/modules/catalogue/taxonomy/tree'
 import { modelRulesActive } from '@/lib/modules/catalogue/readiness/facts-model'
 import { CommerceField, ItemCategoriesField } from './item-commerce'
+import { useItemApplicability } from './use-for-ui'
 import { blocksNextOn, itemIssues, publishBlockers, type ItemIssue } from '@/lib/modules/catalogue/item-issues'
 import { CAT_ICONS, ItemIssueList, focusField, useCatalogueError, useItemIssueText } from './catalogue-ui'
 import { BookDetailsFields, BuyLinkField, FoodInfoField, ItemPreview, LanguagesField, NameFields, OptionsField, PageField, PhotoField, ProfileField, type OptionListChoice } from './item-fields'
@@ -145,7 +146,9 @@ export function ItemWizard({
     mainRef.current?.scrollTo?.({ top: 0 })
   }
   const ctx = { channels: channelSet, optionCounts }
-  const issues = itemIssues(s, { defaultLocale: d, locales: site.locales, channels, optionCounts, channelSet, tree, timeZone: site.timeZone, migrations: site.config.migrations })
+  // D-22 (C1.12): the same "Use for" data the publish gate judges; the pickers filter with it.
+  const { applicability, profileFit } = useItemApplicability(site.config.tags, optionLists, s.itemProfile)
+  const issues = itemIssues(s, { defaultLocale: d, locales: site.locales, channels, optionCounts, channelSet, tree, timeZone: site.timeZone, migrations: site.config.migrations, applicability })
   const formatIssues = formatFormIssues(s.formats, s.itemRules, { channels: channelSet, defaultLocale: d, itemProfile: s.itemProfile, bookIsbn: s.bookDetails.isbn.trim() || null })
   const issueText = useItemIssueText()
   const canNext = step !== 'done' && canAdvanceItem(step, s, d, ctx)
@@ -318,6 +321,7 @@ export function ItemWizard({
                 label={t('category.title')}
                 hint={categoryRequired ? t('category.requiredHint') : undefined}
                 nodes={site.config.categoryNodes}
+                profile={s.itemProfile}
                 value={s.assignment}
                 onChange={item.setAssignment}
                 canCreate={canAddCategory}
@@ -328,7 +332,7 @@ export function ItemWizard({
               {site.config.tags.length || canAddCategory ? (
                 <div className="mt-8">
                   <p className="mb-3 text-[0.9375rem] font-semibold text-foreground">{t('tag.title')}</p>
-                  <TermPicker projectSlug={projectSlug} module="catalogue" kind="tag" label={t('tag.title')} terms={site.config.tags} value={s.tags} onChange={item.setTags} defaultLocale={d} canAdd={canAddCategory} />
+                  <TermPicker projectSlug={projectSlug} module="catalogue" kind="tag" label={t('tag.title')} terms={site.config.tags} value={s.tags} onChange={item.setTags} defaultLocale={d} isAvailable={profileFit.tag} unavailableText={profileFit.text} canAdd={canAddCategory} />
                 </div>
               ) : null}
             </div>
@@ -371,7 +375,7 @@ export function ItemWizard({
           <>
             {heading('item-step-options', 'options')}
             <div className="mt-8">
-              <OptionsField projectSlug={projectSlug} options={s.options} lists={optionLists} onChange={item.setOptions} />
+              <OptionsField projectSlug={projectSlug} options={s.options} lists={optionLists} onChange={item.setOptions} profile={s.itemProfile} />
             </div>
           </>
         ) : step === 'page' ? (

@@ -90,13 +90,16 @@ export function ruleRow(channel: string, rule: ChannelAvailabilityRule): Record<
 export const ruleRows = (rules: ChannelRules): Record<string, unknown>[] =>
   Object.entries(rules).flatMap(([channel, rule]) => (rule ? [ruleRow(channel, rule)] : []))
 
-/** A NEW category row (C1.4). New categories carry no channel rule (inherit, D-3). */
-export function newCategoryRow(key: CategoryKey, labels: Readonly<Record<string, string>>, parentKey: CategoryKey | null, order: number): StoredRow {
-  return { _key: key, _type: 'catalogueCategory', key, label: storedLabel(labels), ...(parentKey !== null && { parentKey }), order }
+/**
+ * A NEW category row (C1.4). New categories carry no channel rule (inherit, D-3). `useFor` (D-22,
+ * C1.12) only on a new ROOT; an empty list is not stored ("All item types" = absent).
+ */
+export function newCategoryRow(key: CategoryKey, labels: Readonly<Record<string, string>>, parentKey: CategoryKey | null, order: number, useFor: readonly string[] = []): StoredRow {
+  return { _key: key, _type: 'catalogueCategory', key, label: storedLabel(labels), ...(parentKey !== null && { parentKey }), order, ...(parentKey === null && useFor.length > 0 && { useFor: [...useFor] }) }
 }
 
-export function newTagRow(key: string, labels: Readonly<Record<string, string>>, order: number): StoredRow {
-  return { _key: key, _type: 'catalogueTag', key, label: storedLabel(labels), order }
+export function newTagRow(key: string, labels: Readonly<Record<string, string>>, order: number, useFor: readonly string[] = []): StoredRow {
+  return { _key: key, _type: 'catalogueTag', key, label: storedLabel(labels), order, ...(useFor.length > 0 && { useFor: [...useFor] }) }
 }
 
 const rowKey = (r: StoredRow) => (typeof r?.key === 'string' ? r.key : typeof r?._key === 'string' ? r._key : '')

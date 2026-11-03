@@ -1,5 +1,5 @@
 import type { PackDeclaration } from '../../types'
-import { FOOD_PROFILE, FORMAT, L, LABEL, TAG, dineIn, hours, section, takeaway } from '../shared'
+import { FOOD, FOOD_PROFILE, FORMAT, L, LABEL, TAG, hours, section, takeaway, dineIn } from '../shared'
 
 /** C7.10 Pizzeria — `pizzeria` v3. Delivery in the evening only (declinable in the preview, D-6). */
 export const pizzeria: PackDeclaration = {
@@ -27,17 +27,17 @@ export const pizzeria: PackDeclaration = {
     },
   ],
   categories: [
-    { key: 'pizza', label: L('Pizza', 'Pizza', 'Pizza'), parent: null, defaultOptionGroups: ['extra_toppings', 'remove_ingredients'] },
+    { key: 'pizza', label: L('Pizza', 'Pizza', 'Pizza'), parent: null, useFor: FOOD, defaultOptionGroups: ['extra_toppings', 'remove_ingredients'] },
     { key: 'pizza_classiche', label: L('Classic', 'Classiche', 'Klassiker'), parent: 'pizza' },
     { key: 'pizza_bianche', label: L('White pizzas', 'Bianche', 'Weiße Pizzen'), parent: 'pizza' },
     { key: 'pizza_speciali', label: L('Specials', 'Speciali', 'Spezialitäten'), parent: 'pizza' },
     { key: 'calzoni', label: L('Calzoni', 'Calzoni', 'Calzoni'), parent: 'pizza' },
-    { key: 'starters', label: LABEL.starters, parent: null },
+    { key: 'starters', label: LABEL.starters, parent: null, useFor: FOOD },
     { key: 'fried_starters', label: L('Fried', 'Fritti', 'Frittiertes'), parent: 'starters' },
     { key: 'boards', label: L('Boards', 'Taglieri', 'Platten'), parent: 'starters' },
-    { key: 'salads', label: LABEL.salads, parent: null },
-    { key: 'desserts', label: LABEL.desserts, parent: null },
-    { key: 'beverages', label: LABEL.beverages, parent: null },
+    { key: 'salads', label: LABEL.salads, parent: null, useFor: FOOD },
+    { key: 'desserts', label: LABEL.desserts, parent: null, useFor: FOOD },
+    { key: 'beverages', label: LABEL.beverages, parent: null, useFor: FOOD },
     { key: 'soft_drinks', label: LABEL.softDrinks, parent: 'beverages' },
     { key: 'beer', label: LABEL.beer, parent: 'beverages' },
     { key: 'wine', label: LABEL.wine, parent: 'beverages' },
@@ -58,6 +58,7 @@ export const pizzeria: PackDeclaration = {
     {
       key: 'extra_toppings',
       name: L('Extra toppings', 'Aggiunte', 'Extra-Beläge'),
+      useFor: FOOD,
       min: 0,
       max: 5,
       choices: [
@@ -71,6 +72,7 @@ export const pizzeria: PackDeclaration = {
     {
       key: 'remove_ingredients',
       name: L('Remove ingredients', 'Senza', 'Ohne'),
+      useFor: FOOD,
       min: 0,
       max: null,
       choices: [

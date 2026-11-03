@@ -1,5 +1,5 @@
 import type { PackDeclaration } from '../../types'
-import { FORMAT, L, TAG, section } from '../shared'
+import { BOOK, FORMAT, L, TAG, section } from '../shared'
 
 /**
  * C7.10 Bookshop — `bookshop` v3. Default profile Book (D-13 part 3: fill-if-empty, so tmz keeps
@@ -20,17 +20,17 @@ export const bookshop: PackDeclaration = {
   suggestedDefaultProfile: 'book',
   channels: [],
   categories: [
-    { key: 'fiction', label: L('Fiction', 'Narrativa', 'Belletristik'), parent: null },
+    { key: 'fiction', label: L('Fiction', 'Narrativa', 'Belletristik'), parent: null, useFor: BOOK },
     { key: 'literary_fiction', label: L('Literary fiction', 'Narrativa letteraria', 'Literarische Belletristik'), parent: 'fiction' },
     { key: 'crime_thriller', label: L('Crime and thriller', 'Gialli e thriller', 'Krimis und Thriller'), parent: 'fiction' },
     { key: 'sff', label: L('Science fiction and fantasy', 'Fantascienza e fantasy', 'Science-Fiction und Fantasy'), parent: 'fiction' },
-    { key: 'non_fiction', label: L('Non-fiction', 'Saggistica', 'Sachbuch'), parent: null },
+    { key: 'non_fiction', label: L('Non-fiction', 'Saggistica', 'Sachbuch'), parent: null, useFor: BOOK },
     { key: 'biography_memoir', label: L('Biography and memoir', 'Biografie e memorie', 'Biografien und Memoiren'), parent: 'non_fiction' },
     { key: 'history', label: L('History', 'Storia', 'Geschichte'), parent: 'non_fiction' },
     { key: 'science_tech', label: L('Science and technology', 'Scienza e tecnologia', 'Wissenschaft und Technik'), parent: 'non_fiction' },
     { key: 'art_design', label: L('Art and design', 'Arte e design', 'Kunst und Design'), parent: 'non_fiction' },
-    { key: 'children_ya', label: L('Children and young adults', 'Ragazzi', 'Kinder und Jugend'), parent: null },
-    { key: 'travel_cookery', label: L('Travel and cookery', 'Viaggi e cucina', 'Reise und Küche'), parent: null },
+    { key: 'children_ya', label: L('Children and young adults', 'Ragazzi', 'Kinder und Jugend'), parent: null, useFor: BOOK },
+    { key: 'travel_cookery', label: L('Travel and cookery', 'Viaggi e cucina', 'Reise und Küche'), parent: null, useFor: BOOK },
   ],
   tags: [TAG.new, TAG.staffPick, TAG.signedCopy, TAG.illustrated, TAG.localAuthor],
   // "One unnamed section": a section name is required, so it carries the list's own name.

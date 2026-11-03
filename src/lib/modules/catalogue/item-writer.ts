@@ -36,6 +36,7 @@ import { validateAssignment } from './taxonomy/tree'
 import { assignmentPatch, ruleRow } from './taxonomy/write-model'
 import { MAX_ADDITIONAL_CATEGORIES } from './taxonomy/limits'
 import type { CategoryAssignment, CategoryTree } from './taxonomy/types'
+import { newIncompatibleAssignments, optionListIdsOf, tagKeysOf, type ApplicabilityItem, type ApplicabilityTaxonomy, type OptionListUseFor, type ProfileFinding } from './taxonomy/profile-applicability'
 
 /** What a refusal needs: the server's message and the field it is about (dashboard-patch `bad`). */
 export type Refuse = (message: string, field: string) => never
@@ -378,6 +379,41 @@ export function categoriesShape(previous: Record<string, unknown>, input: Record
     if (!v.ok) refuse(ASSIGNMENT_MESSAGE[v.code] ?? 'Check the categories.', v.code === 'category_primary_required' ? 'primaryCategory' : 'additionalCategories')
   }
   return assignmentPatch(next)
+}
+
+// ── Profile applicability (D-22, C1.12.4) ─────────────────────────────────────
+
+/** What the writer knows about the project's "Use for" values (tags of the taxonomy; option lists the save touches). */
+export type WriterApplicability = { tags: ApplicabilityTaxonomy['tags']; optionLists: OptionListUseFor }
+
+/** A stored (or about-to-be-stored) item document → the rule's item. A missing / unknown profile = null (no findings). */
+export function applicabilityItemOf(doc: Record<string, unknown>, tree: CategoryTree): ApplicabilityItem {
+  return {
+    profile: isItemProfile(doc.itemProfile) ? doc.itemProfile : null,
+    assignment: itemCategoryAssignment(doc, tree),
+    tags: tagKeysOf(doc),
+    optionListIds: optionListIdsOf(doc),
+  }
+}
+
+const FINDING_FIELD: Record<ProfileFinding['kind'], string> = { primary: 'primaryCategory', additional: 'additionalCategories', tag: 'tags', option: 'optionLists' }
+
+/**
+ * C1.12.4 — the writer's rule: a save may never ADD a category (primary or additional), tag or option
+ * list whose "Use for" excludes the item's profile after the save. It never removes one: a profile
+ * change is saved with every existing assignment kept (they surface as findings in the editor and
+ * block publication). `after` = the document as it will be stored (previous ⊕ set ⊖ unset).
+ * Returns the first new finding, or null; the caller refuses with it.
+ */
+export function profileApplicabilityRefusal(previous: Record<string, unknown>, after: Record<string, unknown>, tree: CategoryTree, applicability: WriterApplicability): ProfileFinding | null {
+  const taxonomy: ApplicabilityTaxonomy = { tree, tags: applicability.tags }
+  return newIncompatibleAssignments(applicabilityItemOf(previous, tree), applicabilityItemOf(after, tree), taxonomy, applicability.optionLists)[0] ?? null
+}
+
+/** The refusal's field (the editor focuses it) and an English server message (the UI uses its own i18n via the finding). */
+export function refuseProfileFinding(f: ProfileFinding, refuse: Refuse): never {
+  const what = f.kind === 'tag' ? 'This tag' : f.kind === 'option' ? 'This option list' : 'This category'
+  return refuse(`${what} isn't used for this type of item.`, FINDING_FIELD[f.kind])
 }
 
 /** The profile and the book ISBN a patch leaves on the item (format validation needs both). */

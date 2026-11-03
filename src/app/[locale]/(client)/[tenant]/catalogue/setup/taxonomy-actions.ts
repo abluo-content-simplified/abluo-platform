@@ -33,7 +33,11 @@
  *   reorderCatalogueTagsAction         { keys, rev, baseHashes? }                      → { order, rev }                           taxonomy.write
  *   archiveCatalogueTagAction          { key, archived: boolean }                      → { tag, rev }                             taxonomy.write
  *   deleteCatalogueTagAction           { key }                                         → { key, deleted, rev }                    taxonomy.write
- *   createCatalogueTermInlineAction    { kind: 'category'|'tag', labels, parentKey? }  → { term: { key, label, color: null } }    the TermPicker bridge (category: top level unless parentKey)
+ *   createCatalogueTermInlineAction    { kind: 'category'|'tag', labels, parentKey?, useFor? } → { term: { key, label, color: null } } the TermPicker bridge (category: top level unless parentKey; useFor only on a new top-level category, D-22)
+ *   previewCatalogueCategoryUseForAction { key, useFor }                               → { preview: UseForPreview }               setup.manage (D-22, root only)
+ *   setCatalogueCategoryUseForAction   { key, useFor, rev, baseHashes? }               → { preview, category, rev }               setup.manage
+ *   previewCatalogueTagUseForAction    { key, useFor }                                 → { preview: UseForPreview }               taxonomy.write
+ *   setCatalogueTagUseForAction        { key, useFor, rev, baseHashes? }               → { preview, tag, rev }                    taxonomy.write
  */
 import { revalidatePath } from 'next/cache'
 import { resolveProjectAction } from '@/lib/api/project-action'
@@ -54,6 +58,11 @@ import {
   previewCategoryDeletion,
   previewCategoryMove,
   previewCategoryRule,
+  previewCategoryUseFor,
+  previewTagUseFor,
+  setCategoryUseFor,
+  setTagUseFor,
+  type UseForPreview,
   reassignCategory,
   reorderChildren,
   reorderTags,
@@ -154,6 +163,38 @@ export async function setCatalogueCategoryRuleAction(input: Scoped<UserOpBase & 
   )
 }
 
+// ── "Use for" (D-22, C1.12.7) ─────────────────────────────────────────────────
+
+export async function previewCatalogueCategoryUseForAction(input: Scoped<{ key: string; useFor: string[] | null }>): Promise<Result<{ preview: UseForPreview }>> {
+  return run(input?.projectSlug, async (ctx, pid) => ({ preview: await previewCategoryUseFor(ctx, pid, { key: input.key, useFor: input.useFor }) }))
+}
+
+export async function setCatalogueCategoryUseForAction(input: Scoped<UserOpBase & { key: string; useFor: string[] | null }>): Promise<Result<{ preview: UseForPreview; category: CategoryNode; rev: string }>> {
+  return run(
+    input?.projectSlug,
+    async (ctx, pid) => {
+      const r = await setCategoryUseFor(ctx, pid, { key: input.key, useFor: input.useFor, rev: input.rev, baseHashes: input.baseHashes })
+      return { preview: { before: r.before, after: r.after, newlyIncompatible: r.newlyIncompatible, sample: r.sample }, category: r.category, rev: r.rev }
+    },
+    { write: true },
+  )
+}
+
+export async function previewCatalogueTagUseForAction(input: Scoped<{ key: string; useFor: string[] | null }>): Promise<Result<{ preview: UseForPreview }>> {
+  return run(input?.projectSlug, async (ctx, pid) => ({ preview: await previewTagUseFor(ctx, pid, { key: input.key, useFor: input.useFor }) }))
+}
+
+export async function setCatalogueTagUseForAction(input: Scoped<UserOpBase & { key: string; useFor: string[] | null }>): Promise<Result<{ preview: UseForPreview; tag: TagResult['tag']; rev: string }>> {
+  return run(
+    input?.projectSlug,
+    async (ctx, pid) => {
+      const r = await setTagUseFor(ctx, pid, { key: input.key, useFor: input.useFor, rev: input.rev, baseHashes: input.baseHashes })
+      return { preview: { before: r.before, after: r.after, newlyIncompatible: r.newlyIncompatible, sample: r.sample }, tag: r.tag, rev: r.rev }
+    },
+    { write: true },
+  )
+}
+
 export async function catalogueCategoryUsageAction(input: Scoped<{ key: string }>): Promise<Result<{ usage: CategoryUsage }>> {
   return run(input?.projectSlug, async (ctx, pid) => ({ usage: await categoryUsage(ctx, pid, { key: input.key }) }))
 }
@@ -198,7 +239,7 @@ export async function deleteCatalogueTagAction(input: Scoped<{ key: string }>): 
  * Returns the TermPicker's term shape.
  */
 export async function createCatalogueTermInlineAction(
-  input: Scoped<{ kind: 'category' | 'tag'; labels: Record<string, string>; parentKey?: string | null }>,
+  input: Scoped<{ kind: 'category' | 'tag'; labels: Record<string, string>; parentKey?: string | null; useFor?: string[] }>,
 ): Promise<Result<{ term: { key: string; label: Record<string, string>; color: null } }>> {
   return run(
     input?.projectSlug,
@@ -207,7 +248,7 @@ export async function createCatalogueTermInlineAction(
         const r = await createTag(ctx, pid, { labels: input.labels })
         return { term: { key: r.tag.key, label: r.tag.label, color: null } }
       }
-      const r = await createCategory(ctx, pid, { labels: input.labels, parentKey: input.parentKey ?? null })
+      const r = await createCategory(ctx, pid, { labels: input.labels, parentKey: input.parentKey ?? null, ...(input.useFor && { useFor: input.useFor }) })
       return { term: { key: r.category.key, label: r.category.label, color: null } }
     },
     { write: true },

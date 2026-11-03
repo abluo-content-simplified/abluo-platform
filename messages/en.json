@@ -1797,7 +1797,8 @@
               "addNamed": "Add group “{name}”"
             }
           }
-        }
+        },
+        "remove": "Remove {name}"
       },
       "columns": {
         "usedBy": "Used by",
@@ -4051,7 +4052,8 @@
         "createError": "The category couldn’t be added. Try again.",
         "unknown": "Unknown category",
         "unknownList": "Categories that no longer exist",
-        "removeUnknown": "Remove unknown category {n}"
+        "removeUnknown": "Remove unknown category {n}",
+        "remove": "Remove {path}"
       },
       "schedule": {
         "baseline": "Usually",
@@ -6321,7 +6323,8 @@
         "noPrice": "No price set",
         "allergensNotReviewed": "Allergens not reviewed",
         "noCategory": "No category",
-        "noPrimaryCategory": "No main category"
+        "noPrimaryCategory": "No main category",
+        "profileMismatch": "Doesn’t fit its type"
       },
       "days": {
         "mon": "Mon",
@@ -6820,7 +6823,10 @@
           "availability": {
             "conflictingRows": "The availability was saved twice with different values. Set it again."
           },
-          "scheduleInvalid": "Check the hours: each needs a start and an end, and they must not overlap."
+          "scheduleInvalid": "Check the hours: each needs a start and an end, and they must not overlap.",
+          "profileMismatchCategory": "“{name}” isn’t used for {profile, select, book {Book} foodOrDrink {Food or drink} product {Other product} service {Service} other {this item type}}. Remove it or choose another category.",
+          "profileMismatchTag": "The tag “{name}” isn’t used for {profile, select, book {Book} foodOrDrink {Food or drink} product {Other product} service {Service} other {this item type}}. Remove it.",
+          "profileMismatchOption": "The option list “{name}” isn’t used for {profile, select, book {Book} foodOrDrink {Food or drink} product {Other product} service {Service} other {this item type}}. Remove it."
         },
         "categories": {
           "primaryMissing": "Mark one of the chosen categories as primary.",
@@ -7561,6 +7567,34 @@
       "exited": "Nothing was set up. Your item is still here.",
       "needsSetup": "Food and drink isn’t set up yet. Someone with the “Manage Catalogue Setup” permission can set it up; you can carry on with this item meanwhile.",
       "openSetup": "Set up food and drink"
+    },
+    "useFor": {
+      "legend": "Use for",
+      "hint": "The item types this is offered for. Keep “All item types” for anything generic.",
+      "hintRoot": "Every category under it is used for the same item types.",
+      "all": "All item types",
+      "profiles": {
+        "book": "Book",
+        "foodOrDrink": "Food or drink",
+        "product": "Other product",
+        "service": "Service"
+      },
+      "notUsedFor": "Not used for {profile}",
+      "inherited": "Used for: {profiles} — set on {root}",
+      "filter": "Show for",
+      "save": "Save “Use for”",
+      "unchanged": "Nothing to save yet.",
+      "saved": "{name} is now used for: {profiles}.",
+      "needsSetup": "Changing “Use for” needs Catalogue Setup.",
+      "needsWrite": "Changing “Use for” needs permission to manage tags.",
+      "narrowTitle": "Use {name} only for {profiles}?",
+      "narrowBody": "{count, plural, one {# item no longer fits and will be flagged} other {# items no longer fit and will be flagged}} until someone removes it or chooses another one. Nothing is removed automatically.",
+      "moveChange": "“Use for” changes: {before} → {after}.",
+      "moveIncompatible": "{count, plural, =0 {Every item still fits.} one {# item will no longer fit its categories and will be flagged.} other {# items will no longer fit their categories and will be flagged.}}",
+      "menu": "Use for…",
+      "inlineRoot": "A new top-level category is used for {profile}.",
+      "filteredHint": "Only categories used for {profile} are listed.",
+      "noneForFilter": "Nothing here is used for {profile}."
     }
   },
   "supportTicketEmail": {

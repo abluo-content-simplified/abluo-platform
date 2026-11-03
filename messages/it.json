@@ -1797,7 +1797,8 @@
               "addNamed": "Aggiungi il gruppo “{name}”"
             }
           }
-        }
+        },
+        "remove": "Rimuovi {name}"
       },
       "columns": {
         "usedBy": "Usata da",
@@ -4051,7 +4052,8 @@
         "createError": "Non è stato possibile aggiungere la categoria. Riprova.",
         "unknown": "Categoria sconosciuta",
         "unknownList": "Categorie che non esistono più",
-        "removeUnknown": "Rimuovi la categoria sconosciuta {n}"
+        "removeUnknown": "Rimuovi la categoria sconosciuta {n}",
+        "remove": "Rimuovi {path}"
       },
       "schedule": {
         "baseline": "Di solito",
@@ -6321,7 +6323,8 @@
         "noPrice": "Nessun prezzo",
         "allergensNotReviewed": "Allergeni da verificare",
         "noCategory": "Nessuna categoria",
-        "noPrimaryCategory": "Nessuna categoria principale"
+        "noPrimaryCategory": "Nessuna categoria principale",
+        "profileMismatch": "Non adatto al tipo"
       },
       "days": {
         "mon": "Lun",
@@ -6820,7 +6823,10 @@
           "availability": {
             "conflictingRows": "La disponibilità è stata salvata due volte con valori diversi. Impostala di nuovo."
           },
-          "scheduleInvalid": "Controlla gli orari: ognuno ha bisogno di un inizio e di una fine, e non devono sovrapporsi."
+          "scheduleInvalid": "Controlla gli orari: ognuno ha bisogno di un inizio e di una fine, e non devono sovrapporsi.",
+          "profileMismatchCategory": "“{name}” non è usata per {profile, select, book {Libro} foodOrDrink {Cibo o bevanda} product {Altro prodotto} service {Servizio} other {questo tipo di elemento}}. Rimuovila o scegli un’altra categoria.",
+          "profileMismatchTag": "Il tag “{name}” non è usato per {profile, select, book {Libro} foodOrDrink {Cibo o bevanda} product {Altro prodotto} service {Servizio} other {questo tipo di elemento}}. Rimuovilo.",
+          "profileMismatchOption": "La lista di opzioni “{name}” non è usata per {profile, select, book {Libro} foodOrDrink {Cibo o bevanda} product {Altro prodotto} service {Servizio} other {questo tipo di elemento}}. Rimuovila."
         },
         "categories": {
           "primaryMissing": "Indica come principale una delle categorie scelte.",
@@ -7561,6 +7567,34 @@
       "exited": "Non è stato configurato nulla. Il tuo articolo è ancora qui.",
       "needsSetup": "Cibo e bevande non sono ancora configurati. Chi ha il permesso “Gestire la configurazione del Catalogo” può configurarli; nel frattempo puoi continuare con questo articolo.",
       "openSetup": "Configura cibo e bevande"
+    },
+    "useFor": {
+      "legend": "Usa per",
+      "hint": "I tipi di elemento per cui è proposto. Lascia “Tutti i tipi di elemento” per ciò che è generico.",
+      "hintRoot": "Tutte le categorie al suo interno valgono per gli stessi tipi di elemento.",
+      "all": "Tutti i tipi di elemento",
+      "profiles": {
+        "book": "Libro",
+        "foodOrDrink": "Cibo o bevanda",
+        "product": "Altro prodotto",
+        "service": "Servizio"
+      },
+      "notUsedFor": "Non usato per {profile}",
+      "inherited": "Usato per: {profiles} — impostato su {root}",
+      "filter": "Mostra per",
+      "save": "Salva “Usa per”",
+      "unchanged": "Ancora niente da salvare.",
+      "saved": "{name} ora è usato per: {profiles}.",
+      "needsSetup": "Per cambiare “Usa per” serve la Configurazione del catalogo.",
+      "needsWrite": "Per cambiare “Usa per” serve il permesso di gestire i tag.",
+      "narrowTitle": "Usare {name} solo per {profiles}?",
+      "narrowBody": "{count, plural, one {# elemento non corrisponde più e verrà segnalato} other {# elementi non corrispondono più e verranno segnalati}} finché qualcuno non lo rimuove o ne sceglie un altro. Non viene rimosso nulla in automatico.",
+      "moveChange": "“Usa per” cambia: {before} → {after}.",
+      "moveIncompatible": "{count, plural, =0 {Tutti gli elementi corrispondono ancora.} one {# elemento non corrisponderà più alle sue categorie e verrà segnalato.} other {# elementi non corrisponderanno più alle loro categorie e verranno segnalati.}}",
+      "menu": "Usa per…",
+      "inlineRoot": "Una nuova categoria principale vale per {profile}.",
+      "filteredHint": "Sono elencate solo le categorie usate per {profile}.",
+      "noneForFilter": "Qui nulla è usato per {profile}."
     }
   },
   "supportTicketEmail": {

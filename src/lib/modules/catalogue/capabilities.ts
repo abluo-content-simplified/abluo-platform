@@ -40,9 +40,13 @@ export type CatalogueOperation =
   | { op: 'collection.edit' | 'collection.publish' | 'collection.place' }
   | { op: 'collection.delete'; published: boolean }
   | { op: 'optionList.edit' | 'optionList.publish' | 'optionList.delete' }
+  /** D-22 (C1.12.7): an option list's "Use for" — Setup permission on top of editing the list. */
+  | { op: 'optionList.setUseFor' }
   | { op: 'term.create' | 'term.rename' | 'term.translate' | 'term.reorder' | 'term.deleteUnusedLeaf' }
   | { op: 'term.archive' | 'term.unarchive'; kind: 'category' | 'tag' }
   | { op: 'term.reparent' | 'term.reassign' | 'term.deleteInUse' | 'term.setAvailabilityRule' }
+  /** D-22 (C1.12.7): "Use for" of a root category (setup.manage) or a tag (taxonomy.write, D-3 "manage tags"). */
+  | { op: 'term.setUseFor'; kind: 'category' | 'tag' }
   | { op: 'setup.applyPack' | 'setup.channels' | 'setup.standards' | 'setup.publicWebsite' | 'setup.defaults' | 'setup.currency' }
   | { op: 'import.start' | 'import.confirm' | 'import.undo'; createsTerms: boolean }
   | { op: 'export.data' | 'export.pdf' | 'export.allergenRegister' }
@@ -55,10 +59,10 @@ export const CATALOGUE_OPERATION_IDS: readonly CatalogueOperationId[] = [
   'item.delete', 'item.reviewAllergens', 'item.editAllergenContent', 'item.overrideReadiness', 'item.assignCategories',
   'item.setAvailabilityOverride', 'item.setPrice', 'item.attachOption',
   'collection.edit', 'collection.publish', 'collection.place', 'collection.delete',
-  'optionList.edit', 'optionList.publish', 'optionList.delete',
+  'optionList.edit', 'optionList.publish', 'optionList.delete', 'optionList.setUseFor',
   'term.create', 'term.rename', 'term.translate', 'term.reorder', 'term.deleteUnusedLeaf',
   'term.archive', 'term.unarchive',
-  'term.reparent', 'term.reassign', 'term.deleteInUse', 'term.setAvailabilityRule',
+  'term.reparent', 'term.reassign', 'term.deleteInUse', 'term.setAvailabilityRule', 'term.setUseFor',
   'setup.applyPack', 'setup.channels', 'setup.standards', 'setup.publicWebsite', 'setup.defaults', 'setup.currency',
   'import.start', 'import.confirm', 'import.undo',
   'export.data', 'export.pdf', 'export.allergenRegister',
@@ -105,6 +109,8 @@ export function capabilitiesFor(op: CatalogueOperation): readonly CatalogueCapab
       return ['catalogue.item.write']
     case 'optionList.delete':
       return ['catalogue.item.write', 'catalogue.item.delete']
+    case 'optionList.setUseFor':
+      return ['catalogue.item.write', 'catalogue.setup.manage']
     case 'term.create':
     case 'term.rename':
     case 'term.translate':
@@ -113,6 +119,8 @@ export function capabilitiesFor(op: CatalogueOperation): readonly CatalogueCapab
       return ['catalogue.taxonomy.write']
     case 'term.archive':
     case 'term.unarchive':
+      return op.kind === 'category' ? ['catalogue.setup.manage'] : ['catalogue.taxonomy.write']
+    case 'term.setUseFor':
       return op.kind === 'category' ? ['catalogue.setup.manage'] : ['catalogue.taxonomy.write']
     case 'term.reparent':
     case 'term.reassign':

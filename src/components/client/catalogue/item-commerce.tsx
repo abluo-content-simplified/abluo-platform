@@ -27,6 +27,9 @@ import type { FormatFormIssue, ItemRules } from '@/lib/modules/catalogue/dashboa
 import { buildTree, pathOf } from '@/lib/modules/catalogue/taxonomy/tree'
 import type { CategoryAssignment, CategoryKey, CategoryNode, CategoryTree, PathContext } from '@/lib/modules/catalogue/taxonomy/types'
 import { textIn } from './catalogue-ui'
+import { useProfileUseFor } from './use-for-ui'
+import { isCategoryCompatible } from '@/lib/modules/catalogue/taxonomy/profile-applicability'
+import type { ItemProfile } from '@/lib/modules/catalogue/profiles'
 
 const labelText = (label: LocalizedText | null, ui: string, d: string): string => (label == null ? '' : typeof label === 'string' ? label : textIn(label as Record<string, string>, ui, d))
 
@@ -218,10 +221,13 @@ export function ItemCategoriesField({
   defaultLocale,
   error,
   presentation,
+  profile = null,
 }: {
   projectSlug: string
   label: string
   hint?: string
+  /** D-22 (C1.12.5): the item's type — only branches used for it are offered; null = no filter yet. */
+  profile?: ItemProfile | null
   nodes: readonly CategoryNode[]
   value: CategoryAssignment
   onChange: (next: CategoryAssignment) => void
@@ -237,13 +243,18 @@ export function ItemCategoriesField({
   const [added, setAdded] = useState<CategoryNode[]>([])
   const tree = useMemo(() => buildTree([...nodes, ...added.filter((a) => !nodes.some((n) => n.key === a.key))]), [nodes, added])
   const pathContext: PathContext = { locale: ui, defaultLocale, locales }
+  const tu = useTranslations('catalogue.useFor')
+  const useFor = useProfileUseFor()
+  const compatible = profile ? (k: CategoryKey) => isCategoryCompatible(tree, k, profile) : undefined
+  const profileName = profile ? useFor.labelOf(profile) : ''
 
   const onCreate = async (input: { parentKey: CategoryKey | null; label: string }): Promise<CategoryCreateResult> => {
     const labels = { [defaultLocale]: input.label }
-    const r = await createCatalogueTermInlineAction({ projectSlug, kind: 'category', labels, parentKey: input.parentKey })
+    // D-22: a new top-level category created from an item is used for the item's type.
+    const r = await createCatalogueTermInlineAction({ projectSlug, kind: 'category', labels, parentKey: input.parentKey, ...(input.parentKey === null && profile && { useFor: [profile] }) })
     if (!r.ok) return { ok: false, message: r.error === 'forbidden' ? t('createForbidden') : r.error === 'category_conflict' ? t('createConflict') : t('createFailed') }
     const order = Math.max(0, ...[...tree.nodes.values()].filter((n) => n.parentKey === input.parentKey).map((n) => n.order)) + 1000
-    setAdded((prev) => [...prev, { key: r.term.key, label: r.term.label, parentKey: input.parentKey, order, channelRules: {}, defaultOptionListIds: [], archivedAt: null }])
+    setAdded((prev) => [...prev, { key: r.term.key, label: r.term.label, parentKey: input.parentKey, order, channelRules: {}, defaultOptionListIds: [], archivedAt: null, ...(input.parentKey === null && profile && { useFor: [profile] }) }])
     return { ok: true, key: r.term.key }
   }
 
@@ -259,6 +270,9 @@ export function ItemCategoriesField({
       createDisabledReason={canCreate ? undefined : t('createNotAllowed')}
       error={error}
       presentation={presentation}
+      compatible={compatible}
+      incompatibleText={() => tu('notUsedFor', { profile: profileName })}
+      topLevelHint={profile ? tu('inlineRoot', { profile: profileName }) : undefined}
     />
   )
 }

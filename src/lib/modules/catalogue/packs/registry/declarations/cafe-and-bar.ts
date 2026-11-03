@@ -1,5 +1,5 @@
 import type { PackDeclaration } from '../../types'
-import { FOOD_PROFILE, FORMAT, L, TAG, delivery, dineIn, hours, section, takeaway } from '../shared'
+import { FOOD, FOOD_PROFILE, FORMAT, L, TAG, delivery, hours, section, takeaway, dineIn } from '../shared'
 
 const breakfast = { state: 'unavailable' as const, overrides: [hours('breakfast', '07:00', '11:00')] }
 
@@ -18,20 +18,20 @@ export const cafeAndBar: PackDeclaration = {
   suggestedDefaultProfile: FOOD_PROFILE,
   channels: [dineIn(true), takeaway(true), delivery(false)],
   categories: [
-    { key: 'coffee_tea', label: L('Coffee and tea', 'Caffè e tè', 'Kaffee und Tee'), parent: null },
+    { key: 'coffee_tea', label: L('Coffee and tea', 'Caffè e tè', 'Kaffee und Tee'), parent: null, useFor: FOOD },
     { key: 'coffee', label: L('Coffee', 'Caffè', 'Kaffee'), parent: 'coffee_tea', defaultOptionGroups: ['milk_choice', 'extras'] },
     { key: 'tea', label: L('Tea and infusions', 'Tè e tisane', 'Tee und Kräutertee'), parent: 'coffee_tea' },
-    { key: 'breakfast', label: L('Breakfast', 'Colazione', 'Frühstück'), parent: null, channelRules: { 'dine-in': breakfast, takeaway: breakfast } },
-    { key: 'pastries', label: L('Pastries', 'Pasticceria', 'Gebäck'), parent: null },
-    { key: 'sandwiches_snacks', label: L('Sandwiches and snacks', 'Panini e snack', 'Sandwiches und Snacks'), parent: null },
+    { key: 'breakfast', label: L('Breakfast', 'Colazione', 'Frühstück'), parent: null, useFor: FOOD, channelRules: { 'dine-in': breakfast, takeaway: breakfast } },
+    { key: 'pastries', label: L('Pastries', 'Pasticceria', 'Gebäck'), parent: null, useFor: FOOD },
+    { key: 'sandwiches_snacks', label: L('Sandwiches and snacks', 'Panini e snack', 'Sandwiches und Snacks'), parent: null, useFor: FOOD },
     {
       key: 'cocktails',
       label: L('Cocktails', 'Cocktail', 'Cocktails'),
-      parent: null,
+      parent: null, useFor: FOOD,
       channelRules: { 'dine-in': { state: 'unavailable', overrides: [hours('evening', '17:00', '01:00')] }, takeaway: { state: 'unavailable' } },
     },
-    { key: 'beer_wine', label: L('Beer and wine', 'Birre e vini', 'Bier und Wein'), parent: null, channelRules: { takeaway: { state: 'unavailable' } } },
-    { key: 'soft_drinks_juices', label: L('Soft drinks and juices', 'Bibite e succhi', 'Softdrinks und Säfte'), parent: null },
+    { key: 'beer_wine', label: L('Beer and wine', 'Birre e vini', 'Bier und Wein'), parent: null, useFor: FOOD, channelRules: { takeaway: { state: 'unavailable' } } },
+    { key: 'soft_drinks_juices', label: L('Soft drinks and juices', 'Bibite e succhi', 'Softdrinks und Säfte'), parent: null, useFor: FOOD },
   ],
   tags: [TAG.new, TAG.seasonal, TAG.local, TAG.baristasChoice],
   collections: [
@@ -55,6 +55,7 @@ export const cafeAndBar: PackDeclaration = {
     {
       key: 'milk_choice',
       name: L('Milk choice', 'Scelta del latte', 'Milch nach Wahl'),
+      useFor: FOOD,
       min: 0,
       max: 1,
       choices: [
@@ -67,6 +68,7 @@ export const cafeAndBar: PackDeclaration = {
     {
       key: 'extras',
       name: L('Extras', 'Extra', 'Extras'),
+      useFor: FOOD,
       min: 0,
       max: null,
       choices: [

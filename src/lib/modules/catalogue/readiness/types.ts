@@ -15,6 +15,7 @@ import type { CategoryAssignmentState, CategoryKey, CategoryTree, PrimaryPath } 
 import type { ChannelKey, FormatKey, OfferingContext } from '../commerce/commerce-types'
 import type { EffectiveRule } from '../commerce/channel-availability'
 import type { PriceCoverage, PriceIssue } from '../commerce/prices'
+import type { ProfileFinding } from '../taxonomy/profile-applicability'
 
 export type { CatalogueMigrationState, CategoryAssignmentState, CategoryKey, CategoryTree, ChannelKey, EffectiveRule, FormatKey, OfferingContext, PriceCoverage, PrimaryPath }
 
@@ -80,6 +81,8 @@ export type ReadinessCode =
   | 'integrity.refUnresolved' | 'integrity.refOtherProject' | 'integrity.declarationShape' | 'integrity.unknownKey'
   | 'integrity.currencyStored' | 'integrity.priceShape' | 'integrity.unknownCategory' | 'integrity.unknownChannel'
   | 'availability.scheduleInvalid'
+  // D-22 (C1.12): a category, tag or option list not used for the item's profile
+  | 'profileMismatch'
   | 'integrity.legacyOffersShadowed'
   // tenant-defined (later)
   | `custom.${string}`
@@ -219,6 +222,11 @@ export type ItemReadinessInput = {
   standards?: ResolvedStandards
   /** C10-6 markers of the item's project: gate rule activation. Absent = nothing migrated. */
   migrations?: CatalogueMigrationState
+  /**
+   * D-22 (C1.12): every assignment not used for the item's profile (`incompatibleAssignments`), each
+   * with its display name in the site's main language. Absent = not known by this builder (rule silent).
+   */
+  profileFindings?: ReadonlyArray<ProfileFinding & { name: string }>
 }
 
 // ── Standards (§6.8, shape only) ─────────────────────────────────────────────

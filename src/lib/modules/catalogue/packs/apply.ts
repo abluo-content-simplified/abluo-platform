@@ -95,6 +95,8 @@ export function packOptionListDoc(state: Pick<CatalogueState, 'projectSlug' | 'd
     _type: 'catalogueOptionList',
     projectSlug: state.projectSlug,
     name: storedLabel(item.label as Record<string, string>),
+    // D-22 (C1.12.8): the option list's "Use for" from the pack (written on create only).
+    ...(g.useFor?.length && { useFor: [...g.useFor] }),
     options: g.choices.map((c) => ({
       _key: c.key,
       _type: 'catalogueOption',
@@ -162,7 +164,7 @@ export function taxonomyRows(plan: PackPlan, state: CatalogueState): { categorie
     const parentKey = i.parentKey ?? null
     const order = appendOrder(placed, parentKey)
     placed.push({ parentKey, order })
-    const row: StoredRow = newCategoryRow(i.key, i.label as Record<string, string>, parentKey, order)
+    const row: StoredRow = newCategoryRow(i.key, i.label as Record<string, string>, parentKey, order, i.useFor ?? [])
     const rules: ChannelRules = Object.fromEntries((i.rules ?? []).map((r) => [r.channel, r.rule]))
     const rows = ruleRows(rules)
     if (rows.length) row.channelRules = rows
@@ -174,7 +176,7 @@ export function taxonomyRows(plan: PackPlan, state: CatalogueState): { categorie
   for (const i of plan.add) {
     if (i.area !== 'tag') continue
     tagOrder += ORDER_STEP
-    tags.push(newTagRow(i.key, i.label as Record<string, string>, tagOrder))
+    tags.push(newTagRow(i.key, i.label as Record<string, string>, tagOrder, i.useFor ?? []))
     changed = true
   }
   return { categories, tags, changed }

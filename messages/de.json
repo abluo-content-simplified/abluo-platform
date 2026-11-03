@@ -1797,7 +1797,8 @@
               "addNamed": "Gruppe „{name}“ hinzufügen"
             }
           }
-        }
+        },
+        "remove": "{name} entfernen"
       },
       "columns": {
         "usedBy": "Verwendet von",
@@ -4051,7 +4052,8 @@
         "createError": "Die Kategorie konnte nicht hinzugefügt werden. Versuche es noch einmal.",
         "unknown": "Unbekannte Kategorie",
         "unknownList": "Kategorien, die es nicht mehr gibt",
-        "removeUnknown": "Unbekannte Kategorie {n} entfernen"
+        "removeUnknown": "Unbekannte Kategorie {n} entfernen",
+        "remove": "{path} entfernen"
       },
       "schedule": {
         "baseline": "Normalerweise",
@@ -6321,7 +6323,8 @@
         "noPrice": "Kein Preis",
         "allergensNotReviewed": "Allergene nicht geprüft",
         "noCategory": "Keine Kategorie",
-        "noPrimaryCategory": "Keine Hauptkategorie"
+        "noPrimaryCategory": "Keine Hauptkategorie",
+        "profileMismatch": "Passt nicht zum Typ"
       },
       "days": {
         "mon": "Mo",
@@ -6820,7 +6823,10 @@
           "availability": {
             "conflictingRows": "Die Verfügbarkeit wurde zweimal mit unterschiedlichen Werten gespeichert. Lege sie erneut fest."
           },
-          "scheduleInvalid": "Prüfe die Zeiten: Jede braucht einen Beginn und ein Ende, und sie dürfen sich nicht überschneiden."
+          "scheduleInvalid": "Prüfe die Zeiten: Jede braucht einen Beginn und ein Ende, und sie dürfen sich nicht überschneiden.",
+          "profileMismatchCategory": "„{name}“ wird nicht für {profile, select, book {Buch} foodOrDrink {Speisen oder Getränke} product {Anderes Produkt} service {Dienstleistung} other {diesen Elementtyp}} verwendet. Entferne sie oder wähle eine andere Kategorie.",
+          "profileMismatchTag": "Das Tag „{name}“ wird nicht für {profile, select, book {Buch} foodOrDrink {Speisen oder Getränke} product {Anderes Produkt} service {Dienstleistung} other {diesen Elementtyp}} verwendet. Entferne es.",
+          "profileMismatchOption": "Die Optionsliste „{name}“ wird nicht für {profile, select, book {Buch} foodOrDrink {Speisen oder Getränke} product {Anderes Produkt} service {Dienstleistung} other {diesen Elementtyp}} verwendet. Entferne sie."
         },
         "categories": {
           "primaryMissing": "Markiere eine der gewählten Kategorien als Hauptkategorie.",
@@ -7561,6 +7567,34 @@
       "exited": "Es wurde nichts eingerichtet. Dein Artikel ist noch da.",
       "needsSetup": "Speisen und Getränke sind noch nicht eingerichtet. Wer die Berechtigung „Katalog-Einrichtung verwalten“ hat, kann sie einrichten; du kannst mit diesem Artikel weitermachen.",
       "openSetup": "Speisen und Getränke einrichten"
+    },
+    "useFor": {
+      "legend": "Verwenden für",
+      "hint": "Die Elementtypen, für die es angeboten wird. Lass „Alle Elementtypen“ für alles Allgemeine.",
+      "hintRoot": "Alle Kategorien darunter gelten für dieselben Elementtypen.",
+      "all": "Alle Elementtypen",
+      "profiles": {
+        "book": "Buch",
+        "foodOrDrink": "Speisen oder Getränke",
+        "product": "Anderes Produkt",
+        "service": "Dienstleistung"
+      },
+      "notUsedFor": "Nicht für {profile} verwendet",
+      "inherited": "Verwendet für: {profiles} — festgelegt bei {root}",
+      "filter": "Anzeigen für",
+      "save": "„Verwenden für“ speichern",
+      "unchanged": "Noch nichts zu speichern.",
+      "saved": "{name} wird jetzt verwendet für: {profiles}.",
+      "needsSetup": "Zum Ändern von „Verwenden für“ ist die Katalog-Einrichtung nötig.",
+      "needsWrite": "Zum Ändern von „Verwenden für“ ist die Berechtigung zum Verwalten von Tags nötig.",
+      "narrowTitle": "{name} nur für {profiles} verwenden?",
+      "narrowBody": "{count, plural, one {# Element passt nicht mehr und wird markiert} other {# Elemente passen nicht mehr und werden markiert}}, bis jemand die Zuordnung entfernt oder eine andere wählt. Nichts wird automatisch entfernt.",
+      "moveChange": "„Verwenden für“ ändert sich: {before} → {after}.",
+      "moveIncompatible": "{count, plural, =0 {Alle Elemente passen weiterhin.} one {# Element passt nicht mehr zu seinen Kategorien und wird markiert.} other {# Elemente passen nicht mehr zu ihren Kategorien und werden markiert.}}",
+      "menu": "Verwenden für…",
+      "inlineRoot": "Eine neue Hauptkategorie gilt für {profile}.",
+      "filteredHint": "Es werden nur Kategorien für {profile} angezeigt.",
+      "noneForFilter": "Hier wird nichts für {profile} verwendet."
     }
   },
   "supportTicketEmail": {

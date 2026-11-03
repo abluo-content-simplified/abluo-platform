@@ -46,6 +46,8 @@ export function TermPicker({
   canAdd,
   disabled = false,
   onCreated,
+  isAvailable,
+  unavailableText,
 }: {
   projectSlug: string
   module: string
@@ -61,6 +63,12 @@ export function TermPicker({
   disabled?: boolean
   /** Called with a term created inline, so the surrounding screen can show its name elsewhere (e.g. a review step). */
   onCreated?: (term: PickerTerm) => void
+  /**
+   * Catalogue D-22 ("Use for"): whether a term may be chosen for this item. Unavailable terms are not
+   * offered; one already chosen stays visible, marked with `unavailableText`, until it is switched off.
+   */
+  isAvailable?: (key: string) => boolean
+  unavailableText?: (key: string) => string
 }) {
   const t = useTranslations('clientDashboard.taxonomy')
   const ui = useLocale()
@@ -87,8 +95,11 @@ export function TermPicker({
   }, [value])
 
   const all = useMemo(() => mergeTerms(terms, added), [terms, added])
-  const shown = useMemo(() => filterTerms(all, query, value), [all, query, value])
-  const options = useMemo(() => shown.map((x) => ({ value: x.value, label: pickerLabel(x, ui, defaultLocale) })), [shown, ui, defaultLocale])
+  const shown = useMemo(() => filterTerms(all, query, value).filter((x) => !isAvailable || isAvailable(x.value) || value.includes(x.value)), [all, query, value, isAvailable])
+  const options = useMemo(
+    () => shown.map((x) => ({ value: x.value, label: isAvailable && !isAvailable(x.value) ? `${pickerLabel(x, ui, defaultLocale)} · ${unavailableText?.(x.value) ?? ''}` : pickerLabel(x, ui, defaultLocale) })),
+    [shown, ui, defaultLocale, isAvailable, unavailableText],
+  )
   const text = query.trim()
   const existing = text ? findByLabel(all, text, ui, defaultLocale) : null
   const offer = canOfferCreate({ canAdd: addable, query, terms: all, ui, defaultLocale })

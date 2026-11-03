@@ -4,6 +4,7 @@
 // redefine them.
 
 import type { ChannelAvailabilityRule, ChannelKey } from '../commerce/commerce-types'
+import type { ItemProfile } from '../profiles'
 
 export type { AvailabilityRuleValue, ChannelAvailabilityRule, ChannelAvailabilityState, ChannelKey, ScheduledOverride, Weekday } from '../commerce/commerce-types'
 
@@ -41,6 +42,13 @@ export type CategoryNode = {
   defaultOptionListIds: string[]
   /** ISO; retires from new assignment, nothing else changes. */
   archivedAt: string | null
+  /**
+   * D-22 (C1.12) "Use for": the item profiles this branch serves. Meaningful on ROOT categories
+   * only (descendants inherit; a child's own value is ignored). Absent/empty = all item types.
+   */
+  useFor?: readonly ItemProfile[]
+  /** C1.12.1: the stored list held only unknown ids — applies to NO profile (a corrupt value never widens). */
+  useForCorrupt?: true
 }
 
 export type TagNode = {
@@ -48,7 +56,13 @@ export type TagNode = {
   label: Localized
   order: number
   archivedAt: string | null
+  /** D-22 (C1.12): profiles this tag is used for. Absent/empty = all item types. */
+  useFor?: readonly ItemProfile[]
+  useForCorrupt?: true
 }
+
+/** D-22 (C1.12): "Use for" — absent or EMPTY = every item profile ("All item types"). */
+export type UseFor = readonly ItemProfile[]
 
 // ── tree (derived, never stored) ────────────────────────────────────────────
 export type TreeIssueCode = 'duplicate-key' | 'orphan' | 'cycle' | 'depth-exceeded'

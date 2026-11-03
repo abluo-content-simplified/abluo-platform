@@ -9,7 +9,10 @@ import { FOOD_PROFILE_GROQ, PROFILES, PROFILE_ORDER, can, profileOf } from './pr
 import { BOOK_YEAR_MIN, bookYearMax } from './isbn'
 import { EDITION_LANGUAGES } from './editions'
 import { allergenEvidenceFields, catalogueItemR1Fields } from '@/lib/sanity/studio/catalogue-evidence-fields'
-import { catalogueItemCategoryFields, catalogueTaxonomySchemaTypes } from './schema-taxonomy'
+import { catalogueItemCategoryFields, catalogueTaxonomySchemaTypes, profileUseForField } from './schema-taxonomy'
+import { STUDIO_PROFILE_APPLICABILITY_QUERY, studioProfileProblem } from './taxonomy/profile-applicability-docs'
+import { optionListIdsOf } from './taxonomy/profile-applicability'
+import { catalogueTaxonomyId } from './taxonomy/read'
 import { ALLERGENS, allergenDeclarationIssues, describeDeclarationIssue, optionDeclarationIssues, unreviewedChoices, unknownAllergenKeys } from './allergens'
 
 // ── Catalogue module — Sanity schema types ────────────────────────────────────
@@ -435,6 +438,8 @@ export const catalogueOptionList = defineType({
         }).error(),
       ],
     }),
+    // D-22 (C1.12): the item types this list is used for (absent = all). Set in the dashboard (Catalogue Setup permission).
+    profileUseForField({ group: 'content' }),
     ...lifecycleFields(),
   ],
   preview: {
@@ -547,7 +552,28 @@ export const catalogueItem = defineType({
         list: PROFILE_ORDER.map((id) => ({ title: PROFILES[id].label, value: id })),
         layout: 'radio',
       },
-      validation: (Rule) => Rule.required(),
+      validation: (Rule) => [
+        Rule.required(),
+        // D-22 (C1.12.4) — Studio critical validation: every category (primary AND additional), tag and
+        // attached option list must be used for this item type. The same pure rule as the dashboard
+        // writer and the publish gate (incompatibleAssignments). Fails closed on a failed read.
+        Rule.custom(async (value, context) => {
+          const doc = context.document as Record<string, unknown> | undefined
+          const projectSlug = doc?.projectSlug
+          if (!doc || typeof value !== 'string' || typeof projectSlug !== 'string' || !projectSlug) return true
+          try {
+            const ids = optionListIdsOf(doc)
+            const data = (await context.getClient({ apiVersion: '2026-05-21' }).fetch(
+              STUDIO_PROFILE_APPLICABILITY_QUERY,
+              { projectSlug, taxonomyId: catalogueTaxonomyId(projectSlug), ids, draftIds: ids.map((i) => `drafts.${i}`) },
+              { perspective: 'raw' }
+            )) as Parameters<typeof studioProfileProblem>[1]
+            return studioProfileProblem({ ...doc, itemProfile: value }, data)
+          } catch {
+            return 'Could not check whether the categories, tags and option lists fit this item type. Try again before publishing.'
+          }
+        }).error(),
+      ],
     }),
     defineField({
       name: 'name',

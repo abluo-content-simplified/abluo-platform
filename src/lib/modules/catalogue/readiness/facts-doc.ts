@@ -21,7 +21,8 @@ import { itemCategoryAssignment } from '../taxonomy/read'
 import type { CategoryTree } from '../taxonomy/types'
 import type { CatalogueMigrationState } from '../schema-commerce'
 import { DEFAULT_RULES } from './rules'
-import { activationMarkers, modelFacts } from './facts-model'
+import { activationMarkers, applicabilityNames, modelFacts } from './facts-model'
+import { optionListIdsOf, tagKeysOf, type OptionListUseFor, type UseForCarrier } from '../taxonomy/profile-applicability'
 import type { ItemReadinessInput, ReadinessRule } from './types'
 
 const texts = (v: unknown): Record<string, string> => {
@@ -57,6 +58,11 @@ export type DocFactsContext = {
   tree: CategoryTree
   timeZone: string | null
   migrations: CatalogueMigrationState
+  /**
+   * D-22 (C1.12): the project's tags (with "Use for" and labels) and the "Use for" of the attached
+   * option lists. Absent = the applicability rule is silent (an older caller).
+   */
+  applicability?: { tags: readonly ({ key: string; label?: Record<string, string> } & UseForCarrier)[]; optionLists: OptionListUseFor; listName?: (id: string) => string | undefined }
 }
 
 /** The version to be published → readiness input (model facts complete; server-only facts left to the gate's checks). */
@@ -74,6 +80,16 @@ export function itemReadinessInputFromDoc(doc: Record<string, unknown>, ctx: Doc
     channels: ctx.channels,
     timeZone: ctx.timeZone,
     itemRuleIssues: [...commerce.issues.filter((i) => i.startsWith('availability.')), ...formatRowIssues],
+    ...(ctx.applicability && {
+      applicability: {
+        profile: isItemProfile(doc.itemProfile) ? doc.itemProfile : null,
+        tags: tagKeysOf(doc),
+        optionListIds: optionListIdsOf(doc),
+        taxonomyTags: ctx.applicability.tags,
+        optionLists: ctx.applicability.optionLists,
+        nameOf: applicabilityNames(ctx.tree, ctx.applicability.tags, ctx.defaultLocale, ctx.applicability.listName),
+      },
+    }),
   })
   const book = (doc.bookDetails ?? {}) as { isbn?: unknown }
   return {

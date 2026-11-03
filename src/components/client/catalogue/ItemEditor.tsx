@@ -32,6 +32,7 @@ import { modelRulesActive } from '@/lib/modules/catalogue/readiness/facts-model'
 import { readinessGaps } from '@/lib/modules/catalogue/readiness/chips'
 import { itemReadinessInputFromState } from '@/lib/modules/catalogue/readiness/facts-client'
 import { CommerceField, ItemCategoriesField } from './item-commerce'
+import { useItemApplicability } from './use-for-ui'
 import { adviceTabs, issueCountByTab, itemIssues, publishBlockers, type ItemIssue, type ItemTab } from '@/lib/modules/catalogue/item-issues'
 import { CAT_ICONS, GapBadges, InUseNotice, ItemIssueList, TabLabel, focusField, textIn, useCatalogueError } from './catalogue-ui'
 import { CatalogueDates, type CatalogueLive } from './CatalogueDates'
@@ -155,7 +156,9 @@ export function ItemEditor({
   const tabs: Tab[] = ['content', 'photos', 'prices', ...(hasFoodInfo ? (['details'] as Tab[]) : []), ...(showOptions ? (['options'] as Tab[]) : []), 'page', ...(site.locales.length > 1 ? (['languages'] as Tab[]) : []), 'publishing']
   const name = textIn(s.name, ui, d) || t('untitled')
   const current: Tab = tabs.includes(tab) ? tab : 'content'
-  const issues = itemIssues(s, { defaultLocale: d, locales: site.locales, channels, optionCounts, channelSet, tree, timeZone: site.timeZone, migrations: site.config.migrations })
+  // D-22 (C1.12): the same "Use for" data the publish gate judges; the pickers filter with it.
+  const { applicability, profileFit } = useItemApplicability(site.config.tags, optionLists, s.itemProfile)
+  const issues = itemIssues(s, { defaultLocale: d, locales: site.locales, channels, optionCounts, channelSet, tree, timeZone: site.timeZone, migrations: site.config.migrations, applicability })
   const formatIssues = formatFormIssues(s.formats, s.itemRules, { channels: channelSet, defaultLocale: d, itemProfile: s.itemProfile, bookIsbn: s.bookDetails.isbn.trim() || null })
   const tc = useTranslations('catalogue.dashboard.item.categories')
   const issueCounts = issueCountByTab(issues)
@@ -293,7 +296,7 @@ export function ItemEditor({
         <GapBadges
           gaps={readinessGaps(
             site.config.migrations,
-            () => itemReadinessInputFromState({ ...s, imageIds: item.photos.map((p) => p.assetId), id: snapshot.id }, { defaultLocale: d, locales: site.locales, channels, optionCounts, channelSet, tree, timeZone: site.timeZone, migrations: site.config.migrations }),
+            () => itemReadinessInputFromState({ ...s, imageIds: item.photos.map((p) => p.assetId), id: snapshot.id }, { defaultLocale: d, locales: site.locales, channels, optionCounts, channelSet, tree, timeZone: site.timeZone, migrations: site.config.migrations, applicability }),
             { imageCount: item.photos.length, offerCount: priceCountOf(s.formats), allergensNotReviewed: hasFoodInfo && declarationIssues(s.allergenDeclaration).length > 0 },
           )}
         />
@@ -329,6 +332,7 @@ export function ItemEditor({
                     label={tf('category.title')}
                     hint={modelRules ? tf('category.requiredHint') : undefined}
                     nodes={site.config.categoryNodes}
+                    profile={s.itemProfile}
                     value={s.assignment}
                     onChange={item.setAssignment}
                     canCreate={canAddCategory && can.write}
@@ -341,7 +345,7 @@ export function ItemEditor({
             ) : null}
             {site.config.tags.length || (canAddCategory && can.write) ? (
               <FieldBlock title={tf('tag.title')}>
-                <TermPicker projectSlug={projectSlug} module="catalogue" kind="tag" label={tf('tag.title')} terms={site.config.tags} value={s.tags} onChange={item.setTags} defaultLocale={d} canAdd={canAddCategory && can.write} />
+                <div data-tag-field><TermPicker projectSlug={projectSlug} module="catalogue" kind="tag" label={tf('tag.title')} terms={site.config.tags} value={s.tags} onChange={item.setTags} defaultLocale={d} isAvailable={profileFit.tag} unavailableText={profileFit.text} canAdd={canAddCategory && can.write} /></div>
               </FieldBlock>
             ) : null}
             <FieldBlock title={tfl('title')} helper={tfl('helper')}>
@@ -384,7 +388,7 @@ export function ItemEditor({
           </FieldBlock>
         ) : current === 'options' ? (
           <FieldBlock title={tf('options.title')} helper={tf('options.helper')}>
-            <OptionsField projectSlug={projectSlug} options={s.options} lists={optionLists} onChange={item.setOptions} />
+            <OptionsField projectSlug={projectSlug} options={s.options} lists={optionLists} onChange={item.setOptions} profile={s.itemProfile} />
           </FieldBlock>
         ) : current === 'page' ? (
           <FieldBlock title={tf('page.title')}>

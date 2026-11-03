@@ -30,7 +30,8 @@ import { bookYearMax, normalizeIsbn, parseBookYear } from './isbn'
 import { legacyOffersToFormats } from './commerce/legacy-commerce'
 import type { ChannelSet } from './commerce/channels'
 import type { CategoryTree } from './taxonomy/types'
-import { bookIsbnAfter, categoriesShape, cleanFormats, cleanRuleRows, commerceShape, profileAfter, writerChannels, writerTree } from './item-writer'
+import { cleanUseFor } from './taxonomy/profile-applicability'
+import { bookIsbnAfter, categoriesShape, cleanFormats, cleanRuleRows, commerceShape, profileAfter, profileApplicabilityRefusal, refuseProfileFinding, writerChannels, writerTree, type WriterApplicability } from './item-writer'
 
 export type CatalogueKind = 'item' | 'collection' | 'optionList'
 
@@ -143,6 +144,12 @@ export type PatchContext = {
   categoryTree?: CategoryTree
   /** The site's main language (format names are required in it with ≥ 2 formats); default = the first of `locales`. */
   defaultLocale?: string
+  /**
+   * D-22 (C1.12.4): the project's tag "Use for" values and those of the option lists this save
+   * attaches. Absent = an older caller; the check then runs with no tag/list restriction (categories
+   * are still judged from `categoryTree`).
+   */
+  applicability?: WriterApplicability
 }
 
 export type CleanedPatch = {
@@ -174,7 +181,8 @@ const FIELDS: Record<CatalogueKind, { localized: Record<string, { max: number; t
   },
   optionList: {
     localized: { name: { max: CATALOGUE_LIMITS.name, type: 'localizedString' } },
-    plain: ['options'],
+    // D-22 (C1.12): `useFor` needs Catalogue Setup in addition (checked by the draft writer).
+    plain: ['options', 'useFor'],
   },
 }
 
@@ -543,6 +551,14 @@ export function cleanCatalogueSet(kind: CatalogueKind, input: Record<string, unk
         r.set.options = v.value
         break
       }
+      case 'useFor': {
+        // D-22 (C1.12.1): profile ids only; [] / null = "All item types" = unset (never a sentinel).
+        const v = cleanUseFor(value)
+        if (v === null) bad('Unknown item type.', field)
+        if (v!.length) r.set.useFor = v
+        else r.unset.push('useFor')
+        break
+      }
       case 'sections': {
         const v = cleanSections(value, ctx)
         r.refs.items.push(...v.items)
@@ -556,6 +572,7 @@ export function cleanCatalogueSet(kind: CatalogueKind, input: Record<string, unk
   if (kind === 'item') {
     applyItemRules(r, input, ctx.previous)
     applyShapeSwitch(r, input, ctx)
+    applyProfileApplicability(r, ctx)
   }
   if (ROUTABLE.has(kind)) applySlugNameRule(r, input, ctx.previous)
   return r
@@ -609,6 +626,14 @@ function applyShapeSwitch(r: CleanedPatch, input: Record<string, unknown>, ctx: 
     Object.assign(r.set, s.set)
     for (const u of s.unset) if (!r.unset.includes(u)) r.unset.push(u)
   }
+}
+
+/** D-22 (C1.12.4): refuse a save that ADDS an incompatible category, tag or option list; never removes one. */
+function applyProfileApplicability(r: CleanedPatch, ctx: PatchContext) {
+  const after: Record<string, unknown> = { ...ctx.previous, ...r.set }
+  for (const u of r.unset) delete after[u]
+  const finding = profileApplicabilityRefusal(ctx.previous, after, writerTree(ctx.categoryTree, ctx.categories), ctx.applicability ?? { tags: [], optionLists: new Map() })
+  if (finding) refuseProfileFinding(finding, bad)
 }
 
 // ── Book details (Amendment I-3) ──────────────────────────────────────────────

@@ -35,6 +35,9 @@ import { Notice } from '@/components/app/ui/Notice'
 import { Panel } from '@/components/app/ui/Panel'
 import { FieldLabel } from '@/components/app/ui/FieldLabel'
 import { TextInput } from '@/components/app/ui/TextInput'
+import { UseForSection } from './setup/UseForSection'
+import { isOptionListCompatible, readUseFor } from '@/lib/modules/catalogue/taxonomy/profile-applicability'
+import type { ItemProfile } from '@/lib/modules/catalogue/profiles'
 
 const newKey = () => Math.random().toString(36).slice(2, 14)
 
@@ -75,6 +78,8 @@ export function OptionListEditor({
   const update = readOnly ? () => undefined : draft.update
   const [name, setName] = useState<Texts>(() => textsOf(doc.name))
   const [options, setOptions] = useState<OptionForm[]>(() => optionFormsFromDoc(doc.options))
+  const tu = useTranslations('catalogue.useFor')
+  const [useForStored, setUseForStored] = useState<string[]>(() => readUseFor(doc.useFor).profiles)
   const [busy, setBusy] = useState(false)
   const [inUse, setInUse] = useState<Referrer[] | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -215,6 +220,28 @@ export function OptionListEditor({
             </div>
           ))}
         </FieldBlock>
+
+        {/* D-22 (C1.12.6): which item types this list is offered for (Catalogue Setup permission). */}
+        {draft.created ? (
+          <FieldBlock>
+            <UseForSection
+              name={title}
+              stored={useForStored}
+              disabledReason={can.setUseFor && !readOnly ? undefined : tu('needsSetup')}
+              preview={async (next) => {
+                const was = { useFor: useForStored as ItemProfile[] }
+                const now = { useFor: next as ItemProfile[] }
+                const id = snapshot?.id ?? draft.id
+                return items.filter((i) => i.profile && i.optionListIds?.includes(id) && isOptionListCompatible(was, i.profile) && !isOptionListCompatible(now, i.profile)).length
+              }}
+              save={async (next) => {
+                update({ useFor: next })
+                setUseForStored(next)
+                return true
+              }}
+            />
+          </FieldBlock>
+        ) : null}
 
         <FieldBlock title={t('options')} helper={t('optionsHelp')}>
           {!draft.created ? (

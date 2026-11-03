@@ -47,6 +47,8 @@ import { IN_USE_SAMPLE_LIMIT, MAX_CATEGORIES, MAX_DEPTH, MAX_TAGS } from './limi
 import { catalogueTaxonomyId, CATALOGUE_TAXONOMY_TYPE, itemCategoryAssignment, readCategoryNodes, readTagNodes } from './read'
 import { categoryReferenceSources, gatherCategoryReferences, itemCategoryReferenceSources } from './reference-sources'
 import { seedTaxonomyFromTerms } from './seed'
+import { cleanUseFor, effectiveProfiles, narrowingImpact, profilesOf, sameUseFor, storedUseFor, type ApplicabilityItem, type ApplicabilityTaxonomy } from './profile-applicability'
+import { isItemProfile, type ItemProfile } from '../profiles'
 import { buildTree, deletionBlockers, deletionRoute, descendantsOf, pathOf, planCategoryDeletion, planReassign, treeOrder, validateMove } from './tree'
 import type {
   CategoryNode,
@@ -113,6 +115,10 @@ export type CatalogueTaxonomyErrorCode =
   | 'tag_limit'
   | 'tag_in_use'
   | 'tag_conflict'
+  /** D-22 (C1.12): "Use for" on a category that is not top-level. */
+  | 'category_use_for_not_root'
+  /** D-22: an unknown item profile or a malformed "Use for" list. */
+  | 'use_for_invalid'
   /** Malformed input that no specific code covers (missing parent choice, missing rev, unknown language …). */
   | 'invalid_input'
 
@@ -176,7 +182,7 @@ export const TAXONOMY_DOC_QUERY = /* groq */ `*[_type == "${CATALOGUE_TAXONOMY_T
 export const TERM_RECORDS_QUERY = /* groq */ `*[_type == "taxonomyTerm" && projectSlug == $projectSlug && module == "catalogue" && !(_id in path("drafts.**"))] | order(order asc, key asc){ kind, key, label, order, color }`
 export const CATALOGUE_CONFIG_QUERY = /* groq */ `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ "config": moduleInstallations[moduleId == "catalogue"][0].config{ serviceChannels, categories } }`
 /** Every item document copy (drafts included, versions excluded): category and tag fields only. */
-export const ITEM_TERMS_QUERY = /* groq */ `*[_type == "catalogueItem" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{ _id, _rev, primaryCategory, additionalCategories, categories, tags, "name": coalesce(name[$locale], name[$defaultLocale], name.en, "") }`
+export const ITEM_TERMS_QUERY = /* groq */ `*[_type == "catalogueItem" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{ _id, _rev, itemProfile, primaryCategory, additionalCategories, categories, tags, "name": coalesce(name[$locale], name[$defaultLocale], name.en, "") }`
 const OPTION_LISTS_QUERY = /* groq */ `*[_type == "catalogueOptionList" && projectSlug == $projectSlug && (_id in $ids || _id in $draftIds)]._id`
 
 // ── Access + reads ────────────────────────────────────────────────────────────
@@ -392,7 +398,27 @@ export function readRuleInput(raw: unknown, channels: ChannelSet, channel: strin
 
 // ── Items (assignment reads, availability inputs) ─────────────────────────────
 
-type ItemTermRow = { _id: string; _rev?: string; primaryCategory?: unknown; additionalCategories?: unknown; categories?: unknown; tags?: unknown; name?: unknown }
+type ItemTermRow = { _id: string; _rev?: string; itemProfile?: unknown; primaryCategory?: unknown; additionalCategories?: unknown; categories?: unknown; tags?: unknown; name?: unknown }
+
+/** D-22: every item copy (drafts included) as the applicability rule sees it; counted per base id by narrowingImpact. Option lists are not part of a taxonomy change. */
+function applicabilityItems(rows: readonly ItemTermRow[], tree: CategoryTree): { id: string; item: ApplicabilityItem }[] {
+  return rows.map((r) => ({
+    id: baseId(r._id),
+    item: {
+      profile: isItemProfile(r.itemProfile) ? r.itemProfile : null,
+      assignment: itemCategoryAssignment(r, tree),
+      tags: Array.isArray(r.tags) ? r.tags.filter((t): t is string => typeof t === 'string') : [],
+      optionListIds: [],
+    },
+  }))
+}
+
+const taxonomyOf = (tree: CategoryTree, tags: readonly TagNode[]): ApplicabilityTaxonomy => ({ tree, tags })
+
+/** Writer input → profiles to store, or use_for_invalid. */
+function cleanUseForOrFail(raw: unknown): ItemProfile[] {
+  return cleanUseFor(raw) ?? fail('use_for_invalid', 'Unknown item type.', { field: 'useFor' })
+}
 
 const baseId = (id: string) => (id.startsWith('drafts.') ? id.slice('drafts.'.length) : id)
 
@@ -495,6 +521,11 @@ export type CreateCategoryInput = {
   index?: number
   /** Locale of the returned path (default: the site's default language). */
   locale?: string
+  /**
+   * D-22 (C1.12.5): "Use for" of a NEW top-level category (inline creation from an item passes the
+   * item's profile). Refused on a child (`category_use_for_not_root`). Not applied to a returned twin.
+   */
+  useFor?: readonly string[]
 }
 export type CreateCategoryResult = { category: CategoryNode; path: CategoryPath; created: boolean; rev: string }
 
@@ -502,6 +533,8 @@ export async function createCategory(ctx: TenantAuthorizationContext, projectId:
   assertCatalogueOperation(ctx, projectId, { op: 'term.create' })
   if (!input || input.parentKey === undefined) fail('invalid_input', 'Choose where the category goes.', { field: 'parentKey' })
   const parentKey = input.parentKey === null ? null : keyOrFail(input.parentKey)
+  const useFor = cleanUseForOrFail(input.useFor)
+  if (useFor.length > 0 && parentKey !== null) fail('category_use_for_not_root', 'Only a top-level category has "Use for".', { field: 'useFor' })
   const a = open(ctx, projectId, deps)
   const r = await write(a, {
     op: 'createCategory',
@@ -521,7 +554,7 @@ export async function createCategory(ctx: TenantAuthorizationContext, projectId:
       const key = deriveTermKey(defaultLabel, [...s.tree.nodes.keys()])
       if (!isValidTermKey(key)) fail('category_key_invalid', 'Invalid key.')
       // Position with the one move planner: append the node, then "move" it to the index.
-      const appended = [...s.categoryRows, newCategoryRow(key, labels, parentKey, Number.MAX_SAFE_INTEGER)]
+      const appended = [...s.categoryRows, newCategoryRow(key, labels, parentKey, Number.MAX_SAFE_INTEGER, useFor)]
       const move = validateMove(buildTree(readCategoryNodes(appended)), { key, newParentKey: parentKey, index: input.index })
       if (!move.ok) return fail(move.code as CatalogueTaxonomyErrorCode, 'Invalid position.', { key })
       return { value: { key, created: true }, categories: applyMovePatches(appended, move.patches) }
@@ -605,7 +638,12 @@ export async function reorderChildren(
 
 // ── Categories: move between parents (setup.manage, counted, audited) ────────
 
-export type MoveImpact = { items: number; formats: number; availability: ImpactCounts }
+/**
+ * `profiles` (D-22, C1.12.2): the moved branch's effective "Use for" before → after ([] = all item
+ * types); `newlyIncompatible`: items (drafts included) whose assignment becomes incompatible. A move
+ * never changes an item.
+ */
+export type MoveImpact = { items: number; formats: number; availability: ImpactCounts; profiles: { before: ItemProfile[]; after: ItemProfile[] }; newlyIncompatible: number }
 type MoveInput = { key: string; newParentKey: string | null; index?: number }
 
 function planMove(s: TaxonomyState, input: MoveInput) {
@@ -613,7 +651,9 @@ function planMove(s: TaxonomyState, input: MoveInput) {
   if (input.newParentKey === undefined) fail('invalid_input', 'Choose the new parent.', { field: 'newParentKey' })
   const move = validateMove(s.tree, { key: node.key, newParentKey: input.newParentKey === null ? null : keyOrFail(input.newParentKey), index: input.index })
   if (!move.ok) return fail(move.code as CatalogueTaxonomyErrorCode, 'This move is not possible.', { key: move.key })
-  const rows = applyMovePatches(s.categoryRows, move.patches)
+  let rows = applyMovePatches(s.categoryRows, move.patches)
+  // C1.12.2: a root moved under a parent drops its own "Use for" in the same patch — the branch inherits the new root's.
+  if (input.newParentKey !== null && s.categoryRows.some((r) => (r.key ?? r._key) === node.key && r.useFor !== undefined)) rows = updateRows(rows, node.key, { useFor: undefined })
   return { node, rows, after: buildTree(readCategoryNodes(rows)) }
 }
 
@@ -626,7 +666,14 @@ async function moveImpact(a: Access, s: TaxonomyState, after: CategoryTree, key:
     if ([asg.primary, ...asg.additional].some((k) => k !== null && subtree.has(k))) ids.add(baseId(r._id))
   }
   const impact = auditImpactCounts(availabilityImpact(inputsFor(s, s.tree), inputsFor(s, after), availability))
-  return { items: ids.size, formats: impact.formats, availability: impact }
+  const fit = narrowingImpact(applicabilityItems(items, s.tree), { taxonomy: taxonomyOf(s.tree, s.tags) }, { taxonomy: taxonomyOf(after, s.tags) })
+  return {
+    items: ids.size,
+    formats: impact.formats,
+    availability: impact,
+    profiles: { before: effectiveProfiles(s.tree, key), after: effectiveProfiles(after, key) },
+    newlyIncompatible: fit.items,
+  }
 }
 
 /** Counted preview of a move: items in the moved subtree and the availability change on every channel (C5-6). */
@@ -709,6 +756,111 @@ export async function setCategoryDefaults(
     },
   })
   return { category: r.state.tree.nodes.get(r.value)!, rev: await revAfter(a, r) }
+}
+
+// ── "Use for" of a root category / a tag (D-22, C1.12.7) ─────────────────────
+
+/** What a "Use for" change does: before → after ([] = all item types) and the items (drafts included) that would no longer fit. Nothing written by a preview. */
+export type UseForPreview = { before: ItemProfile[]; after: ItemProfile[]; newlyIncompatible: number; sample: string[] }
+type UseForInput = { key: string; useFor: readonly string[] | null }
+
+function planCategoryUseFor(s: TaxonomyState, input: UseForInput) {
+  const node = nodeOrFail(s, input?.key)
+  if (node.parentKey !== null || (s.tree.parentOf.get(node.key) ?? null) !== null) fail('category_use_for_not_root', 'Only a top-level category has "Use for"; categories under it inherit it.', { key: node.key })
+  const after = cleanUseForOrFail(input.useFor)
+  const before = profilesOf(node)
+  const rows = updateRows(s.categoryRows, node.key, { useFor: storedUseFor(after) })
+  return { node, before, after, rows, tree: buildTree(readCategoryNodes(rows)) }
+}
+
+function planTagUseFor(s: TaxonomyState, input: UseForInput) {
+  const tag = tagOrFail(s, input?.key)
+  const after = cleanUseForOrFail(input.useFor)
+  const before = profilesOf(tag)
+  const rows = updateRows(s.tagRows, tag.key, { useFor: storedUseFor(after) })
+  return { tag, before, after, rows, tags: readTagNodes(rows) }
+}
+
+async function impactOfUseFor(a: Access, s: TaxonomyState, after: ApplicabilityTaxonomy): Promise<{ items: number; sample: string[] }> {
+  // Widening can never make an item incompatible: skip the read (C1.12.6 — only narrowing is previewed).
+  return narrowingImpact(applicabilityItems(await readItemTerms(a, s), s.tree), { taxonomy: taxonomyOf(s.tree, s.tags) }, { taxonomy: after })
+}
+
+/** Counted preview of a root category's "Use for" change (setup.manage). Items are never changed. */
+export async function previewCategoryUseFor(ctx: TenantAuthorizationContext, projectId: string, input: UseForInput, deps: CatalogueTaxonomyDeps = {}): Promise<UseForPreview> {
+  assertCatalogueOperation(ctx, projectId, { op: 'term.setUseFor', kind: 'category' })
+  const a = open(ctx, projectId, deps)
+  const s = await readState(a)
+  const p = planCategoryUseFor(s, input)
+  const impact = await impactOfUseFor(a, s, taxonomyOf(p.tree, s.tags))
+  return { before: p.before, after: p.after, newlyIncompatible: impact.items, sample: impact.sample }
+}
+
+/** Sets (or, with [] / null, clears = "All item types") a ROOT category's "Use for". User-intent, revision-guarded, audited. */
+export async function setCategoryUseFor(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: UserOpBase & UseForInput,
+  deps: CatalogueTaxonomyDeps = {},
+): Promise<UseForPreview & { category: CategoryNode; rev: string }> {
+  assertCatalogueOperation(ctx, projectId, { op: 'term.setUseFor', kind: 'category' })
+  const a = open(ctx, projectId, deps)
+  let planned: { s: TaxonomyState; p: ReturnType<typeof planCategoryUseFor> } | null = null
+  const r = await write(a, {
+    op: 'categoryUseFor',
+    mode: 'user',
+    rev: input?.rev,
+    baseHashes: input?.baseHashes,
+    plan: (s) => {
+      const p = planCategoryUseFor(s, input)
+      planned = { s, p }
+      if (sameUseFor(p.before, p.after)) return { value: p.node.key }
+      return { value: p.node.key, categories: p.rows }
+    },
+  })
+  const { s, p } = planned! as { s: TaxonomyState; p: ReturnType<typeof planCategoryUseFor> }
+  const impact = r.transactionId ? await impactOfUseFor(a, s, taxonomyOf(p.tree, s.tags)) : { items: 0, sample: [] }
+  if (r.transactionId) await audit(a, 'taxonomy.use_for_changed', r.transactionId, r.value, { target: 'category', key: r.value, before: p.before, after: p.after, newlyIncompatible: impact.items })
+  return { before: p.before, after: p.after, newlyIncompatible: impact.items, sample: impact.sample, category: r.state.tree.nodes.get(r.value)!, rev: await revAfter(a, r) }
+}
+
+/** Counted preview of a tag's "Use for" change (taxonomy.write — D-3 "manage tags"). */
+export async function previewTagUseFor(ctx: TenantAuthorizationContext, projectId: string, input: UseForInput, deps: CatalogueTaxonomyDeps = {}): Promise<UseForPreview> {
+  assertCatalogueOperation(ctx, projectId, { op: 'term.setUseFor', kind: 'tag' })
+  const a = open(ctx, projectId, deps)
+  const s = await readState(a)
+  const p = planTagUseFor(s, input)
+  const impact = await impactOfUseFor(a, s, taxonomyOf(s.tree, p.tags))
+  return { before: p.before, after: p.after, newlyIncompatible: impact.items, sample: impact.sample }
+}
+
+/** Sets (or clears) a tag's "Use for". User-intent, revision-guarded (`tag_conflict`), audited. */
+export async function setTagUseFor(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: UserOpBase & UseForInput,
+  deps: CatalogueTaxonomyDeps = {},
+): Promise<UseForPreview & { tag: TagNode; rev: string }> {
+  assertCatalogueOperation(ctx, projectId, { op: 'term.setUseFor', kind: 'tag' })
+  const a = open(ctx, projectId, deps)
+  let planned: { s: TaxonomyState; p: ReturnType<typeof planTagUseFor> } | null = null
+  const r = await write(a, {
+    op: 'tagUseFor',
+    mode: 'user',
+    rev: input?.rev,
+    baseHashes: input?.baseHashes,
+    conflictCode: 'tag_conflict',
+    plan: (s) => {
+      const p = planTagUseFor(s, input)
+      planned = { s, p }
+      if (sameUseFor(p.before, p.after)) return { value: p.tag.key }
+      return { value: p.tag.key, tags: p.rows }
+    },
+  })
+  const { s, p } = planned! as { s: TaxonomyState; p: ReturnType<typeof planTagUseFor> }
+  const impact = r.transactionId ? await impactOfUseFor(a, s, taxonomyOf(s.tree, p.tags)) : { items: 0, sample: [] }
+  if (r.transactionId) await audit(a, 'taxonomy.use_for_changed', r.transactionId, r.value, { target: 'tag', key: r.value, before: p.before, after: p.after, newlyIncompatible: impact.items })
+  return { before: p.before, after: p.after, newlyIncompatible: impact.items, sample: impact.sample, tag: r.state.tags.find((t) => t.key === r.value)!, rev: await revAfter(a, r) }
 }
 
 // ── Categories: channel availability rules incl. schedules (setup.manage) ────

@@ -413,3 +413,73 @@ describe('ImpactPreview', () => {
     expect(dialog.textContent).toContain('1 item and 1 format change.')
   })
 })
+
+// ── D-22 (C1.12.5): profile-aware CategoryPicker, UseForField ────────────────
+
+describe('CategoryPicker — "Use for" (D-22)', () => {
+  const books = { ...node('books', null, 4000), useFor: ['book' as const] }
+  const design = node('design', 'books', 1000)
+  function FitHarness({ initial }: { initial: CategoryAssignment }) {
+    const [value, setValue] = useState<CategoryAssignment>(initial)
+    const tree = buildTree([...NODES, books, design])
+    const fits = (k: string) => (tree.parentOf.get(k) === 'books' || k === 'books' ? false : true)
+    return (
+      <>
+        <CategoryPicker label="Categories" presentation="inline" tree={tree} pathContext={CTX} value={value} onChange={setValue} compatible={fits} incompatibleText={() => 'Not used for Food or drink'} onCreate={async () => ({ ok: true as const, key: 'x' })} topLevelHint="A new top-level category is used for Food or drink." />
+        <output data-testid="value">{JSON.stringify(value)}</output>
+      </>
+    )
+  }
+
+  it('offers only compatible branches; an assigned incompatible one stays visible, marked, and can be removed — never silently', () => {
+    m = mount(<FitHarness initial={{ primary: 'design', additional: [] }} />)
+    expect(byName(m.host, 'input', 'Choose Books')).toBeNull()
+    expect(byName(m.host, 'input', 'Choose Food › Pizza')).not.toBeNull()
+    // Assigned + incompatible: still listed (unticking removes it) and named.
+    expect(byName(m.host, 'input', 'Choose Books › Design')).not.toBeNull()
+    expect(m.host.textContent).toContain('Not used for Food or drink')
+    expect(valueOf(m.host)).toEqual({ primary: 'design', additional: [] })
+    click(byName(m.host, 'button', 'Remove Books › Design'))
+    expect(valueOf(m.host)).toEqual({ primary: null, additional: [] })
+    expect(byName(m.host, 'input', 'Choose Books › Design')).toBeNull()
+  })
+
+  it('search never surfaces an incompatible branch; inline add lists compatible parents only and explains a new top level', () => {
+    m = mount(<FitHarness initial={{ primary: null, additional: [] }} />)
+    typeInto(m.host.querySelector('input[type="search"]'), 'design')
+    expect(m.host.querySelectorAll('input[type="checkbox"]').length).toBe(0)
+    click(byName(m.host, 'button', 'Add category'))
+    const options = [...m.host.querySelectorAll('section select option')].map((o) => o.getAttribute('value'))
+    expect(options).not.toContain('books')
+    expect(options).toContain('pizza')
+    expect(m.host.querySelector('section')!.textContent).toContain('A new top-level category is used for Food or drink.')
+  })
+})
+
+describe('UseForField', () => {
+  it('empty = All item types; ticking a type unticks All; ticking All clears; unticking the last returns to All', async () => {
+    const { UseForField } = await import('../UseForField')
+    function H() {
+      const [v, setV] = useState<string[]>([])
+      return (
+        <>
+          <UseForField legend="Use for" allLabel="All item types" options={[{ value: 'book', label: 'Book' }, { value: 'service', label: 'Service' }]} value={v} onChange={setV} />
+          <output data-testid="value">{JSON.stringify(v)}</output>
+        </>
+      )
+    }
+    m = mount(<H />)
+    const box = (name: string) => byName(m!.host, 'input', name) as HTMLInputElement
+    expect(box('All item types').checked).toBe(true)
+    click(box('Book'))
+    expect(valueOf(m.host)).toEqual(['book'])
+    expect(box('All item types').checked).toBe(false)
+    click(box('Service'))
+    expect(valueOf(m.host)).toEqual(['book', 'service'])
+    click(box('All item types'))
+    expect(valueOf(m.host)).toEqual([])
+    click(box('Book'))
+    click(box('Book'))
+    expect(valueOf(m.host)).toEqual([])
+  })
+})

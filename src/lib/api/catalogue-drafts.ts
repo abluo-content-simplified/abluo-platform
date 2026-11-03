@@ -75,6 +75,7 @@ import { can, isItemProfile, profileOf } from '@/lib/modules/catalogue/profiles'
 import type { CategoryTermRow } from '@/lib/taxonomy/vocabulary'
 import { catalogueVocabulary, itemCategoryKeys, readCategoryNodes, type RawCatalogueTaxonomy } from '@/lib/modules/catalogue/taxonomy/read'
 import { buildTree } from '@/lib/modules/catalogue/taxonomy/tree'
+import { applicabilityTagsOf, optionListUseForOf, readUseFor, fieldsFromUseFor, type UseForCarrier } from '@/lib/modules/catalogue/taxonomy/profile-applicability'
 import type { CategoryNode } from '@/lib/modules/catalogue/taxonomy/types'
 import { ORDER_STEP } from '@/lib/taxonomy/rules'
 import { readChannels } from '@/lib/modules/catalogue/commerce/channels'
@@ -115,6 +116,7 @@ import {
   CATALOGUE_DASHBOARD_LIST_QUERY,
   CATALOGUE_GLANCE_QUERY,
   CATALOGUE_MEDIA_EXIST_QUERY,
+  CATALOGUE_OPTION_LIST_USE_FOR_QUERY,
   CATALOGUE_REF_TARGETS_QUERY,
   CATALOGUE_REUSE_COUNT_QUERY,
   CATALOGUE_SITE_QUERY,
@@ -141,7 +143,8 @@ export function catalogueAbilities(grant: { permissions: readonly string[] }) {
     const p = DESCRIPTOR[kind].permissions
     return { write: has(p.write), delete: has(p.delete), deletePublished: has(p.delete) && has(p.deletePublished) }
   }
-  return { item: of('item'), collection: of('collection'), optionList: of('optionList') }
+  // D-22 (C1.12.7): an option list's "Use for" also needs Catalogue Setup.
+  return { item: of('item'), collection: of('collection'), optionList: { ...of('optionList'), setUseFor: has(DESCRIPTOR.optionList.permissions.write) && has('catalogue.setup.manage') } }
 }
 export type CatalogueAbilities = ReturnType<typeof catalogueAbilities>
 
@@ -197,7 +200,14 @@ const pick = (value: unknown, locale: string) => {
 
 // ── Site + module configuration ──────────────────────────────────────────────
 
-export type CatalogueTerm = { value: string; label: Record<string, string>; color: string | null }
+export type CatalogueTerm = {
+  value: string
+  label: Record<string, string>
+  color: string | null
+  /** D-22 (C1.12): tags read from the taxonomy document carry their "Use for" (absent = all item types). */
+  useFor?: readonly ItemProfile[]
+  useForCorrupt?: true
+}
 export type CatalogueSite = {
   defaultLocale: string
   locales: string[]
@@ -244,7 +254,7 @@ type RawConfig = Record<string, unknown> | null | undefined
 const termsOf = (rows: unknown): CatalogueTerm[] =>
   (Array.isArray(rows) ? rows : [])
     .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object' && typeof (r as { value?: unknown }).value === 'string' && !!(r as { value: string }).value)
-    .map((r) => ({ value: r.value as string, label: localized(r.label), color: typeof r.color === 'string' && r.color ? r.color : null }))
+    .map((r) => ({ value: r.value as string, label: localized(r.label), color: typeof r.color === 'string' && r.color ? r.color : null, ...fieldsFromUseFor(r.useFor) }))
 
 /** C10-6 markers as read: one ISO string per verified data step, nothing else. */
 export function migrationsOf(raw: unknown): CatalogueMigrationState {
@@ -324,9 +334,9 @@ export async function resolveAmazonLink(ctx: TenantAuthorizationContext, project
 // ── Lists ─────────────────────────────────────────────────────────────────────
 
 type RowBase = { _id: string; _rev?: string; slug?: unknown; _createdAt?: string; _updatedAt?: string; name?: unknown; publishedAt?: unknown; expiresAt?: unknown; archivedAt?: unknown }
-type ItemRow = RowBase & { byline?: unknown; bookAuthor?: unknown; bookYear?: unknown; bookStatus?: unknown; itemProfile?: unknown; allergenStatus?: unknown; categories?: unknown; primaryCategory?: unknown; additionalCategories?: unknown; hasPage?: unknown; visibility?: unknown; imageCount?: number | null; firstImage?: string | null; offerCount?: number | null; prices?: unknown; lists?: unknown; formats?: unknown; offers?: unknown; channelAvailability?: unknown; allergenDeclaration?: unknown }
+type ItemRow = RowBase & { tags?: unknown; byline?: unknown; bookAuthor?: unknown; bookYear?: unknown; bookStatus?: unknown; itemProfile?: unknown; allergenStatus?: unknown; categories?: unknown; primaryCategory?: unknown; additionalCategories?: unknown; hasPage?: unknown; visibility?: unknown; imageCount?: number | null; firstImage?: string | null; offerCount?: number | null; prices?: unknown; lists?: unknown; formats?: unknown; offers?: unknown; channelAvailability?: unknown; allergenDeclaration?: unknown }
 type CollectionRow = RowBase & { sectionNames?: unknown; collectionType?: unknown; hasPage?: unknown; visibility?: unknown; sectionCount?: number | null; itemRefs?: unknown }
-type OptionListRow = RowBase & { optionCount?: number | null }
+type OptionListRow = RowBase & { optionCount?: number | null; useFor?: unknown }
 
 type Common = {
   id: string
@@ -371,7 +381,7 @@ export type CatalogueItemListRow = Common & {
   gaps: ItemGap[]
 }
 export type CatalogueCollectionListRow = Common & { collectionType: 'menu' | 'list'; hasPage: boolean; sectionCount: number; itemCount: number; /** Section names (localized), in order. */ sectionNames: Record<string, string>[] }
-export type CatalogueOptionListRow = Common & { optionCount: number; usedBy: number }
+export type CatalogueOptionListRow = Common & { optionCount: number; usedBy: number } & UseForCarrier
 export type CatalogueLists = { items: CatalogueItemListRow[]; collections: CatalogueCollectionListRow[]; optionLists: CatalogueOptionListRow[] }
 
 /** One entry per document: the draft's content when there is one, the status from the published version. */
@@ -439,7 +449,18 @@ export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: 
     ? await client.fetch<Array<{ _id: string; url?: string | null; hotspot?: { x?: number; y?: number } | null }> | null>(CATALOGUE_THUMBS_QUERY, { projectSlug: grant.projectSlug, ids: firsts })
     : []
   const thumbById = new Map((thumbs ?? []).map((a) => [a._id, containThumbUrl(a.url, 720)]))
-  const facts = { defaultLocale: d, locales: site.locales, channels: readChannels(site.config.serviceChannels).channels, tree: buildTree(site.config.categoryNodes), timeZone: site.timeZone, migrations: site.config.migrations }
+  // D-22: every list's "Use for" (published value, else the draft's) and names, for the profile badge.
+  const listUseFor = optionListUseForOf(raw?.optionLists ?? [])
+  const listNames = new Map((raw?.optionLists ?? []).map((l) => [l._id.replace(/^drafts\./, ''), localized(l.name)[d]]))
+  const facts = {
+    defaultLocale: d,
+    locales: site.locales,
+    channels: readChannels(site.config.serviceChannels).channels,
+    tree: buildTree(site.config.categoryNodes),
+    timeZone: site.timeZone,
+    migrations: site.config.migrations,
+    applicability: { tags: applicabilityTagsOf(site.config.tags), optionLists: listUseFor, listName: (id: string) => listNames.get(id) },
+  }
   const itemRows: CatalogueItemListRow[] = [...items].map(([id, e]) => {
     const prices = (Array.isArray(e.row.prices) ? e.row.prices : []).filter((p): p is number => typeof p === 'number' && Number.isFinite(p))
     const imageCount = typeof e.row.imageCount === 'number' ? e.row.imageCount : 0
@@ -449,7 +470,7 @@ export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: 
     // The version that would be published next (the draft when there is one), drafts included (D-21).
     const gaps = readinessGaps(
       site.config.migrations,
-      () => itemReadinessInputFromDoc({ ...e.row, images: Array.from({ length: imageCount }) }, { id, ...facts }),
+      () => itemReadinessInputFromDoc({ ...e.row, images: Array.from({ length: imageCount }), optionLists: strings(e.row.lists).map((ref) => ({ list: { _ref: ref } })) }, { id, ...facts }),
       { imageCount, offerCount, allergensNotReviewed, categoryCount: categories.length },
     )
     return {
@@ -485,6 +506,8 @@ export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: 
     ...common(id, e, d, now),
     optionCount: typeof e.row.optionCount === 'number' ? e.row.optionCount : 0,
     usedBy: usage.get(id) ?? 0,
+    // D-22: the value the rule uses (the published list's, else its draft's).
+    ...listUseFor.get(id),
   }))
   const byName = <T extends Common>(a: T, b: T) => a.name.localeCompare(b.name, d)
   return { items: itemRows.sort(byName), collections: collections.sort(byName), optionLists: optionLists.sort(byName) }
@@ -752,6 +775,8 @@ export async function patchCatalogueDraft(
     if (draft!._rev !== input.rev) throw new CatalogueError('conflict', 'This was edited elsewhere.')
     previous = draft!
   }
+  // D-22 (C1.12.7): an option list's "Use for" is a Setup decision (on top of editing the list).
+  if (kind === 'optionList' && 'useFor' in input.set) assertCatalogueOperation(ctx, projectId, { op: 'optionList.setUseFor' })
   const cleaned = cleanCatalogueSet(kind, input.set, {
     locales: new Set(site.locales),
     defaultLocale: site.defaultLocale,
@@ -763,6 +788,8 @@ export async function patchCatalogueDraft(
     categoryTree: buildTree(site.config.categoryNodes),
     previous,
     newKey,
+    // D-22 (C1.12.4): the writer refuses ADDING an incompatible category, tag or option list.
+    ...(kind === 'item' && { applicability: { tags: applicabilityTagsOf(site.config.tags), optionLists: await optionListUseForFor(client, grant.projectSlug, kind, input.set) } }),
   })
   // Support mode (C8): a save that changes allergen content needs `item.editAllergenContent` (refused in support).
   const afterSave: Record<string, unknown> = { ...previous, ...cleaned.set }
@@ -801,13 +828,38 @@ export async function patchCatalogueDraft(
       guard
     )) as Array<{ _id?: string; _rev?: string }> | undefined
     if (kind === 'item') await auditScheduleChanges(ctx, projectId, input.id, previous, cleaned, deps.catalogueAudit)
+    if (kind === 'optionList') await auditUseForChange(ctx, projectId, input.id, previous, cleaned, deps.catalogueAudit)
     return { rev: (Array.isArray(docs) ? docs.find((d) => d?._id === draftId)?._rev : undefined) ?? '' }
   }
   const result = (await commit(client, grant.projectSlug, () => ops(client.patch(draftId).ifRevisionId(input.rev)).commit(DRAFT_SAVE), guard)) as
     | { _rev?: string }
     | undefined
   if (kind === 'item') await auditScheduleChanges(ctx, projectId, input.id, previous, cleaned, deps.catalogueAudit)
+  if (kind === 'optionList') await auditUseForChange(ctx, projectId, input.id, previous, cleaned, deps.catalogueAudit)
   return { rev: result?._rev ?? '' }
+}
+
+/** "Use for" of the option lists an item save attaches (published value, else the draft's). Only read when the save touches `optionLists`. */
+async function optionListUseForFor(client: Client, projectSlug: string, kind: CatalogueKind, set: Record<string, unknown>): Promise<Map<string, UseForCarrier>> {
+  if (kind !== 'item' || !Array.isArray(set.optionLists)) return new Map()
+  const ids = [...new Set((set.optionLists as unknown[]).map((a) => (a as { listId?: unknown; list?: { _ref?: unknown } } | null)?.listId ?? (a as { list?: { _ref?: unknown } } | null)?.list?._ref).filter((x): x is string => typeof x === 'string' && x !== ''))]
+  if (!ids.length) return new Map()
+  const rows = await span('sanity.optionListUseFor', () => client.fetch<{ _id: string; useFor?: unknown }[] | null>(CATALOGUE_OPTION_LIST_USE_FOR_QUERY, { projectSlug, ids, draftIds: ids.map((i) => `drafts.${i}`), locale: 'en' }, RAW))
+  return optionListUseForOf(rows ?? [])
+}
+
+/** C12 `taxonomy.use_for_changed` for an option list whose "Use for" this save changed (content-free: registry ids only). */
+async function auditUseForChange(ctx: TenantAuthorizationContext, projectId: string, id: string, previous: Record<string, unknown>, cleaned: { set: Record<string, unknown>; unset: string[] }, writer?: CatalogueAuditWriter) {
+  if (!('useFor' in cleaned.set) && !cleaned.unset.includes('useFor')) return
+  const before = readUseFor(previous.useFor).profiles
+  const after = readUseFor(cleaned.set.useFor).profiles
+  if (before.join() === after.join()) return
+  const entry = auditEntry('taxonomy.use_for_changed', { projectId, targetId: id, actor: { kind: 'user', id: ctx.userId, support: !!ctx.support }, detail: { target: 'optionList', key: id, before, after, newlyIncompatible: 0 } })
+  try {
+    await (writer ?? ((e) => recordCatalogueActivity(e)))(entry)
+  } catch {
+    /* the audit writer never breaks the save */
+  }
 }
 
 // ── Publish / discard ─────────────────────────────────────────────────────────

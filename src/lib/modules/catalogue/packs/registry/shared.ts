@@ -11,6 +11,10 @@ export const L = (en: string, it: string, de: string): PackLocalized => ({ en, i
 /** The profile that carries food information (read from the profile registry, never spelled here — ADR-033 I-2.1). */
 export const FOOD_PROFILE: ItemProfile = profilesWith('foodInformation')[0]
 
+/** D-22 (C1.12.8) "Use for" lists the packs write on the roots, tags and option lists they create. */
+export const FOOD: ItemProfile[] = [FOOD_PROFILE]
+export const BOOK: ItemProfile[] = ['book']
+
 // ── channels (keys as in the legacy `restaurant` preset, D-21) ───────────────
 export const dineIn = (preselected: boolean): PackChannelSuggestion => ({ key: 'dine-in', label: L('Dine-in', 'Al tavolo', 'Vor Ort'), preselected, defaultAvailability: 'available' })
 export const takeaway = (preselected: boolean): PackChannelSuggestion => ({ key: 'takeaway', label: L('Takeaway', 'Da asporto', 'Zum Mitnehmen'), preselected, defaultAvailability: 'available' })
@@ -21,22 +25,23 @@ export const EVERY_DAY: PackWeeklyOverride['days'] = []
 export const hours = (key: string, from: string, to: string, days: PackWeeklyOverride['days'] = EVERY_DAY): PackWeeklyOverride => ({ key, days, from, to, state: 'available' })
 
 // ── tags ──────────────────────────────────────────────────────────────────────
+// D-22: food- or book-specific tags carry "Use for"; generic ones (New, Seasonal, Local, Organic, Staff pick, Limited) stay for every item type.
 export const TAG = {
-  chefsChoice: { key: 'chefs_choice', label: L("Chef's choice", 'Scelta dello chef', 'Empfehlung des Küchenchefs') },
+  chefsChoice: { key: 'chefs_choice', label: L("Chef's choice", 'Scelta dello chef', 'Empfehlung des Küchenchefs'), useFor: FOOD },
   new: { key: 'new', label: L('New', 'Novità', 'Neu') },
   seasonal: { key: 'seasonal', label: L('Seasonal', 'Di stagione', 'Saisonal') },
-  spicy: { key: 'spicy', label: L('Spicy', 'Piccante', 'Scharf') },
+  spicy: { key: 'spicy', label: L('Spicy', 'Piccante', 'Scharf'), useFor: FOOD },
   local: { key: 'local', label: L('Local', 'Locale', 'Regional') },
-  houseSpeciality: { key: 'house_speciality', label: L('House speciality', 'Specialità della casa', 'Spezialität des Hauses') },
-  signature: { key: 'signature', label: L('Signature dish', 'Piatto firma', 'Signature-Gericht') },
-  baristasChoice: { key: 'baristas_choice', label: L("Barista's choice", 'Scelta del barista', 'Empfehlung des Baristas') },
-  natural: { key: 'natural', label: L('Natural', 'Naturale', 'Naturwein') },
+  houseSpeciality: { key: 'house_speciality', label: L('House speciality', 'Specialità della casa', 'Spezialität des Hauses'), useFor: FOOD },
+  signature: { key: 'signature', label: L('Signature dish', 'Piatto firma', 'Signature-Gericht'), useFor: FOOD },
+  baristasChoice: { key: 'baristas_choice', label: L("Barista's choice", 'Scelta del barista', 'Empfehlung des Baristas'), useFor: FOOD },
+  natural: { key: 'natural', label: L('Natural', 'Naturale', 'Naturwein'), useFor: FOOD },
   organic: { key: 'organic', label: L('Organic', 'Biologico', 'Bio') },
   staffPick: { key: 'staff_pick', label: L('Staff pick', 'Consigliato da noi', 'Unsere Empfehlung') },
   limited: { key: 'limited', label: L('Limited', 'Edizione limitata', 'Limitiert') },
-  signedCopy: { key: 'signed_copy', label: L('Signed copy', 'Copia autografata', 'Signiertes Exemplar') },
-  illustrated: { key: 'illustrated', label: L('Illustrated', 'Illustrato', 'Illustriert') },
-  localAuthor: { key: 'local_author', label: L('Local author', 'Autore locale', 'Regionaler Autor') },
+  signedCopy: { key: 'signed_copy', label: L('Signed copy', 'Copia autografata', 'Signiertes Exemplar'), useFor: BOOK },
+  illustrated: { key: 'illustrated', label: L('Illustrated', 'Illustrato', 'Illustriert'), useFor: BOOK },
+  localAuthor: { key: 'local_author', label: L('Local author', 'Autore locale', 'Regionaler Autor'), useFor: BOOK },
 } satisfies Record<string, PackTag>
 
 // ── format templates (C3: glass vs bottle is a format, never a category) ─────

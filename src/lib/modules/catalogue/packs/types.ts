@@ -68,8 +68,11 @@ export type PackCategory = {
   channelRules?: Record<string, PackAvailabilityRule>
   /** PackOptionGroup keys; defaults for NEW items only. */
   defaultOptionGroups?: string[]
+  /** D-22 (C1.12.8): REQUIRED on a root of a non-empty pack, forbidden on a child (descendants inherit). */
+  useFor?: ItemProfile[]
 }
-export type PackTag = { key: string; label: PackLocalized }
+/** `useFor` (D-22): omitted = a generic tag (all item types). */
+export type PackTag = { key: string; label: PackLocalized; useFor?: ItemProfile[] }
 
 /** Never auto-activated: applied only if the person ticks it in the preview (K-6). */
 export type PackChannelSuggestion = {
@@ -89,7 +92,7 @@ export type PackCollection = { key: string; name: PackLocalized; collectionType:
 
 export type PackOptionChoice = { key: string; label: PackLocalized; priceDelta: 0; kind: 'add' | 'remove' }
 /** Shape = catalogueOptionList minus ids/lifecycle. min/max are the SUGGESTED attachment limits (they live on the attachment, ADR-033 D2). */
-export type PackOptionGroup = { key: string; name: PackLocalized; min: number; max: number | null; choices: PackOptionChoice[] }
+export type PackOptionGroup = { key: string; name: PackLocalized; min: number; max: number | null; choices: PackOptionChoice[]; /** D-22: REQUIRED in a non-empty pack. */ useFor?: ItemProfile[] }
 
 /** C3 project-level reusable format template (Glass 15 cl, Bottle 75 cl …). */
 export type PackFormatTemplate = { key: string; label: PackLocalized; quantity?: { value: number; unit: QuantityUnit } }

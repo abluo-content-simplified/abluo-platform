@@ -13,6 +13,10 @@ import type { RuleChangePreview } from '@/lib/modules/catalogue/taxonomy/service
 import { archiveCatalogueCategoryAction, previewCatalogueCategoryRuleAction, setCatalogueCategoryRuleAction } from '@/app/[locale]/(client)/[tenant]/catalogue/setup/taxonomy-actions'
 import { inheritedCategoryRule, labelText, previewImpact, sameRule } from './setup-model'
 import type { TaxonomyScreen } from './taxonomy-context'
+import { UseForSection } from './UseForSection'
+import { previewCatalogueCategoryUseForAction, setCatalogueCategoryUseForAction } from '@/app/[locale]/(client)/[tenant]/catalogue/setup/taxonomy-actions'
+import { rootOf } from '@/lib/modules/catalogue/taxonomy/profile-applicability'
+import { useProfileUseFor } from '../use-for-ui'
 
 type Pending = { channel: string; rule: ChannelAvailabilityRule | null; preview: RuleChangePreview }
 
@@ -43,6 +47,8 @@ export function CategorySheet({
   const [pending, setPending] = useState<Pending | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const archiveReasonId = useId()
+  const tu = useTranslations('catalogue.useFor')
+  const useForText = useProfileUseFor()
   // A different category starts with no unsaved rule changes.
   const [shownKey, setShownKey] = useState(categoryKey)
   if (shownKey !== categoryKey) {
@@ -95,6 +101,33 @@ export function CategorySheet({
             </Button>
           </div>
         ) : null}
+
+        {/* D-22 (C1.12.6): "Use for" on a top-level category; a child shows what it inherits. */}
+        {(tree.parentOf.get(key) ?? null) === null ? (
+          <UseForSection
+            key={`use-for-${key}`}
+            name={name}
+            stored={node.useFor ?? []}
+            hint={tu('hintRoot')}
+            disabledReason={manage ? undefined : tu('needsSetup')}
+            preview={async (useFor) => {
+              const r = await previewCatalogueCategoryUseForAction({ projectSlug: screen.projectSlug, key, useFor })
+              if (!r.ok) {
+                screen.show(screen.failText(r), 'error')
+                return null
+              }
+              return r.preview.newlyIncompatible
+            }}
+            save={async (useFor) => {
+              const r = await setCatalogueCategoryUseForAction({ projectSlug: screen.projectSlug, key, useFor, rev: view.rev, baseHashes: screen.baseHashes() })
+              return (await screen.settle(r, tu('saved', { name, profiles: useForText.text(useFor) }))) !== null
+            }}
+          />
+        ) : (
+          <p className="text-[0.9375rem] leading-6 text-muted-foreground">
+            {tu('inherited', { profiles: useForText.text(tree.nodes.get(rootOf(tree, key) ?? key)?.useFor), root: screen.categoryName(rootOf(tree, key) ?? key) })}
+          </p>
+        )}
 
         <section className="space-y-3" aria-labelledby="category-sheet-availability">
           <h3 id="category-sheet-availability" className="text-[1.0625rem] font-semibold">

@@ -20,6 +20,11 @@ import { CategorySheet } from './CategorySheet'
 import { hasImpact, isReorder, labelText, missingLocales, previewImpact, reorderedSiblings, searchTree } from './setup-model'
 import { useLanguageList } from './setup-ui'
 import type { TaxonomyScreen } from './taxonomy-context'
+import { ProfileFilter } from './ProfileFilter'
+import { useProfileUseFor } from '../use-for-ui'
+import { buildTree } from '@/lib/modules/catalogue/taxonomy/tree'
+import { isCategoryCompatible, sameUseFor } from '@/lib/modules/catalogue/taxonomy/profile-applicability'
+import type { ItemProfile } from '@/lib/modules/catalogue/profiles'
 
 /**
  * The category tree: search by name or full path, drag / arrow keys / ⋯ menu to move (TreeEditor),
@@ -36,14 +41,21 @@ export function CategoriesPanel({ screen, onAdd, onRename }: { screen: TaxonomyS
   const [deleting, setDeleting] = useState<string | null>(null)
   const [move, setMove] = useState<{ req: MoveRequest; impact: MoveImpact } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [profile, setProfile] = useState<ItemProfile | null>(null)
+  const tu = useTranslations('catalogue.useFor')
+  const useFor = useProfileUseFor()
 
-  const shown = useMemo(() => (query.trim() ? searchTree(tree, query, screen.pathContext) : tree), [tree, query, screen.pathContext])
+  // D-22: search, then (optionally) only the branches used for one item type.
+  const shown = useMemo(() => {
+    const found = query.trim() ? searchTree(tree, query, screen.pathContext) : tree
+    return profile ? buildTree([...found.nodes.values()].filter((n) => isCategoryCompatible(tree, n.key, profile))) : found
+  }, [tree, query, screen.pathContext, profile])
   const byKey = useMemo(() => new Map(view.categories.map((c) => [c.key, c])), [view.categories])
   const channelName = (key: string) => {
     const c = screen.channels.find((x) => x.key === key) ?? view.channels.find((x) => x.key === key)
     return c ? labelText(c.label, view.defaultLocale, view.defaultLocale) || t('unnamed') : t('unnamed')
   }
-  const searching = query.trim() !== ''
+  const searching = query.trim() !== '' || profile !== null
 
   async function onMove(req: MoveRequest) {
     if (isReorder(tree, req)) {
@@ -53,7 +65,7 @@ export function CategoriesPanel({ screen, onAdd, onRename }: { screen: TaxonomyS
     }
     const p = await previewCatalogueCategoryMoveAction({ projectSlug: screen.projectSlug, key: req.key, newParentKey: req.newParentKey, index: req.index })
     if (!p.ok) return void screen.show(screen.failText(p), 'error')
-    if (hasImpact(p.impact.availability)) {
+    if (hasImpact(p.impact.availability) || profileChanges(p.impact)) {
       setMove({ req, impact: p.impact })
       return
     }
@@ -82,11 +94,20 @@ export function CategoriesPanel({ screen, onAdd, onRename }: { screen: TaxonomyS
   const renderMeta = (key: string) => {
     const c = byKey.get(key)
     if (!c) return null
+    const root = (tree.parentOf.get(key) ?? null) === null
     const missing = missingLocales(c.label, view.locales)
     const rules = Object.keys(c.channelRules ?? {}).filter((ch) => screen.channels.some((x) => x.key === ch) || view.channels.some((x) => x.key === ch))
     return (
       <div className="mt-1 flex flex-wrap items-start gap-1.5 text-sm text-muted-foreground">
         <span className="py-0.5">{t('items', { count: c.items })}</span>
+        {/* D-22: profile chips beside each top-level category (children inherit them). */}
+        {root
+          ? useFor.chips(c.useFor).map((label) => (
+              <Pill key={`use-${label}`} tone={c.useFor?.length ? 'success' : 'outline'}>
+                {label}
+              </Pill>
+            ))
+          : null}
         {c.archivedAt ? <Pill tone="outline">{t('archived')}</Pill> : null}
         {rules.map((ch) => (
           <Pill key={ch} tone="highlight">
@@ -108,11 +129,14 @@ export function CategoriesPanel({ screen, onAdd, onRename }: { screen: TaxonomyS
         <EmptyState title={t('emptyTitle')} body={t('emptyBody')} action={view.can.write ? <Button variant="secondary" onClick={() => onAdd(null)}>{t('add')}</Button> : null} />
       ) : (
         <>
-          <Field label={t('search')} hint={t('searchHint')}>
-            {(p) => <TextInput {...p} type="search" value={query} onChange={(e) => setQuery(e.target.value)} />}
-          </Field>
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,16rem)]">
+            <Field label={t('search')} hint={t('searchHint')}>
+              {(p) => <TextInput {...p} type="search" value={query} onChange={(e) => setQuery(e.target.value)} />}
+            </Field>
+            <ProfileFilter value={profile} onChange={setProfile} />
+          </div>
           {searching && shown.nodes.size === 0 ? (
-            <EmptyState compact titleAs="p" title={t('noMatch', { query })} />
+            <EmptyState compact titleAs="p" title={query.trim() ? t('noMatch', { query }) : tu('noneForFilter', { profile: profile ? useFor.labelOf(profile) : '' })} />
           ) : (
             <TreeEditor
               label={t('tab')}
@@ -140,10 +164,20 @@ export function CategoriesPanel({ screen, onAdd, onRename }: { screen: TaxonomyS
           onCancel={() => setMove(null)}
         >
           <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('moveBody', { items: move.impact.items })}</p>
+          {profileChanges(move.impact) ? (
+            <p className="text-[0.9375rem] leading-6 text-foreground">
+              {tu('moveChange', { before: useFor.text(move.impact.profiles.before), after: useFor.text(move.impact.profiles.after) })} {tu('moveIncompatible', { count: move.impact.newlyIncompatible })}
+            </p>
+          ) : null}
         </ImpactPreview>
       ) : null}
       <CategorySheet screen={screen} categoryKey={editing} onClose={() => setEditing(null)} onRename={onRename} onDelete={(k) => setDeleting(k)} />
       <CategoryDeleteSheet screen={screen} categoryKey={deleting} onClose={() => setDeleting(null)} />
     </div>
   )
+}
+
+/** D-22: a move that changes which item types the branch is used for (or makes items not fit) is confirmed first. */
+function profileChanges(impact: MoveImpact): boolean {
+  return !!impact.profiles && (!sameUseFor(impact.profiles.before, impact.profiles.after) || impact.newlyIncompatible > 0)
 }

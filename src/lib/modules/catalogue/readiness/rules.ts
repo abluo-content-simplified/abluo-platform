@@ -435,6 +435,27 @@ export const DEFAULT_RULES: readonly ReadinessRule[] = Object.freeze([
         return hit ? [{ target: { kind: 'format' as const, id: input.id, formatKey: f.key }, fix: { surface: 'item' as const, step: 'price' as const, tab: 'prices' as const }, messageKey: 'scheduleInvalid', values: { reason: hit } }] : []
       }),
   },
+  // 31 (D-22, C1.12) — every assignment not used for the item's profile; required everywhere, blocks
+  // publication; activation 'always' (it can only fire where "Use for" data exists); NOT in the D-15 subset.
+  {
+    code: 'profileMismatch',
+    subject: 'item',
+    family: 'standard',
+    activation: 'always',
+    levelIn: everywhere('required'),
+    scope: {},
+    gate: 'publish',
+    check: (input) =>
+      (input.profileFindings ?? []).map((f) => ({
+        target: item(input),
+        fix:
+          f.kind === 'option'
+            ? { surface: 'item' as const, step: 'options' as const, tab: 'options' as const }
+            : { surface: 'item' as const, step: 'category' as const, tab: 'content' as const, focus: f.kind === 'tag' ? '[data-tag-field]' : '[data-category-field]' },
+        messageKey: f.kind === 'tag' ? 'profileMismatchTag' : f.kind === 'option' ? 'profileMismatchOption' : 'profileMismatchCategory',
+        values: { kind: f.kind, key: f.key, name: f.name, profile: input.profile ?? '' },
+      })),
+  },
   // ── Integrity family (gate-only, §6.7.3) ──
   integrityRule('integrity.refUnresolved', 'always', (input) => (input.integrity?.refs ?? []).filter((r) => !r.resolves).map((r) => r.path), true),
   integrityRule('integrity.refOtherProject', 'always', (input) => (input.integrity?.refs ?? []).filter((r) => r.resolves && !r.sameProject).map((r) => r.path)),

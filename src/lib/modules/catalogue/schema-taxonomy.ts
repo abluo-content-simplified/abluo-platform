@@ -2,6 +2,7 @@ import { defineArrayMember, defineField, defineType } from 'sanity'
 import { projectSlugField } from '@/lib/sanity/fields/shared'
 import { isValidTermKey, TERM_KEY_MAX_LENGTH } from '@/lib/taxonomy/ids'
 import { LABEL_MAX, MAX_CATEGORIES, MAX_TAGS } from './taxonomy/limits'
+import { PROFILE_ORDER, PROFILES, isItemProfile } from './profiles'
 
 // ── Catalogue V2 R1 — new Sanity types (contracts C1.4, C7.5, C10-6 R1) ──────
 //
@@ -43,6 +44,34 @@ const labelField = defineField({
     }),
 })
 
+/**
+ * D-22 (C1.12) "Use for": the item profiles a root category (inherited by its branch), a tag or an
+ * option list is used for. Absent = all item types. Studio critical validation refuses unknown ids
+ * and, on a category, a value on a non-root node (the writers refuse both too).
+ */
+export function profileUseForField(opts: { rootOnly?: boolean; group?: string } = {}) {
+  return defineField({
+    name: 'useFor',
+    title: 'Use for',
+    type: 'array',
+    ...(opts.group && { group: opts.group }),
+    of: [defineArrayMember({ type: 'string' })],
+    options: { list: PROFILE_ORDER.map((id) => ({ title: PROFILES[id].label, value: id })), layout: 'grid' },
+    description: opts.rootOnly
+      ? 'Item types this top-level category and everything under it are used for. Empty = all item types. Set in Catalogue → Setup.'
+      : 'Item types this is used for. Empty = all item types. Set in the dashboard.',
+    validation: (Rule) =>
+      Rule.custom((value, context) => {
+        const list = Array.isArray(value) ? value : []
+        const unknown = list.find((v) => !isItemProfile(v))
+        if (unknown !== undefined) return `Unknown item type "${String(unknown)}".`
+        const parent = (context.parent as { parentKey?: unknown } | undefined)?.parentKey
+        if (opts.rootOnly && list.length > 0 && typeof parent === 'string' && parent !== '') return 'Only a top-level category has "Use for"; categories under it inherit it.'
+        return true
+      }).error(),
+  })
+}
+
 export const catalogueCategory = defineType({
   name: 'catalogueCategory',
   title: 'Category',
@@ -68,6 +97,7 @@ export const catalogueCategory = defineType({
       description: 'Attached to NEW items of this category only.',
     }),
     defineField({ name: 'archivedAt', title: 'Archived', type: 'datetime' }),
+    profileUseForField({ rootOnly: true }),
   ],
   preview: {
     select: { key: 'key', en: 'label.en', it: 'label.it', de: 'label.de', parent: 'parentKey' },
@@ -79,7 +109,7 @@ export const catalogueTag = defineType({
   name: 'catalogueTag',
   title: 'Tag',
   type: 'object',
-  fields: [keyField, labelField, defineField({ name: 'order', title: 'Order', type: 'number' }), defineField({ name: 'archivedAt', title: 'Archived', type: 'datetime' })],
+  fields: [keyField, labelField, defineField({ name: 'order', title: 'Order', type: 'number' }), defineField({ name: 'archivedAt', title: 'Archived', type: 'datetime' }), profileUseForField()],
   preview: {
     select: { key: 'key', en: 'label.en', it: 'label.it', de: 'label.de' },
     prepare: ({ key, en, it, de }) => ({ title: en || it || de || key }),
