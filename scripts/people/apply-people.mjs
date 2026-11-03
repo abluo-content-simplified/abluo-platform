@@ -81,7 +81,7 @@ willCreate.forEach((p, i) => {
   const doc = buildPersonDocument(slug, p, { sortOrder: projectHasPeople ? undefined : (i + 1) * 10 })
   personDocs.push({ doc, exists: existing.has(doc._id), name: p.displayName })
 })
-for (const d of personDocs) say(`  [${d.exists ? 'EXISTS  ' : 'CREATE  '}] person ${d.doc._id}  ${d.doc.firstName} ${d.doc.lastName}${d.doc.photo ? '' : '  (no photo)'}`)
+for (const d of personDocs) say(`  [${d.exists ? 'EXISTS  ' : 'CREATE  '}] person ${d.doc._id}  ${[d.doc.firstName, d.doc.lastName].filter(Boolean).join(' ')}${d.doc.photo ? '' : '  (no photo)'}`)
 
 const patches = []   // { docId, rev, set, why }
 const skipped = []
