@@ -8,6 +8,9 @@ import { getCatalogueSite, listCatalogue } from '@/lib/api/catalogue-drafts'
 import { taxonomyWritePermission } from '@/lib/taxonomy/permissions'
 import { ItemWizard } from '@/components/client/catalogue/ItemWizard'
 import { optionListChoices } from '@/components/client/catalogue/choices'
+import { holdsCatalogueCapability } from '@/lib/api/catalogue-capability-guard'
+import { loadCatalogueSettings } from '@/lib/modules/catalogue/settings/service'
+import { isSetupComplete } from '@/lib/modules/catalogue/packs/setup-state'
 
 /**
  * `/catalogue/new` — the item wizard with no document (lazy creation): a
@@ -29,6 +32,8 @@ export default async function NewCatalogueItemPage({ params }: { params: Promise
     if (error instanceof TenantAuthorizationError) notFound()
     throw error
   }
-  const [site, lists] = await Promise.all([getCatalogueSite(ctx, grant.projectId), listCatalogue(ctx, grant.projectId)])
-  return <ItemWizard projectSlug={projectSlug} site={site} optionLists={optionListChoices(lists, site.defaultLocale)} listHref={`/${projectSlug}/catalogue`} canAddCategory={grant.permissions.includes(taxonomyWritePermission('catalogue'))} canOpenSettings={grant.permissions.includes('site.details.write')} />
+  const [site, lists, settings] = await Promise.all([getCatalogueSite(ctx, grant.projectId), listCatalogue(ctx, grant.projectId), loadCatalogueSettings(ctx, grant.projectId).catch(() => null)])
+  // Brief §6 / D-14: the item flow may know whether setup was ever completed — never which pack.
+  const foodSetup = { complete: settings ? isSetupComplete({ setupCompletedAt: settings.setup.completedAt }) : true, canSetup: holdsCatalogueCapability(ctx, grant.projectId, 'catalogue.setup.manage') }
+  return <ItemWizard projectSlug={projectSlug} site={site} optionLists={optionListChoices(lists, site.defaultLocale)} listHref={`/${projectSlug}/catalogue`} canAddCategory={grant.permissions.includes(taxonomyWritePermission('catalogue'))} canOpenSettings={grant.permissions.includes('site.details.write')} foodSetup={foodSetup} />
 }

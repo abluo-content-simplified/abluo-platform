@@ -140,6 +140,14 @@ export type PackSelection = {
   slugOverrides: Readonly<Record<string, Localized>>
   /** 'skip' writes no category rule and no channel default schedule. */
   channelRules: 'apply' | 'skip'
+  /**
+   * Review-step renames (brief §6 step 3): "<area>:<key>" (sections "section:<collection>.<key>") →
+   * the person's name per language, used instead of the pack's for an element that is ADDED.
+   * Never renames anything that exists.
+   */
+  labels?: Readonly<Record<string, Localized>>
+  /** Review-step additions: the person's own categories / tags, added with the pack (keys made from the name). */
+  extras?: { categories?: readonly { key: string; label: Localized; parent: string | null }[]; tags?: readonly { key: string; label: Localized }[] }
 }
 
 /** The preview's starting selection: preselected channels, every setting, schedules applied, nothing excluded. */
@@ -164,6 +172,18 @@ export function localizedFor(label: PackLocalized, site: { defaultLocale: string
     if (typeof v === 'string' && v.trim()) out[l] = v
   }
   if (!out[site.defaultLocale]) out[site.defaultLocale] = label.en
+  return out
+}
+
+/** The person's rename (review step), cleaned and restricted to the site languages, over the pack's label. */
+function labelWith(selection: PackSelection, ref: string, base: Localized, site: { defaultLocale: string; locales: readonly string[] }): Localized {
+  const override = selection.labels?.[ref]
+  if (!override) return base
+  const out: Localized = { ...base }
+  for (const l of site.locales) {
+    const v = override[l]
+    if (typeof v === 'string' && v.trim()) out[l] = v.trim()
+  }
   return out
 }
 
@@ -240,7 +260,7 @@ export function planPack(current: CatalogueState, pack: PackDeclaration, selecti
   const groupIds = new Map<string, string>()
   for (const g of pack.optionGroups) {
     const id = optionListIdFor(current.projectSlug, g.key)
-    const item: PlanItem = { area: 'optionGroup', key: g.key, label: localizedFor(g.name, site), id, choices: g.choices.length }
+    const item: PlanItem = { area: 'optionGroup', key: g.key, label: labelWith(selection, `optionGroup:${g.key}`, localizedFor(g.name, site), site), id, choices: g.choices.length }
     if (current.optionLists.some((l) => l.id === id)) {
       equivalent.push(item)
       groupIds.set(g.key, id)
@@ -257,8 +277,10 @@ export function planPack(current: CatalogueState, pack: PackDeclaration, selecti
   for (const x of selection.exclude) if (x.startsWith('category:')) for (const k of packSubtree(pack, x.slice(9))) excludedCats.add(k)
   const target = (packKey: string | null): string | null => (packKey === null ? null : (mapped[`category:${packKey}`] ?? packKey))
   let addedCategories = 0
-  for (const c of pack.categories) {
-    const label = localizedFor(c.label, site)
+  const extraCategories = (selection.extras?.categories ?? []).filter((x) => !pack.categories.some((c) => c.key === x.key))
+  const categoryList = [...pack.categories.map((c) => ({ ...c, label: localizedFor(c.label, site) })), ...extraCategories.map((x) => ({ key: x.key, label: x.label, parent: x.parent, channelRules: undefined, defaultOptionGroups: undefined }))]
+  for (const c of categoryList) {
+    const label = labelWith(selection, `category:${c.key}`, c.label, site)
     const resolution = selection.resolutions[`category:${c.key}`]
     const existing = byKey.get(c.key)
     if (existing) {
@@ -278,13 +300,18 @@ export function planPack(current: CatalogueState, pack: PackDeclaration, selecti
       equivalent.push({ area: 'category', key: c.key, label, mappedTo: resolution.key })
       continue
     }
-    if (excludedCats.has(c.key)) {
+    if (excludedCats.has(c.key) || (c.parent !== null && excludedCats.has(c.parent))) {
+      excludedCats.add(c.key)
       skipped.push({ area: 'category', key: c.key, parentKey: c.parent, label, note: 'excluded' })
       continue
     }
     const rules: PlanRule[] = []
     for (const [ch, r] of Object.entries(c.channelRules ?? {})) {
       if (selection.channelRules !== 'apply') continue
+      if (excluded.has(`rule:${c.key}:${ch}`)) {
+        skipped.push({ area: 'category', key: c.key, label, note: 'excluded', rules: [{ channel: ch, rule: toRule(r) }] })
+        continue
+      }
       if (!activeAfter.has(ch)) {
         conflicts.push({ code: 'rule_skipped_inactive_channel', area: 'category', key: c.key, blocking: false, detail: { channel: ch } })
         continue
@@ -311,8 +338,9 @@ export function planPack(current: CatalogueState, pack: PackDeclaration, selecti
   // ── tags ──
   const tagsByKey = new Map(current.tags.map((t) => [t.key, t]))
   let addedTags = 0
-  for (const t of pack.tags) {
-    const label = localizedFor(t.label, site)
+  const tagList = [...pack.tags.map((t) => ({ key: t.key, label: localizedFor(t.label, site) })), ...(selection.extras?.tags ?? []).filter((x) => !pack.tags.some((t) => t.key === x.key))]
+  for (const t of tagList) {
+    const label = labelWith(selection, `tag:${t.key}`, t.label, site)
     const existing = tagsByKey.get(t.key)
     const resolution = selection.resolutions[`tag:${t.key}`]
     if (existing) {
@@ -342,13 +370,13 @@ export function planPack(current: CatalogueState, pack: PackDeclaration, selecti
   // ── collections + sections ──
   for (const col of pack.collections) {
     const id = collectionIdFor(current.projectSlug, col.key)
-    const name = localizedFor(col.name, site)
+    const name = labelWith(selection, `collection:${col.key}`, localizedFor(col.name, site), site)
     const existing = current.collections.find((x) => x.id === id)
     const sections = flattenSections(col.sections)
     if (existing) {
       equivalent.push({ area: 'collection', key: col.key, label: existing.name, id })
       for (const s of sections) {
-        const item: PlanItem = { area: 'section', key: s.key, parentKey: col.key, label: localizedFor(s.name, site), id }
+        const item: PlanItem = { area: 'section', key: s.key, parentKey: col.key, label: labelWith(selection, `section:${col.key}.${s.key}`, localizedFor(s.name, site), site), id }
         if (existing.sectionKeys.includes(s.key)) equivalent.push(item)
         else if (excluded.has(`section:${col.key}.${s.key}`)) skipped.push({ ...item, note: 'excluded' })
         else add.push(item)
@@ -370,12 +398,15 @@ export function planPack(current: CatalogueState, pack: PackDeclaration, selecti
       if (taken || !SLUG_PART_PATTERN.test(s)) conflicts.push({ code: 'slug_collision', area: 'collection', key: col.key, blocking: true, detail: { locale: l, slug: s } })
     }
     add.push({ area: 'collection', key: col.key, label: name, id, slugs })
-    for (const s of sections) add.push({ area: 'section', key: s.key, parentKey: col.key, label: localizedFor(s.name, site), id })
+    for (const s of sections) {
+      if (excluded.has(`section:${col.key}.${s.key}`)) skipped.push({ area: 'section', key: s.key, parentKey: col.key, label: localizedFor(s.name, site), id, note: 'excluded' })
+      else add.push({ area: 'section', key: s.key, parentKey: col.key, label: labelWith(selection, `section:${col.key}.${s.key}`, localizedFor(s.name, site), site), id })
+    }
   }
 
   // ── format templates ──
   for (const f of pack.formatSuggestions) {
-    const item: PlanItem = { area: 'formatSuggestion', key: f.key, label: localizedFor(f.label, site) }
+    const item: PlanItem = { area: 'formatSuggestion', key: f.key, label: labelWith(selection, `formatSuggestion:${f.key}`, localizedFor(f.label, site), site) }
     if (current.formatTemplates.some((t) => t.key === f.key)) equivalent.push(item)
     else if (excluded.has(`formatSuggestion:${f.key}`)) skipped.push({ ...item, note: 'excluded' })
     else add.push(item)

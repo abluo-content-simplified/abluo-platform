@@ -26,6 +26,9 @@ import { useItemState } from './use-item-state'
 import { TermPicker } from '@/components/client/taxonomy/TermPicker'
 import { useUploadOwner } from '@/components/client/media/use-media-uploads'
 import { Button, ButtonLink } from '@/components/app/ui/Button'
+import { Notice } from '@/components/app/ui/Notice'
+import { Toast } from '@/components/app/ui/Toast'
+import { FoodSetupFlow } from './setup/food/FoodSetupFlow'
 import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 type Done = { kind: 'live' } | { kind: 'scheduled'; at: string } | { kind: 'draft' }
@@ -42,7 +45,30 @@ type Done = { kind: 'live' } | { kind: 'scheduled'; at: string } | { kind: 'draf
  * Lazy creation: nothing exists until the name is typed; then the URL becomes
  * /catalogue/<id> without a reload, and closing the browser loses nothing.
  */
-export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCategory = false, canOpenSettings = false }: { projectSlug: string; site: CatalogueSite; optionLists: OptionListChoice[]; listHref: string; /** Holds catalogue.taxonomy.write: the category step offers "+ Add category" (and shows even with no category yet). */ canAddCategory?: boolean; /** Owner or site admin: the Amazon ID hint links to Settings. */ canOpenSettings?: boolean }) {
+export function ItemWizard({
+  projectSlug,
+  site,
+  optionLists,
+  listHref,
+  canAddCategory = false,
+  canOpenSettings = false,
+  foodSetup,
+}: {
+  projectSlug: string
+  site: CatalogueSite
+  optionLists: OptionListChoice[]
+  listHref: string
+  /** Holds catalogue.taxonomy.write: the category step offers "+ Add category" (and shows even with no category yet). */
+  canAddCategory?: boolean
+  /** Owner or site admin: the Amazon ID hint links to Settings. */
+  canOpenSettings?: boolean
+  /**
+   * Brief §6 / D-14: whether Catalogue setup was ever completed (`isSetupComplete` — never which
+   * pack) and whether this person may run it (catalogue.setup.manage). Choosing Food or drink in a
+   * project that was never set up opens the food-and-drink setup above this draft.
+   */
+  foodSetup?: { complete: boolean; canSetup: boolean }
+}) {
   const t = useTranslations('catalogue.dashboard.item.wizard')
   const tc = useTranslations('clientDashboard.create')
   const tl = useTranslations('app.lifecycle')
@@ -82,6 +108,18 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
     item.setPhotos([...current, { assetId: p.assetId, thumbUrl: p.thumbUrl }])
   })
   const tu = useTranslations('clientDashboard.media.uploads')
+  const tf = useTranslations('catalogue.foodSetup')
+  // Brief §6: the food-and-drink setup runs as an overlay above THIS draft (never unmounted), so
+  // abandoning it loses nothing and finishing it returns here with Food or drink still chosen.
+  const [setupComplete, setSetupComplete] = useState(foodSetup?.complete ?? true)
+  const [foodSetupOpen, setFoodSetupOpen] = useState(false)
+  const [foodNote, setFoodNote] = useState<string | null>(null)
+  const needsFoodSetup = (p: ItemProfile | null) => p === 'foodOrDrink' && !setupComplete
+  useEffect(() => {
+    if (!foodNote) return
+    const timer = window.setTimeout(() => setFoodNote(null), 5000)
+    return () => window.clearTimeout(timer)
+  }, [foodNote])
   const setName = (l: string, v: string) => {
     item.setText('name', l, v)
     stray.onNameChange(l, v, s.slug[l])
@@ -223,12 +261,45 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
                 onChange={(v) => {
                   profileRef.current = v
                   item.setProfile(v)
+                  if (needsFoodSetup(v) && foodSetup?.canSetup) return setFoodSetupOpen(true)
                   // A tap is the answer: go straight on (the next step is always the name).
                   const next = stepsFor(v, s.options.length)[1]
-                  if (next) go(next)
+                  if (next && !needsFoodSetup(v)) go(next)
                 }}
               />
             </div>
+            {needsFoodSetup(s.itemProfile) ? (
+              <div className="mt-6">
+                {foodSetup?.canSetup ? (
+                  <Button variant="secondary" onClick={() => setFoodSetupOpen(true)}>
+                    {tf('openSetup')}
+                  </Button>
+                ) : (
+                  <Notice tone="info">{tf('needsSetup')}</Notice>
+                )}
+              </div>
+            ) : null}
+            {foodSetup?.canSetup ? (
+              <FoodSetupFlow
+                open={foodSetupOpen}
+                projectSlug={projectSlug}
+                defaultLocale={d}
+                locales={site.locales}
+                onExit={() => {
+                  setFoodSetupOpen(false)
+                  setFoodNote(tf('exited'))
+                }}
+                onDone={(how) => {
+                  setFoodSetupOpen(false)
+                  setSetupComplete(true)
+                  setFoodNote(how === 'empty' ? tf('doneEmpty') : tf('done'))
+                  // New categories, channels and option lists: re-read the server data; this draft keeps its state.
+                  router.refresh()
+                  const next = stepsFor('foodOrDrink', s.options.length)[1]
+                  if (next) go(next)
+                }}
+              />
+            ) : null}
           </>
         ) : step === 'name' ? (
           <>
@@ -380,6 +451,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
           </div>
         ) : null}
       </section>
+      <Toast message={foodNote} />
     </WizardFrame>
   )
 }

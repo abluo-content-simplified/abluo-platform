@@ -56,6 +56,14 @@ vi.mock('@/components/client/catalogue/setup/ItemDefaults', () => ({ ItemDefault
 vi.mock('@/components/client/catalogue/setup/PublicWebsite', () => ({ PublicWebsite: h.screen('PublicWebsite') }))
 vi.mock('@/components/client/catalogue/setup/setup-ui', () => ({ SetupHeader: h.screen('SetupHeader') }))
 vi.mock('@/components/app/ui/EmptyState', () => ({ EmptyState: h.screen('EmptyState') }))
+// R2-D: the Starter Structures page reads through the pack service and renders StarterStructures.
+vi.mock('@/lib/modules/catalogue/packs/service', () => ({
+  loadStarterStructures: async () => {
+    h.reads.push('packs')
+    return { defaultLocale: 'en', locales: ['en'], packs: [], history: [], offers: [], setupCompletedAt: null, currency: 'EUR', interrupted: [] }
+  },
+}))
+vi.mock('@/components/client/catalogue/setup/starters/StarterStructures', () => ({ StarterStructures: h.screen('StarterStructures') }))
 
 import OverviewPage from '../page'
 import CategoriesPage from '../categories/page'

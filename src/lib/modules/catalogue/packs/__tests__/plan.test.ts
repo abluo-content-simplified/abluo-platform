@@ -317,3 +317,24 @@ describe('update', () => {
     expect(configSet(plan, tmz, bookshop, { now: 'n', userId: 'u', setupSource: 'pack' })).not.toHaveProperty('setupCompletedAt')
   })
 })
+
+describe('review-step choices (brief §6 step 3–4)', () => {
+  it('renames apply only to added elements; extras are added; an unticked rule is not written', () => {
+    const s = state({ categories: [node('salads', { en: 'Our greens' })] })
+    const selection = sel(cafe, {
+      labels: { 'category:pastries': { en: 'Cakes', fr: 'ignored' }, 'category:salads': { en: 'Never applied' }, 'collection:menu': { en: 'Drinks & bites' } },
+      extras: { categories: [{ key: 'focacce', label: { en: 'Focacce' }, parent: 'sandwiches_snacks' }], tags: [{ key: 'vegan_friendly', label: { en: 'Vegan friendly' } }] },
+      exclude: ['rule:breakfast:takeaway'],
+    })
+    const plan = planPack(s, cafe, selection)
+    expect(plan.add.find((i) => i.key === 'pastries')!.label).toEqual({ en: 'Cakes', it: 'Pasticceria' })
+    expect(plan.add.find((i) => i.area === 'collection')!.label).toEqual({ en: 'Drinks & bites', it: 'Menu' })
+    expect(plan.add.find((i) => i.key === 'focacce')).toMatchObject({ area: 'category', parentKey: 'sandwiches_snacks', label: { en: 'Focacce' } })
+    expect(plan.add.find((i) => i.key === 'vegan_friendly')).toMatchObject({ area: 'tag' })
+    expect(plan.add.find((i) => i.key === 'breakfast')!.rules!.map((r) => r.channel)).toEqual(['dine-in'])
+    expect(plan.skipped.find((i) => i.key === 'breakfast')!.rules![0].channel).toBe('takeaway')
+    // an extra under an unticked parent is left out with it
+    const off = planPack(s, cafe, { ...selection, exclude: ['category:sandwiches_snacks'] })
+    expect(keys(off.add, 'category')).not.toContain('focacce')
+  })
+})
