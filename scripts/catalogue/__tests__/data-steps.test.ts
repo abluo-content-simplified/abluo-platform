@@ -8,7 +8,8 @@ import { markerGroup, type StepContext } from '../lib/step'
 import { catalogueProjects } from '../lib/docs'
 import { taxonomyStep } from '../lib/step-taxonomy'
 import { commerceStep } from '../lib/step-commerce'
-import { packHistoryStep } from '../lib/step-pack-history'
+import { imageShapeToWrite, packHistoryStep } from '../lib/step-pack-history'
+import { catalogueImageShape } from '@/lib/modules/catalogue/list-model'
 import { publicNameStep, publicNameConfig } from '../lib/step-public-name'
 import { readPackHistory } from '@/lib/modules/catalogue/packs/history'
 import { isSetupComplete, readSetupState } from '@/lib/modules/catalogue/packs/setup-state'
@@ -207,6 +208,43 @@ describe('D3 pack history on tmz', () => {
   it('regression 2026-11-03: the preset is read from the installation, not from config (pre-flight converted 0)', () => {
     const { plan } = run(packHistoryStep, tmzProduction())
     expect(plan.projects[0].counts).toEqual({ converted: 1 })
+  })
+
+  it('image-shape/tmz-fallback: writes itemImageShape=portrait once so items without a profile keep their upright covers (D-13 part 4)', () => {
+    const before = configOf(tmzProduction())
+    // Without D3, module config alone (defaultItemProfile=product) would frame them landscape.
+    expect(catalogueImageShape({ defaultItemProfile: before.defaultItemProfile as string })).toBe('landscape')
+    const { plan, after, verification } = run(packHistoryStep, tmzProduction())
+    const cfg = configOf(after)
+    expect(cfg.itemImageShape).toBe('portrait')
+    expect(cfg.defaultItemProfile).toBe('product')
+    expect(catalogueImageShape({ defaultItemProfile: cfg.defaultItemProfile as string, itemImageShape: cfg.itemImageShape as string })).toBe('portrait')
+    // An item WITH a profile still follows its profile.
+    expect(catalogueImageShape({ itemProfile: 'product', itemImageShape: cfg.itemImageShape as string })).toBe('landscape')
+    expect(plan.projects[0].groups[0].mutations).toHaveLength(2) // history create + ONE config patch (setup + shape)
+    expect(verification.pass).toBe(true)
+    // Idempotent: a second run writes nothing.
+    expect(groupsOf(packHistoryStep.plan(after, CTX))).toEqual([])
+  })
+
+  it('image shape: nothing written where module config already gives the legacy shape, or the shape is already set', () => {
+    expect(imageShapeToWrite({ defaultItemProfile: 'book' }, 'bookshop')).toBeNull()
+    expect(imageShapeToWrite({ defaultItemProfile: 'product', itemImageShape: 'landscape' }, 'bookshop')).toBeNull()
+    expect(imageShapeToWrite({ defaultItemProfile: 'product' }, 'restaurant')).toBeNull()
+    expect(imageShapeToWrite({}, 'bookshop')).toBe('portrait')
+  })
+
+  it('image shape: a project already marked complete still gets the shape (and keeps its completion)', () => {
+    const docs = tmzProduction().map((d) => {
+      if (d._id !== 'project-tmz') return d
+      const insts = (d.moduleInstallations as Record<string, unknown>[]).map((i) => (i.moduleId === 'catalogue' ? { ...i, config: { ...(i.config as object), setupCompletedAt: '2026-10-01T00:00:00.000Z', setupSource: 'manual' } } : i))
+      return { ...d, moduleInstallations: insts }
+    })
+    const { after, verification } = run(packHistoryStep, docs)
+    const cfg = configOf(after)
+    expect(cfg.itemImageShape).toBe('portrait')
+    expect(readSetupState(cfg)).toEqual({ completedAt: '2026-10-01T00:00:00.000Z', source: 'manual' })
+    expect(verification.pass).toBe(true)
   })
 
   it('revert deletes the history document', () => {

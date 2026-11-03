@@ -4,10 +4,19 @@
 // entry permanent. In the same transaction: module config
 // `setupCompletedAt = appliedAt`, `setupSource = 'pack'` where unset (D-14).
 // `appliedPreset` is KEPT (inert until R3).
+//
+// D-13 part 4 (C7.6, fixture image-shape/tmz-fallback): the legacy preset's
+// image-shape fallback is replaced by module config BEFORE the field goes. Where
+// the legacy preset gave a frame shape that `defaultItemProfile` would not
+// (bookshop → portrait; tmz keeps `product` → landscape), D3 writes the hidden
+// `itemImageShape` once, in the same patch, so items without a profile keep
+// their frame — never a behaviour change. Revert keeps it (inert, and removing
+// it would change the dashboard covers).
 
 import { legacyPresetRecord, packHistoryId, readPackHistory } from '../../../src/lib/modules/catalogue/packs/history'
 import { isSetupComplete, readSetupState } from '../../../src/lib/modules/catalogue/packs/setup-state'
 import type { AppliedPackRecord } from '../../../src/lib/modules/catalogue/packs/types'
+import { catalogueImageShape, isImageShape, type ImageShape } from '../../../src/lib/modules/catalogue/list-model'
 import { catalogueProjects, sameValue, unchangedExcept, type Doc } from './docs'
 import { allowedFor, check, checksResult, configGroup, unmarkGroup, type Finding, type ProjectPlan, type Refusal, type StepContext, type StepDefinition, type StepPlan } from './step'
 import { scoped } from './step-taxonomy'
@@ -30,9 +39,26 @@ export function storedEntry(rec: AppliedPackRecord): Record<string, unknown> {
 const historyOf = (docs: readonly Doc[], slug: string) => docs.find((d) => d._id === packHistoryId(slug)) ?? null
 const appliedOf = (doc: Doc | null) => (Array.isArray(doc?.applied) ? (doc!.applied as Record<string, unknown>[]) : [])
 
-function setupPatch(config: Record<string, unknown>, appliedAt: string): Record<string, unknown> | null {
-  if (isSetupComplete(config)) return null
-  return { ...config, setupCompletedAt: appliedAt, ...(config.setupSource === undefined || config.setupSource === null || config.setupSource === '' ? { setupSource: 'pack' } : {}) }
+/** The list-image frame each legacy preset gave items without a profile (the removed `presetId` fallback). */
+export const LEGACY_PRESET_IMAGE_SHAPE: Readonly<Record<string, ImageShape>> = { bookshop: 'portrait' }
+
+/** D-13 part 4: the explicit frame D3 must write, or null when module config already gives the legacy shape. */
+export function imageShapeToWrite(config: Record<string, unknown>, presetId: string): ImageShape | null {
+  const legacy = LEGACY_PRESET_IMAGE_SHAPE[presetId]
+  if (!legacy || isImageShape(config.itemImageShape)) return null
+  const fromConfig = catalogueImageShape({ defaultItemProfile: typeof config.defaultItemProfile === 'string' ? config.defaultItemProfile : null })
+  return fromConfig === legacy ? null : legacy
+}
+
+function setupPatch(config: Record<string, unknown>, appliedAt: string, presetId: string): Record<string, unknown> | null {
+  const shape = imageShapeToWrite(config, presetId)
+  const complete = isSetupComplete(config)
+  if (complete && !shape) return null
+  return {
+    ...config,
+    ...(!complete && { setupCompletedAt: appliedAt, ...(config.setupSource === undefined || config.setupSource === null || config.setupSource === '' ? { setupSource: 'pack' } : {}) }),
+    ...(shape && { itemImageShape: shape }),
+  }
 }
 
 function plan(docs: readonly Doc[], ctx: StepContext): StepPlan {
@@ -64,7 +90,7 @@ function plan(docs: readonly Doc[], ctx: StepContext): StepPlan {
       )
     } else findings.push({ step: 'packHistory', code: 'packHistory.alreadyConverted', project: slug, detail: { key: rec._key } })
     // Same transaction (C10-6 D3): setup completion where unset.
-    const cfg = configGroup(view, `config:${slug}`, (config) => setupPatch(config, rec.appliedAt), refusals, 'packHistory')
+    const cfg = configGroup(view, `config:${slug}`, (config) => setupPatch(config, rec.appliedAt, rec.id), refusals, 'packHistory')
     const group = { key: `pack:${slug}`, mutations: [...mutations, ...cfg.mutations] }
     projects.push({ slug, groups: group.mutations.length ? [group] : [], counts: { converted: mutations.length } })
   }
@@ -74,6 +100,7 @@ function plan(docs: readonly Doc[], ctx: StepContext): StepPlan {
 function verify(before: readonly Doc[], after: readonly Doc[], ctx: StepContext) {
   const histDiffs: unknown[] = []
   const setupDiffs: unknown[] = []
+  const shapeDiffs: unknown[] = []
   const afterViews = new Map(catalogueProjects(after).map((v) => [v.slug, v]))
   for (const view of catalogueProjects(before)) {
     if (ctx.project && view.slug !== ctx.project) continue
@@ -95,6 +122,13 @@ function verify(before: readonly Doc[], after: readonly Doc[], ctx: StepContext)
     const gotKeys = afterApplied.map((e) => e?._key).sort()
     if (expectedKeys.join(',') !== gotKeys.join(',')) histDiffs.push({ project: view.slug, keys: { expected: expectedKeys, got: gotKeys } })
     if (!sameValue(view.appliedPreset, a.appliedPreset)) histDiffs.push({ project: view.slug, note: 'appliedPreset must be kept until R3' })
+    // image-shape/tmz-fallback: items without a profile resolve to the same frame as the legacy preset gave.
+    const legacyShape = LEGACY_PRESET_IMAGE_SHAPE[rec.id]
+    if (legacyShape) {
+      const got = catalogueImageShape({ defaultItemProfile: a.config.defaultItemProfile as string | null, itemImageShape: a.config.itemImageShape as string | null })
+      if (got !== legacyShape) shapeDiffs.push({ project: view.slug, expected: legacyShape, got })
+    }
+    if (a.config.defaultItemProfile !== view.config.defaultItemProfile) shapeDiffs.push({ project: view.slug, note: 'defaultItemProfile must never change (D-13 part 3)' })
     if (!isSetupComplete(a.config)) setupDiffs.push({ project: view.slug, setup: readSetupState(a.config) })
     if (!isSetupComplete(view.config)) {
       const sourceWasUnset = view.config.setupSource === undefined || view.config.setupSource === null || view.config.setupSource === ''
@@ -105,6 +139,7 @@ function verify(before: readonly Doc[], after: readonly Doc[], ctx: StepContext)
   return checksResult([
     check('packHistory.legacyPreset', histDiffs),
     check('packHistory.setupComplete', setupDiffs),
+    check('packHistory.imageShape', shapeDiffs),
     check('packHistory.unchangedElsewhere', unchangedExcept(scoped(before, ctx), scoped(after, ctx), allowedFor('packHistory', after, ctx.project))),
   ])
 }

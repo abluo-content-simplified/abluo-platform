@@ -132,7 +132,7 @@ export const guardedPatch = (doc: Doc, body: { set?: Record<string, unknown>; un
 export const STEP_CHANGES: Record<StepName, AllowedChanges> = {
   taxonomy: { itemFields: ['primaryCategory', 'additionalCategories'], configKeys: ['catalogueMigrations'], docIdPrefixes: ['catalogue-taxonomy.'] },
   commerce: { itemFields: ['formats', 'channelAvailability'], configKeys: ['catalogueMigrations', 'serviceChannels'] },
-  packHistory: { configKeys: ['catalogueMigrations', 'setupCompletedAt', 'setupSource'], docIdPrefixes: ['catalogue-packs.'] },
+  packHistory: { configKeys: ['catalogueMigrations', 'setupCompletedAt', 'setupSource', 'itemImageShape'], docIdPrefixes: ['catalogue-packs.'] },
   publicName: { configKeys: ['catalogueMigrations', 'publicName', 'navLabel'] },
 }
 
