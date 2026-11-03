@@ -145,7 +145,8 @@ const personType = defineType({
     }),
     // ── Profile ──────────────────────────────────────────────────────────────
     defineField({ name: 'firstName', title: 'First name', type: 'string', group: 'profile', validation: (Rule) => Rule.required() }),
-    defineField({ name: 'lastName', title: 'Last name', type: 'string', group: 'profile', validation: (Rule) => Rule.required() }),
+    // Optional (ADR-043 A4): some people go by one name ("Emmanuelle").
+    defineField({ name: 'lastName', title: 'Last name', type: 'string', group: 'profile' }),
     defineField({
       name: 'displayName',
       title: 'Display name',

@@ -162,11 +162,10 @@ describe('resolveMerges / blockers / person document', () => {
     bad[1].mergeInto = 'nope'
     expect(resolveMerges(bad).errors).toHaveLength(1)
   })
-  it('blocks single-word names and non-create decisions', () => {
+  it('single-word names need review but no last name (ADR-043 A4)', () => {
     const { proposals } = groupCandidates('x', [cand('teamMember', 'Dorota')])
-    expect(blockersOf(proposals[0]).length).toBe(2)
+    expect(blockersOf(proposals[0]).length).toBe(1)
     proposals[0].decision = 'create'
-    proposals[0].person.lastName = 'Nowak'
     expect(blockersOf(proposals[0])).toEqual([])
   })
   it('builds a person with empty groups, listed visibility, localized fields and a photo ref', () => {

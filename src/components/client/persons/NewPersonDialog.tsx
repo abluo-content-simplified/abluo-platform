@@ -45,7 +45,7 @@ export function NewPersonDialog({
 
   const firstName = first.trim()
   const lastName = last.trim()
-  const ready = Boolean(firstName && lastName)
+  const ready = Boolean(firstName)
 
   async function create() {
     if (!ready || busy) return

@@ -357,7 +357,7 @@ function CreateForm({ initialName, onCancel, onCreate }: { initialName: string; 
   const [last, setLast] = useState(at > 0 ? initialName.slice(at + 1) : '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const ready = Boolean(first.trim() && last.trim())
+  const ready = Boolean(first.trim())
 
   async function submit() {
     if (!ready || busy) return

@@ -140,7 +140,7 @@ export function ProfileTab({ api }: { api: EditorApi & { setLang: (l: string) =>
               />
             )}
           </Field>
-          <Field label={t('lastName')} error={editable && !v.lastName.trim() ? t('nameRequired') : undefined}>
+          <Field label={t('lastName')}>
             {(p) => (
               <TextInput
                 {...p}
@@ -148,7 +148,7 @@ export function ProfileTab({ api }: { api: EditorApi & { setLang: (l: string) =>
                 readOnly={!editable}
                 maxLength={PERSON_UI_LIMITS.name}
                 autoComplete="off"
-                onChange={(e) => api.change({ lastName: e.target.value }, e.target.value.trim() ? { lastName: e.target.value } : undefined)}
+                onChange={(e) => api.change({ lastName: e.target.value }, { lastName: e.target.value.trim() ? e.target.value : null })}
               />
             )}
           </Field>

@@ -3356,7 +3356,7 @@
         "archive_first": "Archive this person before deleting them.",
         "archived": "This person is archived. Restore them to make changes.",
         "anonymised": "This person was anonymised and can’t be changed anymore.",
-        "missing_name": "First and last name are required.",
+        "missing_name": "A first name is required.",
         "missing_slug": "A person with their own page needs a web address in the main language.",
         "slug_taken": "Another person already uses this web address.",
         "private_unavailable": "Private details can’t be saved yet. Everything else works.",
@@ -3455,14 +3455,14 @@
         "intro": "Start with a name. You can add the rest afterwards.",
         "firstName": "First name",
         "lastName": "Last name",
-        "namesNeeded": "Add a first and a last name to continue.",
+        "namesNeeded": "Add a first name to continue.",
         "cancel": "Cancel",
         "creating": "Creating…",
         "create": "Create Person",
         "errors": {
           "forbidden": "You don’t have permission to add people.",
           "tooMany": "You’ve reached the number of people your plan includes.",
-          "missingName": "First and last name are required.",
+          "missingName": "A first name is required.",
           "failed": "We couldn’t create this person. Please try again."
         }
       },
@@ -3871,7 +3871,7 @@
         "createIntro": "Add a name now. You can fill in the rest later under People.",
         "firstName": "First name",
         "lastName": "Last name",
-        "namesNeeded": "Add a first and a last name to continue.",
+        "namesNeeded": "Add a first name to continue.",
         "back": "Back",
         "creating": "Adding…",
         "create": "Add Person"

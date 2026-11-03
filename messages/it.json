@@ -3356,7 +3356,7 @@
         "archive_first": "Archivia questa persona prima di eliminarla.",
         "archived": "Questa persona è archiviata. Ripristinala per fare modifiche.",
         "anonymised": "Questa persona è stata anonimizzata e non si può più modificare.",
-        "missing_name": "Nome e cognome sono obbligatori.",
+        "missing_name": "Il nome è obbligatorio.",
         "missing_slug": "Una persona con una pagina propria ha bisogno di un indirizzo web nella lingua principale.",
         "slug_taken": "Questo indirizzo web è già usato da un’altra persona.",
         "private_unavailable": "I dati privati non si possono ancora salvare. Tutto il resto funziona.",
@@ -3455,14 +3455,14 @@
         "intro": "Parti dal nome. Il resto puoi aggiungerlo dopo.",
         "firstName": "Nome",
         "lastName": "Cognome",
-        "namesNeeded": "Aggiungi nome e cognome per continuare.",
+        "namesNeeded": "Aggiungi un nome per continuare.",
         "cancel": "Annulla",
         "creating": "Creazione in corso…",
         "create": "Crea persona",
         "errors": {
           "forbidden": "Non hai il permesso di aggiungere persone.",
           "tooMany": "Hai raggiunto il numero di persone incluso nel tuo piano.",
-          "missingName": "Nome e cognome sono obbligatori.",
+          "missingName": "Il nome è obbligatorio.",
           "failed": "Non siamo riusciti a creare la persona. Riprova."
         }
       },
@@ -3871,7 +3871,7 @@
         "createIntro": "Aggiungi ora il nome. Il resto puoi completarlo dopo in Persone.",
         "firstName": "Nome",
         "lastName": "Cognome",
-        "namesNeeded": "Aggiungi nome e cognome per continuare.",
+        "namesNeeded": "Aggiungi un nome per continuare.",
         "back": "Indietro",
         "creating": "Aggiunta in corso…",
         "create": "Aggiungi persona"

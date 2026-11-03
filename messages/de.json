@@ -3356,7 +3356,7 @@
         "archive_first": "Archiviere diese Person, bevor du sie löschst.",
         "archived": "Diese Person ist archiviert. Stell sie wieder her, um etwas zu ändern.",
         "anonymised": "Diese Person wurde anonymisiert und kann nicht mehr geändert werden.",
-        "missing_name": "Vor- und Nachname sind Pflichtfelder.",
+        "missing_name": "Ein Vorname ist erforderlich.",
         "missing_slug": "Eine Person mit eigener Seite braucht eine Webadresse in der Hauptsprache.",
         "slug_taken": "Diese Webadresse wird schon von einer anderen Person verwendet.",
         "private_unavailable": "Private Angaben können noch nicht gespeichert werden. Alles andere funktioniert.",
@@ -3455,14 +3455,14 @@
         "intro": "Beginne mit einem Namen. Den Rest kannst du danach ergänzen.",
         "firstName": "Vorname",
         "lastName": "Nachname",
-        "namesNeeded": "Gib Vor- und Nachnamen ein, um fortzufahren.",
+        "namesNeeded": "Gib einen Vornamen ein, um fortzufahren.",
         "cancel": "Abbrechen",
         "creating": "Wird angelegt …",
         "create": "Person anlegen",
         "errors": {
           "forbidden": "Du darfst keine Personen hinzufügen.",
           "tooMany": "Du hast die Anzahl an Personen erreicht, die dein Tarif enthält.",
-          "missingName": "Vor- und Nachname sind erforderlich.",
+          "missingName": "Ein Vorname ist erforderlich.",
           "failed": "Wir konnten die Person nicht anlegen. Bitte versuche es erneut."
         }
       },
@@ -3871,7 +3871,7 @@
         "createIntro": "Gib jetzt den Namen ein. Den Rest kannst du später unter Personen ergänzen.",
         "firstName": "Vorname",
         "lastName": "Nachname",
-        "namesNeeded": "Gib Vor- und Nachnamen ein, um fortzufahren.",
+        "namesNeeded": "Gib einen Vornamen ein, um fortzufahren.",
         "back": "Zurück",
         "creating": "Wird hinzugefügt …",
         "create": "Person hinzufügen"

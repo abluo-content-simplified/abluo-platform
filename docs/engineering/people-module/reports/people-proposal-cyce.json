@@ -742,7 +742,7 @@
       "key": "13359acbd975",
       "id": "person-cyce-13359acbd975",
       "publicId": "ead1c77b-6ea4-4963-9951-e47e56138eeb",
-      "decision": "review",
+      "decision": "create",
       "mergeInto": null,
       "order": 1012,
       "displayName": "Emmanuelle",
@@ -764,7 +764,7 @@
         "photoMediaAssetName": "Teacher — Emmanuelle"
       },
       "flags": [
-        "single-word name: lastName is empty and must be filled in the report before apply"
+        "single-word name: confirmed by Tom 2026-11-03 (no surname known)"
       ],
       "conflicts": {},
       "hostAnchors": [],
@@ -854,7 +854,7 @@
       "key": "1fd86ddd25c6",
       "id": "person-cyce-1fd86ddd25c6",
       "publicId": "f6f70dac-daf8-4e68-b70b-a2ccb5d89031",
-      "decision": "review",
+      "decision": "create",
       "mergeInto": null,
       "order": 1014,
       "displayName": "Dorota",
@@ -876,7 +876,7 @@
         "photoMediaAssetName": "Teacher — Dorota"
       },
       "flags": [
-        "single-word name: lastName is empty and must be filled in the report before apply"
+        "single-word name: confirmed by Tom 2026-11-03 (no surname known)"
       ],
       "conflicts": {},
       "hostAnchors": [],

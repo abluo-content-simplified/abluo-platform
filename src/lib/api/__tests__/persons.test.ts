@@ -260,12 +260,14 @@ describe('cross-project — ids cannot be probed', () => {
 // ── Create / edit / publish ───────────────────────────────────────────────────
 
 describe('create, edit, publish', () => {
-  it('create needs only first and last name; identity comes from the grant', async () => {
+  it('create needs only a first name; identity comes from the grant', async () => {
     const f = fake()
     const r = await createPerson(ctx(editor()), PID, { firstName: '  Florian ', lastName: 'Parra' } as never, f.deps)
     expect(r).toEqual({ id: 'new-person', publicId: '55555555-5555-4555-8555-555555555555', rev: 'c1' })
     expect(f.created[0]).toEqual({ _id: 'drafts.new-person', _type: 'person', projectSlug: 'cyce', publicId: '55555555-5555-4555-8555-555555555555', firstName: 'Florian', lastName: 'Parra', visibility: 'listed', sortOrder: 50 })
-    await expect(createPerson(ctx(editor()), PID, { firstName: 'Only', lastName: ' ' }, fake().deps)).rejects.toMatchObject({ code: 'missing_name' })
+    // One-name people are allowed (ADR-043 A4); the first name is not optional.
+    await expect(createPerson(ctx(editor()), PID, { firstName: 'Emmanuelle', lastName: ' ' }, fake().deps)).resolves.toBeTruthy()
+    await expect(createPerson(ctx(editor()), PID, { firstName: ' ', lastName: 'Parra' }, fake().deps)).rejects.toMatchObject({ code: 'missing_name' })
   })
 
   it('save: allow-list before any read; identity and bookkeeping fields cannot be set', async () => {

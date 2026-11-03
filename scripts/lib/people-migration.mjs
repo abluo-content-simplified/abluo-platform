@@ -181,7 +181,7 @@ function buildProposal(projectSlug, group) {
   if (website.conflict) conflicts.website = website.conflict
   if (honorific.conflict) conflicts.honorific = honorific.conflict
   if (photo.conflict) conflicts.photo = photo.conflict
-  if (lead.singleWord) flags.push('single-word name: lastName is empty and must be filled in the report before apply')
+  if (lead.singleWord) flags.push('single-word name: no last name (allowed; add one in the report if known)')
   if (members.every((m) => m.parsed.looksLikeOrganisation)) flags.push('looks like a team or organisation, not a person: probably skip')
   const legacyAnchors = [...new Set(members.map((m) => m.anchorId).filter(Boolean))]
   const hostAnchors = [...new Set(members.map((m) => m.hostAnchor).filter(Boolean))]
@@ -374,7 +374,6 @@ export function blockersOf(p) {
   const why = []
   if (p.decision !== 'create') why.push(`decision is "${p.decision}" (set "create" in the report to apply)`)
   if (!collapse(p.person.firstName)) why.push('firstName is empty')
-  if (!collapse(p.person.lastName)) why.push('lastName is empty (single-word name: fill it in the report)')
   return why
 }
 
@@ -392,7 +391,7 @@ export function buildPersonDocument(projectSlug, p, { sortOrder } = {}) {
     projectSlug,
     publicId: p.publicId,
     firstName: collapse(x.firstName),
-    lastName: collapse(x.lastName),
+    ...(collapse(x.lastName) ? { lastName: collapse(x.lastName) } : {}),
     visibility: 'listed',
     groups: [],
   }

@@ -504,12 +504,12 @@ export async function getPersonForEdit(ctx: TenantAuthorizationContext, projectI
 
 function cleanName(value: unknown, required: boolean, max: number = PERSON_LIMITS.name): string {
   if (value === undefined || value === null) {
-    if (required) throw new PersonError('missing_name', 'First and last name are required.')
+    if (required) throw new PersonError('missing_name', 'A first name is required.')
     return ''
   }
   if (typeof value !== 'string') throw new PersonError('invalid_value', 'A name must be text.')
   const name = value.trim().replace(/\s+/g, ' ')
-  if (required && !name) throw new PersonError('missing_name', 'First and last name are required.')
+  if (required && !name) throw new PersonError('missing_name', 'A first name is required.')
   if (name.length > max) throw new PersonError('invalid_value', 'The name is too long.')
   return name
 }
@@ -610,7 +610,7 @@ export async function createPerson(
     const grant = grantFor(ctx, projectId, PEOPLE_WRITE_PERMISSION)
     const client = deps.client ?? sanityWriteClient
     const firstName = cleanName(input?.firstName, true)
-    const lastName = cleanName(input?.lastName, true)
+    const lastName = cleanName(input?.lastName, false)
     const stats = await client.fetch<{ n?: number; max?: number | null } | null>(
       `{ "n": count(*[_type == "person" && projectSlug == $projectSlug && !(_id in path("versions.**"))]), "max": math::max(*[_type == "person" && projectSlug == $projectSlug && defined(sortOrder)].sortOrder) }`,
       { projectSlug: grant.projectSlug },
@@ -619,7 +619,7 @@ export async function createPerson(
     if ((stats?.n ?? 0) >= PERSON_LIMITS.people * 2) throw new PersonError('too_large', 'This site has too many people.')
     const publicId = (deps.publicUuid ?? randomUUID)()
     const sortOrder = (typeof stats?.max === 'number' && Number.isFinite(stats.max) ? Math.floor(stats.max) : 0) + 10
-    const doc = { _id: `drafts.${id}`, _type: 'person', projectSlug: grant.projectSlug, publicId, firstName, lastName, visibility: DEFAULT_PERSON_VISIBILITY, sortOrder }
+    const doc = { _id: `drafts.${id}`, _type: 'person', projectSlug: grant.projectSlug, publicId, firstName, ...(lastName ? { lastName } : {}), visibility: DEFAULT_PERSON_VISIBILITY, sortOrder }
     const created = (await commit(client, grant.projectSlug, () => client.create(doc, { transactionId }))) as { _rev?: string } | undefined
     return { value: { id, publicId, rev: created?._rev ?? '' }, action: 'created' as const, state: null }
   })
@@ -743,9 +743,15 @@ export async function savePersonDraft(
     const [field, locale] = path.split('.')
     switch (path) {
       case 'firstName':
-      case 'lastName':
         set[path] = cleanName(value, true)
         continue
+      case 'lastName': {
+        // Optional (ADR-043 A4): one-name people.
+        const v = value === null ? '' : cleanName(value, false)
+        if (v) set.lastName = v
+        else unset.push('lastName')
+        continue
+      }
       case 'displayName': {
         const v = value === null ? '' : cleanName(value, false, PERSON_LIMITS.displayName)
         if (v) set.displayName = v
@@ -922,7 +928,7 @@ export async function publishPersonDraft(
       if (draft._rev !== input.rev) throw new PersonError('conflict', 'This person was edited elsewhere.')
       if (anonymisedAtOf(published, draft)) throw new PersonError('anonymised', 'This person was anonymised.')
       if (archivedAtOf(published ?? draft)) throw new PersonError('archived', 'Restore this person before publishing.')
-      if (!str(draft.firstName).trim() || !str(draft.lastName).trim()) throw new PersonError('missing_name', 'First and last name are required.')
+      if (!str(draft.firstName).trim()) throw new PersonError('missing_name', 'A first name is required.')
       if (visibilityOf(draft.visibility) === 'page' && !slugsOf(draft)[site.defaultLocale]) {
         throw new PersonError('missing_slug', 'A person with their own page needs a web address in the main language.')
       }
