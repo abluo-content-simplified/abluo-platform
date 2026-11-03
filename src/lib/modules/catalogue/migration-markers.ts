@@ -25,3 +25,46 @@ export function bornMigratedMarkers(now: Date): CatalogueMigrationState & { _typ
 export function installTimeConfig(moduleId: string, now: Date): Record<string, unknown> {
   return moduleId === 'catalogue' ? { catalogueMigrations: bornMigratedMarkers(now) } : {}
 }
+
+// ── Migration-pending guard (R2 ships before data steps D1–D4 run) ──────────
+//
+// While a project's data still awaits a verified data step (its marker in
+// `catalogueMigrations` is missing), Setup must not change what that step
+// depends on:
+//   * commerce (D2): channel add / activate / default changes — D2 converts the
+//     items' legacy offers using the channel list as stored. Pending when the
+//     marker is missing AND there is something for D2 to convert: stored
+//     channels, or items that still carry legacy `offers` without `formats`
+//     (also with zero channels).
+//   * publicName (D4): the legacy `navLabel` is still the current name. Setup
+//     shows it and writes `publicName` + unsets `navLabel` in one patch, so D4
+//     later finds the project migrated.
+// Pure; the services read the facts and decide with this one function.
+
+export type MigrationPendingStep = 'commerce' | 'publicName'
+export type MigrationPendingFacts = {
+  /** Item documents (drafts included) with legacy `offers` and no `formats`. */
+  unconvertedOfferItems?: number
+}
+
+const markerSet = (config: Record<string, unknown> | null | undefined, step: MigrationPendingStep): boolean => {
+  const m = config?.catalogueMigrations
+  const v = m && typeof m === 'object' && !Array.isArray(m) ? (m as Record<string, unknown>)[step] : undefined
+  return typeof v === 'string' && v.trim() !== ''
+}
+
+const nonEmptyLabel = (v: unknown): boolean =>
+  !!v && typeof v === 'object' && !Array.isArray(v) && Object.entries(v as Record<string, unknown>).some(([k, x]) => !k.startsWith('_') && k !== 'translationStatus' && typeof x === 'string' && x.trim() !== '')
+
+/** True while the data step `step` has not run for this project and Setup must wait for (or carry) it. */
+export function migrationPending(config: Record<string, unknown> | null | undefined, step: MigrationPendingStep, facts: MigrationPendingFacts = {}): boolean {
+  if (markerSet(config, step)) return false
+  if (step === 'publicName') return nonEmptyLabel(config?.navLabel)
+  const channels = Array.isArray(config?.serviceChannels) ? (config!.serviceChannels as unknown[]).filter((c) => c && typeof c === 'object').length : 0
+  return channels > 0 || (facts.unconvertedOfferItems ?? 0) > 0
+}
+
+/** Rows `{ formats?, offers? }` that still carry legacy offers and no formats (the D2 work left). */
+export function unconvertedOfferItems(rows: readonly { formats?: unknown; offers?: unknown }[]): number {
+  return rows.filter((r) => Array.isArray(r.offers) && r.offers.some((o) => o !== null && o !== undefined) && !(Array.isArray(r.formats) && r.formats.length > 0)).length
+}

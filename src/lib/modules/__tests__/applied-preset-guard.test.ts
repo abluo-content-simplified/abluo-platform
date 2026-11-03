@@ -31,6 +31,8 @@ const PRESET_ALLOWED = [
   'lib/modules/__tests__/applied-preset-guard.test.ts',
   // C7 history reader: reads `appliedPreset{bookshop,1}` virtually as `bookshop@1` until data step D3.
   'lib/modules/catalogue/packs/',
+  // Test fixture only: Setup's settings reader treats a legacy record as "setup complete" (via packs/setup-state).
+  'lib/modules/catalogue/settings/__tests__/service.test.ts',
   // ⚠️ NARROWED EXCEPTIONS (Amendment I slice 4d) — the image shape now follows each
   // item's profile (registry). The preset is read ONLY as a fallback for items
   // that have no profile yet (created in Studio). D-13 part 4 puts `itemImageShape` and
@@ -65,7 +67,14 @@ const SETUP_SOURCE_ALLOWED = [
 ].map(norm)
 
 /** Outside these, an import from `catalogue/packs/` may only be `{ isSetupComplete }` from `packs/setup-state`. */
-const PACKS_IMPORT_ALLOWED = ['lib/modules/catalogue/packs/', 'components/client/catalogue/setup/', 'app/[locale]/(client)/[tenant]/catalogue/setup/starters/', 'lib/modules/__tests__/applied-preset-guard.test.ts'].map(norm)
+const PACKS_IMPORT_ALLOWED = [
+  'lib/modules/catalogue/packs/',
+  'components/client/catalogue/setup/',
+  'app/[locale]/(client)/[tenant]/catalogue/setup/starters/',
+  // The Setup config reader/writer: reads the setup state (legacy preset record = completed, source 'pack') via packs/setup-state.
+  'lib/modules/catalogue/settings/',
+  'lib/modules/__tests__/applied-preset-guard.test.ts',
+].map(norm)
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {

@@ -52,7 +52,7 @@ export function fakeSanity(seed: Doc[], opts: { items?: Doc[] } = {}) {
   const seenTx = new Set<string>()
   let failNext: null | ((n: number) => Error | 'lost' | null) = null
   let commitCount = 0
-  const docs = () => [...store.values()].filter((d) => d.projectSlug === SLUG)
+  const docs = () => [...store.values()].filter((d) => d.projectSlug === SLUG && !(d._type === 'project' && d._id.startsWith('drafts.')))
   const fetch = vi.fn(async (q: string, params: Record<string, unknown> = {}) => {
     await Promise.resolve()
     if (q.startsWith('count(*[_type == "project"')) return 1
@@ -62,7 +62,7 @@ export function fakeSanity(seed: Doc[], opts: { items?: Doc[] } = {}) {
       const site = all.find((d) => d._type === 'siteConfig')
       return {
         site: site ? { defaultLocale: site.defaultLocale, supportedLocales: site.supportedLocales } : null,
-        project: { _id: project._id, _rev: project._rev, inst: (project.moduleInstallations as Record<string, unknown>[]).find((i) => i.moduleId === 'catalogue') },
+        project: { _id: project._id, _rev: project._rev, hasDraft: store.has(`drafts.${project._id}`), inst: (project.moduleInstallations as Record<string, unknown>[]).find((i) => i.moduleId === 'catalogue') },
         taxonomy: store.get(params.taxonomyId as string) ?? null,
         history: store.get(params.historyId as string) ?? null,
         runs: all.filter((d) => d._type === 'cataloguePackRun'),
@@ -70,6 +70,7 @@ export function fakeSanity(seed: Doc[], opts: { items?: Doc[] } = {}) {
           .filter((d) => d._type === 'catalogueCollection')
           .map((d) => ({ _id: d._id, _rev: d._rev, name: d.name, slug: d.slug, sectionKeys: ((d.sections as { _key: string }[]) ?? []).map((s) => s._key), full: /^(drafts\.)?catalogue-collection\./.test(d._id) ? d : null })),
         items: all.filter((d) => d._type === 'catalogueItem' && d.slug).map((d) => ({ _id: d._id, slug: d.slug })),
+        legacyOfferItems: all.filter((d) => d._type === 'catalogueItem' && Array.isArray(d.offers) && d.offers.length > 0 && !(Array.isArray(d.formats) && d.formats.length > 0)).length,
         optionLists: all.filter((d) => d._type === 'catalogueOptionList').map((d) => ({ _id: d._id, name: d.name })),
         pages: all.filter((d) => d._type === 'page').map((d) => ({ _id: d._id, slug: d.slug })),
       }

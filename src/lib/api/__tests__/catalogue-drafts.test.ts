@@ -32,6 +32,8 @@ const ALL = [
   'catalogue.collection.write',
   'catalogue.collection.delete',
   'catalogue.collection.deletePublished',
+  // D-3 / C8: editing allergen content (item.editAllergenContent) — owner and editor by default.
+  'catalogue.allergen.update',
 ]
 const grant = (o: Partial<ProjectGrant> = {}): ProjectGrant => ({
   projectId: 'project-a',
@@ -542,5 +544,38 @@ describe('getCatalogueSite: Catalogue V2 R1 readers (C1 triple dual-read, C11 R-
     const result = await read({}, { ...CONFIG, navLabel: { it: 'Menù' }, publicName: { it: ' Menù ', en: '', _type: 'localizedString' } })
     expect(result.config).not.toHaveProperty('navLabel')
     expect(result.config.publicName).toEqual({ it: 'Menù' })
+  })
+})
+
+describe('support mode never changes allergen content (C8 item.editAllergenContent, D-16)', () => {
+  // A support visit with the client's edit approval: ordinary writes pass, allergen content never.
+  const support = (g: ProjectGrant): TenantAuthorizationContext => ({ ...ctx(g), support: { purpose: 'mutation', writesAllowed: true, sessionId: 's1', projectId: 'project-a' } as never })
+  const published = (o: Record<string, unknown> = {}) => ({ ...draftItem(), _id: 'item-1', _rev: 'p1', ...o })
+
+  it('a save that changes the declaration is refused naming the capability; other saves pass', async () => {
+    const f = fake({ 'drafts.item-1': draftItem() })
+    const err = await patchCatalogueDraft(support(grant()), 'project-a', 'item', { id: 'item-1', rev: 'd1', set: { allergenDeclaration: { status: 'containsListedAllergens', allergens: ['milk'] } } }, f.deps).catch((e) => e)
+    expect(err).toMatchObject({ name: 'CatalogueForbidden', capability: 'catalogue.allergen.update' })
+    expect(f.writes).toEqual([])
+    await patchCatalogueDraft(support(grant()), 'project-a', 'item', { id: 'item-1', rev: 'd1', set: { 'name.it': 'Marinara' } }, f.deps)
+    expect(f.writes.length).toBeGreaterThan(0)
+  })
+
+  it('an option-list save that changes a choice declaration is refused; renaming the choice is not', async () => {
+    const choices = [{ _key: 'a', _type: 'catalogueOption', label: { it: 'Mozzarella' }, kind: 'add', allergenDeclaration: { status: 'containsListedAllergens', allergens: ['milk'] } }]
+    const f = fake({ 'drafts.ol-1': { _id: 'drafts.ol-1', _type: 'catalogueOptionList', _rev: 'o1', projectSlug: 'trattoria', name: { it: 'Extra' }, options: choices } })
+    const changed = [{ ...choices[0], allergenDeclaration: { status: 'noneDeclared', confirmed: true } }]
+    await expect(patchCatalogueDraft(support(grant()), 'project-a', 'optionList', { id: 'ol-1', rev: 'o1', set: { options: changed } }, f.deps)).rejects.toMatchObject({ capability: 'catalogue.allergen.update' })
+    await patchCatalogueDraft(support(grant()), 'project-a', 'optionList', { id: 'ol-1', rev: 'o1', set: { options: [{ ...choices[0], label: { it: 'Bufala' } }] } }, f.deps)
+    expect(f.writes.length).toBeGreaterThan(0)
+  })
+
+  it('a publish that would change the live declaration is refused; the same declaration publishes', async () => {
+    const changed = fake({ 'drafts.item-1': draftItem(), 'item-1': published({ allergenDeclaration: { status: 'containsListedAllergens', allergens: ['gluten'] } }) })
+    await expect(publishCatalogueDraft(support(grant()), 'project-a', 'item', { id: 'item-1', rev: 'd1', mode: 'now' }, changed.deps)).rejects.toMatchObject({ capability: 'catalogue.allergen.update' })
+    expect(changed.writes).toEqual([])
+    const same = fake({ 'drafts.item-1': draftItem({ 'name': { it: 'Marinara' } }), 'item-1': published() })
+    await publishCatalogueDraft(support(grant()), 'project-a', 'item', { id: 'item-1', rev: 'd1', mode: 'now' }, same.deps)
+    expect(same.writes).toEqual(['transaction'])
   })
 })

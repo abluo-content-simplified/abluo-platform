@@ -31,6 +31,8 @@
  *
  * Never written here: `offer.currency` (D7/A6) and `offer.locationKey` (A5).
  */
+import { assertCatalogueOperation } from '@/lib/api/catalogue-capability-guard'
+import { allergenContentChanged } from '@/lib/modules/catalogue/allergens'
 import { isReadingStatus, type ReadingStatus } from '@/lib/modules/catalogue/reading-status'
 import { span } from '@/lib/perf/timing'
 import { approvedShops, awinPublisherIdOf } from '@/lib/affiliate/affiliate-settings'
@@ -762,6 +764,10 @@ export async function patchCatalogueDraft(
     previous,
     newKey,
   })
+  // Support mode (C8): a save that changes allergen content needs `item.editAllergenContent` (refused in support).
+  const afterSave: Record<string, unknown> = { ...previous, ...cleaned.set }
+  for (const k of cleaned.unset) delete afterSave[k]
+  if (allergenContentChanged(kind, previous, afterSave)) assertCatalogueOperation(ctx, projectId, { op: 'item.editAllergenContent' })
   const [, weakLists, weakItems] = await Promise.all([
     cleaned.refs.mediaAssets.length
       ? span('sanity.mediaExist', () => client.fetch<string[] | null>(CATALOGUE_MEDIA_EXIST_QUERY, { projectSlug: grant.projectSlug, ids: cleaned.refs.mediaAssets }).then((found) => {
@@ -874,7 +880,7 @@ export async function publishCatalogueDraft(
         withDependencies: input.withDependencies === true,
         timing: (root, now) => publishTiming(input, root.published, now),
       },
-      cataloguePublishGate(site, deps.uuid ?? randomUUID),
+      cataloguePublishGate(site, deps.uuid ?? randomUUID, { assertAllergenEdit: () => assertCatalogueOperation(ctx, projectId, { op: 'item.editAllergenContent' }) }),
       { client: client as lifecycle.LifecycleClient, now: deps.now, audit: deps.audit }
     ))
     return { id: input.id, publishedAt: r.root.publishedAt as string, slugs: slugsOf(r.root), published: r.published, notLive: r.notLive }

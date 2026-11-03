@@ -190,6 +190,15 @@ describe('CategoryPicker', () => {
     expect(byName(m.host, 'button', 'Add category')).toBeNull()
     expect(m.host.textContent).toContain('Only category editors can add one.')
   })
+
+  it('a key the tree no longer has shows as a removable "Unknown category" chip (kept until removed)', () => {
+    m = mount(<PickerHarness initial={{ primary: 'gone', additional: ['pasta'] }} />)
+    const chips = m.host.querySelector('[aria-label="Categories that no longer exist"]')!
+    expect(chips.textContent).toBe('Unknown categoryPrimary')
+    click(byName(m.host, 'button', 'Remove unknown category 1'))
+    expect(valueOf(m.host)).toEqual({ primary: 'pasta', additional: [] })
+    expect(m.host.textContent).not.toContain('Unknown category')
+  })
 })
 
 // ── WeeklyScheduleEditor ─────────────────────────────────────────────────────

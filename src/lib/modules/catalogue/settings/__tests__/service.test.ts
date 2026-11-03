@@ -47,7 +47,9 @@ const P = 'project-a'
 type Doc = Record<string, unknown> & { _id: string }
 const DINE = { _key: 'c1', _type: 'serviceChannelsEntry', value: 'dine-in', label: { _type: 'localizedString', en: 'Dine-in' }, active: true, defaultAvailability: 'available' }
 const DELIVERY = { _key: 'c2', _type: 'serviceChannelsEntry', value: 'delivery', label: { _type: 'localizedString', en: 'Delivery' }, active: false, defaultAvailability: 'unavailable' }
-const projectDoc = (config: Record<string, unknown> | null = { serviceChannels: [DINE, DELIVERY], currency: 'EUR', publicSegment: 'menu' }): Doc => ({
+/** Data steps D1–D4 done (the markers): Setup may change channels and the public name freely. */
+const MIGRATED = { _type: 'catalogueMigrationMarkers', taxonomy: '2026-11-01T00:00:00Z', commerce: '2026-11-01T00:00:00Z', publicName: '2026-11-01T00:00:00Z' }
+const projectDoc = (config: Record<string, unknown> | null = { serviceChannels: [DINE, DELIVERY], currency: 'EUR', publicSegment: 'menu', catalogueMigrations: MIGRATED }): Doc => ({
   _id: 'project-doc',
   _type: 'project',
   projectSlug: SLUG,
@@ -76,7 +78,9 @@ function fake(seed: Doc[]) {
     if (q.includes('_type == "siteConfig"')) return { defaultLocale: 'en', supportedLocales: ['en', 'it'] }
     if (q.includes('_type == "project"')) {
       const p = docs.find((d) => d._type === 'project')!
-      return { _id: p._id, _rev: p._rev, inst: (p.moduleInstallations as Array<Record<string, unknown>>).find((i) => i.moduleId === 'catalogue') }
+      const inst = (p.moduleInstallations as Array<Record<string, unknown>>).find((i) => i.moduleId === 'catalogue')
+      // `"legacySetup": appliedPreset` and `"hasDraft"` as the GROQ projection reads them.
+      return { _id: p._id, _rev: p._rev, hasDraft: store.has(`drafts.${p._id}`), inst: inst && { ...inst, legacySetup: inst.appliedPreset } }
     }
     if (q.includes('_type == "catalogueTaxonomy"')) return store.get(params.id as string) ?? null
     if (q.includes('_type == "taxonomyTerm"')) return []
@@ -314,5 +318,105 @@ describe('other settings', () => {
   it('without the Catalogue installed: catalogue_not_installed', async () => {
     const g = fake([{ ...projectDoc(), moduleInstallations: [{ _key: 'inst1', moduleId: 'catalogue', enabled: false }] }])
     expect(await code(loadCatalogueSettings(owner(), P, g.deps))).toBe('catalogue_not_installed')
+  })
+})
+
+describe('migration pending (R2 before data steps D1–D4)', () => {
+  const legacyOffers = (id: string) => item(id, { offers: [{ _key: 'o1', _type: 'catalogueOffer', price: 12 }] })
+
+  it('channels: no activation, default change or new channel until the commerce marker; labels and order may change', async () => {
+    const g = fake([projectDoc({ serviceChannels: [DINE, DELIVERY], currency: 'EUR' })])
+    const v = await loadCatalogueSettings(owner(), P, g.deps)
+    expect(v.pending).toEqual({ commerce: true, publicName: false })
+    expect(await code(saveCatalogueChannels(owner(), P, { rev: v.rev, channels: [channelInput(DINE), channelInput(DELIVERY, { active: true })], confirmImpact: true }, g.deps))).toBe('channel_migration_pending')
+    expect(await code(saveCatalogueChannels(owner(), P, { rev: v.rev, channels: [channelInput(DINE, { defaultAvailability: 'unavailable' }), channelInput(DELIVERY)], confirmImpact: true }, g.deps))).toBe('channel_migration_pending')
+    const added = { key: 'takeaway', label: { en: 'Takeaway' }, active: false, defaultAvailability: 'unavailable' }
+    expect(await code(saveCatalogueChannels(owner(), P, { rev: v.rev, channels: [channelInput(DINE), channelInput(DELIVERY), added] }, g.deps))).toBe('channel_migration_pending')
+    expect(await code(removeCatalogueChannel(owner(), P, { rev: v.rev, key: 'delivery', expected: { prices: 0, itemRules: 0, formatRules: 0, categoryRules: 0 } }, g.deps))).toBe('channel_migration_pending')
+    expect(g.commits).toHaveLength(0)
+    // A rename (no rule change) is not something D2 depends on.
+    const r = await saveCatalogueChannels(owner(), P, { rev: v.rev, channels: [channelInput(DINE, { label: { en: 'Eat in' } }), channelInput(DELIVERY)] }, g.deps)
+    expect(r.saved).toBe(true)
+  })
+
+  it('channels: zero channels but items with unconverted offers (tmz) is pending too; the marker lifts it', async () => {
+    const g = fake([projectDoc({ currency: 'EUR' }), legacyOffers('i1')])
+    const v = await loadCatalogueSettings(owner(), P, g.deps)
+    expect(v.pending.commerce).toBe(true)
+    const add = [{ key: 'shop', label: { en: 'Shop' }, active: true, defaultAvailability: 'available' }]
+    expect(await code(saveCatalogueChannels(owner(), P, { rev: v.rev, channels: add, confirmImpact: true }, g.deps))).toBe('channel_migration_pending')
+    // Nothing to convert (no channels, no legacy offers): not pending.
+    const empty = fake([projectDoc({ currency: 'EUR' }), item('i1', { formats: [fmt()] })])
+    expect((await loadCatalogueSettings(owner(), P, empty.deps)).pending.commerce).toBe(false)
+    const migrated = fake([projectDoc({ currency: 'EUR', catalogueMigrations: MIGRATED }), legacyOffers('i1')])
+    const mv = await loadCatalogueSettings(owner(), P, migrated.deps)
+    expect(mv.pending.commerce).toBe(false)
+    expect((await saveCatalogueChannels(owner(), P, { rev: mv.rev, channels: add, confirmImpact: true }, migrated.deps)).saved).toBe(true)
+  })
+
+  it('public name: the legacy navLabel is shown as current; saving writes publicName AND unsets navLabel in one patch, audited as public_name.migrated', async () => {
+    const g = fake([projectDoc({ serviceChannels: [DINE], currency: 'EUR', navLabel: { _type: 'localizedString', en: 'Books', it: 'Libri' }, catalogueMigrations: { commerce: '2026-11-01T00:00:00Z' } })])
+    const v = await loadCatalogueSettings(owner(), P, g.deps)
+    expect(v.publicName).toEqual({ en: 'Books', it: 'Libri' })
+    expect(v.pending.publicName).toBe(true)
+    // Saving unchanged (an empty patch) still migrates it.
+    await saveCatalogueSettings(owner(), P, { rev: v.rev, set: { publicName: {} } }, g.deps)
+    expect(g.commits).toHaveLength(1)
+    const op = g.commits[0].ops[0].v as { set?: Record<string, unknown>; unset?: string[] }
+    expect(op.set).toEqual({ 'moduleInstallations[_key=="inst1"].config.publicName': { _type: 'localizedString', en: 'Books', it: 'Libri' } })
+    expect(op.unset).toEqual(['moduleInstallations[_key=="inst1"].config.navLabel'])
+    expect(g.config()!.navLabel).toBeUndefined()
+    const audit = g.audits.find((a) => a.kind === 'public_name.migrated')!
+    expect(audit.detail).toEqual({ migrationId: 'setup', action: 'copy', old: { en: 'Books', it: 'Libri' }, new: { en: 'Books', it: 'Libri' }, discarded: null })
+    expect(validateAuditDetail(audit.kind, audit.detail)).toBe(true)
+    // D4 later finds it migrated: nothing left to copy.
+    const after = await loadCatalogueSettings(owner(), P, g.deps)
+    expect(after.pending.publicName).toBe(false)
+    expect(after.publicName).toEqual({ en: 'Books', it: 'Libri' })
+  })
+
+  it('public name: an edited name replaces the legacy one; with the marker set navLabel is never read', async () => {
+    const g = fake([projectDoc({ currency: 'EUR', navLabel: { en: 'Books' } })])
+    const v = await loadCatalogueSettings(owner(), P, g.deps)
+    await saveCatalogueSettings(owner(), P, { rev: v.rev, set: { publicName: { en: 'Reading list' } } }, g.deps)
+    expect(g.config()).toMatchObject({ publicName: { en: 'Reading list' } })
+    expect(g.config()!.navLabel).toBeUndefined()
+    expect(g.audits.find((a) => a.kind === 'public_name.migrated')!.detail).toMatchObject({ action: 'copy', old: { en: 'Books' }, new: { en: 'Reading list' } })
+    const done = fake([projectDoc({ currency: 'EUR', navLabel: { en: 'Books' }, catalogueMigrations: MIGRATED })])
+    const dv = await loadCatalogueSettings(owner(), P, done.deps)
+    expect(dv).toMatchObject({ publicName: {}, pending: { publicName: false } })
+  })
+})
+
+describe('setup completion before data step D3 (legacy preset record)', () => {
+  const withPreset = (appliedPreset: unknown) => {
+    const d = projectDoc({ serviceChannels: [DINE], currency: 'EUR', catalogueMigrations: MIGRATED })
+    ;(d.moduleInstallations as Array<Record<string, unknown>>)[0].appliedPreset = appliedPreset
+    return d
+  }
+
+  it('a valid legacy record reads as complete with source pack (the item editor learns only THAT it is complete)', async () => {
+    const g = fake([withPreset({ id: 'bookshop', version: 1, appliedAt: '2026-10-14T09:00:00Z' })])
+    expect((await loadCatalogueSettings(owner(), P, g.deps)).setup).toEqual({ completedAt: '2026-10-14T09:00:00Z', source: 'pack' })
+    expect((await loadCatalogueSettings(editor(), P, g.deps)).setup).toEqual({ completedAt: '2026-10-14T09:00:00Z', source: null })
+    // "Mark complete" leaves it as it is.
+    const r = await completeCatalogueSetup(owner(), P, { rev: 'r0', source: 'manual' }, g.deps)
+    expect(r).toMatchObject({ completedAt: '2026-10-14T09:00:00Z', source: 'pack' })
+    expect(g.commits).toHaveLength(0)
+  })
+
+  it('an invalid legacy record does not count', async () => {
+    const g = fake([withPreset({ id: 'Not A Pack', version: 0 })])
+    expect((await loadCatalogueSettings(owner(), P, g.deps)).setup).toEqual({ completedAt: null, source: null })
+  })
+})
+
+describe('an open Studio draft of the project document (project_draft_exists)', () => {
+  it('Setup writes are refused rather than left to be overwritten when the draft is published', async () => {
+    const g = fake([projectDoc(), { ...projectDoc(), _id: 'drafts.project-doc' }])
+    const v = await loadCatalogueSettings(owner(), P, g.deps)
+    expect(await code(saveCatalogueSettings(owner(), P, { rev: v.rev, set: { showPricesByDefault: false } }, g.deps))).toBe('project_draft_exists')
+    expect(await code(completeCatalogueSetup(owner(), P, { rev: v.rev, source: 'manual' }, g.deps))).toBe('project_draft_exists')
+    expect(g.commits).toHaveLength(0)
   })
 })

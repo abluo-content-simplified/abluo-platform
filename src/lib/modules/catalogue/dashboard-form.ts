@@ -23,13 +23,14 @@ import { bookYearProblem, normalizeIsbn, parseBookYear } from './isbn'
 import { orderedAllergens, type AllergenDeclarationStatus, type AllergenKey } from './allergens'
 import { commerceOf } from './commerce/legacy-commerce'
 import { itemCategoryAssignment } from './taxonomy/read'
+import { convertedAssignment } from './item-writer'
 import { formatIssues, type Format } from './commerce/formats'
 import { priceIssues } from './commerce/prices'
 import { scheduleIssues } from './commerce/availability-schedule'
 import { FORMAT_LIMIT, type ChannelAvailabilityRule, type FormatKey, type IssueLevel } from './commerce/commerce-types'
 import { IMPLICIT_FORMAT_KEY } from './commerce/format-key'
 import type { ChannelSet } from './commerce/channels'
-import type { CategoryAssignment } from './taxonomy/types'
+import type { CategoryAssignment, CategoryTree } from './taxonomy/types'
 
 /** ADR-033 D-2 — what the ITEM is (not the tenant). */
 export { PROFILE_ORDER as ITEM_PROFILES, isItemProfile, type ItemProfile } from './profiles'
@@ -848,7 +849,7 @@ export type ItemState = {
   visibility: Visibility
 }
 
-export function itemStateFromDoc(doc: Record<string, unknown> | null | undefined, fallbackProfile: ItemProfile | null = null, channels?: ChannelSet): ItemState {
+export function itemStateFromDoc(doc: Record<string, unknown> | null | undefined, fallbackProfile: ItemProfile | null = null, channels?: ChannelSet, tree?: CategoryTree): ItemState {
   const d = doc ?? {}
   const commerce = itemCommerceFromDoc(d, channels)
   return {
@@ -858,8 +859,9 @@ export function itemStateFromDoc(doc: Record<string, unknown> | null | undefined
     bookDetails: bookDetailsFromDoc(d.bookDetails),
     description: textsOf(d.description),
     links: linkFormsFromDoc(d.links),
-    // Catalogue V2 C1: primary + additional when stored, else the legacy list (first key primary, D-15).
-    assignment: itemCategoryAssignment(d),
+    // Catalogue V2 C1: primary + additional when stored, else the legacy list with the server's
+    // first-save rule (`convertedAssignment`: first EXISTING key primary, every key kept, D-15).
+    assignment: tree && Array.isArray(d.categories) && d.primaryCategory === undefined && d.additionalCategories === undefined ? convertedAssignment(d.categories, tree) : itemCategoryAssignment(d),
     tags: stringsOf(d.tags),
     imageIds: refsOf(d.images),
     formats: commerce.formats,

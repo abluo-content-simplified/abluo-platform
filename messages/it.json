@@ -3936,7 +3936,10 @@
         "creating": "Aggiunta in corso…",
         "cancel": "Annulla",
         "nameRequired": "Dai un nome alla categoria.",
-        "createError": "Non è stato possibile aggiungere la categoria. Riprova."
+        "createError": "Non è stato possibile aggiungere la categoria. Riprova.",
+        "unknown": "Categoria sconosciuta",
+        "unknownList": "Categorie che non esistono più",
+        "removeUnknown": "Rimuovi la categoria sconosciuta {n}"
       },
       "schedule": {
         "baseline": "Di solito",
@@ -6556,7 +6559,9 @@
           },
           "price": {
             "title": "Quanto costa?",
-            "helper": "Un prezzo per ogni modo in cui lo vendi. I prezzi sono nella valuta del sito."
+            "helper": "Un prezzo per ogni modo in cui lo vendi. I prezzi sono nella valuta del sito.",
+            "legacyCheckTitle": "Questi prezzi vanno controllati",
+            "legacyCheckBody": "I prezzi precedenti di questo articolo non possono essere trasferiti così come sono nel nuovo listino. Restano invariati sul tuo sito; il tuo referente Abluo li controllerà prima che si possano modificare qui."
           },
           "details": {
             "title": "Informazioni alimentari",
@@ -6950,7 +6955,8 @@
       "channel_migration_pending": "I canali si potranno modificare dopo l’aggiornamento dei dati del catalogo.",
       "segment_invalid": "Scegli un altro indirizzo web.",
       "currency_invalid": "Scegli una valuta dall’elenco.",
-      "dietary_in_use": "Alcuni elementi usano ancora questa indicazione alimentare. Rimuovila prima da loro."
+      "dietary_in_use": "Alcuni elementi usano ancora questa indicazione alimentare. Rimuovila prima da loro.",
+      "project_draft_exists": "Le impostazioni di questo sito hanno modifiche non pubblicate in sospeso altrove. Non è stato salvato nulla. Chiedi al tuo referente Abluo di completarle, poi riprova."
     },
     "setup": {
       "common": {
@@ -7057,7 +7063,8 @@
         "delete": "Elimina",
         "archiveNeedsSetup": "Per archiviare serve il permesso Gestire la configurazione del catalogo.",
         "archivedDone": "{name} archiviata.",
-        "restoredDone": "{name} ripristinata."
+        "restoredDone": "{name} ripristinata.",
+        "restoreNeedsSetup": "Per ripristinare serve il permesso Gestire la configurazione del Catalogo."
       },
       "delete": {
         "title": "Elimina {name}",
@@ -7202,7 +7209,10 @@
         "removeCounts": "Così rimuovi anche {prices, plural, =0 {nessun prezzo} one {# prezzo} other {# prezzi}}, {itemRules, plural, =0 {nessuna regola di elemento} one {# regola di elemento} other {# regole di elemento}} e {categoryRules, plural, =0 {nessuna regola di categoria} one {# regola di categoria} other {# regole di categoria}} di questo canale. Non si può annullare. Per conservarli, disattiva il canale invece di rimuoverlo.",
         "removeConfirm": "Rimuovi canale",
         "removeWithCleanup": "Rimuovi canale e tutto questo",
-        "removeCountsChanged": "Nel frattempo qualcosa è cambiato: questi sono i nuovi numeri. Controllali di nuovo prima di rimuovere."
+        "removeCountsChanged": "Nel frattempo qualcosa è cambiato: questi sono i nuovi numeri. Controllali di nuovo prima di rimuovere.",
+        "pendingTitle": "Completamento dell’aggiornamento del Catalogo",
+        "pendingBody": "Aggiungere canali, attivarli o disattivarli e cambiarne gli orari predefiniti sarà possibile dopo l’aggiornamento dei dati. Fino ad allora tutto continua a funzionare come ora.",
+        "pendingReason": "Completamento dell’aggiornamento del Catalogo: disponibile dopo l’aggiornamento dei dati."
       },
       "defaults": {
         "title": "Valori predefiniti",
@@ -7267,7 +7277,9 @@
         "timeZoneTitle": "Fuso orario",
         "timeZoneIs": "Gli orari e i prezzi a orario usano {zone}.",
         "timeZoneMissing": "Non è ancora impostato un fuso orario. Orari e prezzi a orario ne hanno bisogno.",
-        "timeZoneEdit": "Modifica nelle Impostazioni"
+        "timeZoneEdit": "Modifica nelle Impostazioni",
+        "namePendingTitle": "Completamento dell’aggiornamento del Catalogo",
+        "namePendingBody": "Questo nome proviene dalla configurazione precedente. Salvalo qui, così com’è o modificato, per mantenerlo come nome pubblico."
       }
     },
     "packs": {
@@ -7378,7 +7390,8 @@
         "pack_plan_changed": "Nel frattempo è cambiato qualcosa. Controlla l’anteprima aggiornata e aggiungi di nuovo.",
         "pack_interrupted": "L’aggiunta si è interrotta. Ciò che è stato aggiunto resta; aprila di nuovo per completarla.",
         "pack_failed": "Non è stato possibile aggiungerla. Non è cambiato nulla; riprova.",
-        "catalogue_not_installed": "Il Catalogo non è attivo per questo sito."
+        "catalogue_not_installed": "Il Catalogo non è attivo per questo sito.",
+        "project_draft_exists": "Le impostazioni di questo sito hanno modifiche non pubblicate in sospeso altrove. Non è stato aggiunto nulla. Chiedi al tuo referente Abluo di completarle, poi riprova."
       },
       "history": "Aggiunte finora",
       "historyEmpty": "Non è ancora stata aggiunta nessuna struttura di partenza.",

@@ -32,6 +32,7 @@ import { auditEntry, type CatalogueAuditEntry, type CatalogueAuditKind, type Cat
 import { recordCatalogueActivity, type CatalogueAuditWriter } from '../audit/writer'
 import { CATEGORY_RULES, availabilityInputsOf } from '../commerce/channel-availability'
 import { channelSetOf, readChannels } from '../commerce/channels'
+import { migrationPending } from '../migration-markers'
 import { availabilityImpact, type AvailabilityImpact } from '../commerce/impact'
 import { isItemProfile } from '../profiles'
 import { configKeysPatch } from '../settings/service'
@@ -48,7 +49,7 @@ import { historyKeyOf, isBlocked, packUpdateOffers, planPack, planPackUpdate, ty
 import { getPack, listPacks } from './registry'
 import type { AppliedPackAdded, AppliedPackRecord, PackDeclaration, PackHistoryEntry, PackId } from './types'
 
-export type PackErrorCode = 'pack_unknown' | 'pack_forbidden' | 'pack_already_applied' | 'pack_blocked' | 'pack_plan_changed' | 'pack_conflict' | 'pack_interrupted' | 'pack_failed' | 'catalogue_not_installed'
+export type PackErrorCode = 'project_draft_exists' | 'pack_unknown' | 'pack_forbidden' | 'pack_already_applied' | 'pack_blocked' | 'pack_plan_changed' | 'pack_conflict' | 'pack_interrupted' | 'pack_failed' | 'catalogue_not_installed'
 
 type Client = Pick<typeof sanityWriteClient, 'fetch' | 'transaction'>
 export type PackServiceDeps = { client?: Client; now?: () => Date; audit?: CatalogueAuditWriter }
@@ -57,24 +58,27 @@ const RAW = { perspective: 'raw' } as const
 
 export const PACK_STATE_QUERY = /* groq */ `{
   "site": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales },
-  "project": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ _id, _rev, "inst": moduleInstallations[moduleId == "catalogue"][0]{ _key, enabled, config, appliedPreset } },
+  "project": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ _id, _rev, "hasDraft": count(*[_id == "drafts." + ^._id]) > 0, "inst": moduleInstallations[moduleId == "catalogue"][0]{ _key, enabled, config, appliedPreset } },
   "taxonomy": *[_type == "catalogueTaxonomy" && _id == $taxonomyId && projectSlug == $projectSlug][0]{ _id, _rev, categories, tags },
   "history": *[_type == "${PACK_HISTORY_TYPE}" && _id == $historyId && projectSlug == $projectSlug][0]{ _id, _rev, applied },
   "runs": *[_type == "${PACK_RUN_TYPE}" && projectSlug == $projectSlug]{ _id, _rev, packId, packVersion, status, journal },
   "collections": *[_type == "catalogueCollection" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{ _id, _rev, name, slug, "sectionKeys": sections[]._key, "full": select(_id match "catalogue-collection.*" || _id match "drafts.catalogue-collection.*" => @) },
   "items": *[_type == "catalogueItem" && projectSlug == $projectSlug && !(_id in path("versions.**")) && defined(slug)]{ _id, slug },
+  "legacyOfferItems": count(*[_type == "catalogueItem" && projectSlug == $projectSlug && !(_id in path("versions.**")) && count(offers) > 0 && !(count(formats) > 0)]),
   "optionLists": *[_type == "catalogueOptionList" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{ _id, name },
   "pages": *[_type == "page" && projectSlug == $projectSlug]{ _id, slug }
 }`
 
 type RawState = {
   site?: { defaultLocale?: string | null; supportedLocales?: string[] | null } | null
-  project?: { _id: string; _rev: string; inst?: { _key?: string | null; enabled?: boolean | null; config?: Record<string, unknown> | null; appliedPreset?: unknown } | null } | null
+  project?: { _id: string; _rev: string; hasDraft?: boolean | null; inst?: { _key?: string | null; enabled?: boolean | null; config?: Record<string, unknown> | null; appliedPreset?: unknown } | null } | null
   taxonomy?: { _id: string; _rev: string; categories?: unknown; tags?: unknown } | null
   history?: { _id: string; _rev: string; applied?: unknown } | null
   runs?: { _id: string; _rev?: string; packId?: string; packVersion?: number; status?: string; journal?: Partial<AppliedPackAdded> }[] | null
   collections?: { _id: string; _rev?: string; name?: unknown; slug?: unknown; sectionKeys?: (string | null)[] | null; full?: Record<string, unknown> | null }[] | null
   items?: { _id: string; slug?: unknown }[] | null
+  /** Items (drafts included) still carrying legacy offers without formats — data step D2's work left. */
+  legacyOfferItems?: number | null
   optionLists?: { _id: string; name?: unknown }[] | null
   pages?: PageSlugRow[] | null
 }
@@ -98,7 +102,7 @@ const slugsOf = (v: unknown): Record<string, string> => {
 const baseId = (id: string) => id.replace(/^drafts\./, '')
 const rows = (v: unknown): StoredRow[] => (Array.isArray(v) ? v.filter((r): r is StoredRow => !!r && typeof r === 'object') : [])
 
-export type ReadPackState = { state: CatalogueState; history: PackHistoryEntry[]; currency: string | null; runs: NonNullable<RawState['runs']>; otherCollections: { id: string; name: Record<string, string> }[]; project: { _id: string; inst: { _key?: string | null; config?: unknown } } }
+export type ReadPackState = { hasProjectDraft: boolean; state: CatalogueState; history: PackHistoryEntry[]; currency: string | null; runs: NonNullable<RawState['runs']>; otherCollections: { id: string; name: Record<string, string> }[]; project: { _id: string; inst: { _key?: string | null; config?: unknown } } }
 
 /** Raw read → CatalogueState (pure; exported for tests). */
 export function packStateOf(projectSlug: string, raw: RawState, seedTerms: unknown[] | null): ReadPackState {
@@ -143,12 +147,14 @@ export function packStateOf(projectSlug: string, raw: RawState, seedTerms: unkno
     categories: readCategoryNodes(categoryRows),
     tags: readTagNodes(tagRows),
     channels: read.all,
-    channelsUnmigrated: read.unmigrated,
+    // Stored channels predate C2, or data step D2 has not run (migrationPending): no channel is added.
+    channelsUnmigrated: read.unmigrated || migrationPending(config, 'commerce', { unconvertedOfferItems: raw.legacyOfferItems ?? 0 }),
     settings: {
       setupCompletedAt: typeof config.setupCompletedAt === 'string' && config.setupCompletedAt ? config.setupCompletedAt : null,
       publicSegment: typeof config.publicSegment === 'string' && config.publicSegment ? config.publicSegment : null,
       publicSegmentHistory: Array.isArray(config.publicSegmentHistory) ? (config.publicSegmentHistory as unknown[]).filter((x): x is string => typeof x === 'string') : [],
-      publicName: strMap(config.publicName),
+      // A legacy `navLabel` (data step D4 not run) is the current name: a pack never proposes overwriting it.
+      publicName: Object.keys(strMap(config.publicName)).length ? strMap(config.publicName) : strMap(config.navLabel),
       defaultItemProfile: isItemProfile(config.defaultItemProfile) ? config.defaultItemProfile : null,
     },
     collections: [...collections.values()].map(({ draft: _d, published: _p, ...c }) => (void _d, void _p, c)),
@@ -168,6 +174,7 @@ export function packStateOf(projectSlug: string, raw: RawState, seedTerms: unkno
   }
   const packCollectionIds = new Set(listPacks().flatMap((p) => p.collections.map((c) => `catalogue-collection.${projectSlug}.${c.key.replace(/_/g, '-')}`)))
   return {
+    hasProjectDraft: raw.project.hasDraft === true,
     state,
     history,
     currency: typeof config.currency === 'string' ? config.currency : null,
@@ -337,6 +344,8 @@ export async function applyPack(
   if (r.history.some((h) => h._key === historyKeyOf(pack))) return { ok: false, code: 'pack_already_applied', plan }
   if (plan.fingerprint !== req.planFingerprint) return { ok: false, code: 'pack_plan_changed', plan }
   if (isBlocked(plan)) return { ok: false, code: 'pack_blocked', plan }
+  // An open Studio draft of the project document would overwrite the pack's config on publish.
+  if (r.hasProjectDraft) return { ok: false, code: 'project_draft_exists', plan }
 
   const now = (a.deps.now?.() ?? new Date()).toISOString()
   const run = r.runs.find((x) => x._id === packRunId(a.projectSlug, pack) && x.status === 'running')

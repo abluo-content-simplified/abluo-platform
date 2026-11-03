@@ -138,7 +138,16 @@ Approval = the four green staging report ids above, written into the release not
 
 C10-6: R2 (writers + Setup + Studio config lock) must be **released and promoted to production before any production data step**. Nothing below runs until `https://abluo.app/api/version` reports the R2 release.
 
+**While R2 is live and D1–D4 have not run**, Setup holds back what the pending steps depend on (one pure guard, `migrationPending` in `src/lib/modules/catalogue/migration-markers.ts`):
+- **Channels wait for D2.** Adding a channel, switching one on or off, changing a default (and removing one) is refused with `channel_migration_pending` until `catalogueMigrations.commerce` is set — also in a project with no channels whose items still carry unconverted `offers` (tmz). Packs do not add channels either. Setup shows "Finishing the Catalogue update".
+- **The public name waits for D4, or migrates itself.** Until `catalogueMigrations.publicName` is set, Setup → Public Website shows the legacy `navLabel` as the current name; saving it writes `publicName` and unsets `navLabel` in the same patch (audit `public_name.migrated`, `migrationId: setup`), so D4 later finds nothing to copy (plan `none`). Packs treat an existing `navLabel` as an already-set name.
+- **Setup completion:** the legacy `appliedPreset {bookshop,1}` counts as "set up" (source pack) before D3, so tmz never sees the food setup flow.
+- **Item saves:** a legacy item whose offers would not convert exactly (`legacyOfferRefusals`) keeps `offers` and gets no `formats` on save; the editor says its prices need a check. Unknown stale category keys are kept, never a reason to refuse a save.
+- **Setup writes refuse while the project document has a Studio draft** (`project_draft_exists`): publish or discard that draft first.
+
 ## 8. P′ — refresh before the production data steps (read-only)
+
+**Freeze Catalogue editing on the project first** (minutes, for P′ and D1–D4): agree a short window with the tenant in which nobody edits the Catalogue (items, Setup, categories) in the dashboard, and do not edit in Studio. An edit between P′ and D4 is not in the rollback artefact and can make a step's pre-flight differ from P′. Lift the freeze after §10 verifies.
 
 ```bash
 npx tsx scripts/catalogue/export-catalogue.mjs --dataset production --label p-prime

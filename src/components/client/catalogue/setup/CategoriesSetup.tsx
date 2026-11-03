@@ -24,11 +24,24 @@ const CONFLICTS = new Set(['category_conflict', 'tag_conflict', 'conflict'])
  * shown disabled with the reason otherwise. Every change goes through CatalogueTaxonomyService
  * (taxonomy-actions) and the list is reloaded after it, so revisions and fingerprints stay current.
  */
-export function CategoriesSetup({ projectSlug, initial, channels, backHref }: { projectSlug: string; initial: CatalogueTaxonomyView; channels: readonly ChannelDraft[]; backHref: string | null }) {
+export function CategoriesSetup({
+  projectSlug,
+  initial,
+  channels,
+  backHref,
+  initialTab = 'categories',
+}: {
+  projectSlug: string
+  initial: CatalogueTaxonomyView
+  channels: readonly ChannelDraft[]
+  backHref: string | null
+  /** `?tab=tags` (e.g. from the item editor's "Manage" link under tags). */
+  initialTab?: 'categories' | 'tags'
+}) {
   const t = useTranslations('catalogue.setup.categories')
   const tt = useTranslations('catalogue.setup.tags')
   const [view, setView] = useState(initial)
-  const [tab, setTab] = useState<'categories' | 'tags'>('categories')
+  const [tab, setTab] = useState<'categories' | 'tags'>(initialTab)
   const [adding, setAdding] = useState<NameSheetTarget | null>(null)
   const toast = useSetupToast()
   const tree = useMemo(() => buildTree(view.categories), [view.categories])

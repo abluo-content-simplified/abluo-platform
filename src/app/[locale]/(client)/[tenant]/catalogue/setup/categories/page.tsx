@@ -12,12 +12,13 @@ import { openSetupSection, readOr404 } from '../setup-route'
  */
 export const dynamic = 'force-dynamic'
 
-export default async function CatalogueSetupCategoriesPage({ params }: { params: Promise<{ tenant: string }> }) {
+export default async function CatalogueSetupCategoriesPage({ params, searchParams }: { params: Promise<{ tenant: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { ctx, grant, projectSlug, backHref } = await openSetupSection(params, 'categories')
+  const query = (await searchParams) ?? {}
   const [taxonomy, settings] = await readOr404(() => Promise.all([listTaxonomy(ctx, grant.projectId), loadCatalogueSettings(ctx, grant.projectId)]))
   return (
     <PageShell>
-      <CategoriesSetup projectSlug={projectSlug} initial={taxonomy} channels={channelDraftsOf(settings.channels, settings.locales)} backHref={backHref} />
+      <CategoriesSetup projectSlug={projectSlug} initial={taxonomy} channels={channelDraftsOf(settings.channels, settings.locales)} backHref={backHref} initialTab={query.tab === 'tags' ? 'tags' : 'categories'} />
     </PageShell>
   )
 }

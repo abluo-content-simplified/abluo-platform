@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { AvailabilitySwitch } from '@/components/app/ui/AvailabilitySwitch'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
@@ -42,6 +42,7 @@ export function CategorySheet({
   const [drafts, setDrafts] = useState<Record<string, ChannelAvailabilityRule | null>>({})
   const [pending, setPending] = useState<Pending | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const archiveReasonId = useId()
   // A different category starts with no unsaved rule changes.
   const [shownKey, setShownKey] = useState(categoryKey)
   if (shownKey !== categoryKey) {
@@ -140,8 +141,14 @@ export function CategorySheet({
         <Panel tone="muted">
           <h3 className="text-[0.9375rem] font-semibold">{node.archivedAt ? t('restoreTitle') : t('archiveTitle')}</h3>
           <p className="mt-1 text-[0.9375rem] leading-6 text-muted-foreground">{node.archivedAt ? t('restoreBody') : t('archiveBody')}</p>
+          {/* Disabled Archive / Restore says why (Tom's rule): the reason sits above the button and describes it. */}
+          {!manage ? (
+            <p id={archiveReasonId} className="mt-2 text-sm text-muted-foreground">
+              {node.archivedAt ? t('restoreNeedsSetup') : t('archiveNeedsSetup')}
+            </p>
+          ) : null}
           <div className="mt-3 flex flex-wrap items-start gap-2">
-            <Button variant="secondary" disabled={!manage || busy !== null} onClick={() => void archive(!node.archivedAt)}>
+            <Button variant="secondary" disabled={!manage || busy !== null} aria-describedby={manage ? undefined : archiveReasonId} title={manage ? undefined : node.archivedAt ? t('restoreNeedsSetup') : t('archiveNeedsSetup')} onClick={() => void archive(!node.archivedAt)}>
               {node.archivedAt ? t('restore') : t('archive')}
             </Button>
             {view.can.write || manage ? (
@@ -150,7 +157,6 @@ export function CategorySheet({
               </Button>
             ) : null}
           </div>
-          {!manage ? <p className="mt-2 text-sm text-muted-foreground">{t('archiveNeedsSetup')}</p> : null}
         </Panel>
       </div>
       {pending ? (

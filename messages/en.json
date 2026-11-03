@@ -3936,7 +3936,10 @@
         "creating": "Adding…",
         "cancel": "Cancel",
         "nameRequired": "Give the category a name.",
-        "createError": "The category couldn’t be added. Try again."
+        "createError": "The category couldn’t be added. Try again.",
+        "unknown": "Unknown category",
+        "unknownList": "Categories that no longer exist",
+        "removeUnknown": "Remove unknown category {n}"
       },
       "schedule": {
         "baseline": "Usually",
@@ -6556,7 +6559,9 @@
           },
           "price": {
             "title": "What does it cost?",
-            "helper": "One price per way you sell it. Prices are in your site's currency."
+            "helper": "One price per way you sell it. Prices are in your site's currency.",
+            "legacyCheckTitle": "These prices need a check",
+            "legacyCheckBody": "This item’s earlier prices can’t be moved to the new price list as they are. They stay on your website unchanged; your Abluo contact will check them before they can be edited here."
           },
           "details": {
             "title": "Food information",
@@ -6950,7 +6955,8 @@
       "channel_migration_pending": "Channels can be edited once the Catalogue data update has run.",
       "segment_invalid": "Choose another web address.",
       "currency_invalid": "Choose a currency from the list.",
-      "dietary_in_use": "Items still use this dietary tag. Remove it from them first."
+      "dietary_in_use": "Items still use this dietary tag. Remove it from them first.",
+      "project_draft_exists": "This website’s settings have unpublished changes waiting elsewhere. Nothing was saved. Ask your Abluo contact to finish them, then try again."
     },
     "setup": {
       "common": {
@@ -7057,7 +7063,8 @@
         "delete": "Delete",
         "archiveNeedsSetup": "Archiving needs the Manage Catalogue Setup permission.",
         "archivedDone": "{name} archived.",
-        "restoredDone": "{name} restored."
+        "restoredDone": "{name} restored.",
+        "restoreNeedsSetup": "Restoring needs the Manage Catalogue Setup permission."
       },
       "delete": {
         "title": "Delete {name}",
@@ -7202,7 +7209,10 @@
         "removeCounts": "This also removes {prices, plural, =0 {no prices} one {# price} other {# prices}}, {itemRules, plural, =0 {no item rules} one {# item rule} other {# item rules}} and {categoryRules, plural, =0 {no category rules} one {# category rule} other {# category rules}} for this channel. This can’t be undone. To keep them, switch the channel off instead.",
         "removeConfirm": "Remove channel",
         "removeWithCleanup": "Remove channel and these",
-        "removeCountsChanged": "Something changed in the meantime: these are the new numbers. Check them again before removing."
+        "removeCountsChanged": "Something changed in the meantime: these are the new numbers. Check them again before removing.",
+        "pendingTitle": "Finishing the Catalogue update",
+        "pendingBody": "Adding channels, switching them on or off and changing their default hours are available after the data update. Everything keeps working as it is until then.",
+        "pendingReason": "Finishing the Catalogue update: available after the data update."
       },
       "defaults": {
         "title": "Item Defaults",
@@ -7267,7 +7277,9 @@
         "timeZoneTitle": "Time zone",
         "timeZoneIs": "Opening hours and timed prices use {zone}.",
         "timeZoneMissing": "No time zone is set yet. Hours and timed prices need one.",
-        "timeZoneEdit": "Change in Settings"
+        "timeZoneEdit": "Change in Settings",
+        "namePendingTitle": "Finishing the Catalogue update",
+        "namePendingBody": "This name comes from your earlier setup. Save it here, as it is or changed, to keep it as the public name."
       }
     },
     "packs": {
@@ -7378,7 +7390,8 @@
         "pack_plan_changed": "Something changed in the meantime. Check the updated preview and add again.",
         "pack_interrupted": "Adding was interrupted. What was added is kept; open it again to finish.",
         "pack_failed": "It could not be added. Nothing was changed; try again.",
-        "catalogue_not_installed": "The Catalogue is not switched on for this website."
+        "catalogue_not_installed": "The Catalogue is not switched on for this website.",
+        "project_draft_exists": "This website’s settings have unpublished changes waiting elsewhere. Nothing was added. Ask your Abluo contact to finish them, then try again."
       },
       "history": "Added so far",
       "historyEmpty": "No starter structure has been added yet.",

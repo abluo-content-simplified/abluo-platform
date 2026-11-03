@@ -3936,7 +3936,10 @@
         "creating": "Wird hinzugefügt…",
         "cancel": "Abbrechen",
         "nameRequired": "Gib der Kategorie einen Namen.",
-        "createError": "Die Kategorie konnte nicht hinzugefügt werden. Versuche es noch einmal."
+        "createError": "Die Kategorie konnte nicht hinzugefügt werden. Versuche es noch einmal.",
+        "unknown": "Unbekannte Kategorie",
+        "unknownList": "Kategorien, die es nicht mehr gibt",
+        "removeUnknown": "Unbekannte Kategorie {n} entfernen"
       },
       "schedule": {
         "baseline": "Normalerweise",
@@ -6556,7 +6559,9 @@
           },
           "price": {
             "title": "Was kostet es?",
-            "helper": "Ein Preis pro Verkaufsweg. Preise sind in der Währung deiner Website."
+            "helper": "Ein Preis pro Verkaufsweg. Preise sind in der Währung deiner Website.",
+            "legacyCheckTitle": "Diese Preise müssen geprüft werden",
+            "legacyCheckBody": "Die bisherigen Preise dieses Eintrags lassen sich nicht unverändert in die neue Preisliste übernehmen. Auf deiner Website bleiben sie wie sie sind; dein Abluo-Kontakt prüft sie, bevor du sie hier bearbeiten kannst."
           },
           "details": {
             "title": "Lebensmittelinformationen",
@@ -6950,7 +6955,8 @@
       "channel_migration_pending": "Kanäle lassen sich bearbeiten, sobald die Aktualisierung der Katalogdaten gelaufen ist.",
       "segment_invalid": "Wähle eine andere Webadresse.",
       "currency_invalid": "Wähle eine Währung aus der Liste.",
-      "dietary_in_use": "Diese Ernährungsangabe wird noch von Artikeln verwendet. Entferne sie dort zuerst."
+      "dietary_in_use": "Diese Ernährungsangabe wird noch von Artikeln verwendet. Entferne sie dort zuerst.",
+      "project_draft_exists": "Die Einstellungen dieser Website haben an anderer Stelle noch unveröffentlichte Änderungen. Es wurde nichts gespeichert. Bitte deinen Abluo-Kontakt, sie abzuschließen, und versuch es dann noch einmal."
     },
     "setup": {
       "common": {
@@ -7057,7 +7063,8 @@
         "delete": "Löschen",
         "archiveNeedsSetup": "Zum Archivieren brauchst du die Berechtigung Katalog-Einrichtung verwalten.",
         "archivedDone": "{name} archiviert.",
-        "restoredDone": "{name} wiederhergestellt."
+        "restoredDone": "{name} wiederhergestellt.",
+        "restoreNeedsSetup": "Zum Wiederherstellen brauchst du die Berechtigung „Katalog-Einrichtung verwalten“."
       },
       "delete": {
         "title": "{name} löschen",
@@ -7202,7 +7209,10 @@
         "removeCounts": "Damit werden auch {prices, plural, =0 {keine Preise} one {# Preis} other {# Preise}}, {itemRules, plural, =0 {keine Eintragsregeln} one {# Eintragsregel} other {# Eintragsregeln}} und {categoryRules, plural, =0 {keine Kategorieregeln} one {# Kategorieregel} other {# Kategorieregeln}} für diesen Kanal entfernt. Das lässt sich nicht rückgängig machen. Um sie zu behalten, schalte den Kanal stattdessen aus.",
         "removeConfirm": "Kanal entfernen",
         "removeWithCleanup": "Kanal und all das entfernen",
-        "removeCountsChanged": "In der Zwischenzeit hat sich etwas geändert: Das sind die neuen Zahlen. Prüfe sie noch einmal, bevor du entfernst."
+        "removeCountsChanged": "In der Zwischenzeit hat sich etwas geändert: Das sind die neuen Zahlen. Prüfe sie noch einmal, bevor du entfernst.",
+        "pendingTitle": "Die Katalog-Aktualisierung wird abgeschlossen",
+        "pendingBody": "Kanäle hinzufügen, ein- oder ausschalten und ihre Standardzeiten ändern kannst du nach der Datenaktualisierung. Bis dahin funktioniert alles weiter wie bisher.",
+        "pendingReason": "Die Katalog-Aktualisierung wird abgeschlossen: verfügbar nach der Datenaktualisierung."
       },
       "defaults": {
         "title": "Vorgaben für Einträge",
@@ -7267,7 +7277,9 @@
         "timeZoneTitle": "Zeitzone",
         "timeZoneIs": "Öffnungszeiten und zeitabhängige Preise verwenden {zone}.",
         "timeZoneMissing": "Es ist noch keine Zeitzone eingestellt. Zeiten und zeitabhängige Preise brauchen eine.",
-        "timeZoneEdit": "In den Einstellungen ändern"
+        "timeZoneEdit": "In den Einstellungen ändern",
+        "namePendingTitle": "Die Katalog-Aktualisierung wird abgeschlossen",
+        "namePendingBody": "Dieser Name stammt aus deiner früheren Einrichtung. Speichere ihn hier, unverändert oder angepasst, damit er der öffentliche Name bleibt."
       }
     },
     "packs": {
@@ -7378,7 +7390,8 @@
         "pack_plan_changed": "In der Zwischenzeit hat sich etwas geändert. Prüfe die aktualisierte Vorschau und füge erneut hinzu.",
         "pack_interrupted": "Das Hinzufügen wurde unterbrochen. Was schon hinzugefügt wurde, bleibt; öffne es erneut, um es abzuschließen.",
         "pack_failed": "Es konnte nicht hinzugefügt werden. Nichts wurde geändert; versuche es erneut.",
-        "catalogue_not_installed": "Der Katalog ist für diese Website nicht eingeschaltet."
+        "catalogue_not_installed": "Der Katalog ist für diese Website nicht eingeschaltet.",
+        "project_draft_exists": "Die Einstellungen dieser Website haben an anderer Stelle noch unveröffentlichte Änderungen. Es wurde nichts hinzugefügt. Bitte deinen Abluo-Kontakt, sie abzuschließen, und versuch es dann noch einmal."
       },
       "history": "Bisher hinzugefügt",
       "historyEmpty": "Es wurde noch keine Startstruktur hinzugefügt.",

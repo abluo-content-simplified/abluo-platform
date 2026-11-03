@@ -494,6 +494,8 @@ export function validateAssignment(tree: CategoryTree, next: CategoryAssignment,
   const before = new Set(previous ? assignedKeys(previous) : [])
   for (const k of keys) {
     const node = tree.nodes.get(k)
+    // A key the item already had (now unknown — e.g. a stale legacy key) is kept, never a reason to refuse every save.
+    if (!node && before.has(k)) continue
     if (!node) return { ok: false, code: 'category_unknown', key: k }
     if (node.archivedAt && !before.has(k)) return { ok: false, code: 'category_archived_target', key: k }
   }

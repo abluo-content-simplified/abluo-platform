@@ -39,6 +39,9 @@ import { recordCatalogueActivity, type CatalogueAuditWriter } from '../audit/wri
 import { CATEGORY_RULES, availabilityInputsOf } from '../commerce/channel-availability'
 import { channelListIssues, channelSetOf, channelUsage, readChannels, type Channel, type ChannelSet, type ChannelUsage } from '../commerce/channels'
 import { availabilityImpact } from '../commerce/impact'
+import { migrationPending, unconvertedOfferItems } from '../migration-markers'
+import { LEGACY_SETUP_PROJECTION, readSetupState } from '../packs/setup-state'
+import { publicNameMap } from '../public-name'
 import type { FormatTemplate } from '../commerce/formats'
 import type { ItemProfile } from '../profiles'
 import { applySegmentChange, validateSegment, type SegmentClash } from '../segment'
@@ -80,6 +83,11 @@ export type CatalogueSettingsErrorCode =
    * writes the item rules. Setup edits channels once D2 has run for the project.
    */
   | 'channel_migration_pending'
+  /**
+   * The project document has an open Studio draft: a Setup write to the published document would
+   * be overwritten when that draft is published. Publish or discard the draft in Studio first.
+   */
+  | 'project_draft_exists'
   | 'segment_invalid'
   | 'currency_invalid'
   | 'dietary_in_use'
@@ -115,12 +123,12 @@ const RAW = { perspective: 'raw' } as const
 const REASSIGN_CHUNK = 100
 
 const SITE_QUERY = /* groq */ `*[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales }`
-export const SETTINGS_PROJECT_QUERY = /* groq */ `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ _id, _rev, "inst": moduleInstallations[moduleId == "catalogue"][0]{ _key, enabled, config } }`
+export const SETTINGS_PROJECT_QUERY = /* groq */ `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ _id, _rev, "hasDraft": count(*[_id == "drafts." + ^._id]) > 0, "inst": moduleInstallations[moduleId == "catalogue"][0]{ _key, enabled, config, ${LEGACY_SETUP_PROJECTION} } }`
 /** Every item document copy naming commerce rows (drafts included, versions excluded). */
 export const ITEM_COMMERCE_QUERY = /* groq */ `*[_type == "catalogueItem" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{ _id, _rev, formats, offers, channelAvailability }`
 export const ITEM_DIETARY_QUERY = /* groq */ `*[_type == "catalogueItem" && projectSlug == $projectSlug && !(_id in path("versions.**")) && count(dietary[@ in $values]) > 0]._id`
 
-type ProjectDoc = { _id: string; _rev: string; inst?: { _key?: string | null; enabled?: boolean | null; config?: Record<string, unknown> | null } | null } | null
+type ProjectDoc = { _id: string; _rev: string; hasDraft?: boolean | null; inst?: { _key?: string | null; enabled?: boolean | null; config?: Record<string, unknown> | null; legacySetup?: unknown } | null } | null
 type Site = { defaultLocale: string; locales: string[] }
 type Access = { ctx: TenantAuthorizationContext; projectId: string; projectSlug: string; client: Client; scoped: TenantScopedSanityClient; deps: CatalogueSettingsDeps }
 
@@ -168,6 +176,7 @@ async function commitConfig(a: Access, project: NonNullable<ProjectDoc>, rev: un
   if (typeof rev !== 'string' || !rev) fail('invalid_input', 'Missing revision.')
   if (rev !== project._rev) fail('conflict', 'This was changed elsewhere.')
   if (Object.keys(set).length === 0 && unset.length === 0) return { transactionId: null, rev: project._rev }
+  if (project.hasDraft === true) fail('project_draft_exists', 'The project has unpublished changes in Studio. Publish or discard them first.')
   const patch = configKeysPatch(project.inst!, !!project.inst!.config, set, unset)
   const transactionId = txId(a, op)
   try {
@@ -211,6 +220,11 @@ export type CatalogueSettingsView = {
   dietaryTags: Array<{ value: string; label: Record<string, string> }>
   /** D-14: whether setup was completed (anyone with item.read) and how (setup.manage only) — never which pack. */
   setup: { completedAt: string | null; source: SetupSource | null }
+  /**
+   * Data steps still to run for this project (migrationPending): `commerce` — channel changes
+   * wait for D2; `publicName` — `publicName` above shows the legacy name, saving migrates it.
+   */
+  pending: { commerce: boolean; publicName: boolean }
   can: { manage: boolean }
 }
 
@@ -218,9 +232,21 @@ const strMap = (v: unknown): Record<string, string> =>
   v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([k, x]) => !k.startsWith('_') && k !== 'translationStatus' && typeof x === 'string' && x.trim())) as Record<string, string> : {}
 const strList = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
 
-export function settingsViewOf(config: Record<string, unknown>, site: Site, rev: string, canManage: boolean): CatalogueSettingsView {
+/** The name Setup shows as current: `publicName`, else — while D4 is pending — the legacy `navLabel`. */
+export function currentPublicName(config: Record<string, unknown>): Record<string, string> {
+  const own = strMap(config.publicName)
+  return Object.keys(own).length === 0 && migrationPending(config, 'publicName') ? publicNameMap(config.navLabel) : own
+}
+
+export function settingsViewOf(
+  config: Record<string, unknown>,
+  site: Site,
+  rev: string,
+  canManage: boolean,
+  extra: { legacySetup?: unknown; commercePending?: boolean } = {},
+): CatalogueSettingsView {
   const channels = readChannels(config.serviceChannels).channels.all
-  const source = SETUP_SOURCES.includes(config.setupSource as SetupSource) ? (config.setupSource as SetupSource) : null
+  const setup = readSetupState(config as { setupCompletedAt?: unknown; setupSource?: unknown }, extra.legacySetup)
   return {
     rev,
     defaultLocale: site.defaultLocale,
@@ -229,7 +255,7 @@ export function settingsViewOf(config: Record<string, unknown>, site: Site, rev:
     currency: typeof config.currency === 'string' ? config.currency : null,
     publicSegment: typeof config.publicSegment === 'string' ? config.publicSegment : null,
     publicSegmentHistory: strList(config.publicSegmentHistory),
-    publicName: strMap(config.publicName),
+    publicName: currentPublicName(config),
     defaultItemProfile: parseProfile(config.defaultItemProfile).ok ? ((config.defaultItemProfile as ItemProfile) ?? null) : null,
     showPricesByDefault: config.showPricesByDefault !== false,
     formatTemplates: (Array.isArray(config.formatTemplates) ? (config.formatTemplates as Partial<FormatTemplate & { quantity: { value: number; unit: string } }>[]) : []).flatMap((t) =>
@@ -237,7 +263,8 @@ export function settingsViewOf(config: Record<string, unknown>, site: Site, rev:
     ),
     dietaryTags: (Array.isArray(config.dietaryTags) ? (config.dietaryTags as Array<{ value?: unknown; label?: unknown }>) : []).flatMap((e) => (e && typeof e.value === 'string' ? [{ value: e.value, label: strMap(e.label) }] : [])),
     // D-14 / C7.9: whether setup was completed is readable by the item editor; HOW only by Setup.
-    setup: { completedAt: typeof config.setupCompletedAt === 'string' && config.setupCompletedAt ? config.setupCompletedAt : null, source: canManage ? source : null },
+    setup: { completedAt: setup.completedAt, source: canManage ? setup.source : null },
+    pending: { commerce: extra.commercePending ?? migrationPending(config, 'commerce'), publicName: migrationPending(config, 'publicName') },
     can: { manage: canManage },
   }
 }
@@ -246,8 +273,21 @@ export async function loadCatalogueSettings(ctx: TenantAuthorizationContext, pro
   assertCatalogueCapabilities(ctx, projectId, ['catalogue.item.read'])
   const a = open(ctx, projectId, deps)
   const { site, project, config } = await readBase(a)
-  return settingsViewOf(config, site, project._rev, holdsCatalogueCapability(ctx, projectId, 'catalogue.setup.manage'))
+  return settingsViewOf(config, site, project._rev, holdsCatalogueCapability(ctx, projectId, 'catalogue.setup.manage'), { legacySetup: project.inst?.legacySetup, commercePending: await commercePending(a, config) })
 }
+
+/**
+ * migrationPending(config, 'commerce') with the item fact read only when it can matter (marker
+ * missing, no stored channels): items still carrying legacy offers without formats.
+ */
+async function commercePending(a: Access, config: Record<string, unknown>): Promise<boolean> {
+  if (migrationPending(config, 'commerce')) return true
+  if (!migrationPending(config, 'commerce', { unconvertedOfferItems: 1 })) return false
+  const rows = (await span('sanity.readItemCommerce', () => a.scoped.fetch<ItemCommerceRow[] | null>(ITEM_COMMERCE_QUERY))) ?? []
+  return migrationPending(config, 'commerce', { unconvertedOfferItems: unconvertedOfferItems(rows) })
+}
+
+const COMMERCE_PENDING_MESSAGE = 'Finishing the Catalogue update: channels can be changed after the data update.'
 
 // ── Channels (C2) ────────────────────────────────────────────────────────────
 
@@ -288,6 +328,9 @@ export async function saveCatalogueChannels(
   const parsed = channelsFromInput(input?.channels, previous, site)
   if (parsed.issues.length > 0) fail('channel_invalid', 'Check the channels.', { issues: parsed.issues })
   const next = parsed.channels
+  // Data step D2 not run yet: no added channel and no activation / default change (labels and order may change).
+  const added = next.some((n) => !previous.some((p) => p.key === n.key))
+  if ((added || channelEvents(previous, next).length > 0) && (await commercePending(a, config))) fail('channel_migration_pending', COMMERCE_PENDING_MESSAGE)
   const gone = previous.filter((p) => !next.some((n) => n.key === p.key))
   if (gone.length > 0) fail('channel_remove_needs_cleanup', 'Remove a channel with its cleanup.', { values: gone.map((g) => g.key) })
   const issues = channelListIssues(next, previous, { defaultLocale: site.defaultLocale }).filter((i) => i.level === 'error')
@@ -371,7 +414,7 @@ export async function removeCatalogueChannel(
   const { project, config } = await readBase(a)
   if (typeof input?.rev !== 'string' || input.rev !== project._rev) fail('conflict', 'This was changed elsewhere.')
   const channels = readChannels(config.serviceChannels).channels
-  if (channels.unmigrated) fail('channel_migration_pending', 'Channels can be edited once the Catalogue data update has run.')
+  if (channels.unmigrated || (await commercePending(a, config))) fail('channel_migration_pending', COMMERCE_PENDING_MESSAGE)
   if (!channels.byKey.has(input.key as never)) fail('channel_unknown', 'Unknown channel.')
   const { usage, rows } = await usageOf(a, ctx, projectId, input.key, deps)
   if (JSON.stringify(usage) !== JSON.stringify({ prices: input.expected?.prices, itemRules: input.expected?.itemRules, formatRules: input.expected?.formatRules, categoryRules: input.expected?.categoryRules })) {
@@ -469,14 +512,23 @@ export async function saveCatalogueSettings(
       out.publicSegmentHistory = applied.history
     }
   }
+  let publicNameMigration: CatalogueAuditPayload['public_name.migrated'] | null = null
   if (set.publicName !== undefined) {
-    const merged = { ...strMap(config.publicName) }
+    // D4 pending: the legacy `navLabel` is the current name (shown pre-filled); this save moves it.
+    const migrating = migrationPending(config, 'publicName')
+    const merged = { ...currentPublicName(config) }
     for (const [l, v] of Object.entries(set.publicName ?? {})) if (v === null || v === '') delete merged[l]
     const parsed = parseLabel({ ...merged, ...Object.fromEntries(Object.entries(set.publicName ?? {}).filter(([, v]) => typeof v === 'string' && v !== '')) }, site, 'publicName', false)
     if (!parsed.ok) fail('invalid_input', 'Check the public name.', { issues: [parsed.issue] })
     if (parsed.ok) {
       if (Object.keys(parsed.value).length === 0) unset.push('publicName')
       else out.publicName = { _type: 'localizedString', ...parsed.value }
+      if (migrating) {
+        unset.push('navLabel')
+        const old = publicNameMap(config.navLabel)
+        const hadOwn = Object.keys(strMap(config.publicName)).length > 0
+        publicNameMigration = { migrationId: 'setup', action: hadOwn ? 'drop' : 'copy', old, new: Object.keys(parsed.value).length ? parsed.value : null, discarded: hadOwn ? old : null }
+      }
     }
   }
   if (set.defaultItemProfile !== undefined) {
@@ -509,6 +561,7 @@ export async function saveCatalogueSettings(
   }
 
   const result = await commitConfig(a, project, input.rev, 'settings', out, unset)
+  if (publicNameMigration && result.transactionId) await audit(a, 'public_name.migrated', result.transactionId, 'publicName', publicNameMigration)
   return { saved: true, rev: result.rev, ...(Object.keys(notices).length > 0 && { notices }) }
 }
 
@@ -527,9 +580,9 @@ export async function completeCatalogueSetup(
   const a = open(ctx, projectId, deps)
   await singleProject(a)
   const { project, config } = await readBase(a)
-  if (typeof config.setupCompletedAt === 'string' && config.setupCompletedAt) {
-    return { completedAt: config.setupCompletedAt, source: (SETUP_SOURCES.includes(config.setupSource as SetupSource) ? config.setupSource : input.source) as SetupSource, rev: project._rev }
-  }
+  // Already complete — also through a legacy preset record (before data step D3): left as it is.
+  const state = readSetupState(config as { setupCompletedAt?: unknown; setupSource?: unknown }, project.inst?.legacySetup)
+  if (state.completedAt) return { completedAt: state.completedAt, source: state.source ?? input.source, rev: project._rev }
   const completedAt = now(a)
   const result = await commitConfig(a, project, input.rev, 'setupComplete', { setupCompletedAt: completedAt, setupSource: input.source }, [])
   return { completedAt, source: input.source, rev: result.rev }

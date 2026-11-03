@@ -27,6 +27,7 @@ import { PROFILES, can as profileCan } from '@/lib/modules/catalogue/profiles'
 import { attachmentIssues, declarationIssues, formatFormIssues, itemOptionsRelevant, itemStateFromDoc, priceCountOf, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
 import { readChannels } from '@/lib/modules/catalogue/commerce/channels'
 import { buildTree } from '@/lib/modules/catalogue/taxonomy/tree'
+import { legacyOffersNeedCheck } from '@/lib/modules/catalogue/item-writer'
 import { modelRulesActive } from '@/lib/modules/catalogue/readiness/facts-model'
 import { readinessGaps } from '@/lib/modules/catalogue/readiness/chips'
 import { itemReadinessInputFromState } from '@/lib/modules/catalogue/readiness/facts-client'
@@ -97,7 +98,9 @@ export function ItemEditor({
   const modelRules = modelRulesActive(site.config.migrations)
   const optionCounts = useMemo(() => new Map(optionLists.map((l) => [l.id, l.optionCount])), [optionLists])
   // The dual-read (C10-4): a legacy item opens exactly as the website reads it; its first save converts it.
-  const initial: ItemState = useMemo(() => itemStateFromDoc(snapshot.doc, null, channelSet), [snapshot.doc, channelSet])
+  // Old prices the conversion would not carry over exactly stay untouched by saves (item-writer): no price editing until checked.
+  const legacyPricesNeedCheck = useMemo(() => legacyOffersNeedCheck((snapshot.doc ?? {}) as Record<string, unknown>, channelSet), [snapshot.doc, channelSet])
+  const initial: ItemState = useMemo(() => itemStateFromDoc(snapshot.doc, null, channelSet, tree), [snapshot.doc, channelSet, tree])
   const archived = snapshot.status.status === 'archived'
   const readOnly = archived || !can.write
   const draft = useCatalogueDraft({ projectSlug, kind: 'item', initialId: snapshot.id, initialRev: snapshot.rev, liveRev: snapshot.live?.rev, hasDraft: snapshot.hasDraft, defaultLocale: d })
@@ -354,6 +357,11 @@ export function ItemEditor({
           </FieldBlock>
         ) : current === 'prices' ? (
           <FieldBlock title={tf('price.title')} helper={tf('price.helper')}>
+            {legacyPricesNeedCheck ? (
+              <Notice tone="info" title={tf('price.legacyCheckTitle')}>
+                {tf('price.legacyCheckBody')}
+              </Notice>
+            ) : null}
             <CommerceField
               formats={s.formats}
               itemRules={s.itemRules}
@@ -367,7 +375,7 @@ export function ItemEditor({
               onFormats={item.setFormats}
               onItemRules={item.setItemRules}
               hiddenByAmazon={s.links.some((l) => l.kind === 'buy' && looksLikeAmazon(l.url))}
-              disabled={readOnly}
+              disabled={readOnly || legacyPricesNeedCheck}
             />
           </FieldBlock>
         ) : current === 'details' ? (

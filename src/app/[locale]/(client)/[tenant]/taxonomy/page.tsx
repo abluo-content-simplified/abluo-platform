@@ -39,6 +39,10 @@ async function TaxonomyPageInner({
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
   if (!grant) notFound()
 
+  // The Catalogue's categories and tags live in Catalogue → Setup → Categories & Tags (ADR-042):
+  // older links (`?module=catalogue` / `?tab=catalogue`) are sent there.
+  if (query.module === 'catalogue' || query.tab === 'catalogue') redirect(`/${projectSlug}/catalogue/setup/categories${query.kind === 'tag' ? '?tab=tags' : ''}`)
+
   const manageable = manageableTaxonomyModules(grant)
   const internal = internalTagScopes(grant)
   // Nothing to manage (no module with terms, no media or gallery tags): there is no page.

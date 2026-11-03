@@ -93,6 +93,8 @@ export function PublicWebsite({
 
   const namesPatch = labelPatch(labelsOf(view.publicName, view.locales), names)
   const namesChanged = Object.keys(namesPatch).length > 0
+  // Data step D4 not run: the name shown is the legacy one; saving it (even unchanged) moves it to `publicName`.
+  const namePending = !!view.pending?.publicName
   const segmentChanged = segment.trim() !== (view.publicSegment ?? '')
   const currencyChanged = currency !== (view.currency ?? '') && currency !== ''
   const earlier = view.publicSegmentHistory.filter((s) => s !== view.publicSegment)
@@ -106,12 +108,17 @@ export function PublicWebsite({
           <h2 className="text-[1.0625rem] font-semibold">{t('nameTitle')}</h2>
           <p className="mt-1 text-[0.9375rem] leading-6 text-muted-foreground">{t('nameIntro')}</p>
         </div>
+        {namePending ? (
+          <Notice tone="info" title={t('namePendingTitle')}>
+            {t('namePendingBody')}
+          </Notice>
+        ) : null}
         <LabelFields locales={view.locales} defaultLocale={view.defaultLocale} value={names} onChange={setNames} label={t('name')} />
         <div className="flex flex-wrap items-start gap-2">
-          <Button variant="primary" disabled={!namesChanged || busy !== null} onClick={() => void save('name', { publicName: namesPatch }, t('nameSaved'))}>
+          <Button variant="primary" disabled={(!namesChanged && !namePending) || busy !== null} onClick={() => void save('name', { publicName: namesPatch }, t('nameSaved'))}>
             {t('saveName')}
           </Button>
-          {!namesChanged ? <p className="py-2.5 text-sm text-muted-foreground">{t('nothingChanged')}</p> : null}
+          {!namesChanged && !namePending ? <p className="py-2.5 text-sm text-muted-foreground">{t('nothingChanged')}</p> : null}
         </div>
       </Panel>
 

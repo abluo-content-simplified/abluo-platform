@@ -54,7 +54,9 @@ export function ServiceChannels({ projectSlug, initial, backHref }: { projectSlu
   const list = useMemo(() => channelDraftsOf(view.channels, view.locales), [view.channels, view.locales])
   const nameOf = (key: string) => labelText(list.find((c) => c.key === key)?.label, view.defaultLocale, view.defaultLocale) || t('unnamed')
   const failText = useFailText()
-  const migrationPending = channelsNeedMigration(list)
+  // Stored channels predate C2, or data step D2 has not run yet (view.pending.commerce): channel changes wait.
+  const dataUpdatePending = !!view.pending?.commerce
+  const migrationPending = channelsNeedMigration(list) || dataUpdatePending
   const manage = view.can.manage && !migrationPending
 
   const reload = async () => {
@@ -124,7 +126,8 @@ export function ServiceChannels({ projectSlug, initial, backHref }: { projectSlu
   }
 
   const full = list.length >= CHANNEL_LIMIT
-  const addReason = !view.can.manage ? t('needsSetup') : migrationPending ? t('migrationPending') : full ? t('limitReached', { max: CHANNEL_LIMIT }) : null
+  const pendingReason = dataUpdatePending ? t('pendingReason') : t('migrationPending')
+  const addReason = !view.can.manage ? t('needsSetup') : migrationPending ? pendingReason : full ? t('limitReached', { max: CHANNEL_LIMIT }) : null
   const total = pending ? sumImpact(pending.changes.map((c) => c.impact)) : null
   const single = pending && pending.changes.length === 1 ? pending.changes[0] : null
   const usage = removal?.usage
@@ -143,7 +146,13 @@ export function ServiceChannels({ projectSlug, initial, backHref }: { projectSlu
         }
       />
       {addReason ? <p className="-mt-3 text-sm text-muted-foreground">{addReason}</p> : null}
-      {migrationPending ? <Notice tone="info">{t('migrationNotice')}</Notice> : null}
+      {dataUpdatePending ? (
+        <Notice tone="info" title={t('pendingTitle')}>
+          {t('pendingBody')}
+        </Notice>
+      ) : migrationPending ? (
+        <Notice tone="info">{t('migrationNotice')}</Notice>
+      ) : null}
       {list.length === 0 ? (
         <EmptyState title={t('emptyTitle')} body={t('emptyBody')} />
       ) : (
@@ -153,7 +162,7 @@ export function ServiceChannels({ projectSlug, initial, backHref }: { projectSlu
           labelOf={nameOf}
           onMove={(req) => void save(list.length ? reorderedList(list.map((c) => c.key), req).map((k) => list.find((c) => c.key === k)!) : list, t('reordered'))}
           reorderable={manage}
-          reorderDisabledReason={manage ? undefined : migrationPending ? t('migrationPending') : t('needsSetup')}
+          reorderDisabledReason={manage ? undefined : migrationPending ? pendingReason : t('needsSetup')}
           parentChangeDisabledReason={t('flat')}
           renderMeta={(key) => {
             const c = list.find((x) => x.key === key)

@@ -73,21 +73,39 @@ export function CategoryPicker({
   const [open, setOpen] = useState(false)
   const path = (k: CategoryKey) => pathOf(tree, k, pathContext)
   const selected = [value.primary, ...value.additional].filter((k): k is CategoryKey => k !== null)
+  // Keys the item still carries that the tree no longer has (e.g. an old category): kept on save
+  // until removed here — shown as "Unknown category", never silently dropped.
+  const unknown = selected.filter((k) => !tree.nodes.has(k))
+  const known = selected.filter((k) => tree.nodes.has(k))
+
+  const unknownChips = unknown.length ? (
+    <ul aria-label={t('unknownList')} className="flex flex-wrap items-start gap-2">
+      {unknown.map((k, i) => (
+        <li key={k} className="flex items-start gap-1.5">
+          <Chip removable aria-label={t('removeUnknown', { n: i + 1 })} onClick={() => onChange(withoutKey(value, k))}>
+            {t('unknown')}
+          </Chip>
+          {k === value.primary ? <Pill tone="highlight">{t('primary')}</Pill> : null}
+        </li>
+      ))}
+    </ul>
+  ) : null
 
   const summary = (
-    <div className="min-w-0">
-      {selected.length ? (
+    <div className="min-w-0 space-y-2">
+      {known.length ? (
         <ul aria-label={t('selectedList')} className="flex flex-wrap items-start gap-2">
-          {selected.map((k) => (
+          {known.map((k) => (
             <li key={k} className="flex max-w-full items-start gap-1.5 rounded-xl bg-muted px-3 py-2 text-sm text-foreground">
               <span className="min-w-0 break-words">{path(k).text || k}</span>
               {k === value.primary ? <Pill tone="highlight">{t('primary')}</Pill> : null}
             </li>
           ))}
         </ul>
-      ) : (
+      ) : unknown.length ? null : (
         <p className="text-[0.9375rem] text-muted-foreground">{t('none')}</p>
       )}
+      {unknownChips}
     </div>
   )
 
@@ -109,7 +127,8 @@ export function CategoryPicker({
         <FieldLabel as="p" id={`${id}-label`} hint={hint} hintId={hint ? `${id}-hint` : undefined}>
           {label}
         </FieldLabel>
-        <div role="group" aria-labelledby={`${id}-label`}>
+        <div role="group" aria-labelledby={`${id}-label`} className="space-y-2">
+          {unknownChips}
           {browser}
         </div>
         <FieldError>{error}</FieldError>
@@ -135,6 +154,12 @@ export function CategoryPicker({
       </BottomSheet>
     </div>
   )
+}
+
+/** The assignment without `key`; a removed primary hands over to the first additional category. */
+export function withoutKey(value: CategoryAssignment, key: CategoryKey): CategoryAssignment {
+  if (value.primary === key) return { primary: value.additional[0] ?? null, additional: value.additional.slice(1) }
+  return { primary: value.primary, additional: value.additional.filter((k) => k !== key) }
 }
 
 /** The search + tree + add form (inside the sheet, or inline). */

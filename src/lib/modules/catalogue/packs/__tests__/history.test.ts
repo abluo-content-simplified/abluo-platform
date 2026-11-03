@@ -85,3 +85,23 @@ describe('setup state (D-14)', () => {
     expect(readSetupState({ setupSource: 'pack' })).toEqual({ completedAt: null, source: null })
   })
 })
+
+// R2 review fix: setup completion before data step D3 (tmz).
+describe('setup completion before data step D3', () => {
+  const LEGACY = { id: 'bookshop', version: 1, appliedAt: '2026-10-14T09:00:00Z' }
+
+  it('a valid legacy preset record is complete, source pack; an invalid one is not', () => {
+    expect(isSetupComplete({}, LEGACY)).toBe(true)
+    expect(readSetupState({}, LEGACY)).toEqual({ completedAt: '2026-10-14T09:00:00Z', source: 'pack' })
+    expect(isSetupComplete({}, { id: 'nope!', version: 1 })).toBe(false)
+    expect(isSetupComplete({}, null)).toBe(false)
+  })
+
+  it('a stored completion wins over the legacy record', () => {
+    expect(readSetupState({ setupCompletedAt: '2026-11-01T10:00:00Z', setupSource: 'manual' }, LEGACY)).toEqual({ completedAt: '2026-11-01T10:00:00Z', source: 'manual' })
+  })
+
+  it('a legacy record without a date still counts as complete', () => {
+    expect(readSetupState({}, { id: 'bookshop', version: 1 }).completedAt).not.toBeNull()
+  })
+})

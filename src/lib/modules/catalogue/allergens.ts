@@ -306,3 +306,34 @@ export function isFreeTextAddChoice(choice: RawChoice | null | undefined): boole
 export function unreviewedChoices(options: readonly RawChoice[] | null | undefined): RawChoice[] {
   return (options ?? []).filter((o) => isFreeTextAddChoice(o) && optionDeclarationIssues(o.allergenDeclaration).length > 0)
 }
+
+// ── Support-mode guard: does a write change allergen content? ────────────────
+
+const canonical = (v: unknown): unknown => {
+  if (Array.isArray(v)) return v.map(canonical)
+  if (v && typeof v === 'object') {
+    const entries = Object.entries(v as Record<string, unknown>).filter(([k, x]) => !k.startsWith('_') && x !== undefined && x !== null && !(Array.isArray(x) && x.length === 0))
+    return Object.fromEntries(entries.sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, x]) => [k, canonical(x)]))
+  }
+  return v
+}
+/** A bare "not reviewed" declaration says nothing: it equals no declaration (new choices start with it). */
+const declarationText = (d: unknown): string => {
+  const c = canonical(d ?? null)
+  const bare = !!c && typeof c === 'object' && !Array.isArray(c) && Object.keys(c).length === 1 && (c as Record<string, unknown>).status === 'notReviewed'
+  return JSON.stringify(bare ? null : c)
+}
+
+/**
+ * True when going from `before` to `after` changes allergen content: an item's
+ * `allergenDeclaration`, or the declaration of an option-list choice present in `after` (matched
+ * by `_key`; removing a whole choice is not an allergen edit). `after` is the document as it would
+ * be written. Used to run `item.editAllergenContent` (refused in support mode) on saves and publishes.
+ */
+export function allergenContentChanged(kind: 'item' | 'collection' | 'optionList', before: Record<string, unknown> | null | undefined, after: Record<string, unknown>): boolean {
+  if (kind === 'item') return declarationText(before?.allergenDeclaration) !== declarationText(after.allergenDeclaration)
+  if (kind !== 'optionList') return false
+  const list = (v: unknown) => (Array.isArray(v) ? (v as Array<Record<string, unknown> | null>) : []).filter((o): o is Record<string, unknown> => !!o && typeof o._key === 'string')
+  const previous = new Map(list(before?.options).map((o) => [o._key as string, o.allergenDeclaration]))
+  return list(after.options).some((o) => declarationText(previous.get(o._key as string)) !== declarationText(o.allergenDeclaration))
+}

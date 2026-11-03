@@ -30,7 +30,7 @@ import type { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { span } from '@/lib/perf/timing'
 import * as lifecycle from '@/lib/lifecycle/service'
 import type { Referrer } from '@/lib/lifecycle/service'
-import { isPublishableDeclaration, unreviewedChoices } from '@/lib/modules/catalogue/allergens'
+import { allergenContentChanged, isPublishableDeclaration, unreviewedChoices } from '@/lib/modules/catalogue/allergens'
 import { CatalogueError, slugsForPublish, slugLocalesWithoutName, type CatalogueKind } from '@/lib/modules/catalogue/dashboard-patch'
 import { can, profileOf } from '@/lib/modules/catalogue/profiles'
 import { SLUG_NAMESPACE_QUERY, namedSlugConflicts, toSlugOwners, type SlugRow } from '@/lib/modules/catalogue/validation'
@@ -96,7 +96,12 @@ export async function catalogueSlugNamespace(client: FetchClient, projectSlug: s
 }
 
 /** The module's validation of one document of a publish; returns the published version to write. */
-export function cataloguePublishGate(site: CatalogueSite, uuid: () => string) {
+export function cataloguePublishGate(
+  site: CatalogueSite,
+  uuid: () => string,
+  /** Support-mode guard: run when a document's published allergen content would change (`item.editAllergenContent`). */
+  opts: { assertAllergenEdit?: () => void } = {},
+) {
   const taken = new Map<string, Set<string>>()
   let owners: Awaited<ReturnType<typeof catalogueSlugNamespace>> | null = null
   return async (node: lifecycle.PublishNode, x: { client: lifecycle.LifecycleClient; projectSlug: string }): Promise<lifecycle.Doc> => {
@@ -132,6 +137,7 @@ export function cataloguePublishGate(site: CatalogueSite, uuid: () => string) {
       const doc: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(draft)) if (!SYSTEM_FIELDS.has(k) && !LIFECYCLE_FIELDS.has(k)) doc[k] = v
       if (kind === 'item' && !can(profileOf(draft.itemProfile), 'foodInformation')) delete doc.allergenDeclaration
+      if (opts.assertAllergenEdit && allergenContentChanged(kind, node.published ?? null, doc)) opts.assertAllergenEdit()
       if (kind !== 'optionList') {
         // publicId is set once (AC 29): the published one wins, a missing one is created.
         doc.publicId = (typeof node.published?.publicId === 'string' && node.published.publicId) || (typeof draft.publicId === 'string' && draft.publicId) || uuid()

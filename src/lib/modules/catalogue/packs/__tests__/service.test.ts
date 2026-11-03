@@ -271,3 +271,32 @@ describe('apply/chunked: a synthetic oversize pack', () => {
     }
   })
 })
+
+describe('migration pending and Studio drafts (R2 before data steps D1–D4)', () => {
+  const legacyItem: Doc = { _id: 'item-1', _type: 'catalogueItem', projectSlug: SLUG, offers: [{ _key: 'o1', _type: 'catalogueOffer', price: 12 }] }
+
+  it('no channel is added while items still carry unconverted offers and the commerce marker is missing', async () => {
+    const pack = getPack('pizzeria')!
+    const f = fakeSanity(seed(), { items: [legacyItem] })
+    const preview = await previewPack(owner(), P, { packId: 'pizzeria', selection: defaultSelection(pack) }, f.deps)
+    expect(preview.plan.conflicts.filter((c) => c.code === 'channel_migration_pending').length).toBeGreaterThan(0)
+    const migrated = fakeSanity(seed({ currency: 'EUR', catalogueMigrations: { commerce: '2026-11-01T00:00:00Z' } }), { items: [legacyItem] })
+    const mp = await previewPack(owner(), P, { packId: 'pizzeria', selection: defaultSelection(pack) }, migrated.deps)
+    expect(mp.plan.conflicts.some((c) => c.code === 'channel_migration_pending')).toBe(false)
+  })
+
+  it('a legacy navLabel counts as an existing public name: the pack never proposes overwriting it', async () => {
+    const pack = getPack('bookshop')!
+    expect(pack.suggestedPublicName).toBeTruthy()
+    const f = fakeSanity(seed({ currency: 'EUR', navLabel: { en: 'Books' } }))
+    const preview = await previewPack(owner(), P, { packId: 'bookshop', selection: defaultSelection(pack) }, f.deps)
+    expect(preview.plan.add.some((i) => i.area === 'setting' && i.key === 'publicName')).toBe(false)
+  })
+
+  it('an open Studio draft of the project document refuses the apply (project_draft_exists), zero writes', async () => {
+    const f = fakeSanity([...seed(), { ...projectDoc(), _id: 'drafts.project-doc' }])
+    const { result } = await apply(f.deps, 'pizzeria', { ...defaultSelection(getPack('pizzeria')!), acceptChannels: [] })
+    expect(result).toMatchObject({ ok: false, code: 'project_draft_exists' })
+    expect(f.commits).toHaveLength(0)
+  })
+})

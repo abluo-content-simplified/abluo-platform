@@ -26,7 +26,7 @@ import { readChannels, type ChannelSet } from './commerce/channels'
 import { CHANNEL_LIMIT, FORMAT_LIMIT, OVERRIDES_PER_RULE_LIMIT, PRICES_PER_FORMAT_LIMIT, isChannelAvailabilityState, type ChannelAvailabilityRule } from './commerce/commerce-types'
 import { IMPLICIT_FORMAT_KEY } from './commerce/format-key'
 import { formatIssues, QUANTITY_UNITS } from './commerce/formats'
-import { commerceOf, legacyOffersToFormats } from './commerce/legacy-commerce'
+import { commerceOf, legacyOfferRefusals, legacyOffersToFormats } from './commerce/legacy-commerce'
 import { priceIssues } from './commerce/prices'
 import { readFormatDocs, readRuleRows } from './commerce/read'
 import { WEEKDAYS } from './commerce/windows'
@@ -280,6 +280,17 @@ const hasStoredRules = (doc: Record<string, unknown>) => Array.isArray(doc.chann
 export type ShapePatch = { set: Record<string, unknown>; unset: string[] }
 
 /**
+ * A legacy item whose offers the conversion would not carry over exactly (`legacyOfferRefusals`:
+ * an invalid offer, an unknown channel, a reserved currency/location field). Its first save keeps
+ * `offers` untouched and writes no `formats` (nothing is dropped silently, D-21); the editor shows
+ * that the old prices need a check and does not offer price editing for it.
+ */
+export function legacyOffersNeedCheck(doc: Record<string, unknown>, channelSet: ChannelSet): boolean {
+  if (!hasLegacyOffers(doc) || hasFormats(doc)) return false
+  return legacyOfferRefusals(doc.offers as unknown[], channelSet.all.map((c) => c.key as string)).length > 0
+}
+
+/**
  * Commerce half of the switch. `written` = what this patch already set for `formats` /
  * `channelAvailability` (undefined = not touched). Returns the final set/unset for the three fields.
  *
@@ -290,6 +301,8 @@ export type ShapePatch = { set: Record<string, unknown>; unset: string[] }
  *    (`commerceOf` → old(i, c)) — so availability stays exactly what it was.
  */
 export function commerceShape(previous: Record<string, unknown>, written: { formats?: Record<string, unknown>[]; channelAvailability?: Record<string, unknown>[] }, channelSet: ChannelSet): ShapePatch | null {
+  // Offers that would not convert exactly stay as they are: no formats, no rows, `offers` kept.
+  if (legacyOffersNeedCheck(previous, channelSet)) return null
   const legacy = hasLegacyOffers(previous)
   if (!Array.isArray(previous.offers) && written.formats === undefined && written.channelAvailability === undefined) return null
   const out: ShapePatch = { set: {}, unset: [] }

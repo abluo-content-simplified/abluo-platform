@@ -1,5 +1,6 @@
 'use client'
 
+import { manageHref } from './manage-href'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Button, ButtonLink } from '@/components/app/ui/Button'
@@ -158,7 +159,7 @@ export function TermPicker({
       <FieldError>{error}</FieldError>
 
       {addable ? (
-        <ButtonLink variant="link" className="px-0" href={`/${projectSlug}/taxonomy?module=${encodeURIComponent(module)}&kind=${encodeURIComponent(kind)}`}>
+        <ButtonLink variant="link" className="px-0" href={manageHref(projectSlug, module, kind)}>
           {t('picker.manage')}
         </ButtonLink>
       ) : null}
