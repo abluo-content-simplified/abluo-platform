@@ -1,0 +1,300 @@
+{
+  "reportId": "p-production-202611030726",
+  "dataset": "production",
+  "source": {
+    "kind": "export",
+    "dir": "backups/catalogue/p-production-202611030720",
+    "sha256": "8d7785ade2d7bb41c745f160d525c252a0c1241efa5992b20dd3a6ab67e8ceb8",
+    "exportedAt": "2026-11-03T07:20:56.386Z"
+  },
+  "createdAt": "2026-11-03T07:26:10.934Z",
+  "audit": {
+    "target": "sandbox:igupsricssknxtavjscu",
+    "probe": {
+      "ok": true
+    }
+  },
+  "kind": "catalogue-preflight",
+  "itemCounts": {
+    "published": 10,
+    "drafts": 6,
+    "versions": 0,
+    "total": 16
+  },
+  "documentCounts": {
+    "catalogueItem": 16,
+    "catalogueOptionList": 1,
+    "catalogueCollection": 3,
+    "taxonomyTerm": 10,
+    "cataloguePage": 1,
+    "project": 1,
+    "siteConfig": 1
+  },
+  "projects": [
+    "tmz"
+  ],
+  "steps": [
+    {
+      "step": "taxonomy",
+      "label": "d1-taxonomy",
+      "projects": [
+        {
+          "slug": "tmz",
+          "counts": {
+            "categories": 3,
+            "tags": 7,
+            "itemsAssigned": 14,
+            "itemsUnassigned": 2,
+            "itemsAlreadyAssigned": 0
+          },
+          "mutations": 15
+        }
+      ],
+      "transactions": 1,
+      "refusals": [],
+      "findings": [
+        {
+          "step": "taxonomy",
+          "code": "taxonomy.configListIgnored",
+          "project": "tmz",
+          "detail": {
+            "configKeys": [
+              "design",
+              "technology"
+            ],
+            "termKeys": [
+              "technology",
+              "design",
+              "literature"
+            ],
+            "stale": true
+          }
+        },
+        {
+          "step": "taxonomy",
+          "code": "item.multiCategory",
+          "project": "tmz",
+          "id": "drafts.c2c4fa97-2e6b-40fd-9d7e-0adef63af391",
+          "detail": {
+            "legacy": [
+              "technology",
+              "literature"
+            ],
+            "primary": "technology",
+            "additional": [
+              "literature"
+            ]
+          }
+        }
+      ],
+      "verification": {
+        "pass": true,
+        "checks": [
+          {
+            "name": "taxonomy.vocabulary",
+            "pass": true,
+            "diffs": []
+          },
+          {
+            "name": "taxonomy.itemAssignment",
+            "pass": true,
+            "diffs": []
+          },
+          {
+            "name": "taxonomy.unchangedElsewhere",
+            "pass": true,
+            "diffs": []
+          }
+        ]
+      }
+    },
+    {
+      "step": "commerce",
+      "label": "d2-commerce",
+      "projects": [
+        {
+          "slug": "tmz",
+          "counts": {
+            "documents": 4,
+            "prices": 4,
+            "channels": 0
+          },
+          "mutations": 4
+        }
+      ],
+      "transactions": 1,
+      "refusals": [],
+      "findings": [],
+      "verification": {
+        "pass": true,
+        "checks": [
+          {
+            "name": "commerce.equivalence(E1–E9)",
+            "pass": true,
+            "diffs": []
+          },
+          {
+            "name": "commerce.classW",
+            "pass": true,
+            "diffs": []
+          },
+          {
+            "name": "commerce.offersKept",
+            "pass": true,
+            "diffs": []
+          },
+          {
+            "name": "commerce.channelEntries",
+            "pass": true,
+            "diffs": []
+          },
+          {
+            "name": "commerce.unchangedElsewhere",
+            "pass": true,
+            "diffs": []
+          }
+        ]
+      }
+    },
+    {
+      "step": "packHistory",
+      "label": "d3-pack-history",
+      "projects": [
+        {
+          "slug": "tmz",
+          "counts": {
+            "converted": 1
+          },
+          "mutations": 2
+        }
+      ],
+      "transactions": 1,
+      "refusals": [],
+      "findings": [],
+      "verification": {
+        "pass": true,
+        "checks": [
+          {
+            "name": "packHistory.legacyPreset",
+            "pass": true,
+            "diffs": []
+          },
+          {
+            "name": "packHistory.setupComplete",
+            "pass": true,
+            "diffs": []
+          },
+          {
+            "name": "packHistory.unchangedElsewhere",
+            "pass": true,
+            "diffs": []
+          }
+        ]
+      }
+    },
+    {
+      "step": "publicName",
+      "label": "d4-public-name",
+      "projects": [
+        {
+          "slug": "tmz",
+          "counts": {
+            "copy": 1,
+            "drop": 0
+          },
+          "mutations": 1
+        }
+      ],
+      "transactions": 1,
+      "refusals": [],
+      "findings": [
+        {
+          "step": "publicName",
+          "code": "publicName.copy",
+          "project": "tmz",
+          "detail": {
+            "publicName": {
+              "de": "Bücher",
+              "en": "Books",
+              "it": "Libri"
+            }
+          }
+        }
+      ],
+      "verification": {
+        "pass": true,
+        "checks": [
+          {
+            "name": "publicName.preserved",
+            "pass": true,
+            "diffs": []
+          },
+          {
+            "name": "publicName.navLabelUnset",
+            "pass": true,
+            "diffs": []
+          },
+          {
+            "name": "publicName.existingUntouched",
+            "pass": true,
+            "diffs": []
+          },
+          {
+            "name": "publicName.unchangedElsewhere",
+            "pass": true,
+            "diffs": []
+          }
+        ]
+      }
+    }
+  ],
+  "refusals": [],
+  "findings": [
+    {
+      "step": "taxonomy",
+      "code": "taxonomy.configListIgnored",
+      "project": "tmz",
+      "detail": {
+        "configKeys": [
+          "design",
+          "technology"
+        ],
+        "termKeys": [
+          "technology",
+          "design",
+          "literature"
+        ],
+        "stale": true
+      }
+    },
+    {
+      "step": "taxonomy",
+      "code": "item.multiCategory",
+      "project": "tmz",
+      "id": "drafts.c2c4fa97-2e6b-40fd-9d7e-0adef63af391",
+      "detail": {
+        "legacy": [
+          "technology",
+          "literature"
+        ],
+        "primary": "technology",
+        "additional": [
+          "literature"
+        ]
+      }
+    },
+    {
+      "step": "publicName",
+      "code": "publicName.copy",
+      "project": "tmz",
+      "detail": {
+        "publicName": {
+          "de": "Bücher",
+          "en": "Books",
+          "it": "Libri"
+        }
+      }
+    }
+  ],
+  "green": true
+}

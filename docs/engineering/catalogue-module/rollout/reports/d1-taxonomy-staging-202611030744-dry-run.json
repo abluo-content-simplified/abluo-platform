@@ -1,0 +1,120 @@
+{
+  "reportId": "d1-taxonomy-staging-202611030744-dry-run",
+  "kind": "catalogue-data-step",
+  "step": "taxonomy",
+  "label": "d1-taxonomy",
+  "dataset": "staging",
+  "mode": "dry-run",
+  "migrationId": "d1-taxonomy-staging-202611030744",
+  "approval": null,
+  "beforeSource": "p export 2026-11-03T07:20:56.386Z sha256=8d7785ade2d7",
+  "startedAt": "2026-11-03T07:44:12.231Z",
+  "finishedAt": "2026-11-03T07:44:12.875Z",
+  "green": true,
+  "stoppedAt": null,
+  "error": null,
+  "itemCounts": {
+    "published": 10,
+    "drafts": 6,
+    "versions": 0,
+    "total": 16
+  },
+  "refusals": [],
+  "findings": [
+    {
+      "step": "taxonomy",
+      "code": "taxonomy.configListIgnored",
+      "project": "tmz",
+      "detail": {
+        "configKeys": [
+          "design",
+          "technology"
+        ],
+        "termKeys": [
+          "technology",
+          "design",
+          "literature"
+        ],
+        "stale": true
+      }
+    },
+    {
+      "step": "taxonomy",
+      "code": "item.multiCategory",
+      "project": "tmz",
+      "id": "drafts.c2c4fa97-2e6b-40fd-9d7e-0adef63af391",
+      "detail": {
+        "legacy": [
+          "technology",
+          "literature"
+        ],
+        "primary": "technology",
+        "additional": [
+          "literature"
+        ]
+      }
+    }
+  ],
+  "projects": [
+    {
+      "slug": "tmz",
+      "counts": {
+        "categories": 3,
+        "tags": 7,
+        "itemsAssigned": 14,
+        "itemsUnassigned": 2,
+        "itemsAlreadyAssigned": 0
+      },
+      "transactions": [],
+      "marker": "2026-11-03T07:44:12.231Z",
+      "audit": "simulated"
+    }
+  ],
+  "transactions": [
+    {
+      "transactionId": "abluo-migr-d1-taxonomy-staging-202611030744-1",
+      "groups": [
+        "taxonomy:tmz",
+        "item:06fe9927-52eb-4df1-95b5-acf678dc371a",
+        "item:1ebde323-3dd0-420a-80f8-9e5cf4c01c28",
+        "item:24079d79-2d28-49a7-bdf8-d688cddd6306",
+        "item:3aefb037-904e-41b2-9a06-cfc38c3f6e09",
+        "item:4ad29327-7a74-4f40-be39-256e743f675c",
+        "item:5e036623-04a8-465b-82a4-b480d3620f7c",
+        "item:770bc6e7-b17b-43e8-8081-ccfba82f6781",
+        "item:c2c4fa97-2e6b-40fd-9d7e-0adef63af391",
+        "item:cd806110-4e6f-4c9f-b6e0-511d345fde4d",
+        "item:ee333af2-f72f-4fed-879d-1953523154fa",
+        "item:fb1115a7-c1d9-44eb-9310-0c962cd5b81e"
+      ],
+      "mutations": 15
+    }
+  ],
+  "verification": {
+    "pass": true,
+    "checks": [
+      {
+        "name": "taxonomy.vocabulary",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "taxonomy.itemAssignment",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "taxonomy.unchangedElsewhere",
+        "pass": true,
+        "diffs": []
+      }
+    ]
+  },
+  "audit": {
+    "target": "sandbox:igupsricssknxtavjscu",
+    "probe": {
+      "ok": true
+    },
+    "pending": []
+  }
+}

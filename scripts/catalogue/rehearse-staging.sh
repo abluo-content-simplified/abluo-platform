@@ -20,7 +20,7 @@ echo "Staging rehearsal from export: $P"
 echo "Every write goes to dataset 'staging' only."
 
 step "1/7 Import the export into staging — dry run"
-$RUN/import-to-staging.mjs --dataset staging --from "$P"
+$RUN/import-to-staging.mjs --dataset staging --from "$P" ${REPLACE:+--replace}
 cont
 step "1/7 Import into staging — apply"
 $RUN/import-to-staging.mjs --dataset staging --from "$P" --apply ${REPLACE:+--replace}

@@ -1,0 +1,100 @@
+{
+  "reportId": "d4-public-name-staging-202611030754",
+  "kind": "catalogue-data-step",
+  "step": "publicName",
+  "label": "d4-public-name",
+  "dataset": "staging",
+  "mode": "apply",
+  "migrationId": "d4-public-name-staging-202611030754",
+  "approval": null,
+  "beforeSource": "p export 2026-11-03T07:20:56.386Z sha256=8d7785ade2d7",
+  "startedAt": "2026-11-03T07:54:17.531Z",
+  "finishedAt": "2026-11-03T07:54:25.569Z",
+  "green": true,
+  "stoppedAt": null,
+  "error": null,
+  "itemCounts": {
+    "published": 10,
+    "drafts": 6,
+    "versions": 0,
+    "total": 16
+  },
+  "refusals": [],
+  "findings": [
+    {
+      "step": "publicName",
+      "code": "publicName.copy",
+      "project": "tmz",
+      "detail": {
+        "publicName": {
+          "de": "Bücher",
+          "en": "Books",
+          "it": "Libri"
+        }
+      }
+    }
+  ],
+  "projects": [
+    {
+      "slug": "tmz",
+      "counts": {
+        "copy": 1,
+        "drop": 0
+      },
+      "transactions": [
+        "abluo-migr-d4-public-name-staging-202611030754-1",
+        "abluo-migr-d4-public-name-staging-202611030754-2"
+      ],
+      "marker": "2026-11-03T07:54:17.531Z",
+      "audit": "recorded"
+    }
+  ],
+  "transactions": [
+    {
+      "transactionId": "abluo-migr-d4-public-name-staging-202611030754-1",
+      "groups": [
+        "config:tmz"
+      ],
+      "mutations": 1
+    },
+    {
+      "transactionId": "abluo-migr-d4-public-name-staging-202611030754-2",
+      "groups": [
+        "marker:tmz"
+      ],
+      "mutations": 1
+    }
+  ],
+  "verification": {
+    "pass": true,
+    "checks": [
+      {
+        "name": "publicName.preserved",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "publicName.navLabelUnset",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "publicName.existingUntouched",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "publicName.unchangedElsewhere",
+        "pass": true,
+        "diffs": []
+      }
+    ]
+  },
+  "audit": {
+    "target": "sandbox:igupsricssknxtavjscu",
+    "probe": {
+      "ok": true
+    },
+    "pending": []
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "reportId": "d1-taxonomy-staging-202611030755",
+  "kind": "catalogue-data-step",
+  "step": "taxonomy",
+  "label": "d1-taxonomy",
+  "dataset": "staging",
+  "mode": "apply",
+  "migrationId": "d1-taxonomy-staging-202611030755",
+  "approval": null,
+  "beforeSource": "p export 2026-11-03T07:20:56.386Z sha256=8d7785ade2d7",
+  "startedAt": "2026-11-03T07:55:40.015Z",
+  "finishedAt": "2026-11-03T07:55:40.588Z",
+  "green": true,
+  "stoppedAt": null,
+  "error": null,
+  "itemCounts": {
+    "published": 10,
+    "drafts": 6,
+    "versions": 0,
+    "total": 16
+  },
+  "refusals": [],
+  "findings": [
+    {
+      "step": "taxonomy",
+      "code": "taxonomy.configListIgnored",
+      "project": "tmz",
+      "detail": {
+        "configKeys": [
+          "design",
+          "technology"
+        ],
+        "termKeys": [
+          "technology",
+          "design",
+          "literature"
+        ],
+        "stale": true
+      }
+    },
+    {
+      "step": "taxonomy",
+      "code": "taxonomy.documentExists",
+      "project": "tmz",
+      "id": "catalogue-taxonomy.tmz"
+    }
+  ],
+  "projects": [
+    {
+      "slug": "tmz",
+      "counts": {
+        "categories": 3,
+        "tags": 7,
+        "itemsAssigned": 0,
+        "itemsUnassigned": 2,
+        "itemsAlreadyAssigned": 14
+      },
+      "transactions": [],
+      "marker": "2026-11-03T07:53:09.807Z",
+      "audit": "none"
+    }
+  ],
+  "transactions": [],
+  "verification": {
+    "pass": true,
+    "checks": [
+      {
+        "name": "taxonomy.vocabulary",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "taxonomy.itemAssignment",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "taxonomy.unchangedElsewhere",
+        "pass": true,
+        "diffs": []
+      }
+    ]
+  },
+  "audit": {
+    "target": "sandbox:igupsricssknxtavjscu",
+    "probe": {
+      "ok": true
+    },
+    "pending": []
+  }
+}

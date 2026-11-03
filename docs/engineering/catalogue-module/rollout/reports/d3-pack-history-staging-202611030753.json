@@ -1,0 +1,81 @@
+{
+  "reportId": "d3-pack-history-staging-202611030753",
+  "kind": "catalogue-data-step",
+  "step": "packHistory",
+  "label": "d3-pack-history",
+  "dataset": "staging",
+  "mode": "apply",
+  "migrationId": "d3-pack-history-staging-202611030753",
+  "approval": null,
+  "beforeSource": "p export 2026-11-03T07:20:56.386Z sha256=8d7785ade2d7",
+  "startedAt": "2026-11-03T07:53:58.035Z",
+  "finishedAt": "2026-11-03T07:54:09.064Z",
+  "green": true,
+  "stoppedAt": null,
+  "error": null,
+  "itemCounts": {
+    "published": 10,
+    "drafts": 6,
+    "versions": 0,
+    "total": 16
+  },
+  "refusals": [],
+  "findings": [],
+  "projects": [
+    {
+      "slug": "tmz",
+      "counts": {
+        "converted": 1
+      },
+      "transactions": [
+        "abluo-migr-d3-pack-history-staging-202611030753-1",
+        "abluo-migr-d3-pack-history-staging-202611030753-2"
+      ],
+      "marker": "2026-11-03T07:53:58.035Z",
+      "audit": "recorded"
+    }
+  ],
+  "transactions": [
+    {
+      "transactionId": "abluo-migr-d3-pack-history-staging-202611030753-1",
+      "groups": [
+        "pack:tmz"
+      ],
+      "mutations": 2
+    },
+    {
+      "transactionId": "abluo-migr-d3-pack-history-staging-202611030753-2",
+      "groups": [
+        "marker:tmz"
+      ],
+      "mutations": 1
+    }
+  ],
+  "verification": {
+    "pass": true,
+    "checks": [
+      {
+        "name": "packHistory.legacyPreset",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "packHistory.setupComplete",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "packHistory.unchangedElsewhere",
+        "pass": true,
+        "diffs": []
+      }
+    ]
+  },
+  "audit": {
+    "target": "sandbox:igupsricssknxtavjscu",
+    "probe": {
+      "ok": true
+    },
+    "pending": []
+  }
+}

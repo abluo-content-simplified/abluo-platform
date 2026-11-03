@@ -1,0 +1,38 @@
+{
+  "reportId": "verify-public-name-staging-202611030754",
+  "kind": "catalogue-verification",
+  "step": "publicName",
+  "dataset": "staging",
+  "before": {
+    "dir": "backups/catalogue/p-production-202611030720",
+    "sha256": "8d7785ade2d7bb41c745f160d525c252a0c1241efa5992b20dd3a6ab67e8ceb8",
+    "exportedAt": "2026-11-03T07:20:56.386Z"
+  },
+  "after": "live",
+  "green": true,
+  "verification": {
+    "pass": true,
+    "checks": [
+      {
+        "name": "publicName.preserved",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "publicName.navLabelUnset",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "publicName.existingUntouched",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "publicName.unchangedElsewhere",
+        "pass": true,
+        "diffs": []
+      }
+    ]
+  }
+}

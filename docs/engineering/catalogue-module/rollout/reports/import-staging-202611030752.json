@@ -1,0 +1,142 @@
+{
+  "reportId": "import-staging-202611030752",
+  "kind": "catalogue-import",
+  "dataset": "staging",
+  "mode": "apply",
+  "source": {
+    "sha256": "8d7785ade2d7bb41c745f160d525c252a0c1241efa5992b20dd3a6ab67e8ceb8",
+    "exportedAt": "2026-11-03T07:20:56.386Z",
+    "dataset": "production",
+    "documents": 33
+  },
+  "green": true,
+  "error": null,
+  "refusals": [],
+  "transactions": [
+    "abluo-migr-import-staging-202611030752-1",
+    "abluo-migr-import-staging-202611030752-2"
+  ],
+  "leftWeak": [
+    {
+      "id": "06fe9927-52eb-4df1-95b5-acf678dc371a",
+      "path": "images[f38b0f6011a3]",
+      "ref": "Wzx30PnyAlWu9VV2l4UjHG"
+    },
+    {
+      "id": "1ebde323-3dd0-420a-80f8-9e5cf4c01c28",
+      "path": "images[f2e871d38ff4]",
+      "ref": "V4G1R1n9zeh3M77jSHqEvv"
+    },
+    {
+      "id": "24079d79-2d28-49a7-bdf8-d688cddd6306",
+      "path": "images[enshcover]",
+      "ref": "tmz-media-enshittification-en"
+    },
+    {
+      "id": "3aefb037-904e-41b2-9a06-cfc38c3f6e09",
+      "path": "images[goodomensen]",
+      "ref": "tmz-media-good-omens-corgi-en"
+    },
+    {
+      "id": "5e036623-04a8-465b-82a4-b480d3620f7c",
+      "path": "images[1d73792cc145]",
+      "ref": "Rg5cLCm46ntERxJ1yNgXNV"
+    },
+    {
+      "id": "770bc6e7-b17b-43e8-8081-ccfba82f6781",
+      "path": "images[0c63d7eb0e94]",
+      "ref": "w3lFHGU9067C4GvOcKc3Yo"
+    },
+    {
+      "id": "c2c4fa97-2e6b-40fd-9d7e-0adef63af391",
+      "path": "images[6e0e361b0b02]",
+      "ref": "V4G1R1n9zeh3M77jSHqEvv"
+    },
+    {
+      "id": "c2c4fa97-2e6b-40fd-9d7e-0adef63af391",
+      "path": "images[2589058a0d24]",
+      "ref": "Rg5cLCm46ntERxJ1yNgXNV"
+    },
+    {
+      "id": "c2c4fa97-2e6b-40fd-9d7e-0adef63af391",
+      "path": "images[4ae0130f38e5]",
+      "ref": "tmz-media-portrait"
+    },
+    {
+      "id": "cd806110-4e6f-4c9f-b6e0-511d345fde4d",
+      "path": "images[b85c9d79d9da]",
+      "ref": "07qNRs02YuG57MQxzoFlf6"
+    },
+    {
+      "id": "drafts.5e036623-04a8-465b-82a4-b480d3620f7c",
+      "path": "images[1d73792cc145]",
+      "ref": "Rg5cLCm46ntERxJ1yNgXNV"
+    },
+    {
+      "id": "drafts.c2c4fa97-2e6b-40fd-9d7e-0adef63af391",
+      "path": "images[6e0e361b0b02]",
+      "ref": "V4G1R1n9zeh3M77jSHqEvv"
+    },
+    {
+      "id": "drafts.c2c4fa97-2e6b-40fd-9d7e-0adef63af391",
+      "path": "images[2589058a0d24]",
+      "ref": "Rg5cLCm46ntERxJ1yNgXNV"
+    },
+    {
+      "id": "drafts.c2c4fa97-2e6b-40fd-9d7e-0adef63af391",
+      "path": "images[4ae0130f38e5]",
+      "ref": "tmz-media-portrait"
+    },
+    {
+      "id": "drafts.ee333af2-f72f-4fed-879d-1953523154fa",
+      "path": "images[136ef8dc8839]",
+      "ref": "qLPoKJxzFXUdhfK2cAJhaI"
+    },
+    {
+      "id": "fb1115a7-c1d9-44eb-9310-0c962cd5b81e",
+      "path": "images[d503f1e973d3]",
+      "ref": "PUhL8qOYEt3sO0HwIVIbrg"
+    },
+    {
+      "id": "tmz-catalogue-page",
+      "path": "sections[recommendbook].form",
+      "ref": "formDefinition-tmz-book-recommendation"
+    },
+    {
+      "id": "tmz-project",
+      "path": "clientRef",
+      "ref": "tmz-client"
+    },
+    {
+      "id": "tmz-project",
+      "path": "designSystemRef",
+      "ref": "tmz-design-system"
+    },
+    {
+      "id": "tmz-project",
+      "path": "privacy.cookiePolicyPage",
+      "ref": "tmz-page-cookies"
+    },
+    {
+      "id": "tmz-site-config",
+      "path": "footerColumns[col-legal].links[l-privacy].pageRef",
+      "ref": "tmz-page-privacy"
+    },
+    {
+      "id": "tmz-site-config",
+      "path": "footerColumns[col-legal].links[l-cookies].pageRef",
+      "ref": "tmz-page-cookies"
+    },
+    {
+      "id": "tmz-site-config",
+      "path": "footerColumns[col-legal].links[l-imprint].pageRef",
+      "ref": "tmz-page-imprint"
+    },
+    {
+      "id": "tmz-site-config",
+      "path": "tenant",
+      "ref": "tmz-client"
+    }
+  ],
+  "mismatches": []
+}

@@ -1,0 +1,71 @@
+{
+  "reportId": "d3-pack-history-staging-202611030753-dry-run",
+  "kind": "catalogue-data-step",
+  "step": "packHistory",
+  "label": "d3-pack-history",
+  "dataset": "staging",
+  "mode": "dry-run",
+  "migrationId": "d3-pack-history-staging-202611030753",
+  "approval": null,
+  "beforeSource": "p export 2026-11-03T07:20:56.386Z sha256=8d7785ade2d7",
+  "startedAt": "2026-11-03T07:53:49.077Z",
+  "finishedAt": "2026-11-03T07:53:49.344Z",
+  "green": true,
+  "stoppedAt": null,
+  "error": null,
+  "itemCounts": {
+    "published": 10,
+    "drafts": 6,
+    "versions": 0,
+    "total": 16
+  },
+  "refusals": [],
+  "findings": [],
+  "projects": [
+    {
+      "slug": "tmz",
+      "counts": {
+        "converted": 1
+      },
+      "transactions": [],
+      "marker": "2026-11-03T07:53:49.077Z",
+      "audit": "simulated"
+    }
+  ],
+  "transactions": [
+    {
+      "transactionId": "abluo-migr-d3-pack-history-staging-202611030753-1",
+      "groups": [
+        "pack:tmz"
+      ],
+      "mutations": 2
+    }
+  ],
+  "verification": {
+    "pass": true,
+    "checks": [
+      {
+        "name": "packHistory.legacyPreset",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "packHistory.setupComplete",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "packHistory.unchangedElsewhere",
+        "pass": true,
+        "diffs": []
+      }
+    ]
+  },
+  "audit": {
+    "target": "sandbox:igupsricssknxtavjscu",
+    "probe": {
+      "ok": true
+    },
+    "pending": []
+  }
+}

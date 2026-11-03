@@ -1,0 +1,85 @@
+{
+  "reportId": "d2-commerce-staging-202611030753-dry-run",
+  "kind": "catalogue-data-step",
+  "step": "commerce",
+  "label": "d2-commerce",
+  "dataset": "staging",
+  "mode": "dry-run",
+  "migrationId": "d2-commerce-staging-202611030753",
+  "approval": null,
+  "beforeSource": "p export 2026-11-03T07:20:56.386Z sha256=8d7785ade2d7",
+  "startedAt": "2026-11-03T07:53:31.510Z",
+  "finishedAt": "2026-11-03T07:53:33.238Z",
+  "green": true,
+  "stoppedAt": null,
+  "error": null,
+  "itemCounts": {
+    "published": 10,
+    "drafts": 6,
+    "versions": 0,
+    "total": 16
+  },
+  "refusals": [],
+  "findings": [],
+  "projects": [
+    {
+      "slug": "tmz",
+      "counts": {
+        "documents": 4,
+        "prices": 4,
+        "channels": 0
+      },
+      "transactions": [],
+      "marker": "2026-11-03T07:53:31.510Z",
+      "audit": "simulated"
+    }
+  ],
+  "transactions": [
+    {
+      "transactionId": "abluo-migr-d2-commerce-staging-202611030753-1",
+      "groups": [
+        "item:1ebde323-3dd0-420a-80f8-9e5cf4c01c28",
+        "item:c2c4fa97-2e6b-40fd-9d7e-0adef63af391",
+        "item:ee333af2-f72f-4fed-879d-1953523154fa"
+      ],
+      "mutations": 4
+    }
+  ],
+  "verification": {
+    "pass": true,
+    "checks": [
+      {
+        "name": "commerce.equivalence(E1–E9)",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "commerce.classW",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "commerce.offersKept",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "commerce.channelEntries",
+        "pass": true,
+        "diffs": []
+      },
+      {
+        "name": "commerce.unchangedElsewhere",
+        "pass": true,
+        "diffs": []
+      }
+    ]
+  },
+  "audit": {
+    "target": "sandbox:igupsricssknxtavjscu",
+    "probe": {
+      "ok": true
+    },
+    "pending": []
+  }
+}
