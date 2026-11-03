@@ -78,6 +78,34 @@ import { ORDER_STEP } from '@/lib/taxonomy/rules'
 import { readChannels } from '@/lib/modules/catalogue/commerce/channels'
 import { CATALOGUE_MIGRATION_STEPS, type CatalogueMigrationState } from '@/lib/modules/catalogue/schema-commerce'
 import { isImageShape, type ImageShape } from '@/lib/modules/catalogue/list-model'
+import { scheduleChanges } from '@/lib/modules/catalogue/item-writer'
+import { readinessGaps } from '@/lib/modules/catalogue/readiness/chips'
+import { itemReadinessInputFromDoc } from '@/lib/modules/catalogue/readiness/facts-doc'
+import type { ItemGap } from '@/lib/modules/catalogue/dashboard-form'
+import { scheduleSummary } from '@/lib/modules/catalogue/taxonomy/write-model'
+import { auditEntry } from '@/lib/modules/catalogue/audit/events'
+import { recordCatalogueActivity, type CatalogueAuditWriter } from '@/lib/modules/catalogue/audit/writer'
+
+/**
+ * C12 `availability.schedule_changed` for an item save that changed the hours of an item or format
+ * rule — content-free (counts and fingerprints, never times or labels), after the write succeeded,
+ * through the one Catalogue audit writer. Never fails the save.
+ */
+async function auditScheduleChanges(ctx: TenantAuthorizationContext, projectId: string, id: string, previous: Record<string, unknown>, patch: { set: Record<string, unknown>; unset: string[] }, writer?: CatalogueAuditWriter) {
+  for (const c of scheduleChanges(previous, patch)) {
+    const entry = auditEntry('availability.schedule_changed', {
+      projectId,
+      targetId: id,
+      actor: { kind: 'user', id: ctx.userId, support: !!ctx.support },
+      detail: { level: c.level, targetKey: c.targetKey, channel: c.channel, before: scheduleSummary(c.before), after: scheduleSummary(c.after), affected: { items: 1, formats: c.formats } },
+    })
+    try {
+      await (writer ?? ((e) => recordCatalogueActivity(e)))(entry)
+    } catch {
+      /* recording never changes what the caller sees */
+    }
+  }
+}
 import { publicNameMap } from '@/lib/modules/catalogue/public-name'
 import { namedSlugConflicts, type NamedSlugConflict } from '@/lib/modules/catalogue/validation'
 import {
@@ -116,7 +144,7 @@ export function catalogueAbilities(grant: { permissions: readonly string[] }) {
 export type CatalogueAbilities = ReturnType<typeof catalogueAbilities>
 
 type Client = Pick<typeof sanityWriteClient, 'getDocument' | 'fetch' | 'create' | 'patch' | 'transaction'>
-export type CatalogueDeps = { client?: Client; now?: () => Date; uuid?: () => string; audit?: ContentAuditWriter }
+export type CatalogueDeps = { client?: Client; now?: () => Date; uuid?: () => string; audit?: ContentAuditWriter; /** C12 writer (default recordCatalogueActivity). */ catalogueAudit?: CatalogueAuditWriter }
 type Doc = Record<string, unknown> & { _id?: string; _type?: string; _rev?: string; projectSlug?: string }
 
 const MAX_SCHEDULE_MS = 2 * 366 * 24 * 60 * 60 * 1000
@@ -291,7 +319,7 @@ export async function resolveAmazonLink(ctx: TenantAuthorizationContext, project
 // ── Lists ─────────────────────────────────────────────────────────────────────
 
 type RowBase = { _id: string; _rev?: string; slug?: unknown; _createdAt?: string; _updatedAt?: string; name?: unknown; publishedAt?: unknown; expiresAt?: unknown; archivedAt?: unknown }
-type ItemRow = RowBase & { byline?: unknown; bookAuthor?: unknown; bookYear?: unknown; bookStatus?: unknown; itemProfile?: unknown; allergenStatus?: unknown; categories?: unknown; primaryCategory?: unknown; additionalCategories?: unknown; hasPage?: unknown; visibility?: unknown; imageCount?: number | null; firstImage?: string | null; offerCount?: number | null; prices?: unknown; lists?: unknown }
+type ItemRow = RowBase & { byline?: unknown; bookAuthor?: unknown; bookYear?: unknown; bookStatus?: unknown; itemProfile?: unknown; allergenStatus?: unknown; categories?: unknown; primaryCategory?: unknown; additionalCategories?: unknown; hasPage?: unknown; visibility?: unknown; imageCount?: number | null; firstImage?: string | null; offerCount?: number | null; prices?: unknown; lists?: unknown; formats?: unknown; offers?: unknown; channelAvailability?: unknown; allergenDeclaration?: unknown }
 type CollectionRow = RowBase & { sectionNames?: unknown; collectionType?: unknown; hasPage?: unknown; visibility?: unknown; sectionCount?: number | null; itemRefs?: unknown }
 type OptionListRow = RowBase & { optionCount?: number | null }
 
@@ -334,6 +362,8 @@ export type CatalogueItemListRow = Common & {
   /** Lowest price, for the list (in the project currency). */
   fromPrice: number | null
   optionLists: string[]
+  /** The "missing" badges (C6 §6.6): the readiness engine in a migrated project, the legacy counts elsewhere. */
+  gaps: ItemGap[]
 }
 export type CatalogueCollectionListRow = Common & { collectionType: 'menu' | 'list'; hasPage: boolean; sectionCount: number; itemCount: number; /** Section names (localized), in order. */ sectionNames: Record<string, string>[] }
 export type CatalogueOptionListRow = Common & { optionCount: number; usedBy: number }
@@ -404,8 +434,19 @@ export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: 
     ? await client.fetch<Array<{ _id: string; url?: string | null; hotspot?: { x?: number; y?: number } | null }> | null>(CATALOGUE_THUMBS_QUERY, { projectSlug: grant.projectSlug, ids: firsts })
     : []
   const thumbById = new Map((thumbs ?? []).map((a) => [a._id, containThumbUrl(a.url, 720)]))
+  const facts = { defaultLocale: d, locales: site.locales, channels: readChannels(site.config.serviceChannels).channels, tree: buildTree(site.config.categoryNodes), timeZone: site.timeZone, migrations: site.config.migrations }
   const itemRows: CatalogueItemListRow[] = [...items].map(([id, e]) => {
     const prices = (Array.isArray(e.row.prices) ? e.row.prices : []).filter((p): p is number => typeof p === 'number' && Number.isFinite(p))
+    const imageCount = typeof e.row.imageCount === 'number' ? e.row.imageCount : 0
+    const categories = itemCategoryKeys(e.row)
+    const offerCount = typeof e.row.offerCount === 'number' ? e.row.offerCount : 0
+    const allergensNotReviewed = can(profileOf(e.row.itemProfile), 'foodInformation') && e.row.allergenStatus !== 'containsListedAllergens' && e.row.allergenStatus !== 'noneDeclared'
+    // The version that would be published next (the draft when there is one), drafts included (D-21).
+    const gaps = readinessGaps(
+      site.config.migrations,
+      () => itemReadinessInputFromDoc({ ...e.row, images: Array.from({ length: imageCount }) }, { id, ...facts }),
+      { imageCount, offerCount, allergensNotReviewed, categoryCount: categories.length },
+    )
     return {
       ...common(id, e, d, now, pub),
       byline: localized(e.row.byline),
@@ -413,15 +454,16 @@ export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: 
       bookYear: typeof e.row.bookYear === 'number' && Number.isInteger(e.row.bookYear) ? e.row.bookYear : null,
       bookStatus: isReadingStatus(e.row.bookStatus) ? e.row.bookStatus : null,
       itemProfile: isItemProfile(e.row.itemProfile) ? e.row.itemProfile : null,
-      allergensNotReviewed: can(profileOf(e.row.itemProfile), 'foodInformation') && e.row.allergenStatus !== 'containsListedAllergens' && e.row.allergenStatus !== 'noneDeclared',
-      // C1 R1: primary first, then additional; the legacy list when the new fields are absent.
-      categories: itemCategoryKeys(e.row),
+      allergensNotReviewed,
+      // C1: primary first, then additional; the legacy list when the new fields are absent.
+      categories,
       hasPage: e.row.hasPage === true,
       thumb: typeof e.row.firstImage === 'string' ? (thumbById.get(e.row.firstImage) ?? null) : null,
-      imageCount: typeof e.row.imageCount === 'number' ? e.row.imageCount : 0,
-      offerCount: typeof e.row.offerCount === 'number' ? e.row.offerCount : 0,
+      imageCount,
+      offerCount,
       fromPrice: prices.length ? Math.min(...prices) : null,
       optionLists: strings(e.row.lists),
+      gaps,
     }
   })
   const collections = [...pairUp(raw?.collections)].map(([id, e]) => ({
@@ -749,11 +791,13 @@ export async function patchCatalogueDraft(
       () => client.transaction().create(openedCopy as { _id: string; _type: string }).patch(draftId, (p) => ops(p)).commit({ ...DRAFT_SAVE, returnDocuments: true }),
       guard
     )) as Array<{ _id?: string; _rev?: string }> | undefined
+    if (kind === 'item') await auditScheduleChanges(ctx, projectId, input.id, previous, cleaned, deps.catalogueAudit)
     return { rev: (Array.isArray(docs) ? docs.find((d) => d?._id === draftId)?._rev : undefined) ?? '' }
   }
   const result = (await commit(client, grant.projectSlug, () => ops(client.patch(draftId).ifRevisionId(input.rev)).commit(DRAFT_SAVE), guard)) as
     | { _rev?: string }
     | undefined
+  if (kind === 'item') await auditScheduleChanges(ctx, projectId, input.id, previous, cleaned, deps.catalogueAudit)
   return { rev: result?._rev ?? '' }
 }
 
@@ -876,8 +920,8 @@ export type CataloguePublishPreview = {
   missing: Referrer[]
   /** Published dependencies that will not be live when this goes live (never changed — a warning). */
   notLive: Referrer[]
-  /** Documents that cannot be published yet, and why (e.g. allergens not reviewed). */
-  blocked: Array<Referrer & { code: string }>
+  /** Documents that cannot be published yet, and why (e.g. allergens not reviewed); `findings` for `not_ready` (C6 §6.7.2). */
+  blocked: Array<Referrer & { code: string; findings?: import('@/lib/modules/catalogue/readiness/types').Finding[] }>
 }
 
 export async function previewCataloguePublish(
@@ -906,7 +950,7 @@ export async function previewCataloguePublish(
         await prepare(n, { client, projectSlug: grant.projectSlug })
       } catch (e) {
         if (!(e instanceof CatalogueError)) throw e
-        blocked.push({ id: n.id, type: n.d.type, label: n.d.label?.(n.draft) ?? n.id, code: e.code })
+        blocked.push({ id: n.id, type: n.d.type, label: n.d.label?.(n.draft) ?? n.id, code: e.code, ...(e.detail?.readiness && { findings: e.detail.readiness }) })
       }
     }
     const ids = nodes.flatMap((n) => [n.id, `drafts.${n.id}`])

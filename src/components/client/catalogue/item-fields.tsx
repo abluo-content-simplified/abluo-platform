@@ -26,7 +26,6 @@ import { MAX_MORE_AMAZON_URLS } from '@/lib/modules/catalogue/amazon-delivery'
 import type { AmazonTrackingId } from '@/lib/affiliate/amazon-marketplaces'
 import { describeAffiliateLink, type AffiliateSettings } from '@/lib/affiliate/affiliate-settings'
 import { ALLERGENS, type AllergenKey } from '@/lib/modules/catalogue/allergens'
-import { WEEKDAYS, type Weekday } from '@/lib/modules/catalogue/availability'
 import { formatPrice } from '@/lib/modules/catalogue/resolve'
 import { CATALOGUE_LINK_LIMITS } from '@/lib/modules/catalogue/links'
 import type { CatalogueTerm } from '@/lib/api/catalogue-drafts'
@@ -44,7 +43,6 @@ import {
   moveIndex,
   slugFromName,
   slugPreview,
-  wrapsMidnight,
   type AttachmentForm,
   type BookDetailsForm,
   type DeclarationForm,

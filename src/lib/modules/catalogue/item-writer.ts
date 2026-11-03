@@ -28,7 +28,7 @@ import { IMPLICIT_FORMAT_KEY } from './commerce/format-key'
 import { formatIssues, QUANTITY_UNITS } from './commerce/formats'
 import { commerceOf, legacyOffersToFormats } from './commerce/legacy-commerce'
 import { priceIssues } from './commerce/prices'
-import { readFormatDocs } from './commerce/read'
+import { readFormatDocs, readRuleRows } from './commerce/read'
 import { WEEKDAYS } from './commerce/windows'
 import { WEEKLY_OVERRIDE_TYPE } from './commerce/availability-schedule'
 import { flatTree, itemCategoryAssignment } from './taxonomy/read'
@@ -291,7 +291,7 @@ export type ShapePatch = { set: Record<string, unknown>; unset: string[] }
  */
 export function commerceShape(previous: Record<string, unknown>, written: { formats?: Record<string, unknown>[]; channelAvailability?: Record<string, unknown>[] }, channelSet: ChannelSet): ShapePatch | null {
   const legacy = hasLegacyOffers(previous)
-  if (!legacy && written.formats === undefined && written.channelAvailability === undefined) return null
+  if (!Array.isArray(previous.offers) && written.formats === undefined && written.channelAvailability === undefined) return null
   const out: ShapePatch = { set: {}, unset: [] }
   let formats = written.formats
   if (formats === undefined && legacy && !hasFormats(previous)) formats = legacyOffersToFormats(previous.offers as unknown[]) as unknown as Record<string, unknown>[]
@@ -377,4 +377,40 @@ export function bookIsbnAfter(set: Record<string, unknown>, unset: readonly stri
   if (unset.includes('bookDetails')) return null
   const b = ('bookDetails' in set ? set.bookDetails : previous.bookDetails) as { isbn?: unknown } | undefined
   return typeof b?.isbn === 'string' && b.isbn ? b.isbn : null
+}
+
+// ── C12 `availability.schedule_changed` (item and format rules) ──────────────
+
+export type ScheduleChange = { level: 'item' | 'format'; targetKey: string; channel: string; before: ChannelAvailabilityRule; after: ChannelAvailabilityRule; formats: number }
+
+/**
+ * The explicit rules whose schedule this patch changes, item and format level (C12: "item/format edits
+ * write that kind"). A rule counts when it exists before AND after (the payload's before/after are
+ * schedule summaries, never "inherit") and its baseline or weekly overrides differ, at least one side
+ * carrying hours. Content-free by construction: the caller audits counts and fingerprints only.
+ */
+export function scheduleChanges(previous: Record<string, unknown>, patch: ShapePatch): ScheduleChange[] {
+  const out: ScheduleChange[] = []
+  const same = (a: ChannelAvailabilityRule, b: ChannelAvailabilityRule) => JSON.stringify(a) === JSON.stringify(b)
+  const hours = (a: ChannelAvailabilityRule, b: ChannelAvailabilityRule) => a.overrides.length > 0 || b.overrides.length > 0
+  const compare = (level: 'item' | 'format', targetKey: string, beforeRows: unknown, afterRows: unknown, formats: number) => {
+    const before = readRuleRows(beforeRows).rules
+    const after = readRuleRows(afterRows).rules
+    for (const [channel, b] of before) {
+      const a = after.get(channel)
+      if (a && !same(a, b) && hours(a, b)) out.push({ level, targetKey, channel, before: b, after: a, formats })
+    }
+  }
+  const prevFormats = (Array.isArray(previous.formats) ? previous.formats : []) as Record<string, unknown>[]
+  const nextFormats = 'formats' in patch.set ? (patch.set.formats as Record<string, unknown>[]) : patch.unset.includes('formats') ? [] : prevFormats
+  if ('channelAvailability' in patch.set || patch.unset.includes('channelAvailability')) {
+    compare('item', 'item', previous.channelAvailability, patch.set.channelAvailability ?? [], Math.max(1, nextFormats.length))
+  }
+  if ('formats' in patch.set) {
+    for (const f of prevFormats) {
+      const next = nextFormats.find((n) => n._key === f._key)
+      if (next) compare('format', String(f._key), f.channelAvailability, next.channelAvailability, 1)
+    }
+  }
+  return out
 }

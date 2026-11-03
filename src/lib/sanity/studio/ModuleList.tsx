@@ -38,6 +38,7 @@ import { applyPreset, previewPreset } from '../../modules/presets'
 import { buildInstallationPatch, CONFLICT_MESSAGE, isEmptyPatch, isRevisionConflict } from './module-save'
 import { configSurfaceIsDashboard } from './config-lock'
 import { LockedModuleConfig } from './LockedModuleConfig'
+import { installTimeConfig } from '@/lib/modules/catalogue/migration-markers'
 
 /**
  * ModuleList — the Modules pane. ADR-020 Decision 1.
@@ -747,6 +748,9 @@ function ModuleDetail({
         if (v === undefined || v === null || v === '') continue
         config[k] = v
       }
+
+      // C10-6 step 7: a brand-new Catalogue installation is born migrated (no legacy data exists).
+      if (!installation) Object.assign(config, installTimeConfig(manifest.id, new Date()))
 
       // ── Silent form ownership (ADR-020 Amendment A) ──────────────────────
       // In capture mode the module maintains its own form definition, so lead

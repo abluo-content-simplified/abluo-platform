@@ -1,13 +1,14 @@
-// Contract C11.8 — public name fixtures (R-A1 scope: reader, pure migration plan,
-// write validation, and the proofs that website output is unchanged and the
-// dashboard no longer reads navLabel). The R-B consumers (landing-title
-// fallback, llms.txt heading) ship with data step D4 and are NOT wired here.
+// Contract C11.8 — public name fixtures: reader, pure migration plan, write
+// validation, the proof that the dashboard no longer reads navLabel, and (R2)
+// the two approved R-B consumers (D-12) — the landing-title fallback and the
+// llms.txt heading — whose null behaviour is today's output, byte for byte.
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { planPublicNameMigration, publicNameIssues, publicNameOf, resolvePublicName } from '../public-name'
-import { resolveCatalogueConfig, resolveCataloguePage, type RawCatalogueConfigRow } from '../resolve'
+import { catalogueLandingTitle, resolveCatalogueConfig, resolveCataloguePage, type RawCatalogueConfigRow } from '../resolve'
+import { catalogueHeading } from '@/lib/seo/llms'
 import { MODULE_REGISTRY } from '@/lib/modules/registry'
 import * as queries from '@/lib/sanity/queries'
 
@@ -102,7 +103,7 @@ const filesUnder = (...dirs: string[]) => dirs.flatMap((d) => {
   return statSync(full).isDirectory() ? walk(full) : [full]
 })
 
-describe('website-output.unchanged (C11.5 proof 2, R-A1)', () => {
+describe('website-output.unchanged (C11.5 proof 2) — and the R-B consumers only where approved', () => {
   const WEBSITE = [
     'app/[locale]/(website)',
     'app/llms.txt',
@@ -114,32 +115,71 @@ describe('website-output.unchanged (C11.5 proof 2, R-A1)', () => {
     'lib/modules/catalogue/website.ts',
     'lib/modules/catalogue/structured.ts',
   ]
-  it('no public surface reads publicName or navLabel (Brand Hub has its own unrelated navLabel)', () => {
-    const offenders = filesUnder(...WEBSITE)
+  // C11.4 rows 1 and 6 (D-12) are the ONLY public consumers: the landing title (CatalogueRoute → resolve.ts)
+  // and the llms.txt heading (route → lib/seo/llms.ts). Nothing else on a public surface reads the name.
+  const R_B_CONSUMERS = ['components/catalogue/CatalogueRoute.tsx', 'lib/modules/catalogue/resolve.ts', 'lib/sanity/queries.ts', 'lib/seo/llms.ts', 'app/llms.txt/route.ts']
+  it('no other public surface reads publicName, and none reads navLabel (Brand Hub has its own unrelated navLabel)', () => {
+    const files = filesUnder(...WEBSITE)
       .map((f) => ({ rel: relative(SRC, f), text: readFileSync(f, 'utf8') }))
       .filter(({ rel }) => !rel.includes('/brand/'))
-      .filter(({ text }) => /\bpublicName\b|\bnavLabel\b/.test(text))
-      .map((f) => f.rel)
-    expect(offenders).toEqual([])
+    expect(files.filter(({ text }) => /\bnavLabel\b/.test(text)).map((f) => f.rel)).toEqual([])
+    expect(files.filter(({ rel, text }) => /\bpublicName\b/.test(text) && !R_B_CONSUMERS.some((c) => rel.split('\\').join('/') === c)).map((f) => f.rel)).toEqual([])
   })
-  it('the website queries never project the names', () => {
+  it('the website queries never project navLabel; only the catalogue config query projects publicName', () => {
     for (const [name, q] of Object.entries(queries)) {
       if (typeof q !== 'string') continue
-      expect(q, name).not.toMatch(/publicName|navLabel/)
+      expect(q, name).not.toMatch(/navLabel/)
+      if (name !== 'catalogueModuleConfigQuery') expect(q, name).not.toMatch(/publicName/)
     }
   })
   const TMZ_ROW = (config: Record<string, unknown>): RawCatalogueConfigRow =>
     ({ catalogue: { currency: 'EUR', publicSegment: 'books', ...config }, categoryTerms: [{ key: 'design', order: 2000, label: 'Design' }], tagTerms: [], timeZone: 'Europe/Rome' }) as RawCatalogueConfigRow
-  it('equiv/website-output: tmz config resolves byte-equal with navLabel, with publicName, and with neither', () => {
+  it('equiv/website-output: tmz config resolves byte-equal with navLabel and with neither; with publicName it only gains the name', () => {
     const base = JSON.stringify(resolveCatalogueConfig(TMZ_ROW({}), 'en', 'en'))
     expect(JSON.stringify(resolveCatalogueConfig(TMZ_ROW({ navLabel: { en: 'Books', it: 'Libri', de: 'Bücher' } }), 'en', 'en'))).toBe(base)
-    expect(JSON.stringify(resolveCatalogueConfig(TMZ_ROW({ publicName: { en: 'Books', it: 'Libri', de: 'Bücher' } }), 'en', 'en'))).toBe(base)
+    expect(JSON.stringify(resolveCatalogueConfig(TMZ_ROW({ publicName: {} }), 'en', 'en'))).toBe(base)
+    const named = resolveCatalogueConfig(TMZ_ROW({ publicName: { en: 'Books', it: 'Libri', de: 'Bücher' } }), 'it', 'en')!
+    const { publicName, ...rest } = named
+    expect(publicName).toBe('Libri')
+    expect(JSON.stringify(rest)).toBe(JSON.stringify(resolveCatalogueConfig(TMZ_ROW({}), 'it', 'en')))
+    // Locale → default locale, never another language.
+    expect(resolveCatalogueConfig(TMZ_ROW({ publicName: { en: 'Books' } }), 'de', 'en')!.publicName).toBe('Books')
+    expect(resolveCatalogueConfig(TMZ_ROW({ publicName: { it: 'Libri' } }), 'de', 'en')!).not.toHaveProperty('publicName')
   })
-  it('landing-title/tmz and landing-title/no-title-project: the landing page DTO carries no name (R-B not wired)', () => {
+  it('landing-title/tmz and landing-title/no-title-project: the landing page DTO carries no name', () => {
     const tmz = resolveCataloguePage({ heroTitle: 'Between the Lines', seoTitle: 'Between the Lines — books' }, 'en', 'en')
     const bare = resolveCataloguePage({}, 'en', 'en')
     expect(JSON.stringify(tmz)).not.toMatch(/Books|publicName/)
     expect(bare).toMatchObject({ heroTitle: null, seoTitle: null })
+  })
+})
+
+describe('C11 R-B consumers (D-12)', () => {
+  // The exact rule CatalogueRoute used before R-B, kept as the oracle for the null case.
+  const before = (p: { seoTitle?: string | null; heroTitle?: string | null }, site: string) => p.seoTitle ?? (p.heroTitle ? `${p.heroTitle} — ${site}` : site)
+  const pages = [{ seoTitle: 'Between the Lines — books', heroTitle: 'Between the Lines' }, { heroTitle: 'Our menu' }, { seoTitle: 'Menu' }, {}, { seoTitle: null, heroTitle: null }]
+  it('landing-title/fallback: no seoTitle, no heroTitle, publicName Menu → "Menu — Site"; null name → "Site"', () => {
+    expect(catalogueLandingTitle({}, 'Site', 'Menu')).toBe('Menu — Site')
+    expect(catalogueLandingTitle({}, 'Site', null)).toBe('Site')
+    expect(catalogueLandingTitle({}, 'Site')).toBe('Site')
+  })
+  it('landing-title/no-name: byte-equal to the pre-R-B title for every page shape', () => {
+    for (const p of pages) expect(catalogueLandingTitle(p, 'Site', undefined)).toBe(before(p, 'Site'))
+  })
+  it('landing-title/tmz: existing titles win — unchanged with or without a public name', () => {
+    for (const p of pages.slice(0, 3)) expect(catalogueLandingTitle(p, 'tmz.it', 'Books')).toBe(before(p, 'tmz.it'))
+  })
+  it('llms/heading: null name → "## Catalogue" exactly as before; a name per language block, the default bare', () => {
+    for (const names of [null, undefined, {}, { en: '  ' }]) {
+      expect(catalogueHeading(names, 'en', 'en')).toBe('## Catalogue')
+      expect(catalogueHeading(names, 'it', 'en')).toBe('## Catalogue (it)')
+    }
+    const tmz = { en: 'Books', it: 'Libri', de: 'Bücher' }
+    expect(['en', 'it', 'de'].map((l) => catalogueHeading(tmz, l, 'en'))).toEqual(['## Books', '## Libri (it)', '## Bücher (de)'])
+  })
+  it('llms/heading: partial names fall back locale → default, never to another language', () => {
+    expect(catalogueHeading({ en: 'Books' }, 'de', 'en')).toBe('## Books (de)')
+    expect(catalogueHeading({ it: 'Libri' }, 'de', 'en')).toBe('## Catalogue (de)')
   })
 })
 

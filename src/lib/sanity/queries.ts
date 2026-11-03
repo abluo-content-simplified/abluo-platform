@@ -2652,6 +2652,8 @@ export const catalogueModuleConfigQuery = /* groq */ `
       publicSegment,
       publicSegmentHistory,
       showPricesByDefault,
+      // C11 R-B (D-12): the whole localized map — resolved locale → default locale in resolve.ts, never another language.
+      publicName,
       // Amendment K — this language only; blank falls back to the platform's default sentence.
       "affiliateDisclosure": affiliateDisclosure[$locale],
       // Contract C2 — the channel attributes (read defaults in commerce/channels.ts readChannelEntry).

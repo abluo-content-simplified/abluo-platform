@@ -6197,7 +6197,8 @@
         "noPhoto": "Nessuna foto",
         "noPrice": "Nessun prezzo",
         "allergensNotReviewed": "Allergeni da verificare",
-        "noCategory": "Nessuna categoria"
+        "noCategory": "Nessuna categoria",
+        "noPrimaryCategory": "Nessuna categoria principale"
       },
       "days": {
         "mon": "Lun",
@@ -6252,7 +6253,8 @@
         "unpublished_dependencies": "Usa qualcosa che non è ancora pubblicato.",
         "linked_item_needs_price": "Questo articolo deve avere almeno un prezzo prima di poter essere usato come scelta collegata.",
         "option_allergens_not_reviewed": "Prima verifica gli allergeni degli extra.",
-        "slug_without_name": "Un indirizzo non ha un nome nella sua lingua."
+        "slug_without_name": "Un indirizzo non ha un nome nella sua lingua.",
+        "not_ready": "Questo articolo non è ancora pronto per la pubblicazione. Correggi quanto indicato, poi pubblica di nuovo. Le modifiche sono salvate come bozza."
       },
       "list": {
         "untitled": "Senza titolo",
@@ -6541,7 +6543,8 @@
           },
           "category": {
             "title": "Di che tipo è?",
-            "helper": "Scegli quelle adatte. Puoi saltare."
+            "helper": "Scegli quelle adatte. Puoi saltare.",
+            "requiredHint": "Scegli una categoria principale prima di pubblicare. Le altre categorie sono facoltative."
           },
           "tag": {
             "title": "Tag",
@@ -6683,7 +6686,30 @@
           "fixToPublish": "{count, plural, one {# cosa da sistemare prima di pubblicare.} other {# cose da sistemare prima di pubblicare.}} Puoi comunque tenerlo come bozza.",
           "bookTitle": "Aggiungi un titolo in {language}.",
           "isbn": "Questo non sembra un ISBN valido. Puoi comunque tenerlo.",
-          "adviceTab": "Un suggerimento in questa scheda"
+          "adviceTab": "Un suggerimento in questa scheda",
+          "categoryMissing": "Scegli una categoria.",
+          "primaryCategoryMissing": "{reason, select, noPrimary {Scegli una categoria principale.} unknownPrimary {La categoria principale non esiste più. Scegline un’altra.} other {La categoria principale non è stata trovata. Scegline un’altra.}}",
+          "price": {
+            "ambiguous": "Due prezzi valgono nello stesso momento. Cambia i loro giorni o orari."
+          },
+          "availability": {
+            "conflictingRows": "La disponibilità è stata salvata due volte con valori diversi. Impostala di nuovo."
+          },
+          "scheduleInvalid": "Controlla gli orari: ognuno ha bisogno di un inizio e di una fine, e non devono sovrapporsi."
+        },
+        "categories": {
+          "primaryMissing": "Indica come principale una delle categorie scelte.",
+          "createForbidden": "Non puoi aggiungere categorie. Chiedi a un amministratore di questo sito.",
+          "createConflict": "Qualcun altro ha appena modificato le categorie. Riprova.",
+          "createFailed": "Non è stato possibile aggiungere la categoria. Riprova.",
+          "createNotAllowed": "Per aggiungere una categoria, chiedi a un amministratore di questo sito."
+        },
+        "availability": {
+          "title": "Dove è disponibile",
+          "helper": "Ogni modalità di vendita segue la sua impostazione predefinita, a meno che tu non la imposti per questo articolo. I prezzi non cambiano mai la disponibilità.",
+          "perFormat": "Disponibilità diversa per formato o misura",
+          "formatN": "Formato {n}",
+          "readOnly": "Non puoi modificare questo articolo."
         }
       },
       "collection": {

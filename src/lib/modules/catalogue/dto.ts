@@ -329,6 +329,8 @@ export type CatalogueConfigDTO = {
   dietaryTags: CatalogueTermDTO[]
   /** Site IANA time zone for availability (A8). null = unknown. */
   timeZone: string | null
+  /** C11 R-B (D-12): the public name in the request language (locale → default locale); absent = none. */
+  publicName?: string
   /**
    * Contract C2 — the channel model (key, label, active, defaultAvailability,
    * defaultSchedule), stored order, active and inactive. Optional: absent (a

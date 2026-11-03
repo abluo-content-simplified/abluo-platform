@@ -32,7 +32,7 @@ import type { Referrer } from '@/lib/lifecycle/service'
 import { catalogueImageShape, itemSecondaryLine, type ImageShape } from '@/lib/modules/catalogue/list-model'
 import { formatPrice } from '@/lib/modules/catalogue/resolve'
 import { isItemProfile } from '@/lib/modules/catalogue/profiles'
-import { inCatalogueStatus, itemGaps, parseStatusFilter, searchable, type CatalogueStatusFilter, type ItemGap } from '@/lib/modules/catalogue/dashboard-form'
+import { inCatalogueStatus, parseStatusFilter, searchable, type CatalogueStatusFilter, type ItemGap } from '@/lib/modules/catalogue/dashboard-form'
 import type { CatalogueKind } from '@/lib/modules/catalogue/dashboard-patch'
 import {
   availableBatchOps,
@@ -179,7 +179,8 @@ export function CatalogueBrowser({
           chips,
           // "Book · Want to read": the type, and a book's reading status when set.
           typeLabel: isItemProfile(i.itemProfile) ? [t(`types.${i.itemProfile}`), i.itemProfile === 'book' && i.bookStatus ? tb(`readingStatusOptions.${i.bookStatus}`) : ''].filter(Boolean).join(' · ') : '',
-          gaps: itemGaps({ ...i, categoryCount: i.categories.length }).filter((g) => g !== 'noPrice'),
+          // C6 §6.6: computed with the readiness engine on the server (legacy counts in an unmigrated project).
+          gaps: i.gaps.filter((g) => g !== 'noPrice'),
           search: searchable(`${Object.values(i.names).join(' ')} ${Object.values(i.byline).join(' ')} ${i.bookAuthor ?? ''} ${chips.join(' ')}`),
           categories: i.categories,
           hasPage: i.hasPage,

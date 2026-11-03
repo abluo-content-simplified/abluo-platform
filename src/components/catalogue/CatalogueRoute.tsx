@@ -49,6 +49,7 @@ import { SectionRenderer, hydrateSections } from '@/components/sections/SectionR
 import { articlePortableTextComponents } from '@/components/portable-text/article-components'
 import { CatalogueCollectionView } from './CatalogueCollectionView'
 import { bookPublisherLine, catalogueImageShape } from '@/lib/modules/catalogue/list-model'
+import { catalogueLandingTitle } from '@/lib/modules/catalogue/resolve'
 import { affiliateDisclosureText, collectionHasAffiliateLink, hasAffiliateLink } from '@/lib/modules/catalogue/affiliate'
 import { collectionHasAmazon, collectionHasAmazonAffiliateLink, hasAmazonAffiliateLink, itemHasAmazonLink, linksHaveAmazon } from '@/lib/modules/catalogue/amazon-delivery'
 import { collectionHasShop, deliverCollection, deliverItem, linksHaveShop } from '@/lib/modules/catalogue/shop-delivery'
@@ -92,7 +93,8 @@ export async function catalogueRouteMetadata(ctx: CatalogueRouteContext): Promis
   if (dispatch.kind === 'landing') {
     const page = await loadCataloguePage(fetchForTenant, { locale, defaultLocale })
     if (!page) return unavailableMetadata(locale)
-    const title = page.seoTitle ?? (page.heroTitle ? `${page.heroTitle} — ${siteName}` : siteName)
+    // C11 R-B (D-12): existing titles win; the public name is the last fallback before the site name.
+    const title = catalogueLandingTitle(page, siteName, config.publicName)
     const description = page.seoDescription ?? page.heroSubtitle ?? undefined
     const { canonical, languages } = catalogueLandingAlternates({ origin, locale, defaultLocale, supportedLocales, segment })
     return {

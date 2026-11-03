@@ -351,7 +351,7 @@ export function slugPreview(segment: string | null, slug: string): string {
 
 // ── Gaps (spec §11: warn, never block) ────────────────────────────────────────
 
-export type ItemGap = 'noPhoto' | 'noPrice' | 'allergensNotReviewed' | 'noCategory'
+export type ItemGap = 'noPhoto' | 'noPrice' | 'allergensNotReviewed' | 'noCategory' | 'noPrimaryCategory'
 
 /** categoryCount is optional: only callers that know the item's categories report "No category". */
 export function itemGaps(item: { imageCount: number; offerCount: number; allergensNotReviewed?: boolean; categoryCount?: number }): ItemGap[] {

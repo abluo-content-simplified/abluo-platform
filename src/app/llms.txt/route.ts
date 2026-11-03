@@ -7,7 +7,9 @@ import { normalizeHost } from '@/lib/tenancy/host-scope'
 import {
   LLMS_CATALOGUE_COLLECTIONS_QUERY,
   LLMS_CATALOGUE_ITEMS_QUERY,
+  LLMS_CATALOGUE_PUBLIC_NAME_QUERY,
   LLMS_CATALOGUE_SEGMENT_QUERY,
+  catalogueHeading,
   LLMS_NEWS_QUERY,
   LLMS_PAGES_QUERY,
   LLMS_POSTS_QUERY,
@@ -137,7 +139,7 @@ export async function GET(): Promise<Response> {
     // The whole localized objects, not one language's projection: this file
     // lists every language the site publishes, and a second read per locale
     // would be six more round trips for data already in these documents.
-    const [pages, news, posts, catalogueCollections, catalogueItems, catalogueSegment] = await Promise.all([
+    const [pages, news, posts, catalogueCollections, catalogueItems, catalogueSegment, cataloguePublicName] = await Promise.all([
       sanityClient.fetch<PageRow[]>(
         // ADR-040 — a closed page's title and description are never read.
         LLMS_PAGES_QUERY,
@@ -149,6 +151,7 @@ export async function GET(): Promise<Response> {
       sanityClient.fetch<EntryRow[]>(LLMS_CATALOGUE_COLLECTIONS_QUERY, { projectSlug: project.projectSlug }),
       sanityClient.fetch<EntryRow[]>(LLMS_CATALOGUE_ITEMS_QUERY, { projectSlug: project.projectSlug }),
       sanityClient.fetch<string | null>(LLMS_CATALOGUE_SEGMENT_QUERY, { projectSlug: project.projectSlug }),
+      sanityClient.fetch<unknown>(LLMS_CATALOGUE_PUBLIC_NAME_QUERY, { projectSlug: project.projectSlug }),
     ])
 
     const name = project.siteName ?? project.projectName ?? project.projectSlug
@@ -212,10 +215,10 @@ export async function GET(): Promise<Response> {
       }
     }
 
-    // Catalogue — same per-language shape. The heading is platform text, like
-    // the others. Catalogue V2 C11 R-B (approved, D-12; ships with data step D4,
-    // NOT in R1): the heading will use resolvePublicName per language block,
-    // falling back to "Catalogue". Until then it is unchanged.
+    // Catalogue — same per-language shape. Catalogue V2 C11 R-B (approved, D-12):
+    // each block's heading is the public name resolved for THAT block's language
+    // (catalogueHeading); with no public name it is the platform word "Catalogue",
+    // exactly as before.
     for (const loc of [locale, ...otherLocales]) {
       const block = catalogueLinesFor(
         { collections: catalogueCollections ?? [], items: catalogueItems ?? [] },
@@ -225,7 +228,7 @@ export async function GET(): Promise<Response> {
       )
       if (block.length === 0) continue
       if (lines[lines.length - 1] !== '') lines.push('')
-      lines.push(loc === locale ? '## Catalogue' : `## Catalogue (${loc})`, '', ...block)
+      lines.push(catalogueHeading(cataloguePublicName, loc, locale), '', ...block)
     }
 
     lines.push('', '## Machine-readable', '')

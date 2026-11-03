@@ -36,6 +36,32 @@ import { can, profileOf } from '@/lib/modules/catalogue/profiles'
 import { SLUG_NAMESPACE_QUERY, namedSlugConflicts, toSlugOwners, type SlugRow } from '@/lib/modules/catalogue/validation'
 import { CATALOGUE_FOOD_USERS_COUNT_QUERY, CATALOGUE_OPTION_LIST_CHOICES_QUERY } from '@/lib/modules/catalogue/dashboard-queries'
 import type { CatalogueSite } from '@/lib/api/catalogue-drafts'
+import { readChannels } from '@/lib/modules/catalogue/commerce/channels'
+import { buildTree } from '@/lib/modules/catalogue/taxonomy/tree'
+import { WEBSITE, evaluateItem } from '@/lib/modules/catalogue/readiness/engine'
+import { MODEL_DEPENDENT_RULES, itemReadinessInputFromDoc } from '@/lib/modules/catalogue/readiness/facts-doc'
+import { modelRulesActive } from '@/lib/modules/catalogue/readiness/facts-model'
+import type { Finding } from '@/lib/modules/catalogue/readiness/types'
+
+/**
+ * C10-6 step 7 / C6 §6.13 item 2: in a project whose taxonomy AND commerce data steps are verified
+ * (`catalogueMigrations`), an item also needs the model-dependent required findings cleared —
+ * main category (D-15: required when publishing a new version), price/availability shape, and the
+ * model's integrity rules. Elsewhere this returns [] and the gate behaves exactly as in R1.
+ */
+export function modelReadinessBlockers(site: Pick<CatalogueSite, 'defaultLocale' | 'locales' | 'timeZone'> & { config: Pick<CatalogueSite['config'], 'serviceChannels' | 'categoryNodes' | 'migrations'> }, id: string, draft: Record<string, unknown>): Finding[] {
+  if (!modelRulesActive(site.config?.migrations)) return []
+  const input = itemReadinessInputFromDoc(draft, {
+    id,
+    defaultLocale: site.defaultLocale,
+    locales: site.locales,
+    channels: readChannels(site.config.serviceChannels).channels,
+    tree: buildTree(site.config.categoryNodes ?? []),
+    timeZone: site.timeZone,
+    migrations: site.config.migrations,
+  })
+  return evaluateItem(input, WEBSITE, { families: ['standard', 'integrity'], rules: MODEL_DEPENDENT_RULES }).required
+}
 
 type FetchClient = Pick<typeof sanityWriteClient, 'fetch'>
 
@@ -97,6 +123,11 @@ export function cataloguePublishGate(site: CatalogueSite, uuid: () => string) {
       if (kind === 'optionList' && unreviewedChoices(draft.options as never[]).length) {
         const users = await x.client.fetch<number | null>(CATALOGUE_FOOD_USERS_COUNT_QUERY, { id: node.id, projectSlug: x.projectSlug }, RAW)
         if ((users ?? 0) > 0) throw new CatalogueError('option_allergens_not_reviewed', 'Review the allergens of the extras first.', { dependencies: choiceRefs(node.id, draft) })
+      }
+      // C6 step 7: the model-dependent rules, only where the project's markers activate them (§6.7.1 `not_ready`).
+      if (kind === 'item') {
+        const findings = modelReadinessBlockers(site, node.id, draft)
+        if (findings.length) throw new CatalogueError('not_ready', 'Complete the item before publishing.', { readiness: findings })
       }
       const doc: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(draft)) if (!SYSTEM_FIELDS.has(k) && !LIFECYCLE_FIELDS.has(k)) doc[k] = v

@@ -16,6 +16,7 @@
 //                    content (B4)
 //   gallery/focal    focalObjectPosition — Media Library focal point (ADR-022)
 
+import { publicNameMap, resolvePublicName } from './public-name'
 import { isReadingStatus } from './reading-status'
 import { focalObjectPosition } from '@/lib/gallery/focal'
 import { LIFECYCLE_PUBLIC_RULES } from '@/lib/lifecycle/public-types'
@@ -211,6 +212,8 @@ export type RawCatalogueConfigRow = {
     publicSegment?: string | null
     publicSegmentHistory?: readonly string[] | null
     showPricesByDefault?: boolean | null
+    /** C11: the tenant's word for the catalogue, the whole localized map (module config). */
+    publicName?: unknown
     serviceChannels?: (RawChannelTerm | null)[] | null
     categories?: (RawTerm | null)[] | null
     dietaryTags?: (RawTerm | null)[] | null
@@ -434,7 +437,26 @@ export function resolveCatalogueConfig(
     dietaryTags: termsOf(c.dietaryTags, locale, defaultLocale),
     timeZone: nonEmpty(row?.timeZone),
     affiliateDisclosure: typeof c.affiliateDisclosure === 'string' && c.affiliateDisclosure.trim() ? c.affiliateDisclosure.trim() : null,
+    // C11 R-B (D-12): present only when a name resolves for this request (locale → default locale), so a
+    // project without one resolves to exactly the DTO it always had.
+    ...publicNameMember(c.publicName, locale, defaultLocale),
   }
+}
+
+function publicNameMember(names: unknown, locale: string, defaultLocale?: string | null): { publicName?: string } {
+  const text = resolvePublicName(publicNameMap(names), { locale, defaultLocale: defaultLocale ?? locale }).text
+  return text ? { publicName: text } : {}
+}
+
+/**
+ * C11.4 row 1 (D-12): the Catalogue landing page `<title>` / OG title. An existing title always wins —
+ * `seoTitle`, then "heroTitle — siteName" — then, approved, "publicName — siteName"; with no name the
+ * site name as before (null name = today's output, byte-equal).
+ */
+export function catalogueLandingTitle(page: { seoTitle?: string | null; heroTitle?: string | null }, siteName: string, publicName?: string | null): string {
+  if (page.seoTitle) return page.seoTitle
+  if (page.heroTitle) return `${page.heroTitle} — ${siteName}`
+  return publicName ? `${publicName} — ${siteName}` : siteName
 }
 
 /** C2 channel model from the projected entries; labels resolved like the vocabulary terms. */

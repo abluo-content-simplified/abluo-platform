@@ -6,6 +6,7 @@
  * tests.
  */
 
+import { publicNameMap, resolvePublicName } from '@/lib/modules/catalogue/public-name'
 import { canonicalUrl } from '@/lib/seo/canonical'
 import { publicFilterFor } from '@/lib/lifecycle/public-types'
 import { visibilityFilter } from '@/lib/modules/catalogue/visibility'
@@ -124,6 +125,19 @@ export const LLMS_CATALOGUE_ITEMS_QUERY = /* groq */ `*[
 
 /** The enabled catalogue installation's public segment, or null (no module → no routes). */
 export const LLMS_CATALOGUE_SEGMENT_QUERY = /* groq */ `*[_type == "project" && projectSlug == $projectSlug][0].moduleInstallations[moduleId == "catalogue" && enabled != false][0].config.publicSegment`
+
+/** C11 R-B (D-12): the tenant's public name for the catalogue, the whole localized map. */
+export const LLMS_CATALOGUE_PUBLIC_NAME_QUERY = /* groq */ `*[_type == "project" && projectSlug == $projectSlug][0].moduleInstallations[moduleId == "catalogue" && enabled != false][0].config.publicName`
+
+/**
+ * C11.4 row 6 (D-12): one language block's catalogue heading. The resolved public name in THAT block's
+ * language (locale → default locale, never another), else the platform word "Catalogue" exactly as before;
+ * non-default languages keep their ` (<loc>)` suffix.
+ */
+export function catalogueHeading(names: unknown, loc: string, defaultLocale: string): string {
+  const name = resolvePublicName(publicNameMap(names), { locale: loc, defaultLocale }).text?.replace(/\s+/g, ' ') ?? 'Catalogue'
+  return loc === defaultLocale ? `## ${name}` : `## ${name} (${loc})`
+}
 
 /**
  * One language's catalogue link lines: collections first, then items, all

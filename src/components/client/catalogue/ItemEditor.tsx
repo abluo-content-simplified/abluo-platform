@@ -24,10 +24,12 @@ import type { CatalogueAbilities, CatalogueSite, CatalogueSnapshot } from '@/lib
 import { looksLikeAmazon } from '@/lib/affiliate/amazon-links'
 import type { Referrer } from '@/lib/lifecycle/service'
 import { PROFILES, can as profileCan } from '@/lib/modules/catalogue/profiles'
-import { attachmentIssues, declarationIssues, formatFormIssues, itemGaps, itemOptionsRelevant, itemStateFromDoc, priceCountOf, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
+import { attachmentIssues, declarationIssues, formatFormIssues, itemOptionsRelevant, itemStateFromDoc, priceCountOf, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
 import { readChannels } from '@/lib/modules/catalogue/commerce/channels'
 import { buildTree } from '@/lib/modules/catalogue/taxonomy/tree'
 import { modelRulesActive } from '@/lib/modules/catalogue/readiness/facts-model'
+import { readinessGaps } from '@/lib/modules/catalogue/readiness/chips'
+import { itemReadinessInputFromState } from '@/lib/modules/catalogue/readiness/facts-client'
 import { CommerceField, ItemCategoriesField } from './item-commerce'
 import { adviceTabs, issueCountByTab, itemIssues, publishBlockers, type ItemIssue, type ItemTab } from '@/lib/modules/catalogue/item-issues'
 import { CAT_ICONS, GapBadges, InUseNotice, ItemIssueList, TabLabel, focusField, textIn, useCatalogueError } from './catalogue-ui'
@@ -285,7 +287,13 @@ export function ItemEditor({
       </div>
       <div className="flex flex-wrap items-start gap-2">
         <LifecycleBadge status={snapshot.status.status} changes={draft.hasDraft && isLive} />
-        <GapBadges gaps={itemGaps({ imageCount: item.photos.length, offerCount: priceCountOf(s.formats), allergensNotReviewed: hasFoodInfo && declarationIssues(s.allergenDeclaration).length > 0 })} />
+        <GapBadges
+          gaps={readinessGaps(
+            site.config.migrations,
+            () => itemReadinessInputFromState({ ...s, imageIds: item.photos.map((p) => p.assetId), id: snapshot.id }, { defaultLocale: d, locales: site.locales, channels, optionCounts, channelSet, tree, timeZone: site.timeZone, migrations: site.config.migrations }),
+            { imageCount: item.photos.length, offerCount: priceCountOf(s.formats), allergensNotReviewed: hasFoodInfo && declarationIssues(s.allergenDeclaration).length > 0 },
+          )}
+        />
       </div>
       {result && !draft.hasDraft ? (
         <Notice tone="info">

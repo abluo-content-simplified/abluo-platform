@@ -105,7 +105,7 @@ export function InUseNotice({ projectSlug, referrers, onClose }: { projectSlug: 
 /** One message for any action error code. */
 export function useCatalogueError() {
   const t = useTranslations('catalogue.dashboard.errors')
-  const known = ['forbidden', 'not_found', 'conflict', 'archived', 'archive_first', 'in_use', 'missing_name', 'missing_slug', 'slug_taken', 'no_options', 'invalid_schedule', 'allergens_not_reviewed', 'option_allergens_not_reviewed', 'slug_without_name', 'unpublished_dependencies', 'linked_item_needs_price', 'invalid_value', 'too_large', 'unauthenticated', 'offline']
+  const known = ['forbidden', 'not_found', 'conflict', 'archived', 'archive_first', 'in_use', 'missing_name', 'missing_slug', 'slug_taken', 'no_options', 'invalid_schedule', 'allergens_not_reviewed', 'option_allergens_not_reviewed', 'slug_without_name', 'unpublished_dependencies', 'linked_item_needs_price', 'not_ready', 'invalid_value', 'too_large', 'unauthenticated', 'offline']
   return (code: string) => t(known.includes(code) ? code : 'failed')
 }
 

@@ -6197,7 +6197,8 @@
         "noPhoto": "Kein Foto",
         "noPrice": "Kein Preis",
         "allergensNotReviewed": "Allergene nicht geprüft",
-        "noCategory": "Keine Kategorie"
+        "noCategory": "Keine Kategorie",
+        "noPrimaryCategory": "Keine Hauptkategorie"
       },
       "days": {
         "mon": "Mo",
@@ -6252,7 +6253,8 @@
         "unpublished_dependencies": "Hier wird etwas verwendet, das noch nicht veröffentlicht ist.",
         "linked_item_needs_price": "Dieser Artikel braucht mindestens einen Preis, bevor er als verknüpfte Auswahl verwendet werden kann.",
         "option_allergens_not_reviewed": "Prüfe zuerst die Allergene der Extras.",
-        "slug_without_name": "Eine Adresse hat keinen Namen in ihrer Sprache."
+        "slug_without_name": "Eine Adresse hat keinen Namen in ihrer Sprache.",
+        "not_ready": "Dieser Artikel ist noch nicht bereit zur Veröffentlichung. Behebe die genannten Punkte und veröffentliche ihn dann erneut. Deine Änderungen sind als Entwurf gespeichert."
       },
       "list": {
         "untitled": "Ohne Titel",
@@ -6541,7 +6543,8 @@
           },
           "category": {
             "title": "Was für eine Art ist es?",
-            "helper": "Wähle passende aus. Du kannst das überspringen."
+            "helper": "Wähle passende aus. Du kannst das überspringen.",
+            "requiredHint": "Wähle vor dem Veröffentlichen eine Hauptkategorie. Weitere Kategorien sind optional."
           },
           "tag": {
             "title": "Tags",
@@ -6683,7 +6686,30 @@
           "fixToPublish": "{count, plural, one {# Punkt vor dem Veröffentlichen zu klären.} other {# Punkte vor dem Veröffentlichen zu klären.}} Als Entwurf kannst du es trotzdem behalten.",
           "bookTitle": "Füge einen Titel auf {language} hinzu.",
           "isbn": "Das sieht nicht nach einer gültigen ISBN aus. Du kannst sie trotzdem behalten.",
-          "adviceTab": "Ein Hinweis in diesem Tab"
+          "adviceTab": "Ein Hinweis in diesem Tab",
+          "categoryMissing": "Wähle eine Kategorie.",
+          "primaryCategoryMissing": "{reason, select, noPrimary {Wähle eine Hauptkategorie.} unknownPrimary {Die Hauptkategorie gibt es nicht mehr. Wähle eine andere.} other {Die Hauptkategorie wurde nicht gefunden. Wähle eine andere.}}",
+          "price": {
+            "ambiguous": "Zwei Preise gelten zur gleichen Zeit. Ändere ihre Tage oder Uhrzeiten."
+          },
+          "availability": {
+            "conflictingRows": "Die Verfügbarkeit wurde zweimal mit unterschiedlichen Werten gespeichert. Lege sie erneut fest."
+          },
+          "scheduleInvalid": "Prüfe die Zeiten: Jede braucht einen Beginn und ein Ende, und sie dürfen sich nicht überschneiden."
+        },
+        "categories": {
+          "primaryMissing": "Markiere eine der gewählten Kategorien als Hauptkategorie.",
+          "createForbidden": "Du kannst keine Kategorien hinzufügen. Frag eine Administratorin oder einen Administrator dieser Website.",
+          "createConflict": "Die Kategorien wurden gerade von jemand anderem geändert. Versuche es erneut.",
+          "createFailed": "Die Kategorie konnte nicht hinzugefügt werden. Versuche es erneut.",
+          "createNotAllowed": "Um eine Kategorie hinzuzufügen, frag eine Administratorin oder einen Administrator dieser Website."
+        },
+        "availability": {
+          "title": "Wo es erhältlich ist",
+          "helper": "Jede Verkaufsart folgt ihrer Voreinstellung, solange du sie nicht für diesen Artikel festlegst. Preise ändern nie die Verfügbarkeit.",
+          "perFormat": "Unterschiedliche Verfügbarkeit je Größe oder Format",
+          "formatN": "Format {n}",
+          "readOnly": "Du kannst diesen Artikel nicht ändern."
         }
       },
       "collection": {

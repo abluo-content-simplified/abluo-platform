@@ -35,7 +35,9 @@ export const CATALOGUE_DASHBOARD_LIST_QUERY = /* groq */ `{
     "imageCount": count(images), "firstImage": images[0]._ref,
     // Dual-read (C10-4): formats when present, else legacy offers.
     "offerCount": ${COMMERCE_PRICE_COUNT_GROQ}, "prices": ${COMMERCE_PRICES_GROQ},
-    "lists": optionLists[].list._ref
+    "lists": optionLists[].list._ref,
+    // R2 (C6 §6.6, step 7): the readiness engine judges each row in a migrated project — the model's raw fields.
+    formats, offers, channelAvailability, allergenDeclaration
   },
   "collections": *[_type == "catalogueCollection" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{
     _id, _rev, _createdAt, _updatedAt, name, slug, collectionType, hasPage, visibility, ${LIFECYCLE},

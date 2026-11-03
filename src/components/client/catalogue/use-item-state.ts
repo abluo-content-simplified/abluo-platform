@@ -103,12 +103,12 @@ export function useItemState({
      * rules); until then the field shows what to fix. The server stores `formats` and unsets `offers`.
      */
     setFormats: (formats: Format[]) => {
-      const ok = !hasBlockingFormatIssue(formatFormIssues(formats, s.itemRules, { channels, defaultLocale, itemProfile: s.itemProfile, bookIsbn: s.bookDetails.isbn.trim() || null }))
+      const ok = !hasBlockingFormatIssue(formatFormIssues(formats, {}, { channels, defaultLocale, itemProfile: s.itemProfile, bookIsbn: s.bookDetails.isbn.trim() || null }))
       patch({ formats }, ok ? { formats: formatsPatch(formats) } : undefined)
     },
     /** R2 (C5/C5a): the item's channel rules; "Use category default" removes the row. */
     setItemRules: (itemRules: ItemRules) => {
-      const ok = !hasBlockingFormatIssue(formatFormIssues(s.formats, itemRules, { channels, defaultLocale, itemProfile: s.itemProfile, bookIsbn: s.bookDetails.isbn.trim() || null }))
+      const ok = !hasBlockingFormatIssue(formatFormIssues([], itemRules, { channels, defaultLocale, itemProfile: s.itemProfile, bookIsbn: s.bookDetails.isbn.trim() || null }))
       patch({ itemRules }, ok ? { channelAvailability: itemRulesPatch(itemRules) } : undefined)
     },
     setOptions: (options: AttachmentForm[]) =>

@@ -6197,7 +6197,8 @@
         "noPhoto": "No photo",
         "noPrice": "No price set",
         "allergensNotReviewed": "Allergens not reviewed",
-        "noCategory": "No category"
+        "noCategory": "No category",
+        "noPrimaryCategory": "No main category"
       },
       "days": {
         "mon": "Mon",
@@ -6252,7 +6253,8 @@
         "unpublished_dependencies": "This uses something that isn't published yet.",
         "linked_item_needs_price": "This item needs at least one price before it can be used as a linked choice.",
         "option_allergens_not_reviewed": "Review the allergens of the extras first.",
-        "slug_without_name": "An address has no name in its language."
+        "slug_without_name": "An address has no name in its language.",
+        "not_ready": "This item isn’t ready to publish yet. Fix what’s listed, then publish again. Your changes are saved as a draft."
       },
       "list": {
         "untitled": "Untitled",
@@ -6541,7 +6543,8 @@
           },
           "category": {
             "title": "What kind is it?",
-            "helper": "Pick any that fit. You can skip this."
+            "helper": "Pick any that fit. You can skip this.",
+            "requiredHint": "Choose a main category before you publish. Other categories are optional."
           },
           "tag": {
             "title": "Tags",
@@ -6683,7 +6686,30 @@
           "fixToPublish": "{count, plural, one {# thing to fix before publishing.} other {# things to fix before publishing.}} You can still keep it as a draft.",
           "bookTitle": "Add a title in {language}.",
           "isbn": "This doesn’t look like a valid ISBN. You can still keep it.",
-          "adviceTab": "A hint on this tab"
+          "adviceTab": "A hint on this tab",
+          "categoryMissing": "Choose a category.",
+          "primaryCategoryMissing": "{reason, select, noPrimary {Choose a main category.} unknownPrimary {The main category no longer exists. Choose another one.} other {The main category can’t be found. Choose another one.}}",
+          "price": {
+            "ambiguous": "Two prices apply at the same time. Change their days or times."
+          },
+          "availability": {
+            "conflictingRows": "The availability was saved twice with different values. Set it again."
+          },
+          "scheduleInvalid": "Check the hours: each needs a start and an end, and they must not overlap."
+        },
+        "categories": {
+          "primaryMissing": "Mark one of the chosen categories as primary.",
+          "createForbidden": "You can’t add categories. Ask an admin of this website.",
+          "createConflict": "Categories were just changed by someone else. Try again.",
+          "createFailed": "The category couldn’t be added. Try again.",
+          "createNotAllowed": "To add a category, ask an admin of this website."
+        },
+        "availability": {
+          "title": "Where it’s available",
+          "helper": "Each way of selling follows its default unless you set it for this item. Prices never change availability.",
+          "perFormat": "Different availability per size or format",
+          "formatN": "Format {n}",
+          "readOnly": "You can’t change this item."
         }
       },
       "collection": {
