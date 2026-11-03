@@ -266,6 +266,7 @@ const OTHER_READERS: Record<string, string> = {
   'src/lib/modules/catalogue/validation.ts': 'catalogue save-time validation — slug namespace and currency-change counts (authenticated Studio/dashboard)',
   'src/lib/modules/catalogue/taxonomy/service.ts': 'Catalogue taxonomy writer (Setup, authenticated, assertModuleAction first) — item category/tag usage and reassignment over every item copy incl. drafts (D-3); never delivery',
   'src/lib/modules/catalogue/taxonomy/availability-items.ts': 'Setup impact previews (C5-6): every non-archived item copy incl. drafts, read by the authenticated taxonomy/settings services; never delivery',
+  'src/lib/modules/catalogue/packs/service.ts': 'Catalogue Setup starter-pack service (authenticated, catalogue.setup.manage first) — reads collection slugs/sections and item slugs incl. drafts to plan a pack (C7.4); never delivery',
   'src/lib/modules/catalogue/settings/service.ts': 'Catalogue Setup config writer (authenticated, assertModuleAction first) — channel usage/cleanup and dietary-tag usage over every item copy incl. drafts; never delivery',
 }
 

@@ -3,9 +3,13 @@
 // the same labels, so two packs that both suggest `seasonal` or `glass_15` agree
 // (equivalence is by key, C7.4). No currency, no money, no ids.
 
+import { profilesWith, type ItemProfile } from '../../profiles'
 import type { PackChannelSuggestion, PackFormatTemplate, PackLocalized, PackSection, PackTag, PackWeeklyOverride } from '../types'
 
 export const L = (en: string, it: string, de: string): PackLocalized => ({ en, it, de })
+
+/** The profile that carries food information (read from the profile registry, never spelled here — ADR-033 I-2.1). */
+export const FOOD_PROFILE: ItemProfile = profilesWith('foodInformation')[0]
 
 // ── channels (keys as in the legacy `restaurant` preset, D-21) ───────────────
 export const dineIn = (preselected: boolean): PackChannelSuggestion => ({ key: 'dine-in', label: L('Dine-in', 'Al tavolo', 'Vor Ort'), preselected, defaultAvailability: 'available' })

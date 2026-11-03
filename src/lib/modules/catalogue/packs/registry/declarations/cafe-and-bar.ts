@@ -1,5 +1,5 @@
 import type { PackDeclaration } from '../../types'
-import { FORMAT, L, TAG, delivery, dineIn, hours, section, takeaway } from '../shared'
+import { FOOD_PROFILE, FORMAT, L, TAG, delivery, dineIn, hours, section, takeaway } from '../shared'
 
 const breakfast = { state: 'unavailable' as const, overrides: [hours('breakfast', '07:00', '11:00')] }
 
@@ -15,7 +15,7 @@ export const cafeAndBar: PackDeclaration = {
   ),
   suggestedPublicName: L('Menu', 'Menu', 'Karte'),
   suggestedSegment: 'menu',
-  suggestedDefaultProfile: 'foodOrDrink',
+  suggestedDefaultProfile: FOOD_PROFILE,
   channels: [dineIn(true), takeaway(true), delivery(false)],
   categories: [
     { key: 'coffee_tea', label: L('Coffee and tea', 'Caffè e tè', 'Kaffee und Tee'), parent: null },

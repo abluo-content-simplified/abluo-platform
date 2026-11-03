@@ -1,5 +1,5 @@
 import type { PackDeclaration } from '../../types'
-import { FORMAT, L, LABEL, TAG, delivery, dineIn, hours, roomService, section, takeaway } from '../shared'
+import { FOOD_PROFILE, FORMAT, L, LABEL, TAG, delivery, dineIn, hours, roomService, section, takeaway } from '../shared'
 
 const LUNCH_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 const lunch = { state: 'unavailable' as const, overrides: [hours('lunch', '12:00', '15:00', [...LUNCH_DAYS])] }
@@ -16,7 +16,7 @@ export const traditionalRestaurant: PackDeclaration = {
   ),
   suggestedPublicName: L('Menu', 'Menu', 'Speisekarte'),
   suggestedSegment: 'menu',
-  suggestedDefaultProfile: 'foodOrDrink',
+  suggestedDefaultProfile: FOOD_PROFILE,
   channels: [dineIn(true), takeaway(true), delivery(false), roomService(false)],
   categories: [
     { key: 'lunch_specials', label: L('Lunch specials', 'Piatti del giorno', 'Mittagsgerichte'), parent: null, channelRules: { 'dine-in': lunch, takeaway: lunch } },

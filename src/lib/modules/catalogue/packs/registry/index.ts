@@ -5,6 +5,7 @@
 // (C7.9) — never PACK_REGISTRY by pack id. Runtime code never learns which pack
 // was applied.
 
+import { can } from '../../profiles'
 import type { PackDeclaration, PackId } from '../types'
 import { bookshop } from './declarations/bookshop'
 import { cafeAndBar } from './declarations/cafe-and-bar'
@@ -38,4 +39,4 @@ export const listPacks = (): readonly PackDeclaration[] => PACK_REGISTRY
 export const getPack = (id: unknown): PackDeclaration | null => PACK_REGISTRY.find((p) => p.id === id) ?? null
 
 /** The restaurant starters offered by the food-and-drink setup (brief §6): every food pack plus Empty. */
-export const foodStarterPacks = (): readonly PackDeclaration[] => PACK_REGISTRY.filter((p) => p.empty || p.suggestedDefaultProfile === 'foodOrDrink')
+export const foodStarterPacks = (): readonly PackDeclaration[] => PACK_REGISTRY.filter((p) => p.empty || (!!p.suggestedDefaultProfile && can(p.suggestedDefaultProfile, 'foodInformation')))

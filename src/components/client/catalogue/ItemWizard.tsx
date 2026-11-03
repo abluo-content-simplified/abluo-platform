@@ -114,7 +114,8 @@ export function ItemWizard({
   const [setupComplete, setSetupComplete] = useState(foodSetup?.complete ?? true)
   const [foodSetupOpen, setFoodSetupOpen] = useState(false)
   const [foodNote, setFoodNote] = useState<string | null>(null)
-  const needsFoodSetup = (p: ItemProfile | null) => p === 'foodOrDrink' && !setupComplete
+  // "Food or drink" = the profile that carries food information (the registry decides, ADR-033 I-2.1).
+  const needsFoodSetup = (p: ItemProfile | null) => !!p && can(p, 'foodInformation') && !setupComplete
   useEffect(() => {
     if (!foodNote) return
     const timer = window.setTimeout(() => setFoodNote(null), 5000)
@@ -295,7 +296,7 @@ export function ItemWizard({
                   setFoodNote(how === 'empty' ? tf('doneEmpty') : tf('done'))
                   // New categories, channels and option lists: re-read the server data; this draft keeps its state.
                   router.refresh()
-                  const next = stepsFor('foodOrDrink', s.options.length)[1]
+                  const next = stepsFor(profileRef.current, s.options.length)[1]
                   if (next) go(next)
                 }}
               />

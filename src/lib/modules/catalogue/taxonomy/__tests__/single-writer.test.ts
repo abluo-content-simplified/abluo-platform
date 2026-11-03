@@ -36,7 +36,13 @@ function walk(dir: string, out: string[] = []): string[] {
 const FILES = walk(SRC).map((f) => ({ rel: rel(f), text: readFileSync(f, 'utf8') }))
 
 /** The one writer (and the pure helpers it commits through). */
-const WRITERS = ['lib/modules/catalogue/taxonomy/service.ts']
+const WRITERS = [
+  'lib/modules/catalogue/taxonomy/service.ts',
+  // C7.5: a starter pack's new category/tag rows commit in the pack's ONE transaction (history exists iff
+  // everything exists), so the pack service carries the taxonomy patch — built with this service's pure
+  // write model (newCategoryRow / newTagRow / ruleRows in packs/apply.ts), revision-guarded, appending only.
+  'lib/modules/catalogue/packs/service.ts',
+]
 /** A Sanity write primitive. */
 const WRITE = /\.(patch|create|createIfNotExists|createOrReplace|delete|mutate)\s*\(|\.transaction\s*\(/
 /** Names the Catalogue taxonomy document. */

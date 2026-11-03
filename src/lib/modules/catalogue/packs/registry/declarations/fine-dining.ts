@@ -1,5 +1,5 @@
 import type { PackDeclaration } from '../../types'
-import { FORMAT, L, LABEL, TAG, delivery, dineIn, hours, section, takeaway } from '../shared'
+import { FOOD_PROFILE, FORMAT, L, LABEL, TAG, delivery, dineIn, hours, section, takeaway } from '../shared'
 
 /** C7.10 Fine dining — `fine-dining` v3. Tasting menus at dinner only: baseline unavailable + 19:00–23:00 Tue–Sun (D-6). */
 export const fineDining: PackDeclaration = {
@@ -13,7 +13,7 @@ export const fineDining: PackDeclaration = {
   ),
   suggestedPublicName: L('Menu', 'Menu', 'Menü'),
   suggestedSegment: 'menu',
-  suggestedDefaultProfile: 'foodOrDrink',
+  suggestedDefaultProfile: FOOD_PROFILE,
   channels: [dineIn(true), takeaway(false), delivery(false)],
   categories: [
     { key: 'amuse', label: L('Amuse-bouche', 'Amuse-bouche', 'Amuse-Bouche'), parent: null },

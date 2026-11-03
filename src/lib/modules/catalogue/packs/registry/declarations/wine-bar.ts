@@ -1,5 +1,5 @@
 import type { PackDeclaration } from '../../types'
-import { FORMAT, L, LABEL, TAG, delivery, dineIn, section, takeaway } from '../shared'
+import { FOOD_PROFILE, FORMAT, L, LABEL, TAG, delivery, dineIn, section, takeaway } from '../shared'
 
 /** C7.10 Wine bar — `wine-bar` v3. No schedules; wine stays available for takeaway (a bottle shop). */
 export const wineBar: PackDeclaration = {
@@ -13,7 +13,7 @@ export const wineBar: PackDeclaration = {
   ),
   suggestedPublicName: L('Wine list', 'Carta dei vini', 'Weinkarte'),
   suggestedSegment: 'wine-list',
-  suggestedDefaultProfile: 'foodOrDrink',
+  suggestedDefaultProfile: FOOD_PROFILE,
   channels: [dineIn(true), { ...takeaway(false), label: L('Takeaway (bottle shop)', 'Da asporto (bottiglie)', 'Zum Mitnehmen (Flaschen)') }, delivery(false)],
   categories: [
     { key: 'wine', label: LABEL.wine, parent: null, channelRules: { takeaway: { state: 'available' } } },

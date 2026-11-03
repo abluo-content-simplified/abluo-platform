@@ -1,5 +1,5 @@
 import type { PackDeclaration } from '../../types'
-import { FORMAT, L, LABEL, TAG, dineIn, hours, section, takeaway } from '../shared'
+import { FOOD_PROFILE, FORMAT, L, LABEL, TAG, dineIn, hours, section, takeaway } from '../shared'
 
 /** C7.10 Pizzeria — `pizzeria` v3. Delivery in the evening only (declinable in the preview, D-6). */
 export const pizzeria: PackDeclaration = {
@@ -13,7 +13,7 @@ export const pizzeria: PackDeclaration = {
   ),
   suggestedPublicName: L('Menu', 'Menu', 'Speisekarte'),
   suggestedSegment: 'menu',
-  suggestedDefaultProfile: 'foodOrDrink',
+  suggestedDefaultProfile: FOOD_PROFILE,
   channels: [
     dineIn(true),
     takeaway(true),
