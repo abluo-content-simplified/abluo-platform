@@ -6894,19 +6894,19 @@
       "shelfWantToRead": "Möchte ich lesen"
     },
     "capabilities": {
-      "catalogue.item.read": "Artikel und Sammlungen ansehen",
-      "catalogue.item.write": "Artikel erstellen und bearbeiten",
-      "catalogue.item.delete": "Artikel löschen",
-      "catalogue.item.deletePublished": "Veröffentlichte Artikel endgültig löschen",
-      "catalogue.collection.write": "Sammlungen erstellen und bearbeiten",
-      "catalogue.collection.delete": "Sammlungen löschen",
-      "catalogue.collection.deletePublished": "Veröffentlichte Sammlungen endgültig löschen",
-      "catalogue.taxonomy.write": "Kategorien und Tags verwalten",
-      "catalogue.setup.manage": "Katalog-Einrichtung verwalten",
-      "catalogue.import.use": "Katalogdaten importieren",
-      "catalogue.export.use": "Katalogdaten exportieren",
-      "catalogue.allergen.update": "Allergene prüfen",
-      "catalogue.readiness.update": "Hinweise zur Vollständigkeit übergehen"
+      "catalogue_item_read": "Artikel und Sammlungen ansehen",
+      "catalogue_item_write": "Artikel erstellen und bearbeiten",
+      "catalogue_item_delete": "Artikel löschen",
+      "catalogue_item_deletePublished": "Veröffentlichte Artikel endgültig löschen",
+      "catalogue_collection_write": "Sammlungen erstellen und bearbeiten",
+      "catalogue_collection_delete": "Sammlungen löschen",
+      "catalogue_collection_deletePublished": "Veröffentlichte Sammlungen endgültig löschen",
+      "catalogue_taxonomy_write": "Kategorien und Tags verwalten",
+      "catalogue_setup_manage": "Katalog-Einrichtung verwalten",
+      "catalogue_import_use": "Katalogdaten importieren",
+      "catalogue_export_use": "Katalogdaten exportieren",
+      "catalogue_allergen_update": "Allergene prüfen",
+      "catalogue_readiness_update": "Hinweise zur Vollständigkeit übergehen"
     },
     "setupErrors": {
       "forbidden": "Dafür fehlt dir die Berechtigung.",

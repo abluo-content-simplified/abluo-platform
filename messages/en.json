@@ -6894,19 +6894,19 @@
       "shelfWantToRead": "Want to read"
     },
     "capabilities": {
-      "catalogue.item.read": "View Items And Collections",
-      "catalogue.item.write": "Create And Edit Items",
-      "catalogue.item.delete": "Delete Items",
-      "catalogue.item.deletePublished": "Permanently Delete Published Items",
-      "catalogue.collection.write": "Create And Edit Collections",
-      "catalogue.collection.delete": "Delete Collections",
-      "catalogue.collection.deletePublished": "Permanently Delete Published Collections",
-      "catalogue.taxonomy.write": "Manage Categories And Tags",
-      "catalogue.setup.manage": "Manage Catalogue Setup",
-      "catalogue.import.use": "Import Catalogue Data",
-      "catalogue.export.use": "Export Catalogue Data",
-      "catalogue.allergen.update": "Review Allergens",
-      "catalogue.readiness.update": "Override Readiness Warnings"
+      "catalogue_item_read": "View Items And Collections",
+      "catalogue_item_write": "Create And Edit Items",
+      "catalogue_item_delete": "Delete Items",
+      "catalogue_item_deletePublished": "Permanently Delete Published Items",
+      "catalogue_collection_write": "Create And Edit Collections",
+      "catalogue_collection_delete": "Delete Collections",
+      "catalogue_collection_deletePublished": "Permanently Delete Published Collections",
+      "catalogue_taxonomy_write": "Manage Categories And Tags",
+      "catalogue_setup_manage": "Manage Catalogue Setup",
+      "catalogue_import_use": "Import Catalogue Data",
+      "catalogue_export_use": "Export Catalogue Data",
+      "catalogue_allergen_update": "Review Allergens",
+      "catalogue_readiness_update": "Override Readiness Warnings"
     },
     "setupErrors": {
       "forbidden": "You don’t have permission to do this.",

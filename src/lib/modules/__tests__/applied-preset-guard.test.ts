@@ -33,9 +33,9 @@ const PRESET_ALLOWED = [
   'lib/modules/catalogue/packs/',
   // ⚠️ NARROWED EXCEPTIONS (Amendment I slice 4d) — the image shape now follows each
   // item's profile (registry). The preset is read ONLY as a fallback for items
-  // that have no profile yet (created in Studio). D-13 part 4 replaces this fallback
-  // with `defaultItemProfile` in R2 (fixture image-shape/tmz-fallback); REMOVE both
-  // lines in R3.
+  // that have no profile yet (created in Studio). D-13 part 4 puts `itemImageShape` and
+  // `defaultItemProfile` ahead of it (R2); the preset stays as the LAST link until data
+  // step D3 has written `itemImageShape` (regression window, C7); REMOVE both lines in R3.
   'lib/modules/catalogue/dashboard-queries.ts', // fallback only: presetId for items WITHOUT a profile (slice 4d)
   'lib/modules/catalogue/list-model.ts', // fallback only: catalogueImageShape() for items WITHOUT a profile (slice 4d)
 ].map(norm)

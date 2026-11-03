@@ -227,6 +227,8 @@ export type CatalogueSite = {
      * `defaultItemProfile`'s (module-written by data step D3; null = follow `defaultItemProfile`).
      */
     itemImageShape: ImageShape | null
+    /** Legacy starter-preset id — last link of the image-shape chain until D3 / R3. */
+    legacyPresetId: string | null
     /** C2: the raw `serviceChannels` entries (plain JSON) — every reader builds its ChannelSet with `readChannels`. */
     serviceChannels: unknown[]
     /** C1: the category tree's nodes (plain JSON) — `buildTree(categoryNodes)` on either side; a flat list for a legacy vocabulary. */
@@ -260,7 +262,7 @@ function categoryNodesOf(taxonomy: RawCatalogueTaxonomy, source: string, terms: 
 }
 
 async function readSite(client: Client, projectSlug: string): Promise<CatalogueSite> {
-  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null; amazonTrackingIds?: { marketplace?: unknown; trackingId?: unknown }[] | null; awinPublisherId?: unknown; affiliateShops?: { shop?: unknown }[] | null } | null; config?: RawConfig; translate?: boolean; categoryTerms?: CategoryTermRow[] | null; tagTerms?: CategoryTermRow[] | null; taxonomy?: RawCatalogueTaxonomy } | null>(
+  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null; amazonTrackingIds?: { marketplace?: unknown; trackingId?: unknown }[] | null; awinPublisherId?: unknown; affiliateShops?: { shop?: unknown }[] | null } | null; config?: RawConfig; translate?: boolean; presetId?: unknown; categoryTerms?: CategoryTermRow[] | null; tagTerms?: CategoryTermRow[] | null; taxonomy?: RawCatalogueTaxonomy } | null>(
     CATALOGUE_SITE_QUERY,
     { projectSlug }
   ))
@@ -291,6 +293,7 @@ async function readSite(client: Client, projectSlug: string): Promise<CatalogueS
       dietaryTags: termsOf(c.dietaryTags),
       defaultItemProfile: initialItemProfile(c.defaultItemProfile),
       itemImageShape: isImageShape(c.itemImageShape) ? c.itemImageShape : null,
+      legacyPresetId: typeof r?.presetId === 'string' ? r.presetId : null,
       serviceChannels: Array.isArray(c.serviceChannels) ? (c.serviceChannels as unknown[]) : [],
       categoryNodes: categoryNodesOf(r?.taxonomy, vocabulary.categorySource, categories),
       migrations: migrationsOf(c.catalogueMigrations),

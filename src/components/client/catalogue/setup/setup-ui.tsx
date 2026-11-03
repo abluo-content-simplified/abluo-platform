@@ -25,13 +25,13 @@ export type SetupFail = {
  */
 export function useFailText(nameOf?: (key: string) => string | null) {
   const te = useTranslations('catalogue.setupErrors')
-  // Capability ids contain dots, so their names are read from the bundle directly (not as nested keys).
+  // Capability ids contain dots, which next-intl rejects in keys: messages use underscores (catalogue_item_read), read from the bundle directly.
   const messages = useMessages() as { catalogue?: { capabilities?: Record<string, string> } }
   const ts = useTranslations('catalogue.segment.clash')
   const t = useTranslations('catalogue.setup.common')
   return useCallback(
     (fail: SetupFail): string => {
-      const capability = fail.capability ? messages.catalogue?.capabilities?.[fail.capability] : undefined
+      const capability = fail.capability ? messages.catalogue?.capabilities?.[fail.capability.replaceAll('.', '_')] : undefined
       if (fail.error === 'forbidden' && capability) return t('needsCapability', { capability })
       if (fail.error === 'segment_invalid' && fail.detail?.clash && ts.has(fail.detail.clash.kind)) return ts(fail.detail.clash.kind, { value: fail.detail.clash.value ?? '', max: fail.detail.clash.max ?? 0 })
       const base = te.has(fail.error) ? te(fail.error) : te('failed')

@@ -6894,19 +6894,19 @@
       "shelfWantToRead": "Da leggere"
     },
     "capabilities": {
-      "catalogue.item.read": "Vedere elementi e raccolte",
-      "catalogue.item.write": "Creare e modificare elementi",
-      "catalogue.item.delete": "Eliminare elementi",
-      "catalogue.item.deletePublished": "Eliminare definitivamente elementi pubblicati",
-      "catalogue.collection.write": "Creare e modificare raccolte",
-      "catalogue.collection.delete": "Eliminare raccolte",
-      "catalogue.collection.deletePublished": "Eliminare definitivamente raccolte pubblicate",
-      "catalogue.taxonomy.write": "Gestire categorie e tag",
-      "catalogue.setup.manage": "Gestire la configurazione del catalogo",
-      "catalogue.import.use": "Importare dati del catalogo",
-      "catalogue.export.use": "Esportare dati del catalogo",
-      "catalogue.allergen.update": "Verificare gli allergeni",
-      "catalogue.readiness.update": "Ignorare avvisi di completezza"
+      "catalogue_item_read": "Vedere elementi e raccolte",
+      "catalogue_item_write": "Creare e modificare elementi",
+      "catalogue_item_delete": "Eliminare elementi",
+      "catalogue_item_deletePublished": "Eliminare definitivamente elementi pubblicati",
+      "catalogue_collection_write": "Creare e modificare raccolte",
+      "catalogue_collection_delete": "Eliminare raccolte",
+      "catalogue_collection_deletePublished": "Eliminare definitivamente raccolte pubblicate",
+      "catalogue_taxonomy_write": "Gestire categorie e tag",
+      "catalogue_setup_manage": "Gestire la configurazione del catalogo",
+      "catalogue_import_use": "Importare dati del catalogo",
+      "catalogue_export_use": "Esportare dati del catalogo",
+      "catalogue_allergen_update": "Verificare gli allergeni",
+      "catalogue_readiness_update": "Ignorare avvisi di completezza"
     },
     "setupErrors": {
       "forbidden": "Non hai l’autorizzazione per farlo.",

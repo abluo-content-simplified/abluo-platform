@@ -59,6 +59,12 @@ describe('image-shape/tmz-fallback', () => {
   it('records why the explicit setting is needed: defaultItemProfile alone would differ', () => {
     expect(catalogueImageShape({ defaultItemProfile: 'product' })).not.toBe(legacyBefore('bookshop'))
   })
+  it('tmz before D3: no itemImageShape, preset bookshop, profile product → portrait (legacy fallback)', () => {
+    expect(catalogueImageShape({ presetId: 'bookshop', defaultItemProfile: 'product' })).toBe('portrait')
+    expect(catalogueImageShape({ presetId: 'bookshop', defaultItemProfile: 'product', itemImageShape: 'landscape' })).toBe('landscape')
+    expect(catalogueImageShape({ presetId: 'restaurant', defaultItemProfile: 'product' })).toBe('landscape')
+    expect(catalogueImageShape({ itemProfile: 'product', presetId: 'bookshop' })).toBe('landscape')
+  })
   it('a project without a preset is unchanged without any setting', () => {
     expect(catalogueImageShape({ defaultItemProfile: 'foodOrDrink' })).toBe(legacyBefore(null))
   })

@@ -25,6 +25,9 @@ export function containThumbUrl(url: unknown, size = 720): string | null {
 // ── Image frame shape ─────────────────────────────────────────────────────────
 
 export type ImageShape = 'portrait' | 'landscape'
+
+/** Starter presets whose items are photographed upright (book covers). Legacy fallback only — removed in R3. */
+const PORTRAIT_PRESETS: ReadonlySet<string> = new Set(['bookshop'])
 export const isImageShape = (v: unknown): v is ImageShape => v === 'portrait' || v === 'landscape'
 
 /**
@@ -35,12 +38,15 @@ export const isImageShape = (v: unknown): v is ImageShape => v === 'portrait' ||
  *   1. `itemImageShape`, the explicit per-project frame (module-written by data
  *      step D3 only where `defaultItemProfile` would give a different shape
  *      than the legacy preset did — C7.6 "never a behaviour change");
- *   2. else the shape of `defaultItemProfile`;
- *   3. else landscape. Collections and option lists pass nothing: landscape.
+ *   2. else the legacy starter preset (`presetId`, bookshop → portrait) — REGRESSION WINDOW ONLY: keeps
+ *      tmz's covers portrait until D3 has written `itemImageShape`; removed in R3 (C7);
+ *   3. else the shape of `defaultItemProfile`;
+ *   4. else landscape. Collections and option lists pass nothing: landscape.
  */
-export function catalogueImageShape(input: { itemProfile?: string | null; defaultItemProfile?: string | null; itemImageShape?: string | null }): ImageShape {
+export function catalogueImageShape(input: { itemProfile?: string | null; defaultItemProfile?: string | null; itemImageShape?: string | null; presetId?: string | null }): ImageShape {
   if (isItemProfile(input.itemProfile)) return PROFILES[input.itemProfile].list.imageShape
   if (isImageShape(input.itemImageShape)) return input.itemImageShape
+  if (input.presetId && PORTRAIT_PRESETS.has(input.presetId)) return 'portrait'
   if (isItemProfile(input.defaultItemProfile)) return PROFILES[input.defaultItemProfile].list.imageShape
   return 'landscape'
 }
