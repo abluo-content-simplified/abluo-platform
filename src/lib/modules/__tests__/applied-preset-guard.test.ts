@@ -45,6 +45,7 @@ const HISTORY_IDENTIFIERS = ['appliedPacks', 'cataloguePackHistory', 'AppliedPac
 const HISTORY_ALLOWED = [
   'lib/modules/catalogue/packs/',
   'components/client/catalogue/setup/', // the Setup pack / starter screens (R2)
+  'app/[locale]/(client)/[tenant]/catalogue/setup/starters/', // the Starter Structures route + its server actions (R2-D)
   'lib/modules/catalogue/schema-taxonomy.ts', // Sanity declaration of the history document type
   'lib/sanity/studio/catalogue-posture.ts', // C9 Studio posture: classifies the type as a read-only Catalogue document (never reads it)
   'lib/sanity/studio/__tests__/catalogue-posture.test.ts',
@@ -64,7 +65,7 @@ const SETUP_SOURCE_ALLOWED = [
 ].map(norm)
 
 /** Outside these, an import from `catalogue/packs/` may only be `{ isSetupComplete }` from `packs/setup-state`. */
-const PACKS_IMPORT_ALLOWED = ['lib/modules/catalogue/packs/', 'components/client/catalogue/setup/', 'lib/modules/__tests__/applied-preset-guard.test.ts'].map(norm)
+const PACKS_IMPORT_ALLOWED = ['lib/modules/catalogue/packs/', 'components/client/catalogue/setup/', 'app/[locale]/(client)/[tenant]/catalogue/setup/starters/', 'lib/modules/__tests__/applied-preset-guard.test.ts'].map(norm)
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
