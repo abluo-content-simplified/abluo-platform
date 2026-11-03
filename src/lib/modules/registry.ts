@@ -1884,6 +1884,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           id: 'profileSegment',
           label: 'Profile pages URL segment',
           type: 'localizedString',
+          validator: 'people.profileSegment',
           description:
             'Where people with their own page live, per language, e.g. "team" gives /team/maria-rossi. Lowercase letters, numbers and single hyphens; it cannot be a word the website already uses. Leave empty for no profile pages.',
         },

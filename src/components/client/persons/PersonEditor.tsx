@@ -1,9 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
-import type { PersonSnapshot, PersonState, PersonUsage } from '@/lib/api/persons'
+import type { PersonSnapshot, PersonState, PersonTranslatableField, PersonUsage } from '@/lib/api/persons'
+import { formatTranslateMessage, getTranslateMessages } from '@/lib/i18n/translate-messages'
+import { isWritableTarget } from '@/lib/translate/status'
 import {
   anonymisePersonAction,
   discardPersonDraftAction,
@@ -15,6 +17,7 @@ import {
   savePersonDraftAction,
   savePersonPrivateAction,
   searchPersonLinkTargetsAction,
+  translatePersonFieldsAction,
 } from '@/app/[locale]/(client)/[tenant]/people/actions'
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
 import type { PendingSet } from '@/lib/client/autosave/journal'
@@ -35,6 +38,9 @@ import { SavePill } from '@/components/app/ui/SavePill'
 import { Tabs, tabPanelProps } from '@/components/app/ui/Tabs'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
+import { mintPersonPreviewAction } from '@/app/[locale]/(client)/[tenant]/people/preview-action'
+import { personPreviewUrl } from '@/lib/client/preview-url'
+import { PersonActivitySheet } from './PersonActivitySheet'
 import { PersonAnonymiseDialog } from './PersonAnonymiseDialog'
 import { AboutTab, ContactTab, ProfileTab, WebsiteTab } from './PersonEditorTabs'
 import { PersonStateBadge, UsedInList, useLanguageName, useUsageSummary } from './person-bits'
@@ -48,6 +54,7 @@ function valuesOf(s: PersonSnapshot): PersonValues {
     honorific: s.honorific,
     jobTitle: s.jobTitle,
     shortBio: s.shortBio,
+    translations: s.translations,
     slug: s.slug,
     bio: s.bio,
     groups: s.groups,
@@ -92,6 +99,7 @@ export function PersonEditor({
   canDelete = false,
   canAnonymise = false,
   canAddGroup = false,
+  canTranslate = false,
 }: {
   projectSlug: string
   initial: PersonSnapshot
@@ -102,12 +110,15 @@ export function PersonEditor({
   canDelete?: boolean
   canAnonymise?: boolean
   canAddGroup?: boolean
+  /** The Translate module is installed on this project (the server re-checks, with people.person.write). */
+  canTranslate?: boolean
 }) {
   const t = useTranslations('clientDashboard.persons.editor')
   const te = useTranslations('clientDashboard.persons.errors')
   const tl = useTranslations('app.lifecycle')
   const ta = useTranslations('clientDashboard.persons.anonymise')
   const router = useRouter()
+  const uiLocale = useLocale()
   const languageName = useLanguageName()
   const summarize = useUsageSummary()
   const idBase = useId()
@@ -368,7 +379,50 @@ export function PersonEditor({
     }
   }
 
+  // ── Translate (ADR-023) ────────────────────────────────────────────────────
+  const [translating, setTranslating] = useState(false)
+  async function translateFields(fields: PersonTranslatableField[]) {
+    if (translating || !editable) return
+    const tm = getTranslateMessages(uiLocale)
+    const src = languageName(d)
+    const sourceFilled = fields.some((f) => (valuesRef.current[f][d] ?? '').trim())
+    if (!sourceFilled) return setNotice(formatTranslateMessage(tm.nothingToTranslate, { source: src }))
+    setTranslating(true)
+    setNotice(null)
+    try {
+      // The server translates the SAVED text: get everything typed onto the server first.
+      if (!(await flushed())) return
+      const r = await translatePersonFieldsAction({ projectSlug, id, fields, sourceLocale: d })
+      if (!r.ok) {
+        const code = r.error as string
+        return setNotice(code in tm.errors ? tm.errors[code as keyof typeof tm.errors] : errorText(code))
+      }
+      const filled = new Set<string>()
+      for (const field of fields) {
+        for (const [loc, { text, meta }] of Object.entries(r.results[field] ?? {})) {
+          // Typed into while the request was in flight: leave it alone.
+          const cur = valuesRef.current
+          if (!isWritableTarget(cur[field][loc] ?? '', cur.translations[field][loc])) continue
+          change(
+            { [field]: { ...cur[field], [loc]: text }, translations: { ...cur.translations, [field]: { ...cur.translations[field], [loc]: meta } } },
+            { [`${field}.${loc}`]: text, [`translation.${field}.${loc}`]: meta }
+          )
+          filled.add(loc)
+        }
+      }
+      show({
+        message: filled.size ? formatTranslateMessage(tm.translated, { targets: [...filled].map((l) => l.toUpperCase()).join(', ') }) : tm.allTargetsProtected,
+        tone: 'status',
+      })
+    } catch {
+      setNotice(te('failed'))
+    } finally {
+      setTranslating(false)
+    }
+  }
+
   // ── Lifecycle ──────────────────────────────────────────────────────────────
+  const [activity, setActivity] = useState(false)
   const [busy, setBusy] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [confirm, setConfirm] = useState<Confirm>(null)
@@ -484,8 +538,26 @@ export function PersonEditor({
     if (archived || status.anonymised) lifecycleItems.push({ key: 'deletePermanently', label: tl('actions.deletePermanently'), onSelect: () => setConfirm('deletePermanently'), destructive: true, separated: !canAnonymise || status.anonymised })
     else if (!status.isPublished) lifecycleItems.push({ key: 'delete', label: tl('actions.delete'), onSelect: () => setConfirm('delete'), destructive: true, separated: !canAnonymise })
   }
+  /** Opens the draft (or published) profile in a new tab, as the website would show it (noindex, 15-minute link). */
+  const preview = async () => {
+    const tab = window.open('about:blank', '_blank')
+    if (tab) tab.opener = null
+    try {
+      if (!(await flushed())) throw new Error('unsaved')
+      const r = await mintPersonPreviewAction({ projectSlug, id })
+      if (!r.ok) throw new Error(r.error)
+      const url = personPreviewUrl({ origin: r.origin, locale: lang, projectSlug: r.projectSlug, id, token: r.token })
+      if (tab) tab.location.href = url
+      else window.location.assign(url)
+    } catch {
+      tab?.close()
+      show({ message: t('menu.previewFailed'), tone: 'error' })
+    }
+  }
   const menu: CardMenuItem[] = [
+    ...(!status.anonymised ? [{ key: 'preview', label: t('menu.preview'), onSelect: () => void preview() }] : []),
     ...(editable && status.isPublished && status.hasDraft ? [{ key: 'discard', label: t('menu.discard'), onSelect: () => setConfirm('discard') }] : []),
+    { key: 'activity', label: t('menu.activity'), onSelect: () => setActivity(true) },
     ...lifecycleItems,
   ]
 
@@ -528,6 +600,7 @@ export function PersonEditor({
     moveContact: (key, to) => void moveContact(key, to),
     moving,
     setTab,
+    translate: canTranslate && editable && languages.length > 1 ? { running: translating, run: (f) => void translateFields(f) } : undefined,
     showToast: (message, tone = 'status') => show({ message, tone }),
   }
 
@@ -647,6 +720,7 @@ export function PersonEditor({
           setConfirmError(null)
         }}
       />
+      <PersonActivitySheet open={activity} onClose={() => setActivity(false)} projectSlug={projectSlug} personId={id} />
       <Toast message={toast?.message ?? null} tone={toast?.tone} action={toast?.undo ? t('undo') : undefined} onAction={toast?.undo} />
     </div>
   )

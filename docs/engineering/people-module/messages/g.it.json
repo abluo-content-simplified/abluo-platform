@@ -1,0 +1,34 @@
+{
+  "clientDashboard": {
+    "taxonomy": {
+      "modules": {
+        "people": {
+          "category": {
+            "tab": "Gruppi",
+            "add": "Aggiungi gruppo",
+            "placeholder": "Nome del gruppo",
+            "emptyTitle": "Ancora nessun gruppo",
+            "emptyBody": "I gruppi ordinano le tue persone, per esempio per team o ruolo. Aggiungi il primo.",
+            "exists": "Questo gruppo esiste già.",
+            "deleted": "Gruppo eliminato.",
+            "delete": "Elimina gruppo",
+            "confirmTitle": "Eliminare “{name}”?",
+            "confirmBody": "Questo gruppo non è usato da nessuno. Verrà rimosso definitivamente.",
+            "blocked": "{count, plural, one {Questo gruppo è usato da # persona e non può essere eliminato finché non la sposti.} other {Questo gruppo è usato da # persone e non può essere eliminato finché non le sposti.}}",
+            "usedHeading": "{count, plural, one {Usato da # persona} other {Usato da # persone}}",
+            "search": "Cerca gruppi"
+          }
+        }
+      }
+    },
+    "persons": {
+      "editor": {
+        "menu": {
+          "activity": "Attività",
+          "preview": "Anteprima",
+          "previewFailed": "Non è stato possibile aprire l'anteprima. Riprova tra un attimo."
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import type { PortableTextBlock } from '@portabletext/editor'
-import type { PersonQualificationValue } from '@/lib/api/persons'
+import type { PersonQualificationValue, PersonTranslatableField, PersonTranslations } from '@/lib/api/persons'
 import type { ContactRow } from '@/lib/client/person-editor'
 import type { LinkTools } from '@/components/client/editor/BodyEditor'
 import type { PickerTerm } from '@/components/client/taxonomy/term-picker-model'
@@ -12,6 +12,8 @@ export type PersonValues = {
   honorific: Record<string, string>
   jobTitle: Record<string, string>
   shortBio: Record<string, string>
+  /** Machine-translation status beside each translatable value (ADR-023 §4). */
+  translations: PersonTranslations
   slug: Record<string, string>
   bio: Record<string, PortableTextBlock[]>
   groups: string[]
@@ -51,6 +53,8 @@ export type EditorApi = {
   moveContact: (key: string, to: 'public' | 'private') => void
   moving: boolean
   setTab: (tab: EditorTab) => void
+  /** The Translate button (ADR-023): absent unless the Translate module is on, the person is editable and the site has 2+ languages. */
+  translate?: { running: boolean; run: (fields: PersonTranslatableField[]) => void }
   showToast: (message: string, tone?: 'status' | 'error') => void
 }
 

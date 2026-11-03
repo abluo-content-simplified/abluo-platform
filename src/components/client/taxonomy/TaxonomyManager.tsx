@@ -13,7 +13,7 @@ import { listTaxonomyTermsAction } from '@/app/[locale]/(client)/[tenant]/taxono
 import type { TermList } from '@/lib/taxonomy/service'
 import { InternalTagsPanel } from './InternalTagsPanel'
 import { TermSection, type SectionKind } from './TermSection'
-import { errorKey, hasTranslations, listKey, type TermsFilter } from './taxonomy-view'
+import { errorKey, hasTranslations, kindKey, listKey, type TermsFilter } from './taxonomy-view'
 import { searchText } from '@/lib/client/search-text'
 
 /**
@@ -107,7 +107,7 @@ export function TaxonomyManager({ projectSlug, tabs, activeId, initialLists }: {
       ]
     : []
   const chips: FilterChip[] = effectiveFilter === 'missing' ? [{ id: 'translations', label: t('filterMissing') }] : []
-  const searchLabel = active.type === 'terms' ? (active.kinds.length > 1 ? t('searchAll') : t(`${active.kinds[0]}.search`)) : ''
+  const searchLabel = active.type === 'terms' ? (active.kinds.length > 1 ? t('searchAll') : t(kindKey((k) => t.has(k as 'category.tab'), active.id, active.kinds[0], 'search') as 'category.search')) : ''
   const reset = () => (setQuery(''), setFilter('all'))
   const matches = active.type === 'terms' ? active.kinds.reduce((n, k) => n + (lists[listKey(active.id, k)]?.terms.length ?? 0), 0) : 0
 

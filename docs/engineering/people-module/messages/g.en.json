@@ -1,0 +1,34 @@
+{
+  "clientDashboard": {
+    "taxonomy": {
+      "modules": {
+        "people": {
+          "category": {
+            "tab": "Groups",
+            "add": "Add group",
+            "placeholder": "Name of the group",
+            "emptyTitle": "No groups yet",
+            "emptyBody": "Groups sort your people, for example by team or role. Add the first one.",
+            "exists": "That group already exists.",
+            "deleted": "Group deleted.",
+            "delete": "Delete group",
+            "confirmTitle": "Delete “{name}”?",
+            "confirmBody": "This group is not used by anyone. It will be removed for good.",
+            "blocked": "{count, plural, one {This group is used by # person and cannot be deleted until that person is moved.} other {This group is used by # people and cannot be deleted until they are moved.}}",
+            "usedHeading": "{count, plural, one {Used by # person} other {Used by # people}}",
+            "search": "Search groups"
+          }
+        }
+      }
+    },
+    "persons": {
+      "editor": {
+        "menu": {
+          "activity": "Activity",
+          "preview": "Preview",
+          "previewFailed": "The preview could not be opened. Try again in a moment."
+        }
+      }
+    }
+  }
+}

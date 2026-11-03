@@ -9,6 +9,7 @@ import {
   errorKey,
   hasTranslations,
   itemHref,
+  kindKey,
   moveKey,
   moveKeyTo,
   removeTerm,
@@ -157,5 +158,18 @@ describe('errors and text', () => {
   })
   it('cleanText trims and collapses spaces', () => {
     expect(cleanText('  Science   Fiction ')).toBe('Science Fiction')
+  })
+})
+
+describe('kindKey (per-module wording, e.g. People "Groups")', () => {
+  const has = (keys: string[]) => (k: string) => keys.includes(k)
+  it('uses the module override when the bundle has one', () => {
+    expect(kindKey(has(['modules.people.category.tab']), 'people', 'category', 'tab')).toBe('modules.people.category.tab')
+  })
+  it('keeps the shared wording for every other module and for keys without an override', () => {
+    const h = has(['modules.people.category.tab'])
+    expect(kindKey(h, 'blog', 'category', 'tab')).toBe('category.tab')
+    expect(kindKey(h, 'people', 'category', 'add')).toBe('category.add')
+    expect(kindKey(h, 'people', 'tag', 'tab')).toBe('tag.tab')
   })
 })

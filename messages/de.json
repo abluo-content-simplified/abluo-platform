@@ -1801,7 +1801,26 @@
       "tabsLabel": "Bereich",
       "filterLabel": "Übersetzungen",
       "searchAll": "Kategorien und Tags suchen",
-      "shownOf": "{shown} von {total}"
+      "shownOf": "{shown} von {total}",
+      "modules": {
+        "people": {
+          "category": {
+            "tab": "Gruppen",
+            "add": "Gruppe hinzufügen",
+            "placeholder": "Name der Gruppe",
+            "emptyTitle": "Noch keine Gruppen",
+            "emptyBody": "Gruppen ordnen deine Personen, zum Beispiel nach Team oder Rolle. Füge die erste hinzu.",
+            "exists": "Diese Gruppe gibt es schon.",
+            "deleted": "Gruppe gelöscht.",
+            "delete": "Gruppe löschen",
+            "confirmTitle": "„{name}“ löschen?",
+            "confirmBody": "Diese Gruppe wird von niemandem verwendet und wird endgültig entfernt.",
+            "blocked": "{count, plural, one {Diese Gruppe wird von # Person verwendet und kann erst gelöscht werden, wenn du sie verschoben hast.} other {Diese Gruppe wird von # Personen verwendet und kann erst gelöscht werden, wenn du sie verschoben hast.}}",
+            "usedHeading": "{count, plural, one {Verwendet von # Person} other {Verwendet von # Personen}}",
+            "search": "Gruppen durchsuchen"
+          }
+        }
+      }
     },
     "photoWizard": {
       "add": {
@@ -3514,7 +3533,10 @@
         "menu": {
           "label": "Weitere Aktionen",
           "discard": "Unveröffentlichte Änderungen verwerfen …",
-          "anonymise": "Anonymisieren …"
+          "anonymise": "Anonymisieren …",
+          "activity": "Aktivität",
+          "preview": "Vorschau",
+          "previewFailed": "Die Vorschau konnte nicht geöffnet werden. Versuch es gleich noch einmal."
         },
         "confirm": {
           "discardTitle": "Unveröffentlichte Änderungen verwerfen?",

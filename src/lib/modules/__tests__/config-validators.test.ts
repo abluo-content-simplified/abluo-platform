@@ -6,6 +6,7 @@ import {
   configDataNeeds,
   loadConfigData,
   pageFirstSegments,
+  pageFirstSegmentsByLocale,
   pendingGuards,
   persistedExtras,
   resolveFieldValidator,
@@ -100,5 +101,78 @@ describe('catalogue.currencyChange', () => {
   it('declares the data it needs', () => {
     expect(configDataNeeds(schema, { guards: true }).sort()).toEqual(['itemPrices', 'optionDeltas', 'pageSlugs'])
     expect(configDataNeeds(schema, { guards: false })).toEqual(['pageSlugs'])
+  })
+})
+
+describe('people.profileSegment', () => {
+  const people = MODULE_REGISTRY.find((m) => m.id === 'people')!
+  const pf = people.platformContract.configSchema.find((f) => f.id === 'profileSegment') as ModuleConfigFieldDef
+  const v = resolveFieldValidator('people.profileSegment')!
+  const pages = [
+    { slug: { en: { current: 'about' }, it: { current: 'chi-siamo/storia' } } },
+    { slug: { en: { current: 'doctors/list' } } },
+  ]
+  const run = (
+    value: Record<string, string>,
+    o: { stored?: Record<string, unknown>; pages?: typeof pages; catalogueSegment?: string[] } = {},
+  ) =>
+    v.validate({
+      field: pf,
+      value,
+      values: {},
+      stored: o.stored,
+      data: { pageSlugs: o.pages ?? pages, catalogueSegment: o.catalogueSegment ?? [] },
+    })
+
+  it('is wired in the manifest and needs pages + the catalogue segment', () => {
+    expect(pf.validator).toBe('people.profileSegment')
+    expect(configDataNeeds(people.platformContract.configSchema, { guards: false }).sort()).toEqual(['catalogueSegment', 'pageSlugs'])
+  })
+
+  it('accepts free segments, one per language, and empty values', () => {
+    expect(run({ en: 'team', it: 'insegnanti', de: '' })).toEqual({ error: null, notice: null })
+    expect(run({})).toEqual({ error: null, notice: null })
+  })
+
+  it('rejects anything that is not one lowercase url-safe segment', () => {
+    for (const bad of ['Team', 'our team', 'a/b', 'tèam', '-x', 'x--y'])
+      expect(run({ en: bad }).error, bad).toMatch(/English \(en\): ".*" is not a valid address/)
+  })
+
+  it('names a reserved word', () => {
+    expect(run({ en: 'blog' }).error).toMatch(/English \(en\): "blog" is already used by the website/)
+    expect(run({ it: 'users' }).error).toMatch(/Italian \(it\): "users" is already used/)
+  })
+
+  it('names a clash with a page of THAT language only', () => {
+    expect(run({ en: 'about' }).error).toMatch(/English \(en\): "about" is already the start of one of your English pages/)
+    expect(run({ it: 'chi-siamo' }).error).toMatch(/Italian \(it\): "chi-siamo" is already the start of one of your Italian pages/)
+    // 'about' is an English page; the same word in Italian is free, and vice versa.
+    expect(run({ it: 'about' }).error).toBeNull()
+    expect(run({ en: 'chi-siamo' }).error).toBeNull()
+  })
+
+  it('names a clash with the catalogue segment', () => {
+    expect(run({ en: 'menu' }, { catalogueSegment: ['menu'] }).error).toMatch(/"menu" is already the address of your catalogue/)
+    expect(run({ en: 'menu' }, { catalogueSegment: [] }).error).toBeNull()
+  })
+
+  it('reports every offending language, and does not re-litigate an unchanged saved value', () => {
+    const r = run({ en: 'about', it: 'blog', de: 'team' })
+    expect(r.error).toMatch(/English/)
+    expect(r.error).toMatch(/Italian/)
+    expect(r.error).not.toMatch(/German/)
+    expect(run({ en: 'about' }, { stored: { profileSegment: { en: 'about' } } }).error).toBeNull()
+  })
+
+  it('pageFirstSegmentsByLocale groups first segments per language', () => {
+    expect(pageFirstSegmentsByLocale(pages)).toEqual({ en: ['about', 'doctors'], it: ['chi-siamo'] })
+  })
+
+  it('loads the catalogue segment scoped by projectSlug', async () => {
+    const calls: unknown[] = []
+    const client = { fetch: async <T,>(_q: string, p: Record<string, unknown>) => (calls.push(p), ['menu'] as unknown as T) }
+    expect(await loadConfigData(client, ['catalogueSegment'], 'proj')).toEqual({ catalogueSegment: ['menu'] })
+    expect(calls).toEqual([{ projectSlug: 'proj' }])
   })
 })

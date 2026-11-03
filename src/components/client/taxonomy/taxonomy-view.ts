@@ -8,6 +8,17 @@ import type { ListedTerm, TermList, TermUsageItem } from '@/lib/taxonomy/service
 
 export type TermsFilter = 'all' | 'missing'
 
+/**
+ * The message key for a section's wording (`category.tab`, `category.add` …).
+ * A module can rename its terms (People: "Groups") by adding
+ * `clientDashboard.taxonomy.modules.<module>.<kind>.<key>`; every other module
+ * keeps the shared `<kind>.<key>` wording.
+ */
+export function kindKey(has: (key: string) => boolean, module: string, kind: string, key: string): string {
+  const own = `modules.${module}.${kind}.${key}`
+  return has(own) ? own : `${kind}.${key}`
+}
+
 /** The manager's lists are keyed `module:kind`. */
 export const listKey = (module: string, kind: string) => `${module}:${kind}`
 

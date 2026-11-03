@@ -1,9 +1,12 @@
 'use client'
 
 import { useId, useRef, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import type { PortableTextBlock } from '@portabletext/editor'
 import { shortenPersonBioAction } from '@/app/[locale]/(client)/[tenant]/people/actions'
+import type { PersonTranslatableField } from '@/lib/api/persons'
+import { formatTranslateMessage, getTranslateMessages } from '@/lib/i18n/translate-messages'
+import { effectiveStatus } from '@/lib/translate/status'
 import { normalizeFaqAnswer } from '@/lib/faq/answer-blocks'
 import { COMMON_LANGUAGES, CONTACT_KINDS, contactProblem, suggestSlug, type ContactKind, type ContactRow } from '@/lib/client/person-editor'
 import { BodyEditor } from '@/components/client/editor/BodyEditor'
@@ -47,6 +50,28 @@ export function LanguageSwitch({ api }: { api: EditorApi & { setLang: (l: string
       onChange={api.setLang}
       options={api.languages.map((l) => ({ value: l, label: l.toUpperCase() }))}
     />
+  )
+}
+
+/**
+ * "Translate from EN" (ADR-023) for a group of fields, plus the status of the
+ * language being edited ("Machine translation" until a person edits it).
+ * Absent when the Translate module is off or the person cannot be edited.
+ */
+function TranslateRow({ api, fields }: { api: EditorApi & { setLang: (l: string) => void }; fields: PersonTranslatableField[] }) {
+  const tm = getTranslateMessages(useLocale())
+  const { translate, values: v, d, lang, languageName } = api
+  if (!translate) return null
+  const filled = fields.some((f) => (v[f][d] ?? '').trim())
+  const machine = lang !== d && fields.some((f) => effectiveStatus(v[f][lang], v.translations[f][lang]) === 'machine')
+  return (
+    <div className="flex flex-col items-start gap-1.5">
+      <AssistButton tone="outline" busy={translate.running} disabled={translate.running || !filled} onClick={() => translate.run(fields)}>
+        {translate.running ? tm.translating : formatTranslateMessage(tm.translateFrom, { source: languageName(d) })}
+      </AssistButton>
+      {!filled ? <p className="text-sm leading-5 text-muted-foreground">{formatTranslateMessage(tm.nothingToTranslate, { source: languageName(d) })}</p> : null}
+      {machine ? <p className="text-sm leading-5 text-muted-foreground">{tm.statusMachine}</p> : null}
+    </div>
   )
 }
 
@@ -200,6 +225,7 @@ export function ProfileTab({ api }: { api: EditorApi & { setLang: (l: string) =>
             )}
           </Field>
         </div>
+        <TranslateRow api={api} fields={['honorific', 'jobTitle']} />
       </Panel>
 
       <Panel as="section" aria-labelledby="person-groups" className="space-y-3">
@@ -241,6 +267,7 @@ export function ProfileTab({ api }: { api: EditorApi & { setLang: (l: string) =>
             />
           )}
         </Field>
+        <TranslateRow api={api} fields={['shortBio']} />
         {editable ? (
           <div className="flex flex-col items-start gap-1.5">
             <AssistButton busy={shortening} disabled={shortening || !hasBio} onClick={() => void shorten()} aria-describedby="person-shorten-why">

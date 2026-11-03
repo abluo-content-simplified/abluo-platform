@@ -20,6 +20,7 @@ import {
   cleanText,
   errorKey,
   hasTranslations,
+  kindKey,
   moveKey,
   moveKeyTo,
   removeTerm,
@@ -73,6 +74,8 @@ export function TermSection({
   const [reordering, setReordering] = useState(false)
   const scope = { projectSlug, module: moduleId, kind }
   const headingId = `taxonomy-${moduleId}-${kind}`
+  /** The section's own wording: shared per kind, or the module's (People: "Groups"). */
+  const kt = (key: string, values?: Record<string, string | number>) => t(kindKey((k) => t.has(k as 'category.tab'), moduleId, kind, key) as 'category.tab', values)
 
   const keysNow = () => (list ? list.terms.map((x) => x.key) : [])
   const drag = usePointerDrag((key, over) => {
@@ -92,7 +95,7 @@ export function TermSection({
     setAddBusy(false)
     if (!r.ok) return setAddError(t(`errors.${errorKey(r.error)}` as 'errors.failed'))
     setAddText('')
-    if (!r.created) say(t(`${kind}.exists`))
+    if (!r.created) say(kt('exists'))
     modify((l) => upsertTerm(l, r.term))
   }
 
@@ -114,7 +117,7 @@ export function TermSection({
     return (
       <section aria-labelledby={headingId} className="flex flex-col gap-3">
         <h2 id={headingId} className="text-[1.0625rem] leading-6 font-semibold">
-          {t(`${kind}.tab`)}
+          {kt('tab')}
         </h2>
         <p className="text-[0.9375rem] text-muted-foreground" role="status">
           {failed ? t('errors.failed') : t('loading')}
@@ -141,8 +144,8 @@ export function TermSection({
         setAddText('')
         setAddError(null)
       }}
-      addLabel={t(`${kind}.add`)}
-      placeholder={t(`${kind}.placeholder`)}
+      addLabel={kt('add')}
+      placeholder={kt('placeholder')}
       submitLabel={t('addSubmit')}
       busyLabel={t('adding')}
       cancelLabel={t('cancel')}
@@ -210,7 +213,7 @@ export function TermSection({
     <section aria-labelledby={headingId} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id={headingId} className="flex items-baseline gap-2 text-[1.0625rem] leading-6 font-semibold">
-          {t(`${kind}.tab`)}
+          {kt('tab')}
           <span className="text-sm font-normal text-muted-foreground">{fullList ? list.terms.length : t('shownOf', { shown: rows.length, total: list.terms.length })}</span>
         </h2>
         {list.terms.length > 0 && !adding ? addControl : null}
@@ -218,17 +221,17 @@ export function TermSection({
       {adding && list.terms.length > 0 ? addControl : null}
 
       {list.terms.length === 0 ? (
-        <EmptyState titleAs="h3" title={t(`${kind}.emptyTitle`)} body={t(`${kind}.emptyBody`)} action={addControl} />
+        <EmptyState titleAs="h3" title={kt('emptyTitle')} body={kt('emptyBody')} action={addControl} />
       ) : rows.length === 0 ? (
         <p className="text-[0.9375rem] text-muted-foreground">{q ? t('noMatch') : t('nothingMissing')}</p>
       ) : (
         <>
           {/* Computers: a table. */}
           <div className="hidden md:block">
-            <DataTable label={t(`${kind}.tab`)} rows={rows} columns={columns} rowKey={(r) => r.key} onRowClick={(r) => setOpenKey(r.key)} minWidth="min-w-[40rem]" rowProps={(r) => rowAttrs(r.key)} />
+            <DataTable label={kt('tab')} rows={rows} columns={columns} rowKey={(r) => r.key} onRowClick={(r) => setOpenKey(r.key)} minWidth="min-w-[40rem]" rowProps={(r) => rowAttrs(r.key)} />
           </div>
           {/* Phones: rows. */}
-          <ul className="flex flex-col gap-2 md:hidden" aria-label={t(`${kind}.tab`)}>
+          <ul className="flex flex-col gap-2 md:hidden" aria-label={kt('tab')}>
             {rows.map((row, n) => (
               <ListRow key={row.key} onOpen={() => setOpenKey(row.key)} trailing={canMove ? gripFor(row, n) : undefined} rowProps={rowAttrs(row.key)}>
                 <span className="block max-w-full truncate text-[0.9375rem] leading-6 font-semibold text-foreground">{row.name}</span>
@@ -249,7 +252,7 @@ export function TermSection({
         onDeleted={(key) => {
           modify((l) => removeTerm(l, key))
           setOpenKey(null)
-          say(t(`${kind}.deleted`))
+          say(kt('deleted'))
         }}
       />
     </section>

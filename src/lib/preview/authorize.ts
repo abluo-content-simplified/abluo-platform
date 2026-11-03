@@ -86,3 +86,33 @@ export async function authorizeGalleryPreview(input: {
   }
   return claims
 }
+
+/**
+ * Person preview (People module): the same rules, for a token of kind
+ * 'person'. A person may be previewed from its draft or, when it has no
+ * unpublished changes, its published version; either must be a `person` of this
+ * project. Anonymised people are never previewable. Nothing is read before the
+ * token, URL and host agree.
+ */
+export async function authorizePersonPreview(input: {
+  token: unknown
+  personId: string
+  urlProject: string
+  host: string | null | undefined
+  getDoc: (documentId: string) => Promise<(DraftLite & { anonymisedAt?: unknown }) | null | undefined>
+  secret?: Buffer | null
+  now?: number
+}): Promise<DraftPreviewClaims | null> {
+  if (typeof input.personId !== 'string' || !DOC_ID.test(input.personId)) return null
+  const claims = verifyDraftPreviewToken(input.token, { secret: input.secret, now: input.now })
+  if (!claims || claims.kind !== 'person') return null
+  if (claims.draftId !== input.personId || claims.projectSlug !== input.urlProject) return null
+  if (!hostMayServeProject(input.host, claims.projectSlug)) return null
+  try {
+    const doc = (await input.getDoc(`drafts.${input.personId}`)) ?? (await input.getDoc(input.personId))
+    if (!doc || doc._type !== 'person' || doc.projectSlug !== claims.projectSlug || doc.anonymisedAt) return null
+  } catch {
+    return null
+  }
+  return claims
+}

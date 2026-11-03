@@ -13,7 +13,7 @@ import { languageName } from '@/components/client/create/StepHeading'
 import type { SaveState } from '@/lib/client/autosave/engine'
 import { deleteTaxonomyTermAction, getTaxonomyTermUsageAction, updateTaxonomyTermAction } from '@/app/[locale]/(client)/[tenant]/taxonomy/actions'
 import type { ListedTerm, TermView } from '@/lib/taxonomy/service'
-import { cleanText, deleteState, errorKey, itemHref, termName, type ListState, type UsageView } from './taxonomy-view'
+import { cleanText, deleteState, errorKey, itemHref, kindKey, termName, type ListState, type UsageView } from './taxonomy-view'
 
 /**
  * One term in a side sheet: its name in every language of the website (the
@@ -68,6 +68,7 @@ function TermSheetBody({
   const t = useTranslations('clientDashboard.taxonomy')
   const ui = useLocale()
   const kind = meta.kind as Kind
+  const kt = (key: string, values?: Record<string, string | number>) => t(kindKey((k) => t.has(k as 'category.tab'), meta.module, kind, key) as 'category.tab', values)
   const scope = { projectSlug, module: meta.module, kind: meta.kind }
   const { canWrite, defaultLocale, locales } = meta
 
@@ -216,9 +217,9 @@ function TermSheetBody({
       ) : null}
 
       {ds.kind === 'blocked' ? (
-        <section aria-label={t(`${kind}.usedHeading`, { count: ds.count })} className="space-y-2">
+        <section aria-label={kt('usedHeading', { count: ds.count })} className="space-y-2">
           <p className="text-[0.9375rem] leading-6 text-muted-foreground" id={`term-${term.key}-blocked`}>
-            {canWrite ? t(`${kind}.blocked`, { count: ds.count }) : t(`${kind}.usedHeading`, { count: ds.count })}
+            {canWrite ? kt('blocked', { count: ds.count }) : kt('usedHeading', { count: ds.count })}
           </p>
           {usageLoading && ds.shown.length === 0 ? <p className="text-sm text-muted-foreground">{t('usageLoading')}</p> : null}
           {ds.shown.length > 0 ? (
@@ -253,15 +254,15 @@ function TermSheetBody({
       {canWrite ? (
         <section className="border-t border-border pt-3">
           <Button variant="destructive" size="lg" fullWidth disabled={ds.kind !== 'free'} aria-describedby={ds.kind !== 'free' ? `term-${term.key}-blocked` : undefined} onClick={() => setConfirming(true)}>
-            {t(`${kind}.delete`)}
+            {kt('delete')}
           </Button>
         </section>
       ) : null}
 
       <ConfirmDialog
         open={confirming}
-        title={t(`${kind}.confirmTitle`, { name })}
-        body={t(`${kind}.confirmBody`)}
+        title={kt('confirmTitle', { name })}
+        body={kt('confirmBody')}
         confirmLabel={deleting ? t('deleting') : t('deleteConfirm')}
         cancelLabel={t('cancel')}
         busy={deleting}

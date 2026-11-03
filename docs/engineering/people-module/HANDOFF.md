@@ -155,3 +155,58 @@ Deviations / open:
 3. Hosts capability on but People not installed: the editor shows only the legacy-hosts notice (and they no longer count as "Studio-only" content).
 4. Preview/publish steps do not list authors; the live post reads `authors` (agent C). Draft-only people attached to a post are weak refs and render nothing until published.
 5. `person.publicId` ↔ ref: post/event refs carry the Sanity `_id`, the guard for schedules takes publicIds (as specified).
+
+## Handoff H — Profile-address validator and profile draft preview (2026-11-03)
+
+**Done, not committed.** No `messages/*.json` fragment: the validator is Studio/admin UI text (English, like the Catalogue's), preview has no UI of its own.
+
+### 1. `profileSegment` validator
+- `src/lib/modules/config-validators.ts` (targeted): new named validator `people.profileSegment` (runs per language on the localizedString), new data source `catalogueSegment` (project's enabled catalogue `publicSegment`, scoped by `projectSlug`), new `pageFirstSegmentsByLocale`, exported `profileSegmentError`. Rules per language, with messages naming language and word: one lowercase url-safe segment (`validateSegment`, max 64), not reserved (`RESERVED_SLUGS` + ADR list), not the first segment of one of THAT language's pages (raw perspective, drafts included), not the Catalogue segment. An unchanged saved value is not re-litigated; the same word in two languages is fine.
+- `src/lib/modules/registry.ts`: `validator: 'people.profileSegment'` on the manifest field. It runs wherever the Modules pane (`ModuleList.tsx`) validates and saves module config (live per keystroke and on save, data re-fetched at save); that is the only module-config save path (the Catalogue's own `settings/service.ts` is Catalogue-only). No `ModuleList.tsx` change was needed.
+- The route's defensive check (`cleanProfileSegment`) is unchanged. Catalogue's retired segments (history) are not checked, only its current one.
+
+### 2. Draft preview — `/{locale}/{project}/preview/person/{id}?t=<token>`
+- Same model as posts/galleries: signed 15-minute token (kind `person`, new `k:'p'` in `draft-preview-token.ts`; old tokens unaffected), `authorizePersonPreview` in `src/lib/preview/authorize.ts` (id shape, token kind/person/project, host may serve the project, then the document must be a `person` of that project and not anonymised; draft first, else published; every refusal = 404, nothing read before token/URL/host agree). Route `src/app/[locale]/(website)/[tenant]/preview/person/[id]/page.tsx`: `PersonProfile` from `drafts.<id>` else `<id>` via `src/lib/modules/people/preview-query.ts` (`PERSON_PUBLIC_FIELDS`, perspective raw; visibility/archived deliberately not applied, anonymised never), `noindex, nofollow, nocache`, no-referrer, `force-dynamic`. `proxy/draft-preview.ts` regex now includes `person` (so proxy `X-Robots-Tag` / `no-store` and the layout's preview marker apply).
+- Minting: `src/lib/api/person-preview.ts` `mintPersonPreview(ctx, projectId, { id, host, proto })` (needs `people.person.read` + People installed; person re-read, must belong to the grant's project) and server action `src/app/[locale]/(client)/[tenant]/people/preview-action.ts` `mintPersonPreviewAction({ projectSlug, id })` (same result shape as `mintDraftPreviewAction`).
+
+### For the dashboard agent (wire the Preview link; I did not touch `components/client/persons/**`)
+```ts
+import { mintPersonPreviewAction } from '@/app/[locale]/(client)/[tenant]/people/preview-action'
+import { personPreviewUrl } from '@/lib/client/preview-url'
+const r = await mintPersonPreviewAction({ projectSlug, id: person.id })   // id = Sanity base id
+if (r.ok) window.open(personPreviewUrl({ origin: r.origin, locale, projectSlug: r.projectSlug, id: person.id, token: r.token }), '_blank')
+```
+Same pattern as `PostsBrowser.preview`. `locale` = language to preview (the editor's current/default). Needs one interface string for the button and one for the failure toast (add in your fragment; posts use `previewFailed`). `r.themes` gives the site's themes if you want a Light/Dark switch (`&theme=`).
+
+### Tests
+- New/extended: `config-validators.test.ts` (valid, invalid syntax, reserved, page clash per language, catalogue clash, multi-language, unchanged saved, data loader), `authorize.test.ts` (`authorizePersonPreview`: unauthenticated, wrong kind, other person/project/host, expired, other project's doc, anonymised, read error), `draft-preview-token.test.ts`, `draft-preview-proxy.test.ts` (path), `api/__tests__/person-preview.test.ts` (mint), `people/__tests__/person-preview-route.test.tsx` (route: noindex metadata, 404 without reading, draft-then-published read).
+- `npx tsc --noEmit` clean (needs `NODE_OPTIONS=--max-old-space-size=6144`). Green: `src/lib/modules/people`, `src/lib/modules/__tests__`, `src/components/people`, `src/lib/lifecycle`, `src/lib/preview`, `src/lib/proxy`, `src/lib/platform`, `src/lib/client/__tests__`, and in `src/lib/sanity/__tests__` fetch-for-tenant-call-sites, query-tenant-scope, website-tenant-scope-guard, post-preview-query, public-id-guard. Large multi-file runs (`src/app`, whole `src/lib/sanity/__tests__`, `src/lib/modules/catalogue`, `src/lib/seo`) hit `ENOSPC` on the machine (not code): run them after freeing disk; use `NODE_DISABLE_COMPILE_CACHE=1 --no-file-parallelism`.
+
+### Open
+1. Preview does not render the page chrome of the live profile route (JSON-LD, hreflang) — intentionally; language switcher map is empty.
+2. Preview ignores `visibility`; a person set to "off" still previews (by design) but the live page will 404.
+3. Catalogue segment history is not part of the clash check.
+
+## Handoff G — Translate on People fields, Activity sheet, "Groups" label (2026-11-03)
+
+**Done, not committed.** Strings: `messages/g.{en,it,de}.json` (informal it/de): `clientDashboard.taxonomy.modules.people.category.*` (the "Groups" wording) and `clientDashboard.persons.editor.menu.activity`. Merge with the other fragments. The Translate button needs NO new strings: it uses `src/lib/i18n/translate-messages.ts` (ADR-023 §9, 7 languages) with the user's interface locale.
+
+### 1. Translate (ADR-023 allows tenant use: §1 "swapping `requireAbluoAdmin()` for `translate.use`", slice 5) — built
+- `src/lib/api/person-translate.ts` `translatePersonFields(ctx, projectId, { id, fields, sourceLocale })` + `translatePersonFieldsAction` in `people/actions.ts`. Gates: `people.person.write` (People installed, owner/editor) AND `translate` in the grant's `enabledModuleIds` (else `module_disabled`); the site is the GRANT's. Then the SAME engine as `/api/translate` (`runTranslate`): provider + monthly quota from the Translate module config, keys from env only, Supabase metering (`translation_usage`, actor = caller, `sanity_document_id` = person id), quota fails closed, metering failure before the provider = refused.
+- The source text is read from the SAVED person (draft ?? published), never taken from the browser (no open "translate any text" door). The editor flushes its autosave first.
+- A target is translated only if empty or an untouched `machine` value (`isWritableTarget`); `original`/`reviewed` are reported as `skipped: protected`. A result longer than the field limit is `skipped: too_long`. Nothing is written by the action; it returns `{ text, meta }` per field/language.
+- Storage: `savePersonDraft` accepts a new path `translation.<honorific|jobTitle|shortBio>.<loc>` (meta object or null) next to `<field>.<loc>`, written to `<field>.translationStatus.<loc>` (nested object ensured with a second `setIfMissing`). The server validates the meta shape, re-hashes against the CLEANED text (a trimmed machine value stays machine), flips machine -> `reviewed` when the text it receives differs from the hash, flips a stored machine status to `reviewed` when a plain text save edits that value, and unsets the status when the value is cleared. `PersonSnapshot.translations` exposes the stored statuses.
+- UI: `PersonEditorTabs.tsx` `TranslateRow` (AssistButton, "Translate from IT" + "Machine translation" note) under Title and under Short bio, shown only when the Translate module is on (`canTranslate` from the page), the person is editable and the site has 2+ languages. A target typed into while the request was in flight is left alone.
+- Not covered: `bio` (rich text) — the Portable Text translator (ADR-023 §10, slice 4) does not exist in `src/lib/translate`. Qualification titles also not wired. "Mark as reviewed" and re-translate of reviewed text (ADR slice 4) not built; editing the text marks it reviewed.
+- Limit: a client can send a `machine` status for text it typed (harmless: it only makes that value overwritable by Translate, bound to its hash).
+
+### 2. Activity sheet — built
+`src/components/client/persons/PersonActivitySheet.tsx` (copy of `FaqSetActivitySheet`, there is no shared base; same `clientDashboard.activity` wording) opened from the editor's ⋯ menu ("Activity"), using the existing `getPersonActivityAction`.
+
+### 3. "Groups" label — built
+`kindKey(has, module, kind, key)` in `taxonomy-view.ts`: a module can override a section's wording with `clientDashboard.taxonomy.modules.<module>.<kind>.<key>`; otherwise the shared `<kind>.<key>`. Used by `TermSection`, `TermSheet` and the manager's search label. Only the People overrides exist, so other modules are unchanged. (TermPicker keeps "category" wording; the People editor passes its own labels.)
+
+### Tests
+- New: `src/lib/api/__tests__/person-translate.test.ts` (14), +6 in `persons.test.ts` (translationStatus), `src/components/client/persons/__tests__/person-activity-sheet.test.tsx` (2), `kindKey` in `taxonomy-view.test.ts` (+2), `people-groups-label.test.ts` (4; reads the g.* fragments until merged).
+- `npx tsc --noEmit` clean (apart from stale `.next/`).
+- vitest run file by file with `--maxWorkers=1`: see the report in the chat for the exact result; `module.test.ts` and `taxonomy/schema.test.ts` hit `ENOSPC` on this machine (heavy Sanity-schema import), not a failure of the code.

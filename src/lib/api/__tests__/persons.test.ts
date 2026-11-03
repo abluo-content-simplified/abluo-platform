@@ -31,6 +31,7 @@ import type { PersonPrivateRow, PersonPrivateStore } from '../persons-private'
 import { TenantAuthorizationError } from '../tenant-scoped-sanity'
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
+import { hashText } from '@/lib/translate/status'
 
 const PID = '11111111-1111-4111-8111-111111111111'
 const PUB = '22222222-2222-4222-8222-222222222222'
@@ -468,5 +469,70 @@ describe('list, picker, reorder', () => {
       ['patch', ['anna', { set: { sortOrder: 20 } }]],
       ['patch', ['drafts.anna', { set: { sortOrder: 20 } }]],
     ])
+  })
+})
+
+
+// ── Translation status beside the value (ADR-023 §4) ─────────────────────────
+
+describe('savePersonDraft — translationStatus', () => {
+  const c = () => ctx(editor())
+  const hash = (t: string) => hashText(t)
+  const sets = (f: ReturnType<typeof fake>) => f.patchOps.filter(([k]) => k === 'set').map(([, v]) => v as Record<string, unknown>)
+  const unsets = (f: ReturnType<typeof fake>) => f.patchOps.filter(([k]) => k === 'unset').flatMap(([, v]) => v as string[])
+
+  it('stores the machine status next to the text, with the nested object ensured', async () => {
+    const f = fake()
+    const meta = { status: 'machine', provider: 'google', sourceLocale: 'it', translatedAt: '2026-11-03T10:00:00Z', textHash: hash('Lehrerin'), sourceHash: hash('Insegnante') }
+    await savePersonDraft(c(), PID, { id: 'anna', rev: 'd1', set: { 'jobTitle.de': 'Lehrerin', 'translation.jobTitle.de': meta } }, f.deps)
+    const set = sets(f)[0]
+    expect(set['jobTitle.de']).toBe('Lehrerin')
+    expect(set['jobTitle.translationStatus.de']).toMatchObject({ _type: 'translationMeta', status: 'machine', provider: 'google', textHash: hash('Lehrerin') })
+    expect(f.patchOps).toContainEqual(['setIfMissing', { 'jobTitle.translationStatus': { _type: 'translationStatus' } }])
+  })
+
+  it('a machine status whose hash does not match the text sent is stored as reviewed', async () => {
+    const f = fake()
+    await savePersonDraft(c(), PID, { id: 'anna', rev: 'd1', set: { 'jobTitle.de': 'Lehrer', 'translation.jobTitle.de': { status: 'machine', textHash: hash('Lehrerin') } } }, f.deps)
+    expect(sets(f)[0]['jobTitle.translationStatus.de']).toMatchObject({ status: 'reviewed' })
+  })
+
+  it('the hash follows the CLEANED text, so a trimmed machine value stays machine', async () => {
+    const f = fake()
+    await savePersonDraft(c(), PID, { id: 'anna', rev: 'd1', set: { 'shortBio.de': '  Hallo  ', 'translation.shortBio.de': { status: 'machine', textHash: hash('  Hallo  ') } } }, f.deps)
+    expect(sets(f)[0]['shortBio.translationStatus.de']).toMatchObject({ status: 'machine', textHash: hash('Hallo') })
+  })
+
+  it('editing a stored machine value turns it into reviewed; clearing it removes the status', async () => {
+    const docs = baseDocs()
+    docs['drafts.anna'].jobTitle = { _type: 'localizedString', it: 'Insegnante', de: 'Lehrerin', translationStatus: { de: { status: 'machine', textHash: hash('Lehrerin') } } }
+    const f = fake({ docs })
+    await savePersonDraft(c(), PID, { id: 'anna', rev: 'd1', set: { 'jobTitle.de': 'Lehrerin und Coach' } }, f.deps)
+    expect(sets(f)[0]['jobTitle.translationStatus.de']).toMatchObject({ status: 'reviewed' })
+    const g = fake({ docs })
+    await savePersonDraft(c(), PID, { id: 'anna', rev: 'd1', set: { 'jobTitle.de': '' } }, g.deps)
+    expect(unsets(g)).toContain('jobTitle.translationStatus.de')
+  })
+
+  it('refuses a status for a field that is not translatable, an unknown language or a malformed status', async () => {
+    const f = fake()
+    for (const set of [
+      { 'translation.bio.de': { status: 'machine' } },
+      { 'translation.slug.de': { status: 'machine' } },
+      { 'translation.jobTitle.fr': { status: 'machine' } },
+      { 'translation.jobTitle.de': { status: 'original' } },
+      { 'translation.jobTitle.de': 'machine' },
+      { 'jobTitle.translationStatus.de': {} },
+    ]) await expect(savePersonDraft(c(), PID, { id: 'anna', rev: 'd1', set }, f.deps)).rejects.toBeInstanceOf(PersonError)
+    expect(f.writes).toEqual([])
+  })
+
+  it('the snapshot lists the stored statuses', async () => {
+    const docs = baseDocs()
+    docs['drafts.anna'].jobTitle = { _type: 'localizedString', it: 'Insegnante', de: 'Lehrerin', translationStatus: { de: { status: 'machine', provider: 'google', textHash: hash('Lehrerin') } } }
+    const snap = await getPersonForEdit(ctx(viewer()), PID, 'anna', fake({ docs }).deps)
+    expect(snap.translations.jobTitle.de).toMatchObject({ status: 'machine', provider: 'google' })
+    expect(snap.translations.honorific).toEqual({})
+    expect(snap.jobTitle).toEqual({ it: 'Insegnante', de: 'Lehrerin' })
   })
 })

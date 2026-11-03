@@ -3,7 +3,7 @@
  * draft is never read unless the token, URL and host already agree.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { authorizeDraftPreview, authorizeGalleryPreview, hostMayServeProject } from '../authorize'
+import { authorizeDraftPreview, authorizeGalleryPreview, authorizePersonPreview, hostMayServeProject } from '../authorize'
 import { signDraftPreviewToken } from '../draft-preview-token'
 
 const secret = Buffer.from('test-secret-test-secret-test-secret')
@@ -144,5 +144,56 @@ describe('authorizeGalleryPreview', () => {
   it('the post gate refuses a gallery token', async () => {
     const t = signDraftPreviewToken({ draftId: ID, projectSlug: 'hoffmann', userId: 'u1', kind: 'gallery' }, { secret, now: NOW }).token
     expect(await run({ token: t }).result).toBeNull()
+  })
+})
+
+describe('authorizePersonPreview', () => {
+  const ptoken = (o: Partial<{ draftId: string; projectSlug: string; kind: 'person' | 'post' | 'gallery' }> = {}) =>
+    signDraftPreviewToken({ kind: 'person', draftId: ID, projectSlug: 'hoffmann', userId: 'u1', ...o }, { secret, now: NOW }).token
+  const person = { _type: 'person', projectSlug: 'hoffmann' }
+  function runP(o: Partial<Parameters<typeof authorizePersonPreview>[0]> = {}, docs: Record<string, unknown> = { [`drafts.${ID}`]: person }) {
+    const getDoc = vi.fn(async (id: string) => docs[id] as never)
+    const result = authorizePersonPreview({
+      token: ptoken(), personId: ID, urlProject: 'hoffmann', host: 'dev.abluo.app', getDoc, secret, now: NOW + 1000, ...o,
+    })
+    return { result, getDoc }
+  }
+
+  it('lets a fresh token see the draft, or the published person when there is no draft', async () => {
+    expect(await runP().result).toMatchObject({ kind: 'person', draftId: ID })
+    expect(await runP({}, { [ID]: person }).result).toMatchObject({ kind: 'person' })
+  })
+
+  it.each([
+    ['no token', { token: undefined }],
+    ['a post token', { token: ptoken({ kind: 'post' }) }],
+    ['a gallery token', { token: ptoken({ kind: 'gallery' }) }],
+    ['a token for another person', { token: ptoken({ draftId: OTHER_ID }) }],
+    ['a token for another project', { token: ptoken({ projectSlug: 'livener' }) }],
+    ['a URL for another project', { urlProject: 'livener' }],
+    ['a malformed id', { personId: '../etc' }],
+    ["another site's domain", { host: 'livener.net' }],
+    ['an expired token', { now: NOW + 16 * 60 * 1000 }],
+  ])('refuses %s without reading anything', async (_l, o) => {
+    const { result, getDoc } = runP(o as never)
+    expect(await result).toBeNull()
+    expect(getDoc).not.toHaveBeenCalled()
+  })
+
+  it('refuses a post token used on the post route and a person token on it', async () => {
+    expect(await authorizeDraftPreview({ token: ptoken(), draftId: ID, urlProject: 'hoffmann', host: 'dev.abluo.app', getDraft: async () => ({ _type: 'post', projectSlug: 'hoffmann' }), secret, now: NOW + 1000 })).toBeNull()
+  })
+
+  it.each([
+    ['another project', { _type: 'person', projectSlug: 'livener' }],
+    ['another type', { _type: 'post', projectSlug: 'hoffmann' }],
+    ['an anonymised person', { _type: 'person', projectSlug: 'hoffmann', anonymisedAt: '2026-01-01' }],
+    ['nothing', null],
+  ])('refuses a document that is %s', async (_l, doc) => {
+    expect(await runP({}, { [`drafts.${ID}`]: doc }).result).toBeNull()
+  })
+
+  it('refuses when the read throws', async () => {
+    expect(await runP({ getDoc: async () => { throw new Error('boom') } }).result).toBeNull()
   })
 })

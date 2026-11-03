@@ -55,6 +55,7 @@ export default async function PersonPage({ params }: { params: Promise<{ tenant:
         canDelete={grant.permissions.includes(PEOPLE_DELETE_PERMISSION)}
         canAnonymise={grant.permissions.includes(PEOPLE_ANONYMISE_PERMISSION)}
         canAddGroup={grant.permissions.includes('people.taxonomy.write')}
+        canTranslate={grant.enabledModuleIds.includes('translate')}
       />
     </PageShell>
   )

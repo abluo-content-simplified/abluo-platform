@@ -40,10 +40,13 @@ import {
   type PersonUsage,
 } from '@/lib/api/persons'
 import { shortenPersonBio } from '@/lib/api/person-ai'
+import { translatePersonFields, type PersonTranslateResult } from '@/lib/api/person-translate'
+import type { PersonTranslatableField } from '@/lib/api/persons'
+import { TranslateError, type TranslateErrorCode } from '@/lib/translate/types'
 import { PostAiError, type PostAiErrorCode } from '@/lib/api/post-ai'
 import type { ActivityItem } from '@/lib/lifecycle/activity'
 
-export type PersonActionError = 'unauthenticated' | PersonErrorCode | PostAiErrorCode
+export type PersonActionError = 'unauthenticated' | PersonErrorCode | PostAiErrorCode | TranslateErrorCode
 type Fail = { ok: false; error: PersonActionError; detail?: { usedIn?: PersonUsage[] } }
 type Result<T> = ({ ok: true } & T) | Fail
 
@@ -56,6 +59,10 @@ async function run<T>(projectSlug: unknown, fn: (ctx: TenantAuthorizationContext
   } catch (error) {
     if (error instanceof PersonError) return { ok: false, error: error.code, ...(error.detail && { detail: error.detail as { usedIn?: PersonUsage[] } }) }
     if (error instanceof PostAiError) return { ok: false, error: error.code }
+    if (error instanceof TranslateError) {
+      if (error.code === 'provider_error' || error.code === 'network_error') console.error('[translate] provider failure', error.message)
+      return { ok: false, error: error.code }
+    }
     if (error instanceof PostLinkSearchError) return { ok: false, error: 'invalid_value' }
     if (error instanceof TenantAuthorizationError) return { ok: false, error: 'forbidden' }
     return { ok: false, error: 'failed' }
@@ -175,4 +182,19 @@ export async function searchPersonLinkTargetsAction(input: {
 /** "Shorten": a suggested short bio derived from the long bio. Writes nothing. */
 export async function shortenPersonBioAction(input: { projectSlug: string; locale: string; blocks: unknown[] }): Promise<Result<{ text: string }>> {
   return run(input?.projectSlug, (ctx, pid) => shortenPersonBio(ctx, pid, { locale: input.locale, blocks: input.blocks }))
+}
+
+/**
+ * Translate button on People fields (ADR-023). People write permission AND the
+ * Translate module installed; provider, quota and metering as POST /api/translate.
+ * The source text is read from the saved person; the result is returned, not
+ * written — the editor saves it through savePersonDraft with its status.
+ */
+export async function translatePersonFieldsAction(input: {
+  projectSlug: string
+  id: string
+  fields: PersonTranslatableField[]
+  sourceLocale: string
+}): Promise<Result<PersonTranslateResult>> {
+  return run(input?.projectSlug, (ctx, pid) => translatePersonFields(ctx, pid, { id: input.id, fields: input.fields, sourceLocale: input.sourceLocale }))
 }

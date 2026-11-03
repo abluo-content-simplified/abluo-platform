@@ -36,6 +36,8 @@ import { snapshotOf } from '@/lib/lifecycle/transition'
 import { collectInternalRefs, FaqAnswerError, sanitizeFaqAnswer } from '@/lib/faq/answer-blocks'
 import { BODY_LINK_TARGET_TYPES } from '@/lib/links/target-types'
 import { isValidTermKey } from '@/lib/taxonomy/ids'
+import { hashText, type TranslationMeta } from '@/lib/translate/status'
+import { isTranslationProviderId } from '@/lib/translate/types'
 import {
   DEFAULT_PERSON_VISIBILITY,
   PEOPLE_MODULE_ID,
@@ -170,6 +172,8 @@ export interface PersonSnapshot {
   groups: string[]
   photo: { assetId: string; url: string | null } | null
   shortBio: Record<string, string>
+  /** Machine-translation status per translatable field and language (ADR-023 §4). Absent = typed by a person. */
+  translations: PersonTranslations
   bio: Record<string, PortableTextBlock[]>
   languages: string[]
   website: string
@@ -184,6 +188,11 @@ export interface PersonSnapshot {
   usedIn: PersonUsage[]
   site: PersonSite
 }
+
+/** Fields the Translate button covers (plain text; `bio` is rich text and is not translated yet). */
+export const PERSON_TRANSLATABLE_FIELDS = ['honorific', 'jobTitle', 'shortBio'] as const
+export type PersonTranslatableField = (typeof PERSON_TRANSLATABLE_FIELDS)[number]
+export type PersonTranslations = Record<PersonTranslatableField, Record<string, TranslationMeta>>
 
 export interface PersonPickerItem {
   id: string
@@ -267,6 +276,44 @@ function localized(value: unknown): Record<string, string> {
     if (!k.startsWith('_') && k !== 'translationStatus' && typeof v === 'string' && v.trim()) out[k] = v
   }
   return out
+}
+
+/** The stored `translationStatus` of one localized field, reduced to well-formed entries. */
+export function translationMetaOf(value: unknown): Record<string, TranslationMeta> {
+  const map = objectOf(objectOf(value)?.translationStatus)
+  const out: Record<string, TranslationMeta> = {}
+  for (const [loc, raw] of Object.entries(map ?? {})) {
+    const m = objectOf(raw)
+    if (!m || !LOCALE_KEY.test(loc) || (m.status !== 'machine' && m.status !== 'reviewed')) continue
+    out[loc] = {
+      status: m.status,
+      ...(isTranslationProviderId(m.provider) && { provider: m.provider }),
+      ...(typeof m.sourceLocale === 'string' && { sourceLocale: m.sourceLocale }),
+      ...(typeof m.translatedAt === 'string' && { translatedAt: m.translatedAt }),
+      ...(typeof m.textHash === 'string' && { textHash: m.textHash }),
+      ...(typeof m.sourceHash === 'string' && { sourceHash: m.sourceHash }),
+    }
+  }
+  return out
+}
+
+const HASH = /^[0-9a-f]{8}$/
+
+/** Validates the status a client sends beside a translated value. `null` = clear it. */
+function cleanTranslationMeta(value: unknown): TranslationMeta | null {
+  if (value === null) return null
+  const m = objectOf(value)
+  if (!m || (m.status !== 'machine' && m.status !== 'reviewed')) throw new PersonError('invalid_value', 'Unknown translation status.')
+  const hash = (v: unknown) => (typeof v === 'string' && HASH.test(v) ? v : undefined)
+  const when = typeof m.translatedAt === 'string' && !Number.isNaN(Date.parse(m.translatedAt)) ? new Date(m.translatedAt).toISOString() : undefined
+  return {
+    status: m.status,
+    ...(isTranslationProviderId(m.provider) && { provider: m.provider }),
+    ...(typeof m.sourceLocale === 'string' && LOCALE_KEY.test(m.sourceLocale) && { sourceLocale: m.sourceLocale }),
+    ...(when && { translatedAt: when }),
+    ...(hash(m.textHash) && { textHash: hash(m.textHash) }),
+    ...(hash(m.sourceHash) && { sourceHash: hash(m.sourceHash) }),
+  }
 }
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
@@ -485,6 +532,7 @@ export async function getPersonForEdit(ctx: TenantAuthorizationContext, projectI
     groups: strings(doc.groups),
     photo,
     shortBio: localized(doc.shortBio),
+    translations: { honorific: translationMetaOf(doc.honorific), jobTitle: translationMetaOf(doc.jobTitle), shortBio: translationMetaOf(doc.shortBio) },
     bio: bioOf(doc),
     languages: strings(doc.languages),
     website: str(doc.website),
@@ -679,6 +727,7 @@ export const PERSON_PATCH_FIELDS = [
   'qualifications',
   'visibility',
   'slug.<loc>',
+  'translation.<field>.<loc>',
 ] as const
 
 const PLAIN_PATHS = new Set(['firstName', 'lastName', 'displayName', 'groups', 'photo', 'languages', 'website', 'contacts', 'qualifications', 'visibility'])
@@ -714,7 +763,8 @@ export async function savePersonDraft(
   // Field allow-list before any read.
   for (const path of Object.keys(input.set)) {
     const [field, locale, ...rest] = path.split('.')
-    const ok = (PLAIN_PATHS.has(path)) || (LOCALIZED_PATHS.has(field) && !!locale && LOCALE_KEY.test(locale) && rest.length === 0)
+    const translation = field === 'translation' && (PERSON_TRANSLATABLE_FIELDS as readonly string[]).includes(locale) && rest.length === 1 && LOCALE_KEY.test(rest[0])
+    const ok = (PLAIN_PATHS.has(path)) || translation || (LOCALIZED_PATHS.has(field) && !!locale && LOCALE_KEY.test(locale) && rest.length === 0)
     if (!ok) throw new PersonError('invalid_field', `Field "${path}" cannot be changed here.`)
   }
 
@@ -739,8 +789,15 @@ export async function savePersonDraft(
   let groupKeys: string[] = []
   const slugChecks: Array<{ locale: string; slug: string }> = []
 
+  const metaPatches: Array<{ field: PersonTranslatableField; locale: string; meta: TranslationMeta | null }> = []
   for (const [path, value] of Object.entries(input.set)) {
     const [field, locale] = path.split('.')
+    if (field === 'translation') {
+      const [, f, loc] = path.split('.')
+      if (!allowed.has(loc)) throw new PersonError('invalid_field', `Language "${loc}" is not on this site.`)
+      metaPatches.push({ field: f as PersonTranslatableField, locale: loc, meta: cleanTranslationMeta(value) })
+      continue
+    }
     switch (path) {
       case 'firstName':
         set[path] = cleanName(value, true)
@@ -860,6 +917,41 @@ export async function savePersonDraft(
     else unset.push(path)
   }
 
+  // Translation status (ADR-023 §4), stored beside the value. Decided on the FINAL text:
+  //  · a machine value whose text no longer matches its hash was edited by a person → `reviewed`;
+  //  · a cleared value loses its status.
+  const nestedEnsure: Record<string, unknown> = {}
+  const explicit = new Set(metaPatches.map((m) => `${m.field}.${m.locale}`))
+  const textTouched = new Set<string>()
+  for (const f of PERSON_TRANSLATABLE_FIELDS) for (const loc of allowed) if (`${f}.${loc}` in input.set) textTouched.add(`${f}.${loc}`)
+  const statusPath = (f: string, loc: string) => `${f}.translationStatus.${loc}`
+  for (const { field, locale, meta } of metaPatches) {
+    const key = `${field}.${locale}`
+    const finalText = typeof set[key] === 'string' ? (set[key] as string) : unset.includes(key) ? '' : str(objectOf(draft![field])?.[locale])
+    if (!meta || !finalText) {
+      unset.push(statusPath(field, locale))
+      continue
+    }
+    let out: TranslationMeta = meta
+    if (meta.status === 'machine' && meta.textHash) {
+      const rawSent = input.set[key]
+      if (typeof rawSent === 'string' && hashText(rawSent) === meta.textHash) out = { ...meta, textHash: hashText(finalText) }
+      else if (hashText(finalText) !== meta.textHash) out = { ...meta, status: 'reviewed' }
+    }
+    set[statusPath(field, locale)] = { _type: 'translationMeta', ...out }
+    nestedEnsure[`${field}.translationStatus`] = { _type: 'translationStatus' }
+  }
+  for (const key of textTouched) {
+    if (explicit.has(key)) continue
+    const [f, loc] = key.split('.')
+    const stored = translationMetaOf(draft![f])[loc]
+    if (!stored) continue
+    if (unset.includes(key)) unset.push(statusPath(f, loc))
+    else if (stored.status === 'machine' && typeof set[key] === 'string' && stored.textHash && hashText(set[key] as string) !== stored.textHash) {
+      set[statusPath(f, loc)] = { _type: 'translationMeta', ...stored, status: 'reviewed' }
+    }
+  }
+
   // Project-scoped checks, one read each.
   if (photoId) {
     const ok = await client.fetch<string | null>(`*[_id == $id && _type == "mediaAsset" && projectSlug == $projectSlug][0]._id`, { id: photoId, projectSlug: grant.projectSlug })
@@ -898,6 +990,7 @@ export async function savePersonDraft(
     () => {
       let p = client.patch(draftId).ifRevisionId(input.rev)
       if (Object.keys(ensure).length) p = p.setIfMissing(ensure)
+      if (Object.keys(nestedEnsure).length) p = p.setIfMissing(nestedEnsure)
       if (Object.keys(set).length) p = p.set(set)
       if (unset.length) p = p.unset(unset)
       return p.commit(DRAFT_SAVE)

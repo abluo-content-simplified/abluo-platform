@@ -30,6 +30,8 @@ export type PageSlugRow = { _id?: string; slug?: unknown }
 
 export type ConfigData = {
   pageSlugs?: PageSlugRow[]
+  /** The Catalogue's current public segment (0 or 1 string; used by the People profile-segment rule). */
+  catalogueSegment?: string[]
   itemPrices?: ItemPriceRow[]
   optionDeltas?: OptionListRow[]
 }
@@ -38,6 +40,9 @@ export type ConfigDataKey = keyof ConfigData
 export const CONFIG_DATA_SOURCES: Readonly<Record<ConfigDataKey, { query: string }>> = {
   // Raw perspective in the Studio, so draft-only pages count too.
   pageSlugs: { query: `*[_type == "page" && projectSlug == $projectSlug]{ _id, slug }` },
+  catalogueSegment: {
+    query: `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))].moduleInstallations[moduleId == "catalogue" && enabled != false].config.publicSegment`,
+  },
   itemPrices: { query: CURRENCY_ITEM_PRICES_QUERY },
   optionDeltas: { query: CURRENCY_OPTION_DELTAS_QUERY },
 }
@@ -74,6 +79,23 @@ export function pageFirstSegments(rows: readonly PageSlugRow[] | undefined): str
     }
   }
   return [...out]
+}
+
+/** First path segment of every page slug, per language (`{ en: { current } }`; a plain string counts for no language). */
+export function pageFirstSegmentsByLocale(rows: readonly PageSlugRow[] | undefined): Record<string, string[]> {
+  const out: Record<string, Set<string>> = {}
+  for (const row of rows ?? []) {
+    const slug = row.slug
+    if (!slug || typeof slug !== 'object') continue
+    for (const [loc, v] of Object.entries(slug as Record<string, unknown>)) {
+      if (loc.startsWith('_')) continue
+      const current = typeof v === 'string' ? v : (v as { current?: unknown } | null)?.current
+      if (typeof current !== 'string') continue
+      const first = normalise(current).split('/')[0]
+      if (first) (out[loc] ??= new Set()).add(first)
+    }
+  }
+  return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, [...v]]))
 }
 
 // ── Field validators ──────────────────────────────────────────────────────────
@@ -147,8 +169,73 @@ const publicSegmentValidator: FieldValidator = {
   },
 }
 
+// ── People: the profile-page base path, one per language ─────────────────────
+
+const languageName = (loc: string): string => {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'language' }).of(loc) ?? loc
+  } catch {
+    return loc
+  }
+}
+
+/**
+ * Error for one language's profile segment, or null. Rules: one lowercase
+ * url-safe segment, not a platform route word, not the first segment of one of
+ * the project's pages IN THAT LANGUAGE, not the Catalogue's segment.
+ */
+export function profileSegmentError(
+  loc: string,
+  segment: string,
+  ctx: { pageFirstSegments?: readonly string[]; catalogueSegment?: string | null },
+): string | null {
+  const value = segment.trim()
+  if (!value) return null
+  const where = `${languageName(loc)} (${loc})`
+  const r = validateSegment(value, { pageFirstSegments: ctx.pageFirstSegments })
+  if (!r.ok) {
+    switch (r.clash.kind) {
+      case 'tooLong':
+        return `${where}: that address is too long. Use ${r.clash.max} characters or fewer.`
+      case 'invalidSyntax':
+        return `${where}: "${r.clash.value}" is not a valid address. Use lowercase letters, numbers and single hyphens only.`
+      case 'reserved':
+        return `${where}: "${r.clash.value}" is already used by the website. Choose another word.`
+      case 'pageSlug':
+        return `${where}: "${r.clash.value}" is already the start of one of your ${languageName(loc)} pages. Choose another word or rename that page.`
+      default:
+        return null
+    }
+  }
+  if (ctx.catalogueSegment && normalise(ctx.catalogueSegment) === r.segment) {
+    return `${where}: "${r.segment}" is already the address of your catalogue. Choose another word.`
+  }
+  return null
+}
+
+const peopleProfileSegmentValidator: FieldValidator = {
+  needs: ['pageSlugs', 'catalogueSegment'],
+  validate({ field, value, stored, data }) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return OK
+    const storedMap = stored?.[field.id]
+    const prev = storedMap && typeof storedMap === 'object' ? (storedMap as Record<string, unknown>) : {}
+    const byLocale = pageFirstSegmentsByLocale(data.pageSlugs)
+    const catalogue = data.catalogueSegment?.find((x) => typeof x === 'string' && x) ?? null
+    const errors: string[] = []
+    for (const [loc, v] of Object.entries(value as Record<string, unknown>)) {
+      if (loc.startsWith('_') || typeof v !== 'string' || !v.trim()) continue
+      // An unchanged saved value is not re-litigated (see publicSegmentValidator).
+      if (typeof prev[loc] === 'string' && normalise(prev[loc] as string) === normalise(v)) continue
+      const e = profileSegmentError(loc, v, { pageFirstSegments: byLocale[loc], catalogueSegment: catalogue })
+      if (e) errors.push(e)
+    }
+    return errors.length ? { error: errors.join(' '), notice: null } : OK
+  },
+}
+
 export const FIELD_VALIDATORS: Readonly<Record<string, FieldValidator>> = {
   'catalogue.publicSegment': publicSegmentValidator,
+  'people.profileSegment': peopleProfileSegmentValidator,
 }
 
 export function resolveFieldValidator(id: string | undefined): FieldValidator | null {

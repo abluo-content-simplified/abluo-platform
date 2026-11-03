@@ -11,10 +11,27 @@ export function draftPreviewUrl(p: {
   token: string
   theme?: 'light' | 'dark' | null
   /** 'gallery' → `/preview/gallery/{id}` (gallery drafts); default 'post'. */
-  kind?: 'post' | 'gallery'
+  kind?: 'post' | 'gallery' | 'person'
 }): string {
   const q = new URLSearchParams({ t: p.token })
   if (p.theme) q.set('theme', p.theme)
   const seg = (s: string) => encodeURIComponent(s)
-  return `${p.origin}/${seg(p.locale)}/${seg(p.projectSlug)}/preview/${p.kind === 'gallery' ? 'gallery' : 'post'}/${seg(p.id)}?${q.toString()}`
+  return `${p.origin}/${seg(p.locale)}/${seg(p.projectSlug)}/preview/${p.kind === 'gallery' ? 'gallery' : p.kind === 'person' ? 'person' : 'post'}/${seg(p.id)}?${q.toString()}`
+}
+
+/**
+ * People: the private preview of a person's profile page (draft, else published).
+ * Mint the token with `mintPersonPreviewAction` (`people/preview-action.ts`),
+ * then open this URL in a new tab / frame. `locale` = the language to preview.
+ */
+export function personPreviewUrl(p: {
+  origin: string
+  locale: string
+  projectSlug: string
+  /** The person's Sanity base id (no `drafts.` prefix). */
+  id: string
+  token: string
+  theme?: 'light' | 'dark' | null
+}): string {
+  return draftPreviewUrl({ ...p, kind: 'person' })
 }

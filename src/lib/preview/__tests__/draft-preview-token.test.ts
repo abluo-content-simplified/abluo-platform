@@ -20,6 +20,11 @@ describe('draft preview token', () => {
     expect(verifyDraftPreviewToken(token, { secret, now: NOW + PREVIEW_TOKEN_TTL_SECONDS * 1000 })).toBeNull()
   })
 
+  it('person tokens carry their kind and are not posts or galleries', () => {
+    const t = signDraftPreviewToken({ ...claims, kind: 'person' }, { secret, now: NOW })
+    expect(verifyDraftPreviewToken(t.token, { secret, now: NOW + 1000 })).toMatchObject({ kind: 'person', pageId: null })
+  })
+
   it('gallery tokens carry their kind and optional page; old post tokens stay posts', () => {
     const g = signDraftPreviewToken({ ...claims, kind: 'gallery', pageId: 'page-home' }, { secret, now: NOW })
     expect(verifyDraftPreviewToken(g.token, { secret, now: NOW + 1000 })).toMatchObject({ kind: 'gallery', pageId: 'page-home' })
