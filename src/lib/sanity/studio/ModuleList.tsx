@@ -1005,7 +1005,7 @@ function ModuleDetail({
               {isTermManagedConfigField(manifest.id, field.id) ? (
                 <div style={{ marginBottom: 20, fontSize: 13, color: '#666' }}>
                   <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 6 }}>{field.label}</div>
-                  Catalogue categories are now managed under Categories &amp; Tags.
+                  Catalogue categories are managed in the dashboard: Catalogue → Setup → Categories &amp; Tags.
                 </div>
               ) : (
               <ConfigField

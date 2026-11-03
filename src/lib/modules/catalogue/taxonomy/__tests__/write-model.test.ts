@@ -3,6 +3,7 @@
  * budget, C10-6 R2 item writer shape, C12 content-free summaries).
  */
 import { describe, expect, it } from 'vitest'
+import { asChannelKey } from '../../commerce/commerce-types'
 import { readCategoryNodes } from '../read'
 import { buildTree } from '../tree'
 import {
@@ -39,7 +40,7 @@ describe('rule/stored-shape (C1.11, C5-7)', () => {
     const c = setRuleOnRows(b, 'food', 'delivery', { state: 'unavailable', overrides: [] })
     expect((c[0].channelRules as Array<{ channel: string; state: string }>).map((r) => [r.channel, r.state])).toEqual([['takeaway', 'unavailable'], ['delivery', 'unavailable']])
     expect(setRuleOnRows(setRuleOnRows(c, 'food', 'delivery', null), 'food', 'takeaway', null)[0].channelRules).toBeUndefined()
-    expect(buildTree(readCategoryNodes(c)).nodes.get('food')!.channelRules.delivery).toEqual({ state: 'unavailable', overrides: [] })
+    expect(buildTree(readCategoryNodes(c)).nodes.get('food')!.channelRules[asChannelKey('delivery')]).toEqual({ state: 'unavailable', overrides: [] })
   })
 })
 

@@ -10,7 +10,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { MODULE_REGISTRY } from '@/lib/modules/registry'
 import { buildModuleConfigSchemaTypes, moduleInstallationTypeName } from '@/lib/modules/config-schema'
-import { CATALOGUE_LOCK_PHASE } from '../catalogue-posture'
+import { CATALOGUE_LOCK_PHASE, catalogueDocumentActions, isCatalogueScopedDocumentId } from '../catalogue-posture'
 import { DASHBOARD_CONFIG_NOTICE, configSurfaceIsDashboard, configValueText, modulesWithDashboardConfig } from '../config-lock'
 import { LockedModuleConfig } from '../LockedModuleConfig'
 import { buildInstallationPatch } from '../module-save'
@@ -76,5 +76,22 @@ describe('T-12 — the Modules pane', () => {
     expect(configValueText([{ value: 'dine-in' }, { value: 'delivery' }])).toBe('dine-in, delivery')
     expect(configValueText(false)).toBe('No')
     expect(configValueText(undefined)).toBe('—')
+  })
+})
+
+describe('R2: Catalogue taxonomyTerm records lose their Studio document actions (C9 layer 2)', () => {
+  it('recognised by the deterministic id; other modules keep their actions; R1 unchanged', () => {
+    expect(isCatalogueScopedDocumentId('taxonomyTerm', 'term.tmz.catalogue.category.technology')).toBe(true)
+    expect(isCatalogueScopedDocumentId('taxonomyTerm', 'drafts.term.tmz.catalogue.tag.illustrated_boos')).toBe(true)
+    expect(isCatalogueScopedDocumentId('taxonomyTerm', 'term.tmz.blog.category.news')).toBe(false)
+    expect(isCatalogueScopedDocumentId('taxonomyTerm', 'term.tmz.catalogue.category.technology', 'R1')).toBe(false)
+    expect(isCatalogueScopedDocumentId('post', 'term.tmz.catalogue.category.technology')).toBe(false)
+    const prev = [{ action: 'publish' }, { action: 'delete' }, { action: 'duplicate' }]
+    expect(catalogueDocumentActions(prev, { state: { grants: [], loaded: true }, now: new Date() })).toEqual([])
+  })
+
+  it('sanity.config.ts routes them through the Catalogue branch', () => {
+    const src = readFileSync(join(process.cwd(), 'sanity.config.ts'), 'utf8')
+    expect(src).toMatch(/isCatalogueStudioDoc\(context\.schemaType\) \|\| isCatalogueScopedDocumentId\(context\.schemaType, context\.documentId\)/)
   })
 })

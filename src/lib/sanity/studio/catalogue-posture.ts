@@ -123,6 +123,16 @@ export function isCatalogueStudioDoc(type: string, doc?: Record<string, unknown>
   return !!scoped && phaseRank(phase) >= phaseRank(scoped.lockFrom) && !!doc && scoped.owns(doc)
 }
 
+/**
+ * `document.actions` receives no document, only its id. A Catalogue `taxonomyTerm` is recognisable
+ * by its deterministic id (`term.<project>.catalogue.<kind>.<key>`, ids.ts termId), so from R2 its
+ * built-in publish/delete/duplicate actions are removed like every other locked Catalogue document's.
+ */
+const CATALOGUE_TERM_ID = /^(?:drafts\.)?term\.[a-z0-9]+(?:-[a-z0-9]+)*\.catalogue\.(?:category|tag)\.[^.]+$/
+export function isCatalogueScopedDocumentId(type: string, documentId: unknown, phase: LockPhase = CATALOGUE_LOCK_PHASE): boolean {
+  return type === 'taxonomyTerm' && phaseRank(phase) >= phaseRank('R2') && typeof documentId === 'string' && CATALOGUE_TERM_ID.test(documentId)
+}
+
 const liveGrant = (state: PostureState, now: Date, projectSlug?: unknown) =>
   state.loaded && state.grants.some((g) => (projectSlug === undefined || g.projectSlug === projectSlug) && Date.parse(g.expiresAt) > now.getTime())
 

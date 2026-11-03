@@ -22,7 +22,7 @@ import { StubPane } from './src/lib/sanity/studio/StubPane'
 // ADR-014 Phase B — Integrations & Privacy panes
 import { IntegrationsPane } from './src/lib/sanity/studio/IntegrationsPane'
 import { PrivacyPane } from './src/lib/sanity/studio/PrivacyPane'
-import { CATALOGUE_TEMPLATE_IDS, catalogueDocumentActions, isCatalogueStudioDoc } from './src/lib/sanity/studio/catalogue-posture'
+import { CATALOGUE_TEMPLATE_IDS, catalogueDocumentActions, isCatalogueScopedDocumentId, isCatalogueStudioDoc } from './src/lib/sanity/studio/catalogue-posture'
 import { postureStore } from './src/lib/sanity/studio/catalogue-posture-store'
 import { applyCataloguePosture } from './src/lib/sanity/studio/catalogue-posture-schema'
 // ADR-033 Amendment J slice 6 — Categories & Tags (taxonomyTerm), superadmin only
@@ -812,7 +812,8 @@ export default defineConfig({
       // C9 layer 2 (K-7) — FIRST, before every other branch: a Catalogue document
       // has no built-in publish/unpublish/delete/duplicate/restore in any state.
       // R1: no break-glass yet, so no gate action and no grant — no action at all.
-      if (isCatalogueStudioDoc(context.schemaType)) {
+      // R2: Catalogue taxonomyTerm records too (recognised by their deterministic id).
+      if (isCatalogueStudioDoc(context.schemaType) || isCatalogueScopedDocumentId(context.schemaType, context.documentId)) {
         return catalogueDocumentActions(prev, { state: postureStore.get(), now: new Date() })
       }
       if (context.schemaType === 'designSystem') {
