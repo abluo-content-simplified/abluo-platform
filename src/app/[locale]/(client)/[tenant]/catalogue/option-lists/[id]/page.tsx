@@ -1,3 +1,4 @@
+import { catalogueEditorKey } from '@/lib/modules/catalogue/editor-key'
 import { notFound, redirect } from 'next/navigation'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
@@ -33,7 +34,7 @@ export default async function Page({ params }: { params: Promise<{ tenant: strin
   return (
     <PageShell>
       <OptionListEditor
-        key={snapshot.rev || snapshot.live?.rev || id}
+        key={catalogueEditorKey(snapshot)}
         projectSlug={projectSlug}
         site={site}
         snapshot={snapshot}

@@ -1,3 +1,4 @@
+import { catalogueEditorKey } from '@/lib/modules/catalogue/editor-key'
 import { notFound, redirect } from 'next/navigation'
 import { span, traced } from '@/lib/perf/timing'
 import { perfBeacon } from '@/lib/perf/beacon'
@@ -35,7 +36,7 @@ async function CatalogueItemPageInner({ params }: { params: Promise<{ tenant: st
   return (
     <PageShell>
       <ItemEditor
-        key={snapshot.rev || snapshot.live?.rev || id}
+        key={catalogueEditorKey(snapshot)}
         projectSlug={projectSlug}
         site={site}
         snapshot={snapshot}
