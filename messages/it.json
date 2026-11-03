@@ -3487,7 +3487,7 @@
       },
       "anonymise": {
         "title": "Anonimizzare {name}?",
-        "body": "Nome, foto, testi e ogni dato privato vengono rimossi per sempre. Non si può annullare. Le pagine che mostrano questa persona mostreranno “Persona anonimizzata”.",
+        "body": "Rimuove per sempre nome, foto, testi e ogni dato privato. Non si può annullare. La persona sparisce da tutte le pagine, gli articoli e gli eventi in cui compariva.",
         "confirm": "Anonimizza",
         "understood": "Capisco che non si può annullare",
         "done": "{name} è stata anonimizzata."

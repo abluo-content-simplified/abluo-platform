@@ -3487,7 +3487,7 @@
       },
       "anonymise": {
         "title": "Anonymise {name}?",
-        "body": "This removes the name, photo, texts and every private detail for good. It can’t be undone. Pages that show this person will show “Anonymised person”.",
+        "body": "This removes the name, photo, texts and every private detail for good. It can’t be undone. The person disappears from every page, post and event that showed them.",
         "confirm": "Anonymise",
         "understood": "I understand this can’t be undone",
         "done": "{name} is anonymised."

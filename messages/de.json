@@ -3487,7 +3487,7 @@
       },
       "anonymise": {
         "title": "{name} anonymisieren?",
-        "body": "Name, Foto, Texte und alle privaten Angaben werden endgültig entfernt. Das lässt sich nicht rückgängig machen. Seiten, die diese Person zeigen, zeigen dann „Anonymisierte Person“.",
+        "body": "Damit werden Name, Foto, Texte und alle privaten Angaben endgültig entfernt. Das lässt sich nicht rückgängig machen. Die Person verschwindet von allen Seiten, Beiträgen und Veranstaltungen, auf denen sie zu sehen war.",
         "confirm": "Anonymisieren",
         "understood": "Mir ist klar, dass das nicht rückgängig zu machen ist",
         "done": "{name} ist anonymisiert."
