@@ -17,7 +17,7 @@ export function SelectionBar({ label, count, children }: { label: string; count:
     return () => cancelAnimationFrame(id)
   }, [])
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 flex justify-center px-3 md:bottom-6 md:left-56">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 flex justify-center px-3 md:bottom-6 md:left-64">
       <div
         role="toolbar"
         aria-label={label}

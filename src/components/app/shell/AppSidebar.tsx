@@ -245,7 +245,7 @@ export function AppSidebar({
         id={id}
         ref={drawerRef}
         tabIndex={-1}
-        className={`fixed top-0 z-50 flex h-dvh w-64 flex-col overflow-y-auto overscroll-contain border-border bg-card text-card-foreground outline-none duration-200 motion-reduce:transition-none md:visible md:z-40 md:h-screen md:w-56 md:translate-x-0 ${railEnabled ? 'md:group-data-[nav-t=rail]/nav:max-lg:w-14 lg:group-data-[nav-d=rail]/nav:w-14' : ''} ${
+        className={`fixed top-0 z-50 flex h-dvh w-64 flex-col overflow-y-auto overscroll-contain border-border bg-card text-card-foreground outline-none duration-200 motion-reduce:transition-none md:visible md:z-40 md:h-screen md:w-64 md:translate-x-0 ${railEnabled ? 'md:group-data-[nav-t=rail]/nav:max-lg:w-14 lg:group-data-[nav-d=rail]/nav:w-14' : ''} ${
           drawerSide === 'right'
             ? `right-0 border-l pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:right-auto md:left-0 md:border-l-0 md:border-r md:pb-0 ${drawerOpen ? '' : 'translate-x-full'}`
             : `left-0 border-r ${drawerOpen ? '' : '-translate-x-full'}`

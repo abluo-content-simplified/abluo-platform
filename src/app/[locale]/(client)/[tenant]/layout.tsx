@@ -197,7 +197,7 @@ async function ClientProjectLayoutInner({
           profile={profile}
         />
         {/* #client-main: the main scroll container (the selection bar / scroll listeners use it); bottom padding on phones clears the fixed tab bar — the only place that does. */}
-        <div id="client-main" className="min-h-screen min-w-0 flex-1 md:ml-56 md:group-data-[nav-t=rail]/nav:max-lg:ml-14 lg:group-data-[nav-d=rail]/nav:ml-14">
+        <div id="client-main" className="min-h-screen min-w-0 flex-1 md:ml-64 md:group-data-[nav-t=rail]/nav:max-lg:ml-14 lg:group-data-[nav-d=rail]/nav:ml-14">
           {/* A newer Abluo build is live: calm, never reloads by itself. */}
           <NewVersionNotice className="mx-4 mt-4 md:mx-6 md:mt-6" />
           <PresenceHeartbeat />

@@ -60,7 +60,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             role: actor.platformRole,
           }}
         />
-        <div className="min-h-screen min-w-0 flex-1 md:ml-56">
+        <div className="min-h-screen min-w-0 flex-1 md:ml-64">
           {/* Phones: clear the fixed bottom bar (about 4.25rem) plus the home-indicator inset. */}
           <main className="p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
             <NewVersionNotice className="mb-4" />
