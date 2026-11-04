@@ -49,6 +49,7 @@ import { coverThumbUrl } from '@/lib/api/post-drafts'
 import { eventPlaceName } from '@/lib/modules/events/structured'
 import type { EventAttendanceMode, SiteLocation } from '@/lib/sanity/types'
 import { slugFromTitle, uniqueSlug } from '@/lib/api/post-publish'
+import { factsOfPublishedEvent, syncEventSchedule } from '@/lib/scheduling/sync.server'
 import { EVENT_VOCABULARY_QUERY, eventCategoryOptions, type EventCategoryOption, type RawEventVocabulary } from '@/lib/modules/events/categories'
 
 export const EVENT_READ_PERMISSION = 'events.event.read'
@@ -124,7 +125,14 @@ export class EventError extends Error {
 }
 
 type Client = Pick<typeof sanityWriteClient, 'getDocument' | 'fetch' | 'create' | 'patch' | 'transaction'>
-export type EventDeps = { client?: Client; now?: () => Date; uuid?: () => string; audit?: ContentAuditWriter }
+export type EventDeps = {
+  client?: Client
+  now?: () => Date
+  uuid?: () => string
+  audit?: ContentAuditWriter
+  /** ADR-038 C6a — writes the schedule after a publish. Tests inject a fake; null skips it. */
+  syncSchedule?: typeof syncEventSchedule | null
+}
 
 /** Activity rows of an event are keyed by its publicId (ADR-032 D9), else its _id. */
 const eventContentId = (doc: Record<string, unknown> | null | undefined, id: string) =>
@@ -981,6 +989,20 @@ export async function publishEventDraft(
     }
     return tx.delete(`drafts.${input.id}`).commit({ transactionId })
   })
+  // ADR-038 C6a — the schedule follows the published dates (Sanity first, then
+  // Supabase; a failed write falls back to the Sanity dates, never stale ones).
+  const sync = deps.syncSchedule === undefined ? syncEventSchedule : deps.syncSchedule
+  if (sync) {
+    const venueRef = (doc.place as { kind?: unknown; venue?: { _ref?: unknown } } | undefined)?.kind === 'venue' ? (doc.place as { venue?: { _ref?: unknown } }).venue?._ref : null
+    const venue = typeof venueRef === 'string'
+      ? await client.fetch<{ publicId?: string | null; timeZone?: string | null } | null>(
+          `*[_type == "eventVenue" && _id == $id && projectSlug == $projectSlug][0]{ publicId, timeZone }`,
+          { id: venueRef, projectSlug: grant.projectSlug }
+        ).catch(() => null)
+      : null
+    const facts = factsOfPublishedEvent(doc, { siteTimeZone: site.timeZone, venue })
+    if (facts) await sync(projectId, facts, ctx.userId ?? null)
+  }
   const state = publishedSnapshotOf(doc)
   const now = (deps.now ?? (() => new Date()))()
   return {

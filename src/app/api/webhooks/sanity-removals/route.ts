@@ -3,6 +3,7 @@
 // Authenticated by the webhook signature (SANITY_REMOVALS_WEBHOOK_SECRET).
 import { recordRemoval, verifyWebhookSignature } from '@/lib/connections/api/removals'
 import { createSupabaseConnectionsStore } from '@/lib/connections/supabase-store'
+import { removeScheduleForRemovedEvent } from '@/lib/scheduling/removal.server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,5 +23,7 @@ export async function POST(req: Request) {
     return new Response(null, { status: 400 })
   }
   const r = await recordRemoval(payload, { store: createSupabaseConnectionsStore() })
+  // ADR-038 C6 — a deleted / unpublished event also loses its schedule (tombstoned, never deleted).
+  await removeScheduleForRemovedEvent(payload)
   return new Response(null, { status: r.ok ? 204 : 400 })
 }

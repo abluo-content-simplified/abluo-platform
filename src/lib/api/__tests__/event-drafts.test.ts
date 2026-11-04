@@ -58,7 +58,7 @@ const baseDocs = (): Docs => ({
   other: { _id: 'other', _type: 'event', _rev: 'o1', projectSlug: 'hoffmann', title: { it: 'Altro' }, startDate: '2026-01-01T00:00:00.000Z' },
 })
 
-function fake(opts: { docs?: Docs; commitError?: unknown; slugRows?: unknown[]; vocabulary?: { terms?: unknown[]; config?: unknown[] }; eventsConfig?: Record<string, unknown> | null } = {}) {
+function fake(opts: { docs?: Docs; commitError?: unknown; slugRows?: unknown[]; vocabulary?: { terms?: unknown[]; config?: unknown[] }; eventsConfig?: Record<string, unknown> | null; siteTimeZone?: string } = {}) {
   const docs = opts.docs ?? baseDocs()
   const writes: Array<[string, unknown]> = []
   const patchOps: Array<[string, unknown]> = []
@@ -104,7 +104,7 @@ function fake(opts: { docs?: Docs; commitError?: unknown; slugRows?: unknown[]; 
         ? { locations: [{ key: 'cervia', name: { en: 'Cervia' } }], venues: [{ _id: 'venue-1', name: { en: 'Royal Society' } }] }
         : { locations: [], venues: [] }
     }
-    if (q.includes('_type == "siteConfig"')) return { defaultLocale: 'en', supportedLocales: ['en', 'it'] }
+    if (q.includes('_type == "siteConfig"')) return { defaultLocale: 'en', supportedLocales: ['en', 'it'], ...(opts.siteTimeZone ? { timeZone: opts.siteTimeZone } : {}) }
     if (q.includes('_type == "mediaAsset" && _id == $assetId')) {
       return p.assetId === 'm1' && p.projectSlug === 'livener'
         ? { ref: 'image-abc-10x10-jpg', url: 'https://cdn.sanity.io/images/x/y/abc.jpg', altText: { en: 'Stand' }, hotspot: { x: 0.4, y: 0.5, width: 0.3, height: 0.3 } }
@@ -135,7 +135,7 @@ function fake(opts: { docs?: Docs; commitError?: unknown; slugRows?: unknown[]; 
     patch,
     transaction,
   }
-  return { client, writes, patchOps, txOps, deps: { client: client as never, uuid: () => 'new-uuid-1', now: () => new Date('2026-10-05T10:00:00Z') } }
+  return { client, writes, patchOps, txOps, deps: { client: client as never, uuid: () => 'new-uuid-1', now: () => new Date('2026-10-05T10:00:00Z'), syncSchedule: null as never } }
 }
 
 const withDraft = (extra: Record<string, unknown> = {}): Docs => {
@@ -507,6 +507,24 @@ describe('publish and discard', () => {
     expect(doc.status).toBe('past')
     expect(doc.slug).toMatchObject({ en: { current: 'mir-rimini' }, it: { current: 'giornata-2' } })
     expect(f.txOps.at(-1)).toEqual(['delete', `drafts.${E}`])
+  })
+
+  it('ADR-038 C6a: publishing writes the schedule from the published dates (site zone, location place)', async () => {
+    const f = fake({ docs: withDraft({ title: { en: 'MIR Rimini' }, publicId: '11111111-2222-4333-8444-555555555555', startDate: '2026-11-01T10:00:00.000Z', place: { kind: 'location', locationKey: 'brey' }, attendanceMode: 'inPerson', eventStatus: 'cancelled' }), siteTimeZone: 'Europe/Brussels' })
+    const calls: unknown[][] = []
+    const sync = (async (...a: unknown[]) => { calls.push(a); return { ok: true, changed: true } }) as never
+    await publishEventDraft(ctx(grant()), 'project-a', { id: E, rev: 'd1' }, { ...f.deps, syncSchedule: sync })
+    expect(calls).toHaveLength(1)
+    const [projectId, facts] = calls[0] as [string, Record<string, unknown>]
+    expect(projectId).toBe('project-a')
+    expect(facts).toMatchObject({ publicId: '11111111-2222-4333-8444-555555555555', startDate: '2026-11-01T10:00:00.000Z', timeZone: 'Europe/Brussels', place: { kind: 'location', key: 'brey' }, cancelled: true })
+  })
+
+  it('ADR-038 C6a: no site time zone → no schedule write (readers keep the Sanity dates)', async () => {
+    const f = fake({ docs: withDraft({ title: { en: 'MIR Rimini' }, publicId: '11111111-2222-4333-8444-555555555555' }) })
+    const calls: unknown[] = []
+    await publishEventDraft(ctx(grant()), 'project-a', { id: E, rev: 'd1' }, { ...f.deps, syncSchedule: (async (...a: unknown[]) => { calls.push(a); return { ok: true, changed: true } }) as never })
+    expect(calls).toHaveLength(0)
   })
 
   it('a new event becomes a create; needs a title and a date', async () => {
