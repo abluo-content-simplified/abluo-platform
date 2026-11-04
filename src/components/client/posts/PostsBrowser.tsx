@@ -24,6 +24,7 @@ import {
   applyFilters,
   DEFAULT_FILTERS,
   filtersToParams,
+  inStatusFilter,
   isDefaultFilters,
   nextSort,
   parseFilters,
@@ -44,6 +45,7 @@ import { lifecycleMenu, type LifecycleAction } from '@/components/app/lifecycle/
 import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import { DisplayTimeZoneContext } from '@/components/app/ui/list/cells'
 import { applyLiveOverlays, staleOverlays, type LiveOverlay } from '@/lib/client/posts-overlay'
+import { rememberListQuery } from '@/lib/client/remembered-list-query'
 
 export type { BrowserPost } from './types'
 
@@ -117,6 +119,7 @@ export function PostsBrowser({
     const next = { ...filters, ...patch }
     setFilters(next)
     const qs = filtersToParams(next).toString()
+    if (projectSlug) rememberListQuery('posts', projectSlug, qs)
     startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }))
   }
   const reset = () => update({ ...DEFAULT_FILTERS, sort: filters.sort })
@@ -417,7 +420,9 @@ export function PostsBrowser({
         multilingual={multilingual}
         counts={counts}
         resultCount={shown.length}
-        total={posts.length}
+        // "Showing X of Y": Y counts the posts of the open status tab only — the All
+        // tab hides archived posts, so counting them made "22 of 23" (Tom, 2026-11-04).
+        total={posts.filter((p) => inStatusFilter(p.status, filters.status)).length}
         activeCount={active}
         showSortOnDesktop={view === 'cards'}
         summaryExtra={

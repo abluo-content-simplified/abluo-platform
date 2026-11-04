@@ -124,10 +124,16 @@ export const LIMITS = {
 /**
  * A post's public id. Dashboard-created posts use a uuid, migrated posts a
  * readable id (`hoffmann-post-…`). Letters, digits, `_` and `-` only: no dots
- * (so never `drafts.` / `versions.` or any other path), no slashes, ≤ 128.
+ * (so never `drafts.` / `versions.` or any other path), no slashes, ≤ 121.
  * Ownership is always re-checked on the document itself.
+ *
+ * Why 121: Sanity ids are capped at 128 characters, and editing a post creates
+ * its working copy at `drafts.<id>` (7 more). A 126-character imported id
+ * (Hoffmann, 2026-11-04) could therefore never be opened — the copy was
+ * refused. Anything that creates post ids must stay within POST_ID_MAX.
  */
-const POST_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
+export const POST_ID_MAX = 128 - 'drafts.'.length
+const POST_ID = new RegExp(`^[A-Za-z0-9][A-Za-z0-9_-]{0,${POST_ID_MAX - 1}}$`)
 export function isPostId(id: unknown): id is string {
   return typeof id === 'string' && POST_ID.test(id)
 }

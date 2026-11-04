@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { startingListQuery } from '@/lib/client/remembered-list-query.server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { GALLERY_WRITE_PERMISSION, canDeleteGalleries, listGalleries, type GalleryListItem } from '@/lib/api/gallery-drafts'
@@ -48,7 +49,7 @@ export default async function GalleriesPage({
         statuses={statuses}
         canWrite={grant.permissions.includes(GALLERY_WRITE_PERMISSION)}
         canDelete={canDeleteGalleries(grant)}
-        initialQuery={query.toString()}
+        initialQuery={await startingListQuery('galleries', projectSlug, query.toString())}
       />
     </PageShell>
   )

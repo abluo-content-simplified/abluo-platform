@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { startingListQuery } from '@/lib/client/remembered-list-query.server'
 import { CreateAction } from '@/components/app/ui/CreateAction'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
@@ -126,7 +127,7 @@ export default async function PostsPage({
           posts={posts}
           languages={list.languages}
           categories={list.categories}
-          initialQuery={toQueryString(await searchParams)}
+          initialQuery={await startingListQuery('posts', projectSlug, toQueryString(await searchParams))}
           projectSlug={projectSlug}
           canEdit={canEdit}
           canDeleteLive={canDeletePublished(grant)}

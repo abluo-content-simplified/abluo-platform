@@ -34,6 +34,7 @@ import { FaqSetsTable } from './FaqSetsTable'
 import { FaqSetCardsGrid, FaqSetPhoneList } from './FaqSetCards'
 import { NewFaqSetDialog } from './NewFaqSetDialog'
 import { FAQ_ICONS, toFaqRow, UsedInList, useUsedInSummary, type FaqRow } from './faq-bits'
+import { rememberListQuery } from '@/lib/client/remembered-list-query'
 
 const VIEW_KEY = 'abluo.faqSets.view'
 const VIEWS = ['list', 'cards'] as const
@@ -86,6 +87,7 @@ export function FaqSetsBrowser({
   const [filters, setFilters] = useState<FaqSetFilters>(() => parseFaqFilters(initialParams))
   const replaceUrl = (f: FaqSetFilters) => {
     const qs = faqFiltersToParams(f).toString()
+    rememberListQuery('faq-sets', projectSlug, qs)
     startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }))
   }
   const update = (patch: Partial<FaqSetFilters>) => {

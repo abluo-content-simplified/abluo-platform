@@ -42,6 +42,7 @@ import { GalleriesFilters } from './GalleriesFilters'
 import { GalleriesTable } from './GalleriesTable'
 import { GalleryCardsGrid, GalleryPhoneList } from './GalleryCards'
 import { GALLERY_ICONS, useGalleryPlaces, type GalleryRow } from './gallery-bits'
+import { rememberListQuery } from '@/lib/client/remembered-list-query'
 
 const BATCH_MAX = 100
 const VIEW_KEY = 'abluo.galleries.view'
@@ -98,6 +99,7 @@ export function GalleryList({
     const next = { ...filters, ...patch }
     setFilters(next)
     const qs = galleryFiltersToParams(next).toString()
+    rememberListQuery('galleries', projectSlug, qs)
     startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }))
   }
   const reset = () => update({ ...DEFAULT_GALLERY_FILTERS, sort: filters.sort })

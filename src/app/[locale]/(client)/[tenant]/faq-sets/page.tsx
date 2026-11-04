@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { startingListQuery } from '@/lib/client/remembered-list-query.server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { FAQ_DELETE_PERMISSION, FAQ_READ_PERMISSION, FAQ_WRITE_PERMISSION, listFaqSets, type FaqSetListItem, type FaqSite } from '@/lib/api/faq-sets'
@@ -49,7 +50,7 @@ export default async function FaqSetsPage({
         site={site}
         canWrite={grant.permissions.includes(FAQ_WRITE_PERMISSION)}
         canDelete={grant.permissions.includes(FAQ_DELETE_PERMISSION)}
-        initialQuery={query.toString()}
+        initialQuery={await startingListQuery('faq-sets', projectSlug, query.toString())}
       />
     </PageShell>
   )
