@@ -36,7 +36,7 @@
  *     alt: { _type: 'localizedString', <locale>: '…' } }
  */
 import { photoNameFromFile } from '@/lib/media/photo-name'
-import { assertProjectAccess } from '@/lib/api/media-permission'
+import { assertProjectAccess, MEDIA_MANAGE_PERMISSION } from '@/lib/api/media-permission'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import {
   assertSameTenantReference,
@@ -46,7 +46,8 @@ import {
 } from '@/lib/api/tenant-scoped-sanity'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { after } from 'next/server'
-import { completeMediaAsset, createMediaAsset, reserveMediaAsset, type DecideFn } from '@/lib/media/create-media-asset'
+import { completeMediaAsset, createAnimationAsset, createMediaAsset, reserveMediaAsset, type DecideFn } from '@/lib/media/create-media-asset'
+import { LOTTIE_LIMITS, lottieSeconds, readLottie, type LottieFormat } from '@/lib/media/lottie'
 import { tracedDetached } from '@/lib/perf/timing'
 import type { OptimizeImageResult } from '@/lib/media/optimize-image'
 import { BLOG_POST_WRITE_PERMISSION, isPostId } from '@/lib/api/post-drafts'
@@ -162,6 +163,14 @@ export type ProjectMediaItem = {
   bytes?: number
   /** The uploaded file's name, when Sanity knows it. */
   filename?: string
+  /**
+   * ADR-046: 'animation' for a Lottie animation (`url` is the animation file,
+   * `thumbUrl` is '', `focal` null). Absent = an image — only lists asked for
+   * animations (`animations: true`, the admin Media screen) contain any.
+   */
+  kind?: 'image' | 'animation'
+  /** Animation length in seconds, when known. */
+  seconds?: number
 }
 
 export type PostCover = { assetId: string; url: string; alt: Record<string, string>; focal: FocalPoint | null }
@@ -230,6 +239,50 @@ async function keepUploadTag(client: unknown, projectSlug: string, tag: string):
   await ensureInternalTagList(c as never, projectSlug, 'media', [tag])
 }
 
+/**
+ * Where an upload is filed: this project's Sanity `project` document (tenant +
+ * project references) — and the per-user rate limit. Shared by images and
+ * animations (ADR-046).
+ */
+async function uploadTarget(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  projectSlug: string,
+  deps: PostMediaDeps
+): Promise<{ _id: string; clientId: string }> {
+  // The project document gives the tenant + project references. Looked up by
+  // the GRANT's projectSlug through the tenant-scoped chokepoint — and there
+  // must be EXACTLY one (a shared slug would file the asset under whichever
+  // project came first, possibly another tenant's). Same read: how many images
+  // this user uploaded to this project in the rate-limit window.
+  const scoped = tenantScopedSanityClient(ctx, projectId, deps.fetch ? { fetch: deps.fetch } : {})
+  const now = (deps.now ?? (() => new Date()))()
+  const lookup = await scoped.fetch<{
+    projects?: Array<{ _id?: string; clientId?: string | null }> | null
+    recentUploads?: number | null
+  } | null>(
+    `{
+      "projects": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0...2]{ _id, "clientId": clientRef._ref },
+      "recentUploads": count(*[_type == "mediaAsset" && projectSlug == $projectSlug && uploadedBy == $userId && _createdAt > $since])
+    }`,
+    { userId: ctx.userId, since: new Date(now.getTime() - POST_MEDIA_LIMITS.uploadWindowMs).toISOString() }
+  )
+  const projects = Array.isArray(lookup?.projects) ? lookup.projects : []
+  if (projects.length > 1) {
+    throw new TenantAuthorizationError(
+      `uploadPostImage: more than one Sanity project carries projectSlug "${projectSlug}" — upload refused.`
+    )
+  }
+  const project = projects[0]
+  if (!project?._id || !project.clientId) {
+    throw new PostMediaError('failed', 'This site is not set up for images yet.')
+  }
+  if (typeof lookup?.recentUploads !== 'number' || lookup.recentUploads >= POST_MEDIA_LIMITS.uploadsPerWindow) {
+    throw new PostMediaError('rate_limited', 'Too many uploads today. Please try again tomorrow.')
+  }
+  return { _id: project._id, clientId: project.clientId }
+}
+
 /** Optimises and files one image as this project's Media Library asset (blog: tag `blog`, gate blog.post.write). */
 export async function uploadPostImage(
   ctx: TenantAuthorizationContext,
@@ -278,36 +331,7 @@ export async function uploadProjectImage(
     throw new PostMediaError('unsupported_type', 'Only JPEG, PNG and WebP images are supported.')
   }
 
-  // The project document gives the tenant + project references. Looked up by
-  // the GRANT's projectSlug through the tenant-scoped chokepoint — and there
-  // must be EXACTLY one (a shared slug would file the asset under whichever
-  // project came first, possibly another tenant's). Same read: how many images
-  // this user uploaded to this project in the rate-limit window.
-  const scoped = tenantScopedSanityClient(ctx, projectId, deps.fetch ? { fetch: deps.fetch } : {})
-  const now = (deps.now ?? (() => new Date()))()
-  const lookup = await scoped.fetch<{
-    projects?: Array<{ _id?: string; clientId?: string | null }> | null
-    recentUploads?: number | null
-  } | null>(
-    `{
-      "projects": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0...2]{ _id, "clientId": clientRef._ref },
-      "recentUploads": count(*[_type == "mediaAsset" && projectSlug == $projectSlug && uploadedBy == $userId && _createdAt > $since])
-    }`,
-    { userId: ctx.userId, since: new Date(now.getTime() - POST_MEDIA_LIMITS.uploadWindowMs).toISOString() }
-  )
-  const projects = Array.isArray(lookup?.projects) ? lookup.projects : []
-  if (projects.length > 1) {
-    throw new TenantAuthorizationError(
-      `uploadPostImage: more than one Sanity project carries projectSlug "${grant.projectSlug}" — upload refused.`
-    )
-  }
-  const project = projects[0]
-  if (!project?._id || !project.clientId) {
-    throw new PostMediaError('failed', 'This site is not set up for images yet.')
-  }
-  if (typeof lookup?.recentUploads !== 'number' || lookup.recentUploads >= POST_MEDIA_LIMITS.uploadsPerWindow) {
-    throw new PostMediaError('rate_limited', 'Too many uploads today. Please try again tomorrow.')
-  }
+  const project = await uploadTarget(ctx, projectId, grant.projectSlug, deps)
 
   const ext = sniffed === 'image/png' ? 'png' : sniffed === 'image/webp' ? 'webp' : 'jpg'
   const base = (file.name || 'image').replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '-').slice(0, 80) || 'image'
@@ -367,6 +391,77 @@ export async function uploadProjectImage(
     optimized: created.optimization.optimized,
     bytesBefore: created.optimization.bytesBefore,
     bytesAfter: created.optimization.bytesAfter,
+    name,
+  }
+}
+
+export type UploadedAnimation = {
+  assetId: string
+  url: string
+  format: LottieFormat
+  width: number | null
+  height: number | null
+  bytes: number
+  /** The animation's starting name (from the file name). */
+  name: string
+}
+
+/**
+ * Files one Lottie animation (`.lottie` or `.json`) as this project's Media
+ * Library asset (ADR-046). The Media Library gate (`media.library.manage`);
+ * only the admin Media screen calls it (Tom, 2026-11-03: animations are a
+ * design decision, uploaded by the Abluo admin). The file's own bytes decide
+ * (`readLottie`) — its declared type and extension are not trusted. Same
+ * project lookup and rate limit as images; stored as received (no Tinify).
+ */
+export async function uploadProjectAnimation(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  file: File,
+  opts: { permission?: string } = {},
+  deps: PostMediaDeps = {}
+): Promise<UploadedAnimation> {
+  const grant = assertProjectAccess(ctx, projectId, opts.permission ?? MEDIA_MANAGE_PERMISSION)
+  if (!file || typeof file !== 'object' || typeof file.size !== 'number' || typeof file.arrayBuffer !== 'function') {
+    throw new PostMediaError('invalid_value', 'No file.')
+  }
+  if (file.size <= 0) throw new PostMediaError('invalid_value', 'Empty file.')
+  if (file.size > LOTTIE_LIMITS.maxBytes) throw new PostMediaError('too_large', 'Animation too large.')
+  const bytes = Buffer.from(await file.arrayBuffer())
+  if (bytes.length > LOTTIE_LIMITS.maxBytes) throw new PostMediaError('too_large', 'Animation too large.')
+  const info = readLottie(bytes)
+  if (!info) throw new PostMediaError('unsupported_type', 'Only Lottie animations (.lottie or .json) are supported.')
+
+  const project = await uploadTarget(ctx, projectId, grant.projectSlug, deps)
+  const base = (file.name || 'animation').replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '-').slice(0, 80) || 'animation'
+  const name = photoNameFromFile(file.name)
+  let created: Awaited<ReturnType<typeof createAnimationAsset>>
+  try {
+    created = await createAnimationAsset(
+      deps.client ?? sanityWriteClient,
+      {
+        tenantId: project.clientId,
+        projectId: project._id,
+        projectSlug: grant.projectSlug,
+        name: name || null,
+        tags: [],
+        uploadedBy: ctx.userId,
+        data: bytes,
+        filename: `${base}.${LOTTIE_LIMITS.extension[info.format]}`,
+        info,
+      },
+      { now: deps.now }
+    )
+  } catch {
+    throw new PostMediaError('failed', 'Could not upload.')
+  }
+  return {
+    assetId: created.mediaAssetId,
+    url: created.url,
+    format: info.format,
+    width: info.width ?? null,
+    height: info.height ?? null,
+    bytes: created.bytes,
     name,
   }
 }
@@ -482,6 +577,11 @@ export type ListProjectMediaOptions = {
   q?: string | null
   /** "Any of" these tags (case-insensitive). */
   tags?: string[] | null
+  /**
+   * ADR-046: also list Lottie animations. Only the admin Media screen asks;
+   * every picker (covers, galleries, people, catalogue) lists images only.
+   */
+  animations?: boolean
 }
 
 /**
@@ -543,18 +643,27 @@ export async function listProjectMedia(
       height?: number | null
       size?: number | null
       filename?: string | null
+      kind?: string | null
+      frameRate?: number | null
+      frames?: number | null
     }>
   >(
-    `*[_type == "mediaAsset" && projectSlug == $projectSlug && defined(image.asset) && !(_id in path("drafts.**"))]
+    // Images always; animations (ADR-046) only when asked — a fixed clause, never caller text.
+    `*[_type == "mediaAsset" && projectSlug == $projectSlug && (defined(image.asset)${
+      options.animations === true ? ' || (mediaType == "animation" && defined(animation.asset))' : ''
+    }) && !(_id in path("drafts.**"))]
       | order(_createdAt desc, _id desc)[0...${POST_MEDIA_LIMITS.scan}]{
         _id, _rev, _createdAt, name, tags, title, caption,
         "alt": altText,
         "hotspot": image.hotspot,
-        "url": image.asset->url,
-        "width": image.asset->metadata.dimensions.width,
-        "height": image.asset->metadata.dimensions.height,
-        "size": image.asset->size,
-        "filename": image.asset->originalFilename
+        "kind": select(!defined(image.asset) && mediaType == "animation" => "animation", "image"),
+        "url": coalesce(image.asset->url, animation.asset->url),
+        "width": coalesce(image.asset->metadata.dimensions.width, animationInfo.width),
+        "height": coalesce(image.asset->metadata.dimensions.height, animationInfo.height),
+        "size": coalesce(image.asset->size, animation.asset->size),
+        "filename": coalesce(image.asset->originalFilename, animation.asset->originalFilename),
+        "frameRate": animationInfo.frameRate,
+        "frames": animationInfo.frames
       }`
   )
   const all = (Array.isArray(rows) ? rows : []).filter((r) => typeof r.url === 'string' && r.url)
@@ -595,23 +704,28 @@ export async function listProjectMedia(
   const last = rest.length > POST_MEDIA_LIMITS.pageSize ? page[page.length - 1] : null
 
   return {
-    items: page.map((r) => ({
-      assetId: r._id,
-      url: r.url!,
-      thumbUrl: thumbnailUrl(r.url!),
-      width: r.width ?? null,
-      height: r.height ?? null,
-      alt: altOf(r),
-      focal: focalOf(r.hotspot),
-      rev: r._rev ?? '',
-      name: typeof r.name === 'string' ? r.name.trim() : '',
-      title: toLocalized(r.title),
-      caption: toLocalized(r.caption),
-      tags: tagsOf(r),
-      ...(typeof r._createdAt === 'string' && r._createdAt ? { createdAt: r._createdAt } : {}),
-      ...(typeof r.size === 'number' && Number.isFinite(r.size) ? { bytes: r.size } : {}),
-      ...(typeof r.filename === 'string' && r.filename.trim() ? { filename: r.filename.trim() } : {}),
-    })),
+    items: page.map((r) => {
+      const animation = r.kind === 'animation'
+      const seconds = animation ? lottieSeconds({ frameRate: r.frameRate ?? undefined, frames: r.frames ?? undefined }) : null
+      return {
+        ...(animation && { kind: 'animation' as const, ...(seconds !== null && { seconds }) }),
+        assetId: r._id,
+        url: r.url!,
+        thumbUrl: animation ? '' : thumbnailUrl(r.url!),
+        width: r.width ?? null,
+        height: r.height ?? null,
+        alt: altOf(r),
+        focal: animation ? null : focalOf(r.hotspot),
+        rev: r._rev ?? '',
+        name: typeof r.name === 'string' ? r.name.trim() : '',
+        title: toLocalized(r.title),
+        caption: toLocalized(r.caption),
+        tags: tagsOf(r),
+        ...(typeof r._createdAt === 'string' && r._createdAt ? { createdAt: r._createdAt } : {}),
+        ...(typeof r.size === 'number' && Number.isFinite(r.size) ? { bytes: r.size } : {}),
+        ...(typeof r.filename === 'string' && r.filename.trim() ? { filename: r.filename.trim() } : {}),
+      }
+    }),
     nextCursor: last ? `${last._createdAt}|${last._id}` : null,
     tags,
     tagCounts,

@@ -41,7 +41,7 @@ export async function sweepMediaUploads(client: SweepClient, now = new Date()): 
   }
 
   const failed = await client.fetch<string[]>(
-    `*[_type == "mediaAsset" && processing.status == "failed" && !defined(image.asset)
+    `*[_type == "mediaAsset" && processing.status == "failed" && !defined(image.asset) && mediaType != "animation"
         && coalesce(processing.finishedAt, _updatedAt) < $before
         && count(*[references(^._id)]) == 0 && !(_id in path("drafts.**"))][0...${SWEEP_LIMIT}]._id`,
     { before: failedBefore }

@@ -10,6 +10,7 @@ import { Notice } from '@/components/app/ui/Notice'
 import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
 import { TextArea, TextInput } from '@/components/app/ui/TextInput'
 import { FocalPointPicker, type FocalPoint } from '@/components/app/ui/FocalPointPicker'
+import { AnimationPreview } from '@/components/app/ui/AnimationPreview'
 import { languageName } from '@/components/client/create/StepHeading'
 import { mediaApi, type MediaScope } from '@/components/client/media/media-api'
 
@@ -34,6 +35,8 @@ export type CardPhoto = {
   tags?: string[]
   focal: FocalPoint | null
   missing?: boolean
+  /** ADR-046: a Lottie animation — played instead of the focus point picker (it has none). */
+  kind?: 'image' | 'animation'
 }
 
 export type CardChange = { assetId: string; rev?: string; name?: string; alt?: Texts; caption?: Texts; tags?: string[]; focal?: FocalPoint | null }
@@ -284,7 +287,15 @@ export function PhotoCard({
         </div>
 
         {/* Focus point, then the description (as in the blog's CoverStep). */}
-        {photo.url && !photo.missing ? (
+        {photo.kind === 'animation' && photo.url ? (
+          <AnimationPreview
+            src={photo.url}
+            label={alt[dl] || name || null}
+            play="loop"
+            className="aspect-square w-full rounded-xl bg-muted p-4"
+            fallback={<p className="p-4 text-sm text-muted-foreground">{t('missing')}</p>}
+          />
+        ) : photo.url && !photo.missing ? (
           <FocalPointPicker url={photo.url} alt={alt[dl] ?? name} point={focal} compact onChange={changeFocal} onCommit={blur} labels={focalLabels} />
         ) : (
           <p className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">{t('missing')}</p>

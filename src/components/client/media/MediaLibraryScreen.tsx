@@ -67,6 +67,26 @@ export type MediaLibraryScreenProps = {
   remove?: { label: string; deleted: string; undo: string; failed: string }
   /** Open with this tag chosen (the `?tag=` of the page — "Used by N photos" in Categories & Tags). */
   initialTag?: string
+  /**
+   * ADR-046: "Add animation" (admin only) — uploads one Lottie file into the
+   * chosen project and reloads the library. Absent = no button.
+   */
+  animations?: AnimationUpload
+}
+
+export type AnimationUploadError = 'unsupported_type' | 'too_large' | 'failed'
+export type AnimationUpload = {
+  /** Lottie files the picker offers (the server checks the bytes anyway). */
+  accept: string
+  upload: (file: File) => Promise<{ ok: true } | { ok: false; error: AnimationUploadError }>
+  labels: {
+    add: string
+    /** Why the button is disabled (no single project chosen). */
+    disabledHint: string
+    uploading: string
+    added: string
+    errors: Record<AnimationUploadError, string>
+  }
 }
 
 const VIEW_KEY = 'abluo.media.view'
@@ -121,6 +141,7 @@ export function MediaLibraryScreen({
   addDisabledHint,
   remove,
   initialTag = '',
+  animations,
 }: MediaLibraryScreenProps) {
   const t = useTranslations('clientDashboard.media')
   const tr = useTranslations('app.ui.dateRange')
@@ -350,6 +371,30 @@ export function MediaLibraryScreen({
 
   const addHref = fillMediaLink(links.add, { project: projectSlug })
 
+  // ── Add animation (admin, ADR-046) ─────────────────────────────────────────
+  const animationInput = useRef<HTMLInputElement>(null)
+  const [addingAnimation, setAddingAnimation] = useState(false)
+  const addAnimation = async (input: HTMLInputElement) => {
+    const file = input.files?.[0]
+    input.value = ''
+    if (!file || !animations) return
+    setAddingAnimation(true)
+    show({ message: animations.labels.uploading, tone: 'status' })
+    try {
+      const r = await animations.upload(file)
+      if (r.ok) {
+        show({ message: animations.labels.added, tone: 'status' })
+        setReloadKey((k) => k + 1)
+      } else {
+        show({ message: animations.labels.errors[r.error] ?? animations.labels.errors.failed, tone: 'error' })
+      }
+    } catch {
+      show({ message: animations.labels.errors.failed, tone: 'error' })
+    } finally {
+      setAddingAnimation(false)
+    }
+  }
+
   /** Grid controls: tile size, and Select / Select all (desktop: end of the date line; phones: under the count). */
   const gridExtra = (
     <span className={`items-center gap-3 ${view === 'grid' ? 'flex' : 'flex md:hidden'}`}>
@@ -401,6 +446,29 @@ export function MediaLibraryScreen({
                 { value: 'list', label: t('view.list'), icon: MEDIA_ICONS.list },
               ]}
             />
+            {animations ? (
+              <>
+                <input
+                  ref={animationInput}
+                  type="file"
+                  accept={animations.accept}
+                  className="sr-only"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  onChange={(e) => void addAnimation(e.target)}
+                />
+                <Button
+                  variant="secondary"
+                  disabled={several || addingAnimation}
+                  title={several ? animations.labels.disabledHint : undefined}
+                  onClick={() => animationInput.current?.click()}
+                >
+                  {MEDIA_ICONS.plus}
+                  {animations.labels.add}
+                  {several ? <span className="sr-only">{` · ${animations.labels.disabledHint}`}</span> : null}
+                </Button>
+              </>
+            ) : null}
             <CreateAction>
             {addHref ? (
               <ButtonLink variant="primary" href={addHref}>
@@ -510,7 +578,7 @@ export function MediaLibraryScreen({
           scope={scope}
           mode={batch.mode}
           assetIds={batchItems.map((i) => i.assetId)}
-          thumbs={batchItems.map((i) => i.thumbUrl)}
+          thumbs={batchItems.map((i) => i.thumbUrl).filter(Boolean)}
           tagSuggestions={tagNames}
           tagCounts={tagCounts}
           site={siteOf(batchItems[0])}

@@ -627,7 +627,7 @@ export async function rebuildItems(
   const ids = [...new Set(items.map((i) => (i.mediaAsset as { _ref: string })._ref))]
   if (ids.length) {
     const found = await client.fetch<string[] | null>(
-      `*[_type == "mediaAsset" && projectSlug == $projectSlug && _id in $ids && !(_id in path("drafts.**"))]._id`,
+      `*[_type == "mediaAsset" && projectSlug == $projectSlug && _id in $ids && defined(image.asset) && !(_id in path("drafts.**"))]._id`,
       { projectSlug, ids }
     )
     const ok = new Set(found ?? [])

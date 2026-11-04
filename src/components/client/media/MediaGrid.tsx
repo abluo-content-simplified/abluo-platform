@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
 import { TileButton, TileLabel } from '@/components/app/ui/list/tile'
 import { AutoGrid, type AutoGridDensity } from '@/components/app/ui/list/AutoGrid'
+import { AnimationPreview } from '@/components/app/ui/AnimationPreview'
 import type { MediaLibraryItem } from '@/lib/api/media-library'
 import { localeFor, needsDescription, type LocaleOf } from '@/lib/client/media-filter'
 import { MEDIA_ICONS } from './MediaPhotoSheet'
@@ -163,16 +164,23 @@ export function MediaGrid({
               aria-label={selecting ? t('select.photo', { name }) : t('library.edit', { name })}
               aria-pressed={selecting ? on : undefined}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- Sanity CDN thumbnail */}
-              <img
-                src={item.thumbUrl}
-                alt=""
-                width="240"
-                height="240"
-                loading="lazy"
-                draggable={false}
-                className={`size-full object-cover [-webkit-touch-callout:none] transition-transform ${on ? 'scale-[0.94] rounded-lg' : ''}`}
-              />
+              {item.kind === 'animation' ? (
+                // ADR-046: a Lottie animation — a still frame, playing while the pointer is over it.
+                <AnimationPreview src={item.url} label={null} className={`size-full p-3 transition-transform ${on ? 'scale-[0.94] rounded-lg' : ''}`} />
+              ) : (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Sanity CDN thumbnail */}
+                  <img
+                    src={item.thumbUrl}
+                    alt=""
+                    width="240"
+                    height="240"
+                    loading="lazy"
+                    draggable={false}
+                    className={`size-full object-cover [-webkit-touch-callout:none] transition-transform ${on ? 'scale-[0.94] rounded-lg' : ''}`}
+                  />
+                </>
+              )}
             </TileButton>
             {selecting ? (
               <span

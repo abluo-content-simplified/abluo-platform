@@ -57,7 +57,7 @@ export const CATALOGUE_THUMBS_QUERY = /* groq */ `*[_type == "mediaAsset" && pro
 export const CATALOGUE_ITEM_PHOTOS_QUERY = CATALOGUE_THUMBS_QUERY
 
 /** Which of these ids are published media assets of this project (patch check). */
-export const CATALOGUE_MEDIA_EXIST_QUERY = /* groq */ `*[_type == "mediaAsset" && projectSlug == $projectSlug && _id in $ids && !(_id in path("drafts.**"))]._id`
+export const CATALOGUE_MEDIA_EXIST_QUERY = /* groq */ `*[_type == "mediaAsset" && projectSlug == $projectSlug && _id in $ids && defined(image.asset) && !(_id in path("drafts.**"))]._id`
 
 /**
  * Reference targets (ADR-033 D-4): the published AND draft versions of these

@@ -2,7 +2,8 @@
 
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
-import { MediaLibraryScreen } from '@/components/client/media/MediaLibraryScreen'
+import { MediaLibraryScreen, type AnimationUpload } from '@/components/client/media/MediaLibraryScreen'
+import { uploadAdminAnimationAction } from '@/app/[locale]/(admin)/media/actions'
 import type { ListToolbarFilter } from '@/components/app/ui/ListToolbar'
 import { ADMIN_MEDIA_LINKS, adminMediaHref } from '@/lib/client/media-links'
 
@@ -14,6 +15,9 @@ import { ADMIN_MEDIA_LINKS, adminMediaHref } from '@/lib/client/media-links'
  * project) and selecting for tags / rename. Unused photos can be deleted.
  * The project lives in the URL (`?project=`), so a view can be linked and the
  * server page re-reads the project's languages.
+ *
+ * "Add animation" (ADR-046) files one Lottie animation into the chosen
+ * project — admin only: no client screen offers it.
  */
 export function AdminMediaLibrary({
   projects,
@@ -35,6 +39,26 @@ export function AdminMediaLibrary({
     onChange: (slug) => router.replace(adminMediaHref(slug || null)),
   }
 
+  const animations: AnimationUpload = {
+    accept: '.lottie,.json',
+    upload: async (file) => {
+      if (!projectSlug) return { ok: false, error: 'failed' }
+      const form = new FormData()
+      form.set('projectSlug', projectSlug)
+      form.set('file', file)
+      const r = await uploadAdminAnimationAction(form)
+      if (r.ok) return { ok: true }
+      return { ok: false, error: r.error === 'unsupported_type' || r.error === 'too_large' ? r.error : 'failed' }
+    },
+    labels: {
+      add: t('addAnimation'),
+      disabledHint: t('chooseProjectToAddAnimation'),
+      uploading: t('animationUploading'),
+      added: t('animationAdded'),
+      errors: { unsupported_type: t('animationUnsupported'), too_large: t('animationTooLarge'), failed: t('animationFailed') },
+    },
+  }
+
   return (
     <MediaLibraryScreen
       key={projectSlug ?? ''}
@@ -46,6 +70,7 @@ export function AdminMediaLibrary({
       projectLabel={t('project')}
       addDisabledHint={t('chooseProjectToAdd')}
       remove={{ label: t('delete'), deleted: t('deleted'), undo: t('undo'), failed: t('deleteFailed') }}
+      animations={animations}
     />
   )
 }

@@ -5,6 +5,7 @@ import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
 import { CellChips, CellDate, CellImage, CellPill, CellText, Pill } from '@/components/app/ui/list/cells'
 import { CellFileInfo } from '@/components/app/ui/list/file-cells'
+import { AnimationPreview } from '@/components/app/ui/AnimationPreview'
 import type { MediaLibraryItem, MediaUsage } from '@/lib/api/media-library'
 import { localeFor, needsDescription, type LocaleOf, type MediaFilters, type MediaSortColumn } from '@/lib/client/media-filter'
 import { MEDIA_ICONS } from './MediaPhotoSheet'
@@ -63,7 +64,13 @@ export function MediaTable({
       key: 'image',
       header: <span className="sr-only">{t('columns.image')}</span>,
       width: 'w-28',
-      render: (i) => <CellImage src={i.thumbUrl} focal={i.focal} />,
+      render: (i) =>
+        i.kind === 'animation' ? (
+          // ADR-046: same frame as CellImage (6rem × 4.5rem).
+          <AnimationPreview src={i.url} label={null} className="h-[4.5rem] w-24 shrink-0 rounded-lg bg-muted" />
+        ) : (
+          <CellImage src={i.thumbUrl} focal={i.focal} />
+        ),
     },
     {
       key: 'name',
@@ -133,7 +140,10 @@ export function MediaTable({
       width: 'w-28',
       render: (i) => (
         <CellPill>
-          {i.focal ? (
+          {i.kind === 'animation' ? (
+            // ADR-046: an animation has no focus point — say what it is instead.
+            <Pill tone="muted">{t('pill.animation')}</Pill>
+          ) : i.focal ? (
             <Pill tone="muted" icon={MEDIA_ICONS.focal}>
               {t('pill.focalSet')}
             </Pill>

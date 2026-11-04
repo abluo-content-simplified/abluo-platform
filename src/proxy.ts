@@ -231,7 +231,7 @@ async function routeRequest(request: NextRequest) {
   }
 
   // ── Bypass static assets and favicons ──────────────────────────────────────
-  if (pathname.match(/\.(png|ico|svg|webp|jpg|jpeg|gif|txt|xml|json|woff|woff2)$/i) ||
+  if (pathname.match(/\.(png|ico|svg|webp|jpg|jpeg|gif|txt|xml|json|woff|woff2|wasm)$/i) ||
       pathname.includes('apple-touch-icon') ||
       pathname.includes('favicon') ||
       pathname.includes('robots.txt') ||

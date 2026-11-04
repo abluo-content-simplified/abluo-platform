@@ -30,8 +30,10 @@ import {
   getProjectMediaStatus,
   POST_MEDIA_LIMITS,
   PostMediaError,
+  uploadProjectAnimation,
   uploadProjectImage,
   type MediaUploadStatus,
+  type UploadedAnimation,
   type PostMediaErrorCode,
   type UploadedPostImage,
 } from '@/lib/api/post-media'
@@ -76,7 +78,8 @@ type ListResult = { items: MediaLibraryItem[]; nextCursor: string | null; tags: 
 
 /** One page of one project's library, or (projectSlug null) of every project's. Each photo carries its project. */
 export async function listAdminMediaAction(input: ListInput): Promise<Result<ListResult>> {
-  const options = { q: input?.q ?? null, tags: input?.tags ?? null }
+  // ADR-046: the admin library also lists Lottie animations (the client screens do not).
+  const options = { q: input?.q ?? null, tags: input?.tags ?? null, animations: true }
   // One view per opening of the library: not per page, and not per keystroke
   // in the search or tag box (a filtered read is the same look). recordAdminAudit
   // also de-duplicates views within a 10-minute window.
@@ -143,6 +146,26 @@ export async function uploadAdminMediaAction(formData: FormData): Promise<Result
       action: 'media.asset.upload',
       projectId: project.id,
       detail: { projectSlug: project.slug, assetId: uploaded.assetId },
+    })
+    return uploaded
+  })
+}
+
+/**
+ * FormData: `projectSlug`, `file` — one Lottie animation (`.lottie` / `.json`,
+ * ADR-046) into that project's Media Library. Admin only by construction: no
+ * client action calls `uploadProjectAnimation`.
+ */
+export async function uploadAdminAnimationAction(formData: FormData): Promise<Result<UploadedAnimation>> {
+  const file = formData?.get?.('file')
+  return withProject(formData?.get?.('projectSlug'), async (ctx, project, actor) => {
+    if (!(file instanceof File)) throw new PostMediaError('invalid_value', 'No file.')
+    const uploaded = await uploadProjectAnimation(ctx, project.id, file, { permission: MEDIA_MANAGE_PERMISSION })
+    await recordAdminAudit({
+      actorId: actor.userId,
+      action: 'media.asset.upload',
+      projectId: project.id,
+      detail: { projectSlug: project.slug, assetId: uploaded.assetId, kind: 'animation' },
     })
     return uploaded
   })

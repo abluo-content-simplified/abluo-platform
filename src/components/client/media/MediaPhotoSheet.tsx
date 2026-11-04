@@ -23,6 +23,7 @@ const toCard = (i: MediaLibraryItem): CardPhoto => ({
   caption: i.caption,
   tags: i.tags,
   focal: i.focal,
+  ...(i.kind === 'animation' && { kind: 'animation' as const }),
 })
 
 /** One photo: the photo card plus "Used in …". Full screen on a phone, a panel on a computer. */

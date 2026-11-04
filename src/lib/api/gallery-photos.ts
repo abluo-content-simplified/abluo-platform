@@ -118,6 +118,8 @@ export async function updateGalleryPhoto(
   if (input.rev !== undefined && input.rev !== asset._rev) {
     throw new GalleryError('conflict', 'This photo was changed elsewhere.')
   }
+  // ADR-046: an animation has no image, so no focal point (writing one would create a broken image field).
+  if (focal && asset.mediaType === 'animation') throw new GalleryError('invalid_value', 'An animation has no focus point.')
   const site = await client.fetch<{ defaultLocale?: string | null; supportedLocales?: string[] | null } | null>(
     `*[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales }`,
     { projectSlug: grant.projectSlug }
@@ -157,7 +159,7 @@ export async function updateGalleryPhoto(
   // The tags typed here stay in Categories & Tags (best effort; never fails the save).
   if (tags?.length) await ensureInternalTagList(client as never, grant.projectSlug, 'media', tags)
 
-  const url = await client.fetch<string | null>(`*[_type == "mediaAsset" && _id == $id && projectSlug == $projectSlug][0].image.asset->url`, {
+  const url = await client.fetch<string | null>(`*[_type == "mediaAsset" && _id == $id && projectSlug == $projectSlug][0]{ "u": coalesce(image.asset->url, animation.asset->url) }.u`, {
     id: input.assetId,
     projectSlug: grant.projectSlug,
   })

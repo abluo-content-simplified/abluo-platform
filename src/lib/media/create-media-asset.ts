@@ -26,6 +26,7 @@ import type { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { optimizeImage, type OptimizeImageResult } from '@/lib/media/optimize-image'
 import { readImageInfo } from '@/lib/media/image-info'
 import { decideProcessing, type ProcessingDecision } from '@/lib/media/processing-policy'
+import { LOTTIE_LIMITS, type LottieInfo } from '@/lib/media/lottie'
 
 export type MediaAssetWriteClient = Pick<typeof sanityWriteClient, 'assets' | 'create'>
 export type MediaAssetPatchClient = Pick<typeof sanityWriteClient, 'assets' | 'patch'>
@@ -233,4 +234,63 @@ export async function completeMediaAsset(
     }
     return { status: 'failed' }
   }
+}
+
+// ── Animations (ADR-046) ──────────────────────────────────────────────────────
+
+export interface CreateAnimationAssetInput
+  extends Omit<CreateMediaAssetInput, 'data' | 'filename' | 'contentType' | 'description'> {
+  data: Buffer
+  filename: string
+  /** What `readLottie` found — the caller has already checked the bytes are an animation. */
+  info: LottieInfo
+}
+
+export interface CreatedAnimationAsset {
+  mediaAssetId: string
+  /** The `sanity.fileAsset` id (`file-…`). */
+  fileAssetId: string
+  url: string
+  bytes: number
+}
+
+/**
+ * Files one Lottie animation as a `mediaAsset` (`mediaType: 'animation'`):
+ * the binary goes into Sanity as a FILE asset, stored as received — there is
+ * nothing to optimise — and the record is `ready` at once. No image field, so
+ * every image list (they all filter `defined(image.asset)`) leaves it out.
+ * Same contract as `createMediaAsset`: no authorization here, the caller has
+ * verified the (tenant, project, projectSlug) triple and the file.
+ */
+export async function createAnimationAsset(
+  client: MediaAssetWriteClient,
+  input: CreateAnimationAssetInput,
+  deps: Pick<Deps, 'now'> = {}
+): Promise<CreatedAnimationAsset> {
+  const contentType = LOTTIE_LIMITS.contentType[input.info.format]
+  const uploaded = (await span('sanity.assetUpload', () =>
+    client.assets.upload('file', input.data, { filename: input.filename, contentType })
+  )) as { _id: string; url?: string }
+  const now = (deps.now ?? (() => new Date()))().toISOString()
+  const { info } = input
+  const doc = await span('sanity.createMediaAsset', () =>
+    client.create({
+      ...recordFields(input as CreateMediaAssetInput),
+      mediaType: 'animation',
+      animation: { _type: 'file', asset: { _type: 'reference', _ref: uploaded._id } },
+      animationInfo: {
+        format: info.format,
+        ...(info.width !== undefined && { width: info.width }),
+        ...(info.height !== undefined && { height: info.height }),
+        ...(info.frameRate !== undefined && { frameRate: info.frameRate }),
+        ...(info.frames !== undefined && { frames: info.frames }),
+      },
+      processing: processingField('ready', now, {
+        optimized: false,
+        bytesBefore: input.data.length,
+        bytesAfter: input.data.length,
+      }),
+    })
+  )
+  return { mediaAssetId: doc._id, fileAssetId: uploaded._id, url: uploaded.url ?? '', bytes: input.data.length }
 }

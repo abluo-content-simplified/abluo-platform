@@ -4431,6 +4431,8 @@ const mediaAssetType = defineType({
         list: [
           { title: '🖼 Image', value: 'image' },
           { title: '🎬 Video', value: 'video' },
+          // ADR-046: a Lottie animation (.lottie / .json) — uploaded by the Abluo admin only.
+          { title: '✨ Animation', value: 'animation' },
         ],
         layout: 'radio',
       },
@@ -4454,10 +4456,11 @@ const mediaAssetType = defineType({
       // crop every photo into a tile shape; without a focal point the crop
       // is always around the centre.
       options: { hotspot: true },
-      hidden: ({ document }) => (document?.mediaType as string) === 'video',
+      hidden: ({ document }) => ['video', 'animation'].includes(document?.mediaType as string),
       validation: (Rule) =>
         Rule.custom((value, context) => {
           const mediaType = (context.document?.mediaType as string) ?? 'image'
+          if (mediaType === 'animation') return true
           // ADR-035: an upload's record exists before its image (processing in
           // the background, or failed). Only a `ready` (or legacy) record needs one.
           const status = (context.document?.processing as { status?: string } | undefined)?.status
@@ -4486,6 +4489,36 @@ const mediaAssetType = defineType({
         defineField({ name: 'reason', title: 'Why not optimised', type: 'string' }),
         defineField({ name: 'originalBytes', title: 'Bytes received', type: 'number' }),
         defineField({ name: 'finalBytes', title: 'Bytes stored', type: 'number' }),
+      ],
+    }),
+    defineField({
+      name: 'animation',
+      title: 'Animation',
+      type: 'file',
+      description: 'A Lottie animation (.lottie or .json, max 2 MB). Upload it in admin Media so it is checked first (ADR-046).',
+      options: { accept: '.lottie,.json,application/json,application/zip' },
+      hidden: ({ document }) => (document?.mediaType as string) !== 'animation',
+      validation: (Rule) =>
+        Rule.custom((value, context) =>
+          (context.document?.mediaType as string) === 'animation' && !(value as { asset?: unknown } | undefined)?.asset
+            ? 'An animation file is required for animation assets'
+            : true
+        ),
+    }),
+    defineField({
+      name: 'animationInfo',
+      title: 'Animation facts',
+      type: 'object',
+      description: 'Read from the file when it was uploaded (ADR-046).',
+      readOnly: true,
+      hidden: ({ document }) => (document?.mediaType as string) !== 'animation',
+      options: { collapsible: true, collapsed: true },
+      fields: [
+        defineField({ name: 'format', title: 'Format', type: 'string', options: { list: ['lottie-json', 'dotlottie'] } }),
+        defineField({ name: 'width', title: 'Width (px)', type: 'number' }),
+        defineField({ name: 'height', title: 'Height (px)', type: 'number' }),
+        defineField({ name: 'frameRate', title: 'Frames per second', type: 'number' }),
+        defineField({ name: 'frames', title: 'Length (frames)', type: 'number' }),
       ],
     }),
     defineField({
