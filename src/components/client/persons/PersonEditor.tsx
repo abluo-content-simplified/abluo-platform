@@ -39,6 +39,8 @@ import { Tabs, tabPanelProps } from '@/components/app/ui/Tabs'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
 import { mintPersonPreviewAction } from '@/app/[locale]/(client)/[tenant]/people/preview-action'
+import { getPersonLiveInfoAction } from '@/app/[locale]/(client)/[tenant]/people/editor-actions'
+import { personLiveUrl, type PersonLiveInfo } from '@/lib/modules/people/live-url'
 import { personPreviewUrl } from '@/lib/client/preview-url'
 import { PersonActivitySheet } from './PersonActivitySheet'
 import { PersonAnonymiseDialog } from './PersonAnonymiseDialog'
@@ -99,6 +101,7 @@ export function PersonEditor({
   canDelete = false,
   canAnonymise = false,
   canAddGroup = false,
+  canSetFocus = false,
   canTranslate = false,
 }: {
   projectSlug: string
@@ -110,6 +113,8 @@ export function PersonEditor({
   canDelete?: boolean
   canAnonymise?: boolean
   canAddGroup?: boolean
+  /** The Media screen's permission (the photo's focus point is saved on the Media Library asset). */
+  canSetFocus?: boolean
   /** The Translate module is installed on this project (the server re-checks, with people.person.write). */
   canTranslate?: boolean
 }) {
@@ -298,7 +303,7 @@ export function PersonEditor({
   }, [flushPrivate])
 
   // ── Changes from the tabs ──────────────────────────────────────────────────
-  const { toast, show } = useUndo()
+  const { toast, show, schedule } = useUndo()
   const change = (patch: Partial<PersonValues>, set?: PendingSet) => {
     if (!editable) return
     const next = { ...valuesRef.current, ...patch }
@@ -526,18 +531,67 @@ export function PersonEditor({
     }
   }
 
+  /**
+   * Archive from the editor: shown at once ("Archived · Undo"), carried out after the Undo window
+   * (or when the page is left). Anonymise and permanent delete never go through here — they have
+   * their own confirmation and cannot be undone.
+   */
+  async function archiveWithUndo() {
+    if (busy || !canArchive) return
+    if (!(await flushed())) return
+    const before = status
+    setNotice(null)
+    setStatus((x) => ({ ...x, state: 'archived' }))
+    schedule({
+      id: `archive:${id}`,
+      message: t('archived'),
+      undoLabel: t('undo'),
+      failMessage: te('failed'),
+      restore: () => setStatus(before),
+      run: async () => {
+        const r = await personLifecycleAction({ projectSlug, id, op: 'archive' })
+        if (!r.ok) {
+          setNotice(errorText(r.error, r.detail?.usedIn))
+          return false
+        }
+        await reload()
+        router.refresh()
+        return true
+      },
+    })
+  }
+
   const lifecycleItems: CardMenuItem[] = []
   if (canArchive && !status.anonymised) {
     // eslint-disable-next-line react-hooks/refs -- the handler runs on click, not during render
     if (archived) lifecycleItems.push({ key: 'restore', label: tl('actions.restore'), onSelect: () => void lifecycle('restore') })
     // eslint-disable-next-line react-hooks/refs -- the handler runs on click, not during render
-    else if (status.isPublished) lifecycleItems.push({ key: 'archive', label: tl('actions.archive'), onSelect: () => void lifecycle('archive') })
+    else if (status.isPublished) lifecycleItems.push({ key: 'archive', label: tl('actions.archive'), onSelect: () => void archiveWithUndo() })
   }
   if (canAnonymise && !status.anonymised) lifecycleItems.push({ key: 'anonymise', label: t('menu.anonymise'), onSelect: () => setConfirm('anonymise'), separated: true })
   if (canDelete) {
     if (archived || status.anonymised) lifecycleItems.push({ key: 'deletePermanently', label: tl('actions.deletePermanently'), onSelect: () => setConfirm('deletePermanently'), destructive: true, separated: !canAnonymise || status.anonymised })
     else if (!status.isPublished) lifecycleItems.push({ key: 'delete', label: tl('actions.delete'), onSelect: () => setConfirm('delete'), destructive: true, separated: !canAnonymise })
   }
+  // "View on website": the PUBLISHED person's page, when it exists in the language being edited.
+  const [liveInfo, setLiveInfo] = useState<PersonLiveInfo | null>(null)
+  useEffect(() => {
+    if (!status.isPublished || status.anonymised) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- nothing published to link to
+      setLiveInfo(null)
+      return
+    }
+    let live = true
+    void getPersonLiveInfoAction({ projectSlug, id })
+      .then((r) => live && setLiveInfo(r.ok ? r.info : null))
+      .catch(() => live && setLiveInfo(null))
+    return () => {
+      live = false
+    }
+    // Publishing (hasDraft → false), archiving and restoring change what is live.
+  }, [projectSlug, id, status.isPublished, status.anonymised, status.hasDraft, status.state])
+  const liveUrl = archived || status.anonymised ? null : personLiveUrl(liveInfo, lang)
+
   /** Opens the draft (or published) profile in a new tab, as the website would show it (noindex, 15-minute link). */
   const preview = async () => {
     const tab = window.open('about:blank', '_blank')
@@ -555,6 +609,7 @@ export function PersonEditor({
     }
   }
   const menu: CardMenuItem[] = [
+    ...(liveUrl ? [{ key: 'viewOnWebsite', label: t('menu.viewOnWebsite'), onSelect: () => window.open(liveUrl, '_blank', 'noopener,noreferrer') }] : []),
     ...(!status.anonymised ? [{ key: 'preview', label: t('menu.preview'), onSelect: () => void preview() }] : []),
     ...(editable && status.isPublished && status.hasDraft ? [{ key: 'discard', label: t('menu.discard'), onSelect: () => setConfirm('discard') }] : []),
     { key: 'activity', label: t('menu.activity'), onSelect: () => setActivity(true) },
@@ -587,6 +642,7 @@ export function PersonEditor({
     links,
     groupTerms,
     canAddGroup,
+    canSetFocus,
     priv,
     setBirthday: (birthday) => {
       setPriv((p) => ({ ...p, birthday }))

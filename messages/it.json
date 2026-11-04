@@ -578,7 +578,8 @@
         "new": "{count, plural, one {# richiesta segnata come nuova.} other {# richieste segnate come nuove.}}",
         "archived": "{count, plural, one {# richiesta archiviata.} other {# richieste archiviate.}}",
         "deleted": "{count, plural, one {# richiesta eliminata.} other {# richieste eliminate.}}"
-      }
+      },
+      "undo": "Annulla"
     },
     "home": {
       "title": "Bentornato",
@@ -1685,7 +1686,8 @@
         "described": "Presente",
         "missing": "Mancante",
         "focalSet": "Impostato",
-        "focalNone": "Non impostato"
+        "focalNone": "Non impostato",
+        "animation": "Animazione"
       },
       "menu": {
         "label": "Azioni per {name}",
@@ -1786,6 +1788,15 @@
           "empty": "Ancora nessun tag. Scrivi un nome per aggiungere il primo.",
           "placeholderAdd": "Cerca o aggiungi un tag",
           "addNamed": "Aggiungi “{name}”"
+        },
+        "modules": {
+          "people": {
+            "category": {
+              "empty": "Ancora nessun gruppo. Scrivi un nome per aggiungere il primo.",
+              "placeholderAdd": "Cerca o aggiungi un gruppo",
+              "addNamed": "Aggiungi il gruppo “{name}”"
+            }
+          }
         }
       },
       "columns": {
@@ -2124,7 +2135,8 @@
         "not_owner": "Solo un Titolare attuale può fare un passo indietro.",
         "last_owner": "Un cliente deve sempre avere almeno un Titolare.",
         "not_ready": "Non è ancora possibile rendere qualcuno Titolare: serve un aggiornamento del database (056). Non è stato modificato nulla."
-      }
+      },
+      "undo": "Annulla"
     },
     "analytics": {
       "title": "Statistiche",
@@ -3050,7 +3062,8 @@
         "too_large": "Il file è troppo grande. Il limite è 20 MB.",
         "not_uploaded_yet": "Il caricamento richiede più tempo del previsto. Riprova.",
         "network": "Il caricamento si è interrotto. Controlla la connessione e riprova."
-      }
+      },
+      "undo": "Annulla"
     },
     "documents": {
       "title": "Documenti",
@@ -3231,7 +3244,8 @@
       "languageOf": "Lingua del campo {field}",
       "notTranslated": "non ancora tradotto",
       "fallbackHint": "Facoltativo. Se lo lasci vuoto, i visitatori in questa lingua vedono il testo in {language}: “{text}”.",
-      "fallbackHintEmpty": "Facoltativo. Se lo lasci vuoto, i visitatori in questa lingua vedono il testo in {language}."
+      "fallbackHintEmpty": "Facoltativo. Se lo lasci vuoto, i visitatori in questa lingua vedono il testo in {language}.",
+      "undo": "Annulla"
     },
     "discover": {
       "title": "Altro da aggiungere",
@@ -3413,7 +3427,9 @@
         "actions": {
           "edit": "Modifica",
           "usedIn": "Dove è mostrata",
-          "anonymise": "Anonimizza…"
+          "anonymise": "Anonimizza…",
+          "preview": "Anteprima",
+          "activity": "Attività"
         },
         "done": {
           "archived": "{name} è archiviata. Non è più sul tuo sito.",
@@ -3440,7 +3456,48 @@
           "sort_updated_asc": "Aggiornate meno di recente",
           "showing": "{shown} di {total} persone",
           "clear": "Rimuovi i filtri",
-          "noMatch": "Nessuna persona corrisponde ai filtri."
+          "noMatch": "Nessuna persona corrisponde ai filtri.",
+          "missing": "Mancante",
+          "missingAll": "Niente",
+          "missingPhoto": "Senza foto",
+          "missingShortBio": "Senza bio breve",
+          "missingLanguage": "Testi in {language}",
+          "chipPhoto": "Mancante: foto",
+          "chipShortBio": "Mancante: bio breve",
+          "chipLanguage": "Mancanti: testi in {language}"
+        },
+        "previewFailed": "Impossibile aprire l’anteprima. Riprova.",
+        "missing": {
+          "photo": "Senza foto",
+          "shortBio": "Senza bio breve",
+          "languages": "Mancano {languages}"
+        },
+        "bulk": {
+          "toolbar": "Persone selezionate",
+          "count": "{count, plural, one {# persona selezionata} other {# persone selezionate}}",
+          "checkbox": "Seleziona {name}",
+          "all": "Seleziona tutto",
+          "allLabel": "Seleziona tutte le persone di questo elenco",
+          "bar": {
+            "groups": "Gruppi",
+            "show": "Mostra",
+            "hide": "Nascondi",
+            "archive": "Archivia",
+            "clear": "Annulla"
+          },
+          "groupsTitle": "Gruppi per {count, plural, one {# persona} other {# persone}}",
+          "addHeading": "Aggiungi al gruppo",
+          "removeHeading": "Togli dal gruppo",
+          "message": {
+            "archive": "{count, plural, one {# persona archiviata} other {# persone archiviate}}. Non {count, plural, one {è} other {sono}} più sul tuo sito.",
+            "show": "{count, plural, one {# persona è visibile} other {# persone sono visibili}} sul tuo sito.",
+            "hide": "{count, plural, one {# persona è nascosta} other {# persone sono nascoste}} dal tuo sito.",
+            "addGroup": "{count, plural, one {# persona aggiunta} other {# persone aggiunte}} a {group}.",
+            "removeGroup": "{count, plural, one {# persona tolta} other {# persone tolte}} da {group}."
+          },
+          "skipped": "{count} lasciate com’erano",
+          "nothing": "Niente da cambiare per le persone selezionate.",
+          "attention": "{count, plural, one {Non è stato possibile modificare # persona} other {Non è stato possibile modificare # persone}}: {details}"
         }
       },
       "visibility": {
@@ -3483,7 +3540,11 @@
           "tooMany": "Hai raggiunto il numero di persone incluso nel tuo piano.",
           "missingName": "Il nome è obbligatorio.",
           "failed": "Non siamo riusciti a creare la persona. Riprova."
-        }
+        },
+        "open": "Apri",
+        "duplicate": "{name} è già nelle tue Persone",
+        "duplicateArchived": "{name} è già nelle tue Persone, ma archiviata",
+        "createAnyway": "Crea comunque"
       },
       "anonymise": {
         "title": "Anonimizzare {name}?",
@@ -3536,7 +3597,8 @@
           "anonymise": "Anonimizza…",
           "activity": "Attività",
           "preview": "Anteprima",
-          "previewFailed": "Non è stato possibile aprire l'anteprima. Riprova tra un attimo."
+          "previewFailed": "Non è stato possibile aprire l'anteprima. Riprova tra un attimo.",
+          "viewOnWebsite": "Vedi sul sito"
         },
         "confirm": {
           "discardTitle": "Scartare le modifiche non pubblicate?",
@@ -3643,7 +3705,31 @@
           "useSuggestion": "Usa questo",
           "dismissSuggestion": "No, grazie",
           "dismiss": "Chiudi",
-          "suggestionUsed": "Suggerimento usato. Puoi ancora modificarlo."
+          "suggestionUsed": "Suggerimento usato. Puoi ancora modificarlo.",
+          "focal": {
+            "toggle": "Imposta il punto focale",
+            "avatar": "Avatar rotondo",
+            "title": "Punto focale",
+            "helper": "Tocca o trascina sulla parte più importante della foto. Ogni ritaglio la mantiene in vista, in tutte le pagine che usano questa foto.",
+            "readOnly": "Il punto focale di questa foto.",
+            "keys": "Usa le frecce per spostarlo; tieni premuto Maiusc per passi più grandi.",
+            "label": "Punto focale della foto",
+            "valueText": "{x}% da sinistra, {y}% dall’alto",
+            "previews": "Come verrà ritagliata",
+            "preview": {
+              "wide": "Largo",
+              "card": "Scheda",
+              "square": "Quadrato",
+              "tall": "Telefono"
+            },
+            "status": {
+              "saving": "Salvataggio…",
+              "saved": "Salvato",
+              "failed": "Non siamo riusciti a salvare. Riprova."
+            },
+            "scope": "Il punto focale viene salvato sulla foto nella tua Libreria multimediale, quindi vale ovunque questa foto venga usata.",
+            "loadFailed": "Non siamo riusciti a caricare la foto. Riprova."
+          }
         },
         "about": {
           "bioTitle": "Presentazione",
@@ -3896,7 +3982,11 @@
         "namesNeeded": "Aggiungi un nome per continuare.",
         "back": "Indietro",
         "creating": "Aggiunta in corso…",
-        "create": "Aggiungi persona"
+        "create": "Aggiungi persona",
+        "duplicate": "{name} è già nelle tue Persone",
+        "duplicateArchived": "{name} è già nelle tue Persone, ma archiviata",
+        "useThis": "Usa questa persona",
+        "createAnyway": "Crea comunque"
       },
       "tree": {
         "instructions": "Per spostare una categoria usa la sua maniglia: le frecce su e giù cambiano l’ordine, la freccia destra la sposta dentro la categoria sopra, la freccia sinistra la porta fuori dalla categoria che la contiene. Il menu ⋯ offre gli stessi spostamenti.",
@@ -4723,7 +4813,8 @@
         "invalidValue": "Scegli un valore valido.",
         "invalidUrl": "Ogni link deve avere un URL http(s) completo.",
         "tooMany": "Troppi link (massimo 20)."
-      }
+      },
+      "undo": "Annulla"
     },
     "announcements": {
       "title": "Avvisi",
@@ -5064,7 +5155,14 @@
       "undo": "Annulla",
       "deleteFailed": "Non è stato possibile eliminare la foto. Potrebbe essere in uso.",
       "loadError": "Non è stato possibile caricare l'elenco dei progetti.",
-      "unknownProject": "Non esiste un progetto chiamato “{slug}”. Vengono mostrati tutti i progetti."
+      "unknownProject": "Non esiste un progetto chiamato “{slug}”. Vengono mostrati tutti i progetti.",
+      "addAnimation": "Aggiungi animazione",
+      "chooseProjectToAddAnimation": "Scegli prima un progetto per aggiungere un’animazione.",
+      "animationUploading": "Sto aggiungendo l’animazione…",
+      "animationAdded": "Animazione aggiunta alla libreria.",
+      "animationUnsupported": "Questo file non è un’animazione Lottie. Scegli un file Lottie .lottie o .json.",
+      "animationTooLarge": "L’animazione supera i 2 MB.",
+      "animationFailed": "Non è stato possibile aggiungere l’animazione. Riprova."
     },
     "newProject": {
       "title": "Nuovo progetto",

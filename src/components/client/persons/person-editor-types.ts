@@ -45,6 +45,8 @@ export type EditorApi = {
   links?: LinkTools
   groupTerms: PickerTerm[]
   canAddGroup: boolean
+  /** May set the photo's focus point (Media permission; saved on the Media Library asset). */
+  canSetFocus?: boolean
   priv: PrivateUi
   setBirthday: (value: string) => void
   setNotes: (value: string) => void

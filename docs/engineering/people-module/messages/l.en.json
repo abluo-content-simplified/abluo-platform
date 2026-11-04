@@ -1,0 +1,21 @@
+{
+  "clientDashboard": {
+    "submissions": {
+      "undo": "Undo"
+    },
+    "documents": {
+      "undo": "Undo"
+    },
+    "access": {
+      "undo": "Undo"
+    },
+    "users": {
+      "undo": "Undo"
+    }
+  },
+  "admin": {
+    "backlog": {
+      "undo": "Undo"
+    }
+  }
+}

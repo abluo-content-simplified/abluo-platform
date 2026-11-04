@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react'
 import { createPersonAction, searchPersonsAction } from '@/app/[locale]/(client)/[tenant]/people/actions'
+import { findPossibleDuplicatesAction } from '@/app/[locale]/(client)/[tenant]/people/editor-actions'
 import { PersonPicker, type PersonPickerPerson } from '@/components/app/ui/PersonPicker'
 
 /**
@@ -47,6 +48,15 @@ export function PersonPickerField({
     },
     [projectSlug]
   )
+  /** Same name already in People (either order, archived included): the picker offers "Use this person". */
+  const findDuplicates = useCallback(
+    async ({ firstName, lastName }: { firstName: string; lastName: string }): Promise<PersonPickerPerson[]> => {
+      const r = await findPossibleDuplicatesAction({ projectSlug, firstName, lastName })
+      if (!r.ok) throw new Error(r.error)
+      return r.duplicates.map((d) => ({ id: d.id, name: d.name, archived: d.archived }))
+    },
+    [projectSlug]
+  )
   return (
     <PersonPicker
       label={label}
@@ -54,6 +64,7 @@ export function PersonPickerField({
       onChange={onChange}
       search={search}
       onCreate={canCreate && !disabled ? create : undefined}
+      findDuplicates={canCreate && !disabled ? findDuplicates : undefined}
       primaryLabel={primaryLabel}
       max={max}
       disabled={disabled}

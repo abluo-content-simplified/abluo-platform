@@ -53,20 +53,27 @@ export function UsersBrowser({ title, projectSlug, locale, view }: { title: stri
   const t = useTranslations('clientDashboard.users')
   const tRoles = useTranslations('app.roles')
   const router = useRouter()
-  const { toast, show } = useUndo()
+  const { toast, show, schedule } = useUndo()
+  // Archived people and cancelled invitations leave the list at once ('Archived · Undo'); the refreshed list replaces this.
+  const [leaving, setLeaving] = useState<Set<string>>(new Set())
+  const [seenPeople, setSeenPeople] = useState(view.people)
+  if (seenPeople !== view.people) {
+    setSeenPeople(view.people)
+    setLeaving(new Set())
+  }
+  const people = useMemo(() => view.people.filter((p) => !leaving.has(p.key)), [view.people, leaving])
 
   const [filters, setFilters] = useState<UsersFilters>(DEFAULT_USERS_FILTERS)
   const update = (patch: Partial<UsersFilters>) => setFilters((f) => ({ ...f, ...patch }))
   const reset = () => setFilters((f) => ({ ...DEFAULT_USERS_FILTERS, sort: f.sort }))
-  const shown = useMemo(() => applyUsersFilters(view.people, filters), [view.people, filters])
+  const shown = useMemo(() => applyUsersFilters(people, filters), [people, filters])
 
   const [inviting, setInviting] = useState(false)
   const [openKey, setOpenKey] = useState<string | null>(null)
-  const [confirmArchive, setConfirmArchive] = useState<Person | null>(null)
   const [confirmOwner, setConfirmOwner] = useState<Person | null>(null)
   const [stepDown, setStepDown] = useState(false)
   const [busy, setBusy] = useState(false)
-  const opened = view.people.find((p) => p.key === openKey) ?? null
+  const opened = people.find((p) => p.key === openKey) ?? null
 
   // Role names have one source, `app.roles`, shared with the account menu.
   const roleLabel = (role: string) => tRoles(role as 'editor')
@@ -105,17 +112,39 @@ export function UsersBrowser({ title, projectSlug, locale, view }: { title: stri
       () => resendInvitationAction({ ...base, invitationId: p.invitationId! }),
       (r) => (r.emailSent === false ? t('sentNoEmail') : t('resent', { email: p.email }))
     )
-  const cancel = (p: Person) => run(() => cancelInvitationAction({ ...base, invitationId: p.invitationId! }), () => t('cancelled'))
   const restore = (p: Person) =>
     run(
       () => restorePersonAction({ ...base, archiveId: p.archiveId! }),
       () => t('restored', { name: displayName(p) })
     )
-  const archive = async (p: Person) => {
-    const ok = await run(() => archivePersonAction({ ...base, membershipId: p.membershipId! }), () => t('archived', { name: displayName(p) }))
-    if (ok) setOpenKey(null)
-    setConfirmArchive(null)
+  /** Cancel an invitation / archive a person: "Archived · Undo" — the row goes at once, the server call waits. */
+  const leave = (p: Person, message: string, call: () => Promise<PeopleActionResult>) => {
+    setLeaving((s) => new Set([...s, p.key]))
+    setOpenKey(null)
+    let failure = t('errors.failed')
+    schedule({
+      id: `leave:${p.key}`,
+      message,
+      undoLabel: t('undo'),
+      get failMessage() {
+        return failure
+      },
+      restore: () =>
+        setLeaving((s) => {
+          const n = new Set(s)
+          n.delete(p.key)
+          return n
+        }),
+      run: async () => {
+        const r = await call()
+        if (!r.ok) failure = errorText(r.error)
+        else router.refresh()
+        return r.ok
+      },
+    })
   }
+  const cancel = (p: Person) => leave(p, t('cancelled'), () => cancelInvitationAction({ ...base, invitationId: p.invitationId! }))
+  const archive = (p: Person) => leave(p, t('archived', { name: displayName(p) }), () => archivePersonAction({ ...base, membershipId: p.membershipId! }))
 
   const askMakeOwner = (p: Person) => {
     setStepDown(false)
@@ -138,8 +167,8 @@ export function UsersBrowser({ title, projectSlug, locale, view }: { title: stri
     if (p.canResend) items.push({ key: 'resend', label: t('resend'), onSelect: () => void resend(p) })
     if (p.canRestore) items.push({ key: 'restore', label: t('restore'), onSelect: () => void restore(p) })
     if (p.canMakeOwner && p.userId) items.push({ key: 'makeOwner', label: t('makeOwner'), onSelect: () => askMakeOwner(p) })
-    if (p.canCancel) items.push({ key: 'cancel', label: t('cancelInvite'), onSelect: () => void cancel(p), destructive: true })
-    if (p.canArchive) items.push({ key: 'archive', label: t('archive'), onSelect: () => setConfirmArchive(p), destructive: true })
+    if (p.canCancel) items.push({ key: 'cancel', label: t('cancelInvite'), onSelect: () => cancel(p), destructive: true })
+    if (p.canArchive) items.push({ key: 'archive', label: t('archive'), onSelect: () => archive(p), destructive: true })
     return items
   }
 
@@ -161,12 +190,12 @@ export function UsersBrowser({ title, projectSlug, locale, view }: { title: stri
         </SheetAction>
       ) : null,
       p.canCancel ? (
-        <SheetAction key="cancel" destructive disabled={busy} onPress={() => void cancel(p).then((ok) => ok && setOpenKey(null))}>
+        <SheetAction key="cancel" destructive disabled={busy} onPress={() => cancel(p)}>
           {t('cancelInvite')}
         </SheetAction>
       ) : null,
       p.canArchive ? (
-        <SheetAction key="archive" destructive disabled={busy} onPress={() => setConfirmArchive(p)}>
+        <SheetAction key="archive" destructive disabled={busy} onPress={() => archive(p)}>
           {t('archive')}
         </SheetAction>
       ) : null,
@@ -175,8 +204,8 @@ export function UsersBrowser({ title, projectSlug, locale, view }: { title: stri
   }
 
   // ── Toolbar ────────────────────────────────────────────────────────────────
-  const roles = [...new Set(view.people.map((p) => p.role))]
-  const count = (s: UsersStatusFilter) => applyUsersFilters(view.people, { ...filters, q: '', role: '', status: s }).length
+  const roles = [...new Set(people.map((p) => p.role))]
+  const count = (s: UsersStatusFilter) => applyUsersFilters(people, { ...filters, q: '', role: '', status: s }).length
   const selects: ListToolbarFilter[] = [
     {
       key: 'status',
@@ -219,7 +248,7 @@ export function UsersBrowser({ title, projectSlug, locale, view }: { title: stri
         label={t('filters.filters')}
         search={{ value: filters.q, onChange: (q) => update({ q }), label: t('filters.search'), placeholder: t('filters.searchPlaceholder') }}
         filters={selects}
-        summary={t('filters.showing', { shown: shown.length, total: view.people.length })}
+        summary={t('filters.showing', { shown: shown.length, total: people.length })}
         clear={{ label: t('filters.clear'), onClear: reset, visible: !isDefault }}
         sheet={{ activeCount: chips.length, resultCount: shown.length, chips, onRemoveChip: removeChip }}
       />
@@ -227,7 +256,7 @@ export function UsersBrowser({ title, projectSlug, locale, view }: { title: stri
       {shown.length === 0 ? (
         <EmptyState
           titleAs="p"
-          title={view.people.length ? t('filters.noMatch') : t('empty')}
+          title={people.length ? t('filters.noMatch') : t('empty')}
           action={!isDefault ? <Button onClick={reset}>{t('filters.clear')}</Button> : undefined}
         />
       ) : (
@@ -283,16 +312,6 @@ export function UsersBrowser({ title, projectSlug, locale, view }: { title: stri
       />
 
       <ConfirmDialog
-        open={confirmArchive !== null}
-        title={t('archiveConfirm.title', { name: confirmArchive ? displayName(confirmArchive) : '' })}
-        body={t('archiveConfirm.body')}
-        confirmLabel={t('archive')}
-        busy={busy}
-        onConfirm={() => confirmArchive && void archive(confirmArchive)}
-        onCancel={() => setConfirmArchive(null)}
-      />
-
-      <ConfirmDialog
         open={confirmOwner !== null}
         title={t('makeOwnerConfirm.title', { name: confirmOwner ? displayName(confirmOwner) : '' })}
         body={t('makeOwnerConfirm.body', { name: confirmOwner ? displayName(confirmOwner) : '' })}
@@ -311,7 +330,7 @@ export function UsersBrowser({ title, projectSlug, locale, view }: { title: stri
         ) : null}
       </ConfirmDialog>
 
-      <Toast message={toast?.message ?? null} tone={toast?.tone} />
+      <Toast message={toast?.message ?? null} tone={toast?.tone} action={toast?.undo ? t('undo') : undefined} onAction={toast?.undo} />
     </div>
   )
 }

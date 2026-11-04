@@ -1,0 +1,66 @@
+{
+  "app": {
+    "ui": {
+      "personPicker": {
+        "duplicate": "{name} is already in your People",
+        "duplicateArchived": "{name} is already in your People, but archived",
+        "useThis": "Use this person",
+        "createAnyway": "Create anyway"
+      }
+    }
+  },
+  "clientDashboard": {
+    "taxonomy": {
+      "picker": {
+        "modules": {
+          "people": {
+            "category": {
+              "empty": "No groups yet. Type a name to add the first one.",
+              "placeholderAdd": "Search or add a group",
+              "addNamed": "Add group “{name}”"
+            }
+          }
+        }
+      }
+    },
+    "persons": {
+      "newPerson": {
+        "open": "Open",
+        "duplicate": "{name} is already in your People",
+        "duplicateArchived": "{name} is already in your People, but archived",
+        "createAnyway": "Create anyway"
+      },
+      "editor": {
+        "menu": {
+          "viewOnWebsite": "View on website"
+        },
+        "profile": {
+          "focal": {
+            "toggle": "Set focus point",
+            "avatar": "Round avatar",
+            "title": "Focus point",
+            "helper": "Tap or drag to the most important part of the photo. Every crop keeps it in view, on every page that uses this photo.",
+            "readOnly": "The focus point of this photo.",
+            "keys": "Use the arrow keys to move it; hold Shift for bigger steps.",
+            "label": "Focus point of the photo",
+            "valueText": "{x}% from the left, {y}% from the top",
+            "previews": "How it will be cropped",
+            "preview": {
+              "wide": "Wide",
+              "card": "Card",
+              "square": "Square",
+              "tall": "Phone"
+            },
+            "status": {
+              "saving": "Saving…",
+              "saved": "Saved",
+              "failed": "Couldn’t save. Try again."
+            },
+            "scope": "The focus point is saved on the photo in your Media library, so it applies everywhere this photo is used.",
+            "loadFailed": "We couldn’t load the photo. Please try again."
+          }
+        }
+      }
+    }
+  }
+}

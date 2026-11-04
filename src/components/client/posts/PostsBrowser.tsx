@@ -229,6 +229,53 @@ export function PostsBrowser({
     }
   }
 
+  /**
+   * Archive and Unpublish go behind "Archived · Undo": the row changes at once
+   * (a pending overlay), the server call waits, Undo drops the overlay.
+   */
+  const lifecycleWithUndo = (op: 'archive' | 'offline', ids: string[]) => {
+    if (!projectSlug || !ids.length) return
+    const nowIso = new Date().toISOString()
+    const pending = new Map<string, LiveOverlay>()
+    for (const id of ids) {
+      const p = byId.get(id)
+      if (p?.hasLive) {
+        pending.set(id, {
+          previousRev: p.liveRev ?? '',
+          live: { rev: `pending:${id}`, publishedAt: p.publishedAt, expiresAt: nowIso, archivedAt: op === 'archive' ? nowIso : (p.archivedAt ?? null) },
+        })
+      }
+    }
+    setOverlays((m) => new Map([...m, ...pending]))
+    clearSelection()
+    schedule({
+      id: `${op}:${ids.join(',')}`,
+      message: tc(`batch.done.${op}`, { count: ids.length }),
+      undoLabel: tc('undo'),
+      failMessage: tc('batch.failedAll'),
+      restore: () =>
+        setOverlays((m) => {
+          const n = new Map(m)
+          pending.forEach((_, id) => n.delete(id))
+          return n
+        }),
+      run: async () => {
+        const r = await batchPostsAction({ projectSlug, ids: ids.slice(0, 100), op })
+        if (!r.ok) return false
+        setOverlays((m) => {
+          const n = new Map(m)
+          for (const x of r.results) {
+            if (x.ok && 'live' in x && x.live && x.previousRev) n.set(x.id, { previousRev: x.previousRev, live: { ...x.live, archivedAt: x.live.archivedAt ?? null } })
+            else if (pending.has(x.id)) n.delete(x.id)
+          }
+          return n
+        })
+        if (r.results.some((x) => x.ok)) appRouter.refresh()
+        return r.results.every((x) => x.ok)
+      },
+    })
+  }
+
   /** One post's star, after the popover's confirm button. */
   const setFeatured = async (post: BrowserPost, next: boolean): Promise<boolean> => {
     if (!projectSlug) return false
@@ -313,10 +360,10 @@ export function PostsBrowser({
     if (projectSlug) items.push({ key: 'activity', label: tc('activity'), onSelect: () => setSheet({ kind: 'activity', id: post._id }) })
     // ADR-032 slice 6: the shared Archive · Restore · Delete pattern.
     const run: Record<LifecycleAction, () => void> = {
-      unpublish: () => void runBatch('offline', [post._id]),
+      unpublish: () => lifecycleWithUndo('offline', [post._id]),
       publishAgain: () => void runBatch('online', [post._id]),
       setUnpublishDate: () => setSheet({ kind: 'endDate', ids: [post._id] }),
-      archive: () => void runBatch('archive', [post._id]),
+      archive: () => lifecycleWithUndo('archive', [post._id]),
       restore: () => void runBatch('restore', [post._id]),
       delete: () => askDelete([post._id]),
       deletePermanently: () => askDelete([post._id]),
@@ -432,7 +479,7 @@ export function PostsBrowser({
       {canEdit && selectedIds.length > 0 ? (
         <SelectionBar label={t('select.toolbar')} count={tc('selected', { count: selectedIds.length })}>
           {/* Phones: the main three + More */}
-          <BarButton className="md:hidden" disabled={none} onPress={() => void runBatch('offline', selectedIds)} icon={ICONS.offline}>
+          <BarButton className="md:hidden" disabled={none} onPress={() => lifecycleWithUndo('offline', selectedIds)} icon={ICONS.offline}>
             {tc('bar.offline')}
           </BarButton>
           <BarButton className="md:hidden" disabled={none} onPress={() => setSheet({ kind: 'endDate', ids: selectedIds })} icon={ICONS.calendar}>
@@ -450,7 +497,7 @@ export function PostsBrowser({
               {tc('more.online')}
             </BarButton>
           ) : (
-            <BarButton className="hidden md:flex" disabled={none} onPress={() => void runBatch('offline', selectedIds)} icon={ICONS.offline}>
+            <BarButton className="hidden md:flex" disabled={none} onPress={() => lifecycleWithUndo('offline', selectedIds)} icon={ICONS.offline}>
               {tc('bar.offline')}
             </BarButton>
           )}
@@ -476,7 +523,7 @@ export function PostsBrowser({
               {tc('bar.restore')}
             </BarButton>
           ) : liveSelected.length > 0 ? (
-            <BarButton className="hidden md:flex" disabled={none} onPress={() => void runBatch('archive', selectedIds)} icon={ICONS.archiveAction}>
+            <BarButton className="hidden md:flex" disabled={none} onPress={() => lifecycleWithUndo('archive', selectedIds)} icon={ICONS.archiveAction}>
               {tc('bar.archive')}
             </BarButton>
           ) : null}
@@ -498,7 +545,7 @@ export function PostsBrowser({
             {tc('more.restore')}
           </SheetItem>
         ) : liveSelected.length > 0 ? (
-          <SheetItem disabled={none} onPress={() => { setSheet(null); void runBatch('archive', selectedIds) }}>
+          <SheetItem disabled={none} onPress={() => { setSheet(null); lifecycleWithUndo('archive', selectedIds) }}>
             {tc('more.archive')}
           </SheetItem>
         ) : null}

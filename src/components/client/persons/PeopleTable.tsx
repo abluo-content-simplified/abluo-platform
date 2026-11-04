@@ -4,11 +4,11 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/app/ui/Button'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { DragGrip } from '@/components/app/ui/DragGrip'
-import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
+import { DataTable, type DataTableColumn, type DataTableSelection } from '@/components/app/ui/list/DataTable'
 import { CellDate, CellPill, CellText } from '@/components/app/ui/list/cells'
 import { dropEdgeClass, type usePointerDrag } from '@/components/app/ui/use-pointer-drag'
 import type { PersonSort, PersonSortColumn } from '@/lib/client/persons-filter'
-import { GroupPills, PersonAvatar, PersonStateBadge, usageLine, VisibilityText, type PersonRow } from './person-bits'
+import { GroupPills, MissingPills, PersonAvatar, PersonStateBadge, usageLine, VisibilityText, type PersonRow } from './person-bits'
 
 export type PersonReorder = {
   drag: ReturnType<typeof usePointerDrag>
@@ -25,7 +25,6 @@ export type PersonReorder = {
  */
 export function PeopleTable({
   rows,
-  canWrite,
   sort,
   onSort,
   onOpen,
@@ -33,9 +32,9 @@ export function PeopleTable({
   menuFor,
   groupLabel,
   reorder,
+  selection,
 }: {
   rows: PersonRow[]
-  canWrite: boolean
   sort: PersonSort
   onSort: (column: PersonSortColumn) => void
   onOpen: (row: PersonRow, newTab: boolean) => void
@@ -44,6 +43,8 @@ export function PeopleTable({
   groupLabel: (key: string) => string
   /** Present only while dragging makes sense (no search or filter, site order). */
   reorder?: PersonReorder
+  /** Square checkboxes + select all (bulk bar); absent when the person can't change anything. */
+  selection?: DataTableSelection<PersonRow>
 }) {
   const t = useTranslations('clientDashboard.persons.list')
   const tu = useTranslations('clientDashboard.persons.usedIn')
@@ -114,9 +115,12 @@ export function PeopleTable({
       header: t('columns.status'),
       width: 'w-48',
       render: (p) => (
-        <CellPill>
-          <PersonStateBadge state={p.state} />
-        </CellPill>
+        <div className="flex flex-col items-start gap-1.5">
+          <CellPill>
+            <PersonStateBadge state={p.state} />
+          </CellPill>
+          <MissingPills missing={p.missing} state={p.state} />
+        </div>
       ),
     },
     { key: 'updated', header: t('columns.updated'), sortable: true, width: 'w-28', render: (p) => <CellDate iso={p.updatedAt} /> },
@@ -124,7 +128,7 @@ export function PeopleTable({
       key: 'actions',
       header: <span className="sr-only">{t('columns.actions')}</span>,
       width: 'w-12',
-      render: (p) => (canWrite || p.usageCount ? <CardMenu variant="cell" label={t('menu', { name: p.name })} items={menuFor(p)} /> : null),
+      render: (p) => <CardMenu variant="cell" label={t('menu', { name: p.name })} items={menuFor(p)} />,
     },
   ]
 
@@ -136,6 +140,7 @@ export function PeopleTable({
       label={t('title')}
       sort={{ column: sort.column, dir: sort.dir, onSort: (key) => onSort(key as PersonSortColumn) }}
       rowHref={(p) => p.href}
+      selection={selection}
       onRowClick={onOpen}
       rowProps={
         reorder

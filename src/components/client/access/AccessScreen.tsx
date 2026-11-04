@@ -22,6 +22,8 @@ export type AccessRunner = {
   /** A change finished elsewhere (an upload, a create): toast + refresh. */
   done: (message: string) => void
   fail: (message: string) => void
+  /** "Archived · Undo": the change shows at once, the server call waits (use-undo). */
+  schedule: ReturnType<typeof useUndo>['schedule']
 }
 
 /**
@@ -49,7 +51,7 @@ export function AccessScreen({
 }) {
   const t = useTranslations('clientDashboard.access')
   const router = useRouter()
-  const { toast, show } = useUndo()
+  const { toast, show, schedule } = useUndo()
   const [busy, setBusy] = useState(false)
   const [creating, setCreating] = useState(false)
   const [confirmSignOut, setConfirmSignOut] = useState(false)
@@ -68,6 +70,7 @@ export function AccessScreen({
       busy,
       done,
       fail,
+      schedule,
       async run(action, message, opts) {
         if (busy) return 'failed'
         setBusy(true)
@@ -87,7 +90,7 @@ export function AccessScreen({
         }
       },
     }),
-    [busy, done, fail, t]
+    [busy, done, fail, schedule, t]
   )
 
   const readOnlyNotice = supportVisit ? (
@@ -164,7 +167,7 @@ export function AccessScreen({
         />
       ) : null}
 
-      <Toast message={toast?.message ?? null} tone={toast?.tone} />
+      <Toast message={toast?.message ?? null} tone={toast?.tone} action={toast?.undo ? t('undo') : undefined} onAction={toast?.undo} />
     </div>
   )
 }

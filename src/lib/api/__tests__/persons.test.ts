@@ -143,7 +143,7 @@ function fake(opts: Opts = {}, priv = fakePrivate(), sessions: Map<string, numbe
     if (q === PERSON_USAGE_QUERY) return (opts.usage ?? []).filter((u) => u.refs.some((r) => (p.ids as string[]).includes(r)))
     if (q === PERSON_DELETE_REFERRERS) return opts.deleteRefs ?? []
     if (q.includes('"n": count(*[_type == "person"')) return { n: 3, max: 40 }
-    if (q.includes('_type == "mediaAsset" && projectSlug == $projectSlug][0]._id')) return opts.mediaOk ? p.id : null
+    if (q.includes('_type == "mediaAsset" && projectSlug == $projectSlug && defined(image.asset)][0]._id')) return opts.mediaOk ? p.id : null
     if (q.includes('_type == "mediaAsset" && projectSlug == $projectSlug][0].image.asset->url')) return 'https://cdn/x.jpg'
     if (q.includes('_type == "taxonomyTerm"')) return (p.keys as string[]).filter((k) => (opts.terms ?? []).includes(k))
     if (q.includes('_id in $ids && _type in $types')) return (p.ids as string[]).filter((id) => (opts.linkTargets ?? []).includes(id))

@@ -16,12 +16,19 @@ function search(query: string): Promise<PersonPickerPerson[]> {
   return Promise.resolve(PEOPLE.filter((p) => !q || p.name.toLowerCase().includes(q)))
 }
 
+/** Fake duplicate check: the same name, either order, ignoring case and accents. */
+const fold = (v: string) => v.normalize('NFKD').replace(/\p{M}+/gu, '').toLowerCase().split(/\s+/).filter(Boolean).sort().join(' ')
+function findDuplicates({ firstName, lastName }: { firstName: string; lastName: string }): Promise<PersonPickerPerson[]> {
+  const typed = fold(`${firstName} ${lastName}`)
+  return Promise.resolve(typed ? PEOPLE.filter((p) => fold(p.name) === typed) : [])
+}
+
 export default function PersonPickerDemo() {
   const [many, setMany] = useState<PersonPickerPerson[]>([PEOPLE[0], PEOPLE[1]])
   const [one, setOne] = useState<PersonPickerPerson[]>([])
   return (
     <DemoStack>
-      <DemoBlock title="Several people, first is main" note="primaryLabel marks the first; drag to reorder.">
+      <DemoBlock title="Several people, first is main" note="primaryLabel marks the first; drag to reorder. In Add new person, type “Rossi Anna”: findDuplicates offers Use this person or Create anyway.">
         <div className="w-full max-w-md">
           <PersonPicker
             label="Team"
@@ -29,6 +36,7 @@ export default function PersonPickerDemo() {
             onChange={setMany}
             search={search}
             primaryLabel="Main"
+            findDuplicates={findDuplicates}
             onCreate={({ firstName, lastName }) =>
               Promise.resolve({ id: `new-${firstName}-${lastName}`, name: `${firstName} ${lastName}`.trim() })
             }

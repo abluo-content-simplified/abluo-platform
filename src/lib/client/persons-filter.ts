@@ -18,6 +18,8 @@ import { normalizeSearch } from './posts-filter'
 
 export type PersonListState = 'draft' | 'published' | 'changes' | 'archived'
 export type PersonVisibilityFilter = 'all' | 'off' | 'listed' | 'page'
+/** 'photo' | 'shortBio' | 'lang:<code>' (a site language still missing a title or short bio), or 'all'. */
+export type PersonMissingFilter = string
 export type PersonSortColumn = 'order' | 'name' | 'updated'
 export type PersonSort = { column: PersonSortColumn; dir: 'asc' | 'desc' }
 
@@ -33,6 +35,8 @@ export type FilterablePerson = {
   visibility: 'off' | 'listed' | 'page'
   /** ISO */
   updatedAt: string
+  /** What is missing (server-built); absent = nothing to flag. */
+  missing?: { photo: boolean; shortBio: boolean; languages: string[] }
 }
 
 export type PersonFilters = {
@@ -41,6 +45,8 @@ export type PersonFilters = {
   /** A group key, or 'all'. */
   group: string
   visibility: PersonVisibilityFilter
+  /** 'all', 'photo', 'shortBio' or 'lang:<code>'. */
+  missing: PersonMissingFilter
   sort: PersonSort
 }
 
@@ -49,6 +55,7 @@ export const DEFAULT_PERSON_FILTERS: PersonFilters = {
   status: 'all',
   group: 'all',
   visibility: 'all',
+  missing: 'all',
   sort: { column: 'order', dir: 'asc' },
 }
 
@@ -67,10 +74,29 @@ export function matchesPersonStatus(state: PersonListState, filter: PersonFilter
   return filter === 'all' ? state !== 'archived' : state === filter
 }
 
+const MISSING_FILTER = /^(photo|shortBio|lang:[a-z]{2,3})$/
+
+/** "Missing…": 'all' passes everyone; otherwise only people lacking that thing (anonymised people lack nothing). */
+export function matchesPersonMissing(p: Pick<FilterablePerson, 'missing'>, filter: PersonMissingFilter): boolean {
+  if (filter === 'all') return true
+  const m = p.missing
+  if (!m) return false
+  if (filter === 'photo') return m.photo
+  if (filter === 'shortBio') return m.shortBio
+  if (filter.startsWith('lang:')) return m.languages.includes(filter.slice(5))
+  return true
+}
+
+/** Anything that is not a known "Missing…" value is 'all'. */
+export function cleanMissingFilter(value: string | null | undefined): PersonMissingFilter {
+  return value && MISSING_FILTER.test(value) ? value : 'all'
+}
+
 function matchesAllButStatus(p: FilterablePerson, f: PersonFilters, q: string): boolean {
   if (q && !normalizeSearch(`${p.name} ${p.searchText}`).includes(q)) return false
   if (f.group !== 'all' && !p.groups.includes(f.group)) return false
   if (f.visibility !== 'all' && p.visibility !== f.visibility) return false
+  if (!matchesPersonMissing(p, f.missing)) return false
   return true
 }
 
@@ -116,6 +142,7 @@ export function parsePersonFilters(params: URLSearchParams): PersonFilters {
     status: (PERSON_STATES as readonly string[]).includes(status) ? (status as PersonListState) : 'all',
     group: (params.get('group') ?? 'all').slice(0, 80) || 'all',
     visibility: VISIBILITIES.includes(visibility) ? (visibility as PersonVisibilityFilter) : 'all',
+    missing: cleanMissingFilter(params.get('missing')),
     sort: {
       column: sortColumn,
       dir: dir === 'asc' || dir === 'desc' ? dir : sortColumn === 'updated' ? 'desc' : 'asc',
@@ -131,6 +158,7 @@ export function personFiltersToParams(f: PersonFilters): URLSearchParams {
   if (f.status !== 'all') p.set('status', f.status)
   if (f.group !== 'all') p.set('group', f.group)
   if (f.visibility !== 'all') p.set('visibility', f.visibility)
+  if (f.missing !== 'all') p.set('missing', f.missing)
   if (f.sort.column !== d.sort.column || f.sort.dir !== d.sort.dir) {
     p.set('sort', f.sort.column)
     p.set('dir', f.sort.dir)
@@ -145,7 +173,7 @@ export function isDefaultPersonFilters(f: PersonFilters): boolean {
 
 /** Narrowing filters beyond the defaults (search and sort excluded) — the phone sheet's badge. */
 export function activePersonFilterCount(f: PersonFilters): number {
-  return (f.status !== 'all' ? 1 : 0) + (f.group !== 'all' ? 1 : 0) + (f.visibility !== 'all' ? 1 : 0)
+  return (f.status !== 'all' ? 1 : 0) + (f.group !== 'all' ? 1 : 0) + (f.visibility !== 'all' ? 1 : 0) + (f.missing !== 'all' ? 1 : 0)
 }
 
 /**
@@ -155,5 +183,37 @@ export function activePersonFilterCount(f: PersonFilters): number {
  * their place), sorted by "order" ascending.
  */
 export function canReorderPersons(f: PersonFilters): boolean {
-  return f.q.trim() === '' && f.status === 'all' && f.group === 'all' && f.visibility === 'all' && f.sort.column === 'order' && f.sort.dir === 'asc'
+  return f.q.trim() === '' && f.status === 'all' && f.group === 'all' && f.visibility === 'all' && f.missing === 'all' && f.sort.column === 'order' && f.sort.dir === 'asc'
+}
+
+export type PersonBulkAction = 'addGroup' | 'removeGroup' | 'archive' | 'show' | 'hide'
+
+/**
+ * Which of the selected people a bulk action will really change — the same
+ * rules as `bulkUpdatePersons` on the server, so the list can show the change
+ * at once (and offer Undo) before the server runs: anonymised and archived
+ * people are skipped; archive needs a published person; show only touches
+ * hidden people, hide everyone not hidden; groups only where it changes.
+ */
+export function bulkTargets<T extends FilterablePerson & { isPublished?: boolean; anonymised?: boolean }>(
+  rows: readonly T[],
+  op: PersonBulkAction,
+  group?: string
+): { targets: T[]; skipped: number } {
+  const targets = rows.filter((p) => {
+    if (p.anonymised || p.state === 'archived') return false
+    switch (op) {
+      case 'archive':
+        return Boolean(p.isPublished)
+      case 'show':
+        return p.visibility === 'off'
+      case 'hide':
+        return p.visibility !== 'off'
+      case 'addGroup':
+        return Boolean(group) && !p.groups.includes(group!)
+      case 'removeGroup':
+        return Boolean(group) && p.groups.includes(group!)
+    }
+  })
+  return { targets, skipped: rows.length - targets.length }
 }

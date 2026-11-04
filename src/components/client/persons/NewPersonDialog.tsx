@@ -1,11 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { createPersonAction } from '@/app/[locale]/(client)/[tenant]/people/actions'
+import { findPossibleDuplicatesAction } from '@/app/[locale]/(client)/[tenant]/people/editor-actions'
+import type { PossibleDuplicate } from '@/lib/modules/people/duplicates'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
-import { Button } from '@/components/app/ui/Button'
+import { Button, ButtonLink } from '@/components/app/ui/Button'
+import { Notice } from '@/components/app/ui/Notice'
 import { Field } from '@/components/app/ui/Field'
 import { TextInput } from '@/components/app/ui/TextInput'
 import { PERSON_UI_LIMITS } from './person-bits'
@@ -33,6 +36,10 @@ export function NewPersonDialog({
   const [last, setLast] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [duplicates, setDuplicates] = useState<PossibleDuplicate[]>([])
+  /** The name the person chose to create anyway: no notice for it again. */
+  const [allowed, setAllowed] = useState('')
+  const latest = useRef(0)
 
   useEffect(() => {
     if (!open) return
@@ -41,17 +48,46 @@ export function NewPersonDialog({
     setFirst('')
     setLast('')
     setError(null)
+    setDuplicates([])
+    setAllowed('')
   }, [open])
 
   const firstName = first.trim()
   const lastName = last.trim()
   const ready = Boolean(firstName)
+  const nameKey = `${firstName}|${lastName}`
+  const showDuplicates = ready && allowed !== nameKey && duplicates.length > 0
 
-  async function create() {
+  // "Anna Rossi is already in your People": looked up while the name is typed (a short pause).
+  useEffect(() => {
+    if (!open || !firstName) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- nothing to compare yet
+      setDuplicates([])
+      return
+    }
+    const n = ++latest.current
+    const id = setTimeout(() => {
+      findPossibleDuplicatesAction({ projectSlug, firstName, lastName })
+        .then((r) => n === latest.current && setDuplicates(r.ok ? r.duplicates : []))
+        .catch(() => n === latest.current && setDuplicates([]))
+    }, 400)
+    return () => clearTimeout(id)
+  }, [open, projectSlug, firstName, lastName])
+
+  async function create(anyway = false) {
     if (!ready || busy) return
     setBusy(true)
     setError(null)
     try {
+      if (!anyway && allowed !== nameKey) {
+        // The pause may not have elapsed yet: ask once more before making a duplicate.
+        const found = await findPossibleDuplicatesAction({ projectSlug, firstName, lastName }).catch(() => null)
+        if (found?.ok && found.duplicates.length) {
+          setDuplicates(found.duplicates)
+          return
+        }
+      }
+      if (anyway) setAllowed(nameKey)
       const r = await createPersonAction({ projectSlug, firstName, lastName })
       if (!r.ok) {
         setError(r.error === 'forbidden' ? t('errors.forbidden') : r.error === 'too_large' ? t('errors.tooMany') : r.error === 'missing_name' ? t('errors.missingName') : t('errors.failed'))
@@ -109,13 +145,37 @@ export function NewPersonDialog({
             />
           )}
         </Field>
+        {showDuplicates ? (
+          <div className="space-y-2">
+            {duplicates.slice(0, 3).map((d) => (
+              <Notice
+                key={d.id}
+                tone="info"
+                layout="row"
+                action={
+                  <ButtonLink href={`/${projectSlug}/people/${d.id}`} onClick={onClose}>
+                    {t('open')}
+                  </ButtonLink>
+                }
+              >
+                {t(d.archived ? 'duplicateArchived' : 'duplicate', { name: d.name })}
+              </Notice>
+            ))}
+          </div>
+        ) : null}
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="quiet" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button variant="primary" type="submit" disabled={!ready || busy}>
-            {busy ? t('creating') : t('create')}
-          </Button>
+          {showDuplicates ? (
+            <Button onClick={() => void create(true)} disabled={busy}>
+              {busy ? t('creating') : t('createAnyway')}
+            </Button>
+          ) : (
+            <Button variant="primary" type="submit" disabled={!ready || busy}>
+              {busy ? t('creating') : t('create')}
+            </Button>
+          )}
         </div>
       </form>
     </BottomSheet>

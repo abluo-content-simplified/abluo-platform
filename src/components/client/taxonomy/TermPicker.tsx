@@ -9,7 +9,7 @@ import { FieldError } from '@/components/app/ui/FieldLabel'
 import { ToggleChips } from '@/components/app/ui/ToggleChips'
 import { createTaxonomyTermAction } from '@/app/[locale]/(client)/[tenant]/taxonomy/actions'
 import { createCatalogueTermInlineAction } from '@/app/[locale]/(client)/[tenant]/catalogue/setup/taxonomy-actions'
-import { catalogueErrorAlias, errorKey } from './taxonomy-view'
+import { catalogueErrorAlias, errorKey, kindKey } from './taxonomy-view'
 import {
   canOfferCreate,
   filterTerms,
@@ -70,6 +70,15 @@ export function TermPicker({
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const addable = canAdd && !disabled
+  // A module may word its terms its own way (People: "Groups") — `modules.<module>.<kind>.<key>` and
+  // `picker.modules.<module>.<kind>.<key>` — otherwise the shared category/tag wording.
+  // `t.has` is optional so translators without it (test doubles, older callers) fall back to the shared wording.
+  const has = (k: string) => typeof (t as { has?: unknown }).has === 'function' && t.has(k as 'category.tab')
+  const kt = (key: string) => t(kindKey(has, module, kind, key) as 'category.tab')
+  const pt = (key: 'empty' | 'placeholderAdd' | 'addNamed', values?: Record<string, string>) => {
+    const own = `picker.modules.${module}.${kind}.${key}`
+    return t((has(own) ? own : `picker.${kind}.${key}`) as 'picker.noMatch', values)
+  }
 
   // The latest selection, for an add that finishes after other clicks.
   const valueRef = useRef(value)
@@ -118,7 +127,7 @@ export function TermPicker({
       {options.length ? (
         <ToggleChips label={label} options={options} value={value} onChange={onChange} />
       ) : (
-        <p className="text-[0.9375rem] text-muted-foreground">{text ? t('picker.noMatch') : addable ? t(`picker.${kind}.empty`) : t(`${kind}.emptyTitle`)}</p>
+        <p className="text-[0.9375rem] text-muted-foreground">{text ? t('picker.noMatch') : addable ? pt('empty') : kt('emptyTitle')}</p>
       )}
 
       {showSearch ? (
@@ -141,8 +150,8 @@ export function TermPicker({
                 submit()
               }
             }}
-            placeholder={t(addable ? `picker.${kind}.placeholderAdd` : 'picker.placeholderSearch')}
-            aria-label={t(addable ? `picker.${kind}.placeholderAdd` : 'picker.placeholderSearch')}
+            placeholder={addable ? pt('placeholderAdd') : t('picker.placeholderSearch')}
+            aria-label={addable ? pt('placeholderAdd') : t('picker.placeholderSearch')}
             className="flex-1 basis-56"
           />
           {addable ? (
@@ -150,7 +159,7 @@ export function TermPicker({
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M12 5v14M5 12h14" />
               </svg>
-              <span className="truncate">{busy ? t('adding') : offer ? t(`picker.${kind}.addNamed`, { name: text }) : t(`${kind}.add`)}</span>
+              <span className="truncate">{busy ? t('adding') : offer ? pt('addNamed', { name: text }) : kt('add')}</span>
             </Button>
           ) : null}
         </div>

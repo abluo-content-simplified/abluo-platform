@@ -1,0 +1,66 @@
+{
+  "app": {
+    "ui": {
+      "personPicker": {
+        "duplicate": "{name} ist schon in deinen Personen",
+        "duplicateArchived": "{name} ist schon in deinen Personen, aber archiviert",
+        "useThis": "Diese Person verwenden",
+        "createAnyway": "Trotzdem anlegen"
+      }
+    }
+  },
+  "clientDashboard": {
+    "taxonomy": {
+      "picker": {
+        "modules": {
+          "people": {
+            "category": {
+              "empty": "Noch keine Gruppen. Tippe einen Namen, um die erste anzulegen.",
+              "placeholderAdd": "Gruppe suchen oder hinzufügen",
+              "addNamed": "Gruppe „{name}“ hinzufügen"
+            }
+          }
+        }
+      }
+    },
+    "persons": {
+      "newPerson": {
+        "open": "Öffnen",
+        "duplicate": "{name} ist schon in deinen Personen",
+        "duplicateArchived": "{name} ist schon in deinen Personen, aber archiviert",
+        "createAnyway": "Trotzdem anlegen"
+      },
+      "editor": {
+        "menu": {
+          "viewOnWebsite": "Auf der Website ansehen"
+        },
+        "profile": {
+          "focal": {
+            "toggle": "Fokuspunkt festlegen",
+            "avatar": "Runder Avatar",
+            "title": "Fokuspunkt",
+            "helper": "Tippe oder ziehe auf den wichtigsten Teil des Fotos. Jeder Zuschnitt behält ihn im Bild, auf jeder Seite, die dieses Foto verwendet.",
+            "readOnly": "Der Fokuspunkt dieses Fotos.",
+            "keys": "Mit den Pfeiltasten verschieben; mit Umschalt in größeren Schritten.",
+            "label": "Fokuspunkt des Fotos",
+            "valueText": "{x} % von links, {y} % von oben",
+            "previews": "So wird zugeschnitten",
+            "preview": {
+              "wide": "Breit",
+              "card": "Karte",
+              "square": "Quadrat",
+              "tall": "Handy"
+            },
+            "status": {
+              "saving": "Speichern…",
+              "saved": "Gespeichert",
+              "failed": "Speichern nicht möglich. Versuch es noch einmal."
+            },
+            "scope": "Der Fokuspunkt wird am Foto in deiner Mediathek gespeichert und gilt überall, wo dieses Foto verwendet wird.",
+            "loadFailed": "Wir konnten das Foto nicht laden. Bitte versuche es noch einmal."
+          }
+        }
+      }
+    }
+  }
+}

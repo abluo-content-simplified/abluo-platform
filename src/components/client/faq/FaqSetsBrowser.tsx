@@ -155,21 +155,47 @@ export function FaqSetsBrowser({
     }
   }
 
-  async function lifecycle(s: FaqRow, op: 'archive' | 'restore') {
+  async function restore(s: FaqRow) {
     if (busy) return
     setBusy(true)
     try {
-      const r = await faqSetLifecycleAction({ projectSlug, id: s.id, op })
+      const r = await faqSetLifecycleAction({ projectSlug, id: s.id, op: 'restore' })
       if (!r.ok) return show({ message: errorText(r.error, r.detail?.usedIn), tone: 'error' }, 9000)
-      const next: FaqSetState = op === 'archive' ? 'archived' : s.isPublished ? (s.hasDraft ? 'changes' : 'published') : 'draft'
+      const next: FaqSetState = s.isPublished ? (s.hasDraft ? 'changes' : 'published') : 'draft'
       setOverlay((o) => ({ ...o, [s.id]: next }))
-      show({ message: op === 'archive' ? t('done.archived', { name: s.name }) : t('done.restored', { name: s.name }), tone: 'status' })
+      show({ message: t('done.restored', { name: s.name }), tone: 'status' })
       appRouter.refresh()
     } catch {
       show({ message: te('failed'), tone: 'error' }, 7000)
     } finally {
       setBusy(false)
     }
+  }
+
+  /** "Archived · Undo": the card changes at once, the server call waits. A refusal (still in use) puts it back and says where. */
+  function archive(s: FaqRow) {
+    setOverlay((o) => ({ ...o, [s.id]: 'archived' }))
+    let failure = te('failed')
+    schedule({
+      id: `archive:${s.id}`,
+      message: t('done.archived', { name: s.name }),
+      undoLabel: t('undo'),
+      get failMessage() {
+        return failure
+      },
+      restore: () =>
+        setOverlay((o) => {
+          const n = { ...o }
+          delete n[s.id]
+          return n
+        }),
+      run: async () => {
+        const r = await faqSetLifecycleAction({ projectSlug, id: s.id, op: 'archive' })
+        if (!r.ok) failure = errorText(r.error, r.detail?.usedIn)
+        else appRouter.refresh()
+        return r.ok
+      },
+    })
   }
 
   /** A draft that was never published goes behind "Deleted · Undo" (as Posts). */
@@ -219,10 +245,10 @@ export function FaqSetsBrowser({
     if (!canWrite) return items
     items.push({ key: 'duplicate', label: t('actions.duplicate'), onSelect: () => void duplicate(s) })
     if (s.state === 'archived') {
-      items.push({ key: 'restore', label: tl('actions.restore'), onSelect: () => void lifecycle(s, 'restore') })
+      items.push({ key: 'restore', label: tl('actions.restore'), onSelect: () => void restore(s) })
       if (canDelete) items.push({ key: 'deletePermanently', label: tl('actions.deletePermanently'), onSelect: () => setConfirmDelete(s), destructive: true, separated: true })
     } else if (s.isPublished) {
-      items.push({ key: 'archive', label: tl('actions.archive'), onSelect: () => void lifecycle(s, 'archive') })
+      items.push({ key: 'archive', label: tl('actions.archive'), onSelect: () => archive(s) })
     } else {
       items.push({ key: 'delete', label: tl('actions.delete'), onSelect: () => deleteDraft(s), destructive: true, separated: true })
     }

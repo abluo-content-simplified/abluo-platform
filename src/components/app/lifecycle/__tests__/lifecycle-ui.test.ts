@@ -121,6 +121,12 @@ describe('the list shows a lifecycle change at once', () => {
     expect(applyLiveOverlays([row('r1')], overlay, now)[0]).toMatchObject({ status: 'archived', liveRev: 'r2', archivedAt: '2026-10-15T09:00:00Z' })
   })
 
+  it('a pending change (Archived · Undo) shows at once on the current revision and is gone when dropped', () => {
+    const pending = new Map([['p1', { previousRev: 'r1', live: { rev: 'pending:p1', publishedAt: '2026-10-01T00:00:00Z', expiresAt: '2026-10-15T09:00:00Z', archivedAt: '2026-10-15T09:00:00Z' } }]])
+    expect(applyLiveOverlays([row('r1')], pending, now)[0].status).toBe('archived')
+    expect(applyLiveOverlays([row('r1')], new Map(), now)[0].status).toBe('published')
+  })
+
   it('once the list caught up — or the post changed elsewhere — the list wins and the overlay is dropped', () => {
     expect(applyLiveOverlays([row('r2', 'archived')], overlay, now)[0].status).toBe('archived')
     expect(applyLiveOverlays([row('r9', 'unpublished')], overlay, now)[0].status).toBe('unpublished')

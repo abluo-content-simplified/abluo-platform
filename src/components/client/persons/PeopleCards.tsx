@@ -8,12 +8,15 @@ import { CardGrid, CardGridItem, ContentCard } from '@/components/app/ui/list/Co
 import { LocalDate } from '@/components/app/ui/list/cells'
 import { ListRow } from '@/components/app/ui/list/ListRow'
 import { dropEdgeClass } from '@/components/app/ui/use-pointer-drag'
-import { GroupPills, PersonAvatar, PersonStateBadge, usageLine, VisibilityText, type PersonRow } from './person-bits'
+import { isShiftChange } from '@/components/app/ui/Checkbox'
+import type { DataTableSelection } from '@/components/app/ui/list/DataTable'
+import { GroupPills, MissingPills, PersonAvatar, PersonStateBadge, usageLine, VisibilityText, type PersonRow } from './person-bits'
 import type { PersonReorder } from './PeopleTable'
 
 type CardProps = {
   rows: PersonRow[]
-  canWrite: boolean
+  /** Square checkboxes (bulk bar); absent when the person can't change anything. */
+  selection?: DataTableSelection<PersonRow>
   onOpen: (row: PersonRow, newTab: boolean) => void
   onUsedIn: (row: PersonRow) => void
   menuFor: (row: PersonRow) => CardMenuItem[]
@@ -51,7 +54,7 @@ function UsageLine({ row, onUsedIn }: { row: PersonRow; onUsedIn: (row: PersonRo
  * people — the media area is the photo (or initials), then name, job title,
  * groups, status, "On the website", usage and the last update. ⋯ top-right.
  */
-export function PeopleCardsGrid({ rows, canWrite, onOpen, onUsedIn, menuFor, groupLabel }: CardProps) {
+export function PeopleCardsGrid({ rows, selection, onOpen, onUsedIn, menuFor, groupLabel }: CardProps) {
   const t = useTranslations('clientDashboard.persons.list')
   return (
     <CardGrid label={t('title')}>
@@ -64,11 +67,13 @@ export function PeopleCardsGrid({ rows, canWrite, onOpen, onUsedIn, menuFor, gro
             subtitle={p.jobTitle || undefined}
             href={p.href}
             onOpen={(newTab) => onOpen(p, newTab)}
-            overlay={canWrite || p.usageCount ? <CardMenu variant="chip" label={t('menu', { name: p.name })} items={menuFor(p)} /> : null}
+            selection={selection ? { checked: selection.selected.has(p.id), onChange: (checked, shift) => selection.onToggle(p.id, checked, shift), label: selection.rowLabel(p) } : undefined}
+            overlay={<CardMenu variant="chip" label={t('menu', { name: p.name })} items={menuFor(p)} />}
           >
             <span className="flex flex-wrap items-start gap-1.5">
               <PersonStateBadge state={p.state} />
             </span>
+            <MissingPills missing={p.missing} state={p.state} />
             <GroupPills groups={p.groups} label={groupLabel} />
             <p className="text-sm leading-5 text-muted-foreground">
               {t('columns.visibility')}: <VisibilityText visibility={p.visibility} />
@@ -91,7 +96,7 @@ export function PeopleCardsGrid({ rows, canWrite, onOpen, onUsedIn, menuFor, gro
  * whole list in the site order (`reorder`) each row has the drag grip (touch
  * drag, or the arrow keys).
  */
-export function PeoplePhoneList({ rows, canWrite, menuFor, groupLabel, reorder }: Pick<CardProps, 'rows' | 'canWrite' | 'menuFor' | 'groupLabel'> & { reorder?: PersonReorder }) {
+export function PeoplePhoneList({ rows, selection, menuFor, groupLabel, reorder }: Pick<CardProps, 'rows' | 'selection' | 'menuFor' | 'groupLabel'> & { reorder?: PersonReorder }) {
   const t = useTranslations('clientDashboard.persons.list')
   const tu = useTranslations('clientDashboard.persons.usedIn')
   return (
@@ -101,7 +106,8 @@ export function PeoplePhoneList({ rows, canWrite, menuFor, groupLabel, reorder }
           key={p.id}
             href={p.href}
             leading={<PersonAvatar name={p.name} src={p.photoUrl} size="md" muted={p.state === 'archived'} />}
-            menu={canWrite || p.usageCount ? { label: t('menu', { name: p.name }), items: menuFor(p) } : undefined}
+            select={selection ? { checked: selection.selected.has(p.id), label: selection.rowLabel(p), onChange: (checked, e) => selection.onToggle(p.id, checked, isShiftChange(e)) } : undefined}
+            menu={{ label: t('menu', { name: p.name }), items: menuFor(p) }}
             rowProps={reorder ? { ...reorder.drag.rowProps(p.id), className: `${dropEdgeClass(reorder.drag.edge(p.id))} ${reorder.drag.dragging === p.id ? 'opacity-50' : ''}` } : undefined}
             trailing={
               reorder ? (
@@ -119,6 +125,7 @@ export function PeoplePhoneList({ rows, canWrite, menuFor, groupLabel, reorder }
             <span className="flex flex-wrap items-start gap-1.5">
               <PersonStateBadge state={p.state} />
             </span>
+            <MissingPills missing={p.missing} state={p.state} />
             <GroupPills groups={p.groups} label={groupLabel} />
             <span className="text-sm leading-5 text-muted-foreground">
               <VisibilityText visibility={p.visibility} /> · {p.usageCount ? usageLine(tu, p.usage) : t('notUsed')}

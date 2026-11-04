@@ -210,3 +210,66 @@ Same pattern as `PostsBrowser.preview`. `locale` = language to preview (the edit
 - New: `src/lib/api/__tests__/person-translate.test.ts` (14), +6 in `persons.test.ts` (translationStatus), `src/components/client/persons/__tests__/person-activity-sheet.test.tsx` (2), `kindKey` in `taxonomy-view.test.ts` (+2), `people-groups-label.test.ts` (4; reads the g.* fragments until merged).
 - `npx tsc --noEmit` clean (apart from stale `.next/`).
 - vitest run file by file with `--maxWorkers=1`: see the report in the chat for the exact result; `module.test.ts` and `taxonomy/schema.test.ts` hit `ENOSPC` on this machine (heavy Sanity-schema import), not a failure of the code.
+
+## Handoff J — People list: completeness, bulk actions, row menu, Undo (2026-11-03)
+
+**Done, not committed.** Strings: `messages/j.{en,it,de}.json` (all under `clientDashboard.persons.list`: `previewFailed`, `actions.preview|activity`, `missing.*`, `filters.missing*|chip*`, `bulk.*`; informal it/de). Until merged, `message-keys.test` fails only for those keys.
+
+### Files
+- `src/lib/api/persons.ts`: `PersonListItem.missing` (`PersonMissing { photo, shortBio, languages[] }`), `personMissing()` (pure), `shortBio` added to `PERSON_LIST_QUERY`; new `bulkUpdatePersons(ctx, projectId, { ids, op, group? })`, `PERSON_BULK_OPS`, `PERSON_BULK_MAX` (100), `PERSON_BULK_QUERY`, `PersonBulkResult { changed, skipped[{id,reason}], failed[{id,code}] }`.
+- `people/actions.ts`: `bulkUpdatePersonsAction`. `people/page.tsx`: passes `languages={site.languages}`.
+- `src/lib/client/persons-filter.ts`: `missing` filter (`all | photo | shortBio | lang:<code>`, URL `?missing=`, counts as active filter, stops drag-reorder), `matchesPersonMissing`, `cleanMissingFilter`, `bulkTargets()` (same eligibility rules as the server, so the list can show the change before the call).
+- `PeopleBrowser/Table/Cards/Filters.tsx`, `person-bits.tsx` (`MissingPills`, `tag` icon, `PersonRow.missing`).
+- Tests: `src/lib/api/__tests__/persons-bulk.test.ts` (18: gates before I/O, bad input, cross-project, unknown group, skip rules, published+draft patching, partial failure, audit, completeness incl. `listPersons`), +`persons-filter.test.ts` (Missing, bulkTargets).
+
+### Behaviour and decisions
+1. **Completeness**: outline pills with the existing `bg-attention` dot (no new colour) in table (status cell), cards and phone rows: "No photo", "No short bio" (main language), "Missing DE, FR" (other site languages where the title or short bio exists in the main language but not there; nothing is asked to be translated that doesn't exist). Not shown for archived; the server sends nothing for anonymised. Filter "Missing" in the toolbar/phone sheet with chip.
+2. **Bulk semantics (decision)**: Groups add/remove and Show (off → `listed`) / Hide (→ `off`) are site-level settings, so they apply AT ONCE to the published person and to its draft (when there is one), exactly like `reorderPersons`; they never publish the draft's other edits; a never-published person changes in the draft only. Show leaves `listed`/`page` people alone (no downgrade of "Own page"). Archive = `runPersonLifecycle` per person (published people only, like the row menu; its own audit rows). Catalogue's bulk does one existing per-item operation per row — same idea.
+3. Permission: write for groups/show/hide, archive permission for archive, checked before any read. Every id must be a person of the grant's project, else `not_found` for the whole call before any write. Archived/anonymised/already-in-state/unpublished (archive) people are `skipped` with a reason (never an error); each person is its own revision-guarded transaction; one failure is reported in `failed` (opaque code) and doesn't stop the rest. Audit: refusals/failures per person via `audited`; success of a settings change records no lifecycle row (as editing an already published person doesn't).
+4. **List UI**: square checkboxes (table, cards + Select all, phone rows), shift-click range, SelectionBar (Groups sheet add/remove · Show · Hide · Archive · Clear), buttons disabled when nothing would change.
+5. **Row menu**: Edit · Preview (`mintPersonPreviewAction` + `personPreviewUrl`, main language) · Where it's used · Activity (`PersonActivitySheet`) · Archive/Restore · Anonymise · Delete. The menu is now present for read-only users too (Preview/Activity).
+6. **Undo**: single archive and every bulk op show at once and call the server after the `useUndo` delay ("Archived · Undo"); Undo cancels. A failure/partial failure puts the affected people back and says why. Restore stays immediate; Anonymise and permanent delete never have Undo.
+
+### Tests
+- `npx tsc --noEmit` clean (apart from stale `.next/` and F's migration test). vitest `--maxWorkers=1`: `src/lib/client` + `src/lib/api/__tests__/persons*.test.ts` (33 files, 496) green; `src/lab/__tests__` + `src/components/client/persons` (165) green, handmade baseline unchanged; `npm run lab:usage` ran.
+- Machine note: `/sessions` was at 100% (other sessions' folders); vitest only ran with `TMPDIR=/tmp NODE_DISABLE_COMPILE_CACHE=1`.
+
+### Open
+1. No component test for the bulk bar interactions (covered by the pure `bulkTargets` + service tests).
+2. Preview opens in the site's main language (no language picker in the list).
+3. While another Undo is pending, a second toast replaces the first; both still run (useUndo keeps one job per id).
+
+## Handoff L — "Done · Undo" everywhere it makes sense (2026-11-03)
+
+Audit: `docs/engineering/undo-audit-2026-11-03.md`.
+
+Changed (all use `useUndo().schedule`, same toast, existing wording):
+- `src/components/client/posts/PostsBrowser.tsx` — Archive and Unpublish (row menu, bulk bar, phone sheet) via `lifecycleWithUndo`, a pending `LiveOverlay`.
+- `src/components/client/faq/FaqSetsBrowser.tsx` — Archive (restore unchanged).
+- `src/components/client/documents/DocumentsBrowser.tsx` — Archive (row, bulk); confirm dialog removed; toast gets Undo.
+- `src/components/client/forms/SubmissionsBrowser.tsx` — status changes (handled / new / archived).
+- `src/components/client/access/AccessGroupsBrowser.tsx` + `AccessScreen.tsx` — group archive; `AccessRunner` gains `schedule`; confirm removed.
+- `src/components/client/users/UsersBrowser.tsx` — archive person, cancel invitation; rows leave at once; archive confirm removed.
+- `src/components/admin/backlog/BacklogBrowser.tsx` — delete item; confirm removed.
+- Test added: pending overlay case in `src/components/app/lifecycle/__tests__/lifecycle-ui.test.ts`.
+- Strings: `messages/l.{en,it,de}.json` (undo keys in submissions, documents, access, users, admin.backlog). Orchestrator must merge them; `message-keys.test.ts` fails until then (also for other agents' fragments).
+
+Tests: `npx tsc --noEmit` clean except pre-existing `src/lib/api/persons.ts` errors (People agent). vitest (maxWorkers=1) over `src/components`, `src/lib/client`, `src/lab`, `src/lib/i18n`: all pass except (a) `message-keys.test.ts` — unmerged fragments, (b) `documents-screen-ssr.test.tsx` "Add / edit form" cases, `t.has is not a function` in DocumentEditor, a file I did not touch (the test's `useTranslations` mock lacks `.has`). Lab handmade baseline unchanged; `npm run lab:usage` run (`src/lab/usage.generated.json` refreshed).
+Note: /sessions disk was full; run vitest with `TMPDIR=/tmp`.
+
+Open: unused confirm strings listed in the audit can be deleted after merge. Partial failure of a delayed bulk call restores the whole local change; the next refresh shows the truth.
+
+## Handoff K — person editor and create flows (2026-11-03)
+
+**Done, not committed.** Strings: `messages/k.{en,it,de}.json` (informal; merge with the others). Keys: `app.ui.personPicker.{duplicate,duplicateArchived,useThis,createAnyway}`, `clientDashboard.persons.newPerson.{open,duplicate,duplicateArchived,createAnyway}`, `clientDashboard.persons.editor.menu.viewOnWebsite`, `clientDashboard.persons.editor.profile.focal.*`, `clientDashboard.taxonomy.picker.modules.people.category.{empty,placeholderAdd,addNamed}` (the "Add group" wording; the rest of the Groups wording is already in `g.*`).
+
+1. **Duplicate warning.** Pure matcher `src/lib/modules/people/duplicates.ts` (case/accents/punctuation/whitespace folded, first+last swapped, one-name people only match one-name people, `displayName` also compared, anonymised never, archived yes, max 5). Server `findPossibleDuplicates(ctx, projectId, { firstName, lastName })` in new `src/lib/api/persons-duplicates.ts` (`people.person.read` before any I/O, bound to the grant's project, draft+published collapsed per person). Action `findPossibleDuplicatesAction` in new `people/editor-actions.ts`. `NewPersonDialog`: debounced (400 ms) + re-check on submit; a notice per match ("Anna Rossi is already in your People") with Open (link to the editor) and "Create anyway". `PersonPicker`: new optional injected `findDuplicates` prop (same behaviour, "Use this person" adds/selects the existing person); wired in `PersonPickerField`; Lab demo + rule text updated.
+2. **Groups inline.** Already worked through `TermPicker` + `createTaxonomyTermAction` (generic taxonomy service, `people.taxonomy.write`, same validation as Categories & Tags: default-language label, same-name returns the existing term, limits). K only gave it the Groups wording: `TermPicker` now resolves `picker.modules.<module>.<kind>.<key>` / `modules.<module>.<kind>.<key>` (via `kindKey`) before the category/tag wording. Catalogue path untouched.
+3. **Photo focus point.** New `PersonEditorPhotoFocus.tsx` (uses the existing `FocalPointPicker`). Read: new `getPersonPhotoFocal` (`persons-live.ts`, needs `media.library.manage`, asset must be a mediaAsset of the grant's project). Save: the Media screen's own `updateMediaPhotoAction` -> `updateGalleryPhoto(..., MEDIA_MANAGE_PERMISSION)` (hotspot on the asset, rev-guarded), so it holds everywhere the photo is used. Profile tab: "Set focus point" button (only with the Media permission, hint `canSetFocus` from `[id]/page.tsx`), the square thumbnail and a new round avatar preview both react live to the point; saved on release/blur and on leaving.
+4. **View on website.** Pure `src/lib/modules/people/live-url.ts` (`personLiveUrl(info, locale)`: published, not archived/anonymised, visibility `page`, canonical origin (ADR-034 `canonicalOrigin`), profile segment AND slug in that language, no fallback). Server `getPersonLiveInfo` (`persons-live.ts`, `people.person.read`) reads the PUBLISHED person, `customDomain` and `profileSegment` (cleaned with `cleanProfileSegments`, same defences as the route). The editor menu shows "View on website" for the language being edited; refreshed after publish/archive/restore.
+5. **Undo.** Archive from the editor's menu now shows at once ("Archived · Undo") and is carried out after the Undo window or on leaving (`useUndo().schedule`); Undo restores the state without a server call. Restore, Anonymise and permanent delete are unchanged (no undo).
+6. **Tests.** New: `src/lib/modules/people/__tests__/duplicates.test.ts` (10), `live-url.test.ts` (9), `src/lib/api/__tests__/persons-editor-helpers.test.ts` (21: duplicates scoping/permissions/anonymised/archived/one-name, live info, focus read permission + project scoping, inline group creation permission/validation/kind). `npx tsc --noEmit` clean for K's files. Suites green with `--maxWorkers=1`: `src/lab` (handmade baseline unchanged, `lab:usage` run), `src/components/client/persons|taxonomy`, `src/lib/support*`, `src/lib/client`, persons/persons-guard. On this machine run vitest with `TMPDIR=/tmp` (the `/sessions` volume is 100% full, which gave ENOSPC).
+
+Files: created `src/lib/modules/people/{duplicates,live-url}.ts`, `src/lib/api/{persons-duplicates,persons-live}.ts`, `src/app/[locale]/(client)/[tenant]/people/editor-actions.ts`, `src/components/client/persons/PersonEditorPhotoFocus.tsx`, the three tests, `messages/k.*.json`. Changed: `NewPersonDialog.tsx`, `PersonEditor.tsx`, `PersonEditorTabs.tsx`, `person-editor-types.ts`, `PersonPickerField.tsx`, `[id]/page.tsx`, `src/components/app/ui/PersonPicker.tsx`, `src/components/client/taxonomy/TermPicker.tsx`, `src/lab/{registry.ts,demos/person-picker.demo.tsx,usage.generated.json}`.
+
+Open: (a) not covered by component tests (no browser here): the dialog/picker notices and the focus panel — verify by hand after the strings are merged. (b) The focus point is only read when the editor user has the Media permission; others see the thumbnail centred. (c) Duplicate check scans up to 2000 person documents per call (like the list); fine for V1. (d) The post/event editors get the duplicate warning through `PersonPickerField` only when `canCreate`.

@@ -58,6 +58,7 @@ export default async function PeoplePage({
         projectSlug={projectSlug}
         persons={persons}
         defaultLocale={site.defaultLocale}
+        languages={site.languages}
         groupTerms={groups}
         canWrite={grant.permissions.includes(PEOPLE_WRITE_PERMISSION)}
         canArchive={grant.permissions.includes(PEOPLE_ARCHIVE_PERMISSION)}

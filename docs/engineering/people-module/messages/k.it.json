@@ -1,0 +1,66 @@
+{
+  "app": {
+    "ui": {
+      "personPicker": {
+        "duplicate": "{name} è già nelle tue Persone",
+        "duplicateArchived": "{name} è già nelle tue Persone, ma archiviata",
+        "useThis": "Usa questa persona",
+        "createAnyway": "Crea comunque"
+      }
+    }
+  },
+  "clientDashboard": {
+    "taxonomy": {
+      "picker": {
+        "modules": {
+          "people": {
+            "category": {
+              "empty": "Ancora nessun gruppo. Scrivi un nome per aggiungere il primo.",
+              "placeholderAdd": "Cerca o aggiungi un gruppo",
+              "addNamed": "Aggiungi il gruppo “{name}”"
+            }
+          }
+        }
+      }
+    },
+    "persons": {
+      "newPerson": {
+        "open": "Apri",
+        "duplicate": "{name} è già nelle tue Persone",
+        "duplicateArchived": "{name} è già nelle tue Persone, ma archiviata",
+        "createAnyway": "Crea comunque"
+      },
+      "editor": {
+        "menu": {
+          "viewOnWebsite": "Vedi sul sito"
+        },
+        "profile": {
+          "focal": {
+            "toggle": "Imposta il punto focale",
+            "avatar": "Avatar rotondo",
+            "title": "Punto focale",
+            "helper": "Tocca o trascina sulla parte più importante della foto. Ogni ritaglio la mantiene in vista, in tutte le pagine che usano questa foto.",
+            "readOnly": "Il punto focale di questa foto.",
+            "keys": "Usa le frecce per spostarlo; tieni premuto Maiusc per passi più grandi.",
+            "label": "Punto focale della foto",
+            "valueText": "{x}% da sinistra, {y}% dall’alto",
+            "previews": "Come verrà ritagliata",
+            "preview": {
+              "wide": "Largo",
+              "card": "Scheda",
+              "square": "Quadrato",
+              "tall": "Telefono"
+            },
+            "status": {
+              "saving": "Salvataggio…",
+              "saved": "Salvato",
+              "failed": "Non siamo riusciti a salvare. Riprova."
+            },
+            "scope": "Il punto focale viene salvato sulla foto nella tua Libreria multimediale, quindi vale ovunque questa foto venga usata.",
+            "loadFailed": "Non siamo riusciti a caricare la foto. Riprova."
+          }
+        }
+      }
+    }
+  }
+}

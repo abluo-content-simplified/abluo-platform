@@ -73,7 +73,7 @@ export function DocumentsBrowser({
   const t = useTranslations('clientDashboard.documents')
   const router = useRouter()
   const idBase = useId()
-  const { toast, show } = useUndo()
+  const { toast, show, schedule } = useUndo()
   const [tab, setTab] = useState<'documents' | 'pages'>(initialTab)
 
   const done = useCallback((message: string) => { show({ message, tone: 'status' }); router.refresh() }, [router, show])
@@ -121,12 +121,12 @@ export function DocumentsBrowser({
       />
       <div {...tabPanelProps(idBase, tab)}>
         {tab === 'documents' ? (
-          <DocumentsList projectSlug={projectSlug} data={data} canManage={canManage} canDelete={canDelete} onDone={done} onFail={fail} />
+          <DocumentsList projectSlug={projectSlug} data={data} canManage={canManage} canDelete={canDelete} onDone={done} onFail={fail} schedule={schedule} />
         ) : (
           <DocumentPagesRecap projectSlug={projectSlug} data={data} canManage={canManage} onDone={done} onFail={fail} />
         )}
       </div>
-      <Toast message={toast?.message ?? null} tone={toast?.tone} />
+      <Toast message={toast?.message ?? null} tone={toast?.tone} action={toast?.undo ? t('undo') : undefined} onAction={toast?.undo} />
     </div>
   )
 }
@@ -138,6 +138,7 @@ function DocumentsList({
   canDelete,
   onDone,
   onFail,
+  schedule,
 }: {
   projectSlug: string
   data: Ready
@@ -145,8 +146,10 @@ function DocumentsList({
   canDelete: boolean
   onDone: (message: string) => void
   onFail: (message: string) => void
+  schedule: ReturnType<typeof useUndo>['schedule']
 }) {
   const t = useTranslations('clientDashboard.documents')
+  const router = useRouter()
   const locale = useLocale()
   const lang = useLanguageName()
   const [q, setQ] = useState('')
@@ -174,7 +177,15 @@ function DocumentsList({
       && (c === 'all' || (c === 'none' ? !d.categoryKey : d.categoryKey === c))
       && (!needle || `${d.title} ${Object.values(d.note ?? {}).join(' ')} ${categoryOf(d) ?? ''} ${tagsOf(d).join(' ')}`.toLowerCase().includes(needle))
   }
-  const shown = data.documents.filter((d) => matches(d))
+  // Archiving shows at once ("Archived · Undo"); the refreshed list replaces this.
+  const [archivedNow, setArchivedNow] = useState<Set<string>>(new Set())
+  const [seenDocs, setSeenDocs] = useState(data.documents)
+  if (seenDocs !== data.documents) {
+    setSeenDocs(data.documents)
+    setArchivedNow(new Set())
+  }
+  const docs = useMemo(() => data.documents.map((x) => (archivedNow.has(x.id) ? { ...x, archived: true } : x)), [data.documents, archivedNow])
+  const shown = docs.filter((d) => matches(d))
 
   // ── Selection ──────────────────────────────────────────────────────────────
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -182,7 +193,6 @@ function DocumentsList({
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<DocumentView[] | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [confirmArchive, setConfirmArchive] = useState<DocumentView | null>(null)
   const selectedDocs = shown.filter((d) => selected.has(d.id))
   const allState: 'none' | 'some' | 'all' = selectedDocs.length === 0 ? 'none' : selectedDocs.length === shown.length ? 'all' : 'some'
   const toggle = (id: string, checked: boolean, shift: boolean) => {
@@ -209,6 +219,30 @@ function DocumentsList({
   const toRestore = selectedDocs.filter((d) => d.archived)
   // Delete for good: only archived documents (archive first), only Owners.
   const deletable = canDelete && selectedDocs.length > 0 && toArchive.length === 0
+
+  function archive(list: DocumentView[]) {
+    if (list.length === 0) return
+    const ids = list.map((d) => d.id)
+    setArchivedNow((s) => new Set([...s, ...ids]))
+    clearSelection()
+    schedule({
+      id: `archive:${ids.join(',')}`,
+      message: t('bulk.archived', { count: ids.length }),
+      undoLabel: t('undo'),
+      failMessage: t('errors.failed'),
+      restore: () =>
+        setArchivedNow((s) => {
+          const n = new Set(s)
+          ids.forEach((id) => n.delete(id))
+          return n
+        }),
+      run: async () => {
+        const r = await setDocumentsArchivedAction({ projectSlug, documentIds: ids, archived: true })
+        if (r.ok) router.refresh()
+        return r.ok
+      },
+    })
+  }
 
   async function setArchived(docs: DocumentView[], archived: boolean) {
     if (busy || docs.length === 0) return
@@ -238,7 +272,7 @@ function DocumentsList({
     if (canManage) {
       items.push(d.archived
         ? { key: 'restore', label: t('restore'), onSelect: () => void setArchived([d], false) }
-        : { key: 'archive', label: t('archive'), onSelect: () => setConfirmArchive(d), destructive: true, separated: true })
+        : { key: 'archive', label: t('archive'), onSelect: () => archive([d]), destructive: true, separated: true })
     }
     // Delete for good: archived documents only (archive first), Owners only.
     if (canDelete && d.archived) {
@@ -292,7 +326,7 @@ function DocumentsList({
     { key: 'menu', header: <span className="sr-only">{t('columns.actions')}</span>, width: 'w-14', render: (d) => <CardMenu variant="cell" label={t('menuFor', { title: d.title })} items={menuFor(d)} /> },
   ]
 
-  if (data.documents.length === 0) {
+  if (docs.length === 0) {
     return (
       <EmptyState
         title={t('emptyTitle')}
@@ -307,7 +341,7 @@ function DocumentsList({
     ...(status !== 'active' ? [{ id: 'status', label: status === 'archived' ? t('archived') : t('allStatuses') }] : []),
     ...(category !== 'all' ? [{ id: 'category', label: category === 'none' ? t('noCategory') : termName(data.categories, category) }] : []),
   ]
-  const count = (opts: { who?: Who; status?: Status; category?: string }) => data.documents.filter((d) => matches(d, opts)).length
+  const count = (opts: { who?: Who; status?: Status; category?: string }) => docs.filter((d) => matches(d, opts)).length
 
   return (
     <div className="flex flex-col gap-4">
@@ -349,7 +383,7 @@ function DocumentsList({
             onChange: (v: string) => setStatus(v as Status),
           },
         ]}
-        summary={t('showing', { shown: shown.length, total: data.documents.length })}
+        summary={t('showing', { shown: shown.length, total: docs.length })}
         clear={{ label: t('clear'), onClear: () => { setQ(''); setWho('all'); setStatus('active'); setCategory('all') }, visible: !isDefault }}
         sheet={{ activeCount: chips.length, resultCount: shown.length, chips, onRemoveChip: (id) => (id === 'who' ? setWho('all') : id === 'category' ? setCategory('all') : setStatus('active')) }}
       />
@@ -392,7 +426,7 @@ function DocumentsList({
       {selectedDocs.length > 0 ? (
         <SelectionBar label={t('bulk.label')} count={t('bulk.selected', { count: selectedDocs.length })}>
           {toArchive.length > 0 ? (
-            <BarButton disabled={busy} onPress={() => void setArchived(toArchive, true)} icon={ICONS.archive}>{t('archive')}</BarButton>
+            <BarButton disabled={busy} onPress={() => archive(toArchive)} icon={ICONS.archive}>{t('archive')}</BarButton>
           ) : null}
           {toRestore.length > 0 ? (
             <BarButton disabled={busy} onPress={() => void setArchived(toRestore, false)} icon={ICONS.restore}>{t('restore')}</BarButton>
@@ -407,17 +441,6 @@ function DocumentsList({
       ) : null}
       {canDelete && selectedDocs.length > 0 && !deletable ? <p className="text-sm text-muted-foreground" aria-live="polite">{t('bulk.deleteNeedsArchive')}</p> : null}
 
-      {confirmArchive ? (
-        <ConfirmDialog
-          open
-          title={t('archiveConfirm.title', { title: confirmArchive.title })}
-          body={t('archiveConfirm.body')}
-          confirmLabel={t('archive')}
-          busy={busy}
-          onConfirm={() => { const d = confirmArchive; setConfirmArchive(null); void setArchived([d], true) }}
-          onCancel={() => setConfirmArchive(null)}
-        />
-      ) : null}
       {confirmDelete ? (
         <ConfirmDialog
           open

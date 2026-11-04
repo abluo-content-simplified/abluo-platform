@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-03T13:49:04.330Z",
+  "generatedAt": "2026-11-03T21:17:13.841Z",
   "usage": {
     "button": [
       "src/app/(platform)/(auth)/forgot-password/page.tsx",
@@ -517,6 +517,11 @@
       "src/components/app/ui/MessageThread.tsx",
       "src/components/app/ui/ScreenshotGrid.tsx"
     ],
+    "animation-preview": [
+      "src/components/client/media/MediaGrid.tsx",
+      "src/components/client/media/MediaTable.tsx",
+      "src/components/client/media/PhotoCard.tsx"
+    ],
     "screenshot-grid": [
       "src/components/admin/tickets/AdminTicketView.tsx",
       "src/components/client/tickets/TicketConversation.tsx"
@@ -653,14 +658,12 @@
       "src/components/client/settings/FormNotifications.tsx"
     ],
     "confirm-dialog": [
-      "src/components/admin/backlog/BacklogBrowser.tsx",
       "src/components/admin/partners/PartnersBrowser.tsx",
       "src/components/admin/projects/BillingAlertsList.tsx",
       "src/components/admin/projects/BillingCardView.tsx",
       "src/components/admin/tickets/AdminTicketView.tsx",
       "src/components/app/lifecycle/DeletePermanentlyDialog.tsx",
       "src/components/app/ui/ImpactPreview.tsx",
-      "src/components/client/access/AccessGroupsBrowser.tsx",
       "src/components/client/access/AccessScreen.tsx",
       "src/components/client/catalogue/ItemEditor.tsx",
       "src/components/client/catalogue/setup/CategoryDeleteSheet.tsx",
@@ -839,6 +842,7 @@
       "src/components/client/gallery/GalleryCards.tsx",
       "src/components/client/gallery/GalleryList.tsx",
       "src/components/client/media/MediaLibraryScreen.tsx",
+      "src/components/client/persons/PeopleBrowser.tsx",
       "src/components/client/persons/PeopleCards.tsx",
       "src/components/client/posts/PostCards.tsx",
       "src/components/client/posts/PostsBrowser.tsx"
@@ -909,6 +913,7 @@
       "src/components/client/forms/SubmissionsBrowser.tsx",
       "src/components/client/gallery/GalleryList.tsx",
       "src/components/client/media/MediaLibraryScreen.tsx",
+      "src/components/client/persons/PeopleBrowser.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx"
     ],
@@ -1044,6 +1049,7 @@
       "src/components/client/forms/SubmissionsBrowser.tsx",
       "src/components/client/gallery/GalleryList.tsx",
       "src/components/client/media/MediaLibraryScreen.tsx",
+      "src/components/client/persons/PeopleBrowser.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx"
     ],
     "choice-card": [
@@ -1267,7 +1273,8 @@
     ],
     "focal-point-picker": [
       "src/components/client/events/EventEditor.tsx",
-      "src/components/client/media/PhotoCard.tsx"
+      "src/components/client/media/PhotoCard.tsx",
+      "src/components/client/persons/PersonEditorPhotoFocus.tsx"
     ],
     "option-cards": [
       "src/components/admin/projects/NewProjectWizard.tsx",
@@ -1362,7 +1369,9 @@
       "src/components/client/home/BillingAttentionCard.tsx",
       "src/components/client/media/AddPhotos.tsx",
       "src/components/client/media/PhotoCard.tsx",
+      "src/components/client/persons/NewPersonDialog.tsx",
       "src/components/client/persons/PersonEditor.tsx",
+      "src/components/client/persons/PersonEditorPhotoFocus.tsx",
       "src/components/client/persons/PersonEditorTabs.tsx",
       "src/components/client/persons/PersonUsedInLoader.tsx",
       "src/components/client/settings/FormNotifications.tsx",
@@ -1422,6 +1431,7 @@
       "src/components/client/faq/post/FaqPickSheet.tsx",
       "src/components/client/gallery/wizard/PhotoAddStep.tsx",
       "src/components/client/persons/PersonEditor.tsx",
+      "src/components/client/persons/PersonEditorPhotoFocus.tsx",
       "src/components/client/persons/PersonEditorTabs.tsx",
       "src/components/client/settings/FormNotifications.tsx",
       "src/components/client/support/SupportAccessNotice.tsx",
@@ -1515,6 +1525,7 @@
       "src/components/client/catalogue/setup/starters/StarterStructures.tsx",
       "src/components/client/create/OpenForEdit.tsx",
       "src/components/client/create/PreviewPane.tsx",
+      "src/components/client/persons/PersonEditorPhotoFocus.tsx",
       "src/components/client/persons/PersonUsedInLoader.tsx"
     ],
     "tree-editor": [

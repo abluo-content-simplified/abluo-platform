@@ -26,6 +26,7 @@ import type { PortableTextBlock } from '@portabletext/editor'
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
+import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { readsInOrder } from '@/lib/api/parallel-reads'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { DRAFT_SAVE } from '@/lib/sanity/draft-save'
@@ -130,6 +131,30 @@ export interface PersonListItem {
   createdAt: string
   /** Lower-cased names, job titles (all languages) and group keys, for client-side search. */
   searchText: string
+  /** What is still missing (list badge + "Missing…" filter); all empty/false for anonymised people. */
+  missing: PersonMissing
+}
+
+/**
+ * Completeness at a glance. `shortBio`: no short bio in the site's main
+ * language. `languages`: the OTHER site languages in which a title or short
+ * bio exists in the main language but not in that one (what a translation
+ * still has to cover).
+ */
+export interface PersonMissing {
+  photo: boolean
+  shortBio: boolean
+  languages: string[]
+}
+
+/** Pure: what a list row is missing (exported for tests). `row` is the draft ?? published list row. */
+export function personMissing(row: { photoUrl?: unknown; jobTitle?: unknown; shortBio?: unknown }, site: PersonSite, anonymised: boolean): PersonMissing {
+  if (anonymised) return { photo: false, shortBio: false, languages: [] }
+  const titles = localized(row.jobTitle)
+  const bios = localized(row.shortBio)
+  const def = site.defaultLocale
+  const languages = site.languages.filter((l) => l !== def && ((Boolean(titles[def]) && !titles[l]) || (Boolean(bios[def]) && !bios[l])))
+  return { photo: typeof row.photoUrl !== 'string' || !row.photoUrl, shortBio: !bios[def], languages }
 }
 
 export interface PersonContactValue {
@@ -355,7 +380,7 @@ function scheduleUsageOf(deps: PersonDeps): ScheduleUsageFn {
 /** Exported so tests assert exactly what runs. Raw perspective: drafts and published. */
 export const PERSON_LIST_QUERY = /* groq */ `*[_type == "person" && projectSlug == $projectSlug && !(_id in path("versions.**"))]
       | order(_updatedAt desc)[0...${PERSON_LIMITS.people * 2}]{
-        _id, _createdAt, _updatedAt, publicId, firstName, lastName, displayName, jobTitle, groups, visibility,
+        _id, _createdAt, _updatedAt, publicId, firstName, lastName, displayName, jobTitle, shortBio, groups, visibility,
         archivedAt, anonymisedAt, sortOrder,
         "photoUrl": select(photo->projectSlug == $projectSlug => photo->image.asset->url)
       }`
@@ -421,6 +446,7 @@ export async function listPersons(ctx: TenantAuthorizationContext, projectId: st
       updatedAt: row._updatedAt ?? '',
       createdAt: e.createdAt || row._updatedAt || '',
       searchText: [firstName, lastName, displayName, ...Object.values(jobTitles), ...groups].join(' ').toLowerCase(),
+      missing: personMissing(row, site, anonymised),
     }
   })
   persons.sort(compareSiteOrder)
@@ -954,7 +980,7 @@ export async function savePersonDraft(
 
   // Project-scoped checks, one read each.
   if (photoId) {
-    const ok = await client.fetch<string | null>(`*[_id == $id && _type == "mediaAsset" && projectSlug == $projectSlug][0]._id`, { id: photoId, projectSlug: grant.projectSlug })
+    const ok = await client.fetch<string | null>(`*[_id == $id && _type == "mediaAsset" && projectSlug == $projectSlug && defined(image.asset)][0]._id`, { id: photoId, projectSlug: grant.projectSlug })
     if (ok !== photoId) throw new PersonError('invalid_value', 'That photo is not in this website’s Media Library.')
   }
   if (groupKeys.length) {
@@ -1239,6 +1265,159 @@ export async function reorderPersons(ctx: TenantAuthorizationContext, projectId:
     })
     return tx.commit()
   })
+}
+
+// ── Bulk changes (list: several people at once) ───────────────────────────────
+
+export const PERSON_BULK_OPS = ['addGroup', 'removeGroup', 'archive', 'show', 'hide'] as const
+export type PersonBulkOp = (typeof PERSON_BULK_OPS)[number]
+/** One call changes at most this many people. */
+export const PERSON_BULK_MAX = 100
+export type PersonBulkSkipReason = 'archived' | 'anonymised' | 'unchanged' | 'unpublished'
+export interface PersonBulkResult {
+  /** Ids that were changed. */
+  changed: string[]
+  /** Ids left as they were, with why (never an error). */
+  skipped: Array<{ id: string; reason: PersonBulkSkipReason }>
+  /** Ids that should have changed but could not (opaque code, same as the single-person calls). */
+  failed: Array<{ id: string; code: PersonErrorCode }>
+}
+
+/** Exported so tests assert exactly what runs. Raw perspective: published and draft of each id. */
+export const PERSON_BULK_QUERY = /* groq */ `*[_type == "person" && projectSlug == $projectSlug && (_id in $ids || _id in $draftIds)]{
+        _id, _rev, _type, projectSlug, publicId, groups, visibility, archivedAt, anonymisedAt
+      }`
+
+/**
+ * Several people at once — `addGroup` / `removeGroup` (needs `group`), `show`
+ * (off → "listed") / `hide` (→ "off") with people.person.write; `archive` with
+ * people.person.archive. The permission is checked before any read.
+ *
+ * Semantics (decided, consistent with `reorderPersons` and with how
+ * `runPersonLifecycle` archives): these are site-level settings, not editorial
+ * text, so a change applies AT ONCE to the published person and to its draft
+ * (when there is one) — it never publishes the draft's other edits, and a
+ * person who was never published only changes in the draft (they stay draft).
+ * Catalogue's bulk bar works the same way: one existing per-item operation per
+ * row, never a hidden publish. Archive is `runPersonLifecycle` per person
+ * (published people only, as the row menu offers it).
+ *
+ * Every id must be a person of the grant's project (else `not_found` for the
+ * whole call, before any write — ids cannot be probed). Archived people can't
+ * be edited and anonymised people are never touched: both are reported in
+ * `skipped`, as are people already in the wanted state. Each person is its own
+ * revision-guarded transaction; a refusal or conflict on one is reported in
+ * `failed` and does not stop the others. Audit: archive is audited by the
+ * lifecycle service; the settings changes are not lifecycle events (as for
+ * editing a published person) so success records nothing, but a refusal or a
+ * failure is recorded per person through `audited`.
+ */
+export async function bulkUpdatePersons(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { ids: string[]; op: PersonBulkOp; group?: string },
+  deps: PersonDeps = {}
+): Promise<PersonBulkResult> {
+  const op = input?.op
+  if (!(PERSON_BULK_OPS as readonly unknown[]).includes(op)) throw new PersonError('invalid_value', 'Unknown action.')
+  const grant = grantFor(ctx, projectId, op === 'archive' ? PEOPLE_ARCHIVE_PERMISSION : PEOPLE_WRITE_PERMISSION)
+  const client = deps.client ?? sanityWriteClient
+  const ids = input.ids
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > PERSON_BULK_MAX) throw new PersonError('invalid_value', 'Nothing selected.')
+  if (ids.some((x) => !isPersonId(x)) || new Set(ids).size !== ids.length) throw new PersonError('invalid_value', 'Unknown person.')
+  let group = ''
+  if (op === 'addGroup' || op === 'removeGroup') {
+    group = typeof input.group === 'string' ? input.group.trim() : ''
+    if (!isValidTermKey(group)) throw new PersonError('invalid_value', 'Unknown group.')
+  }
+
+  const rows = await client.fetch<Doc[] | null>(PERSON_BULK_QUERY, { projectSlug: grant.projectSlug, ids, draftIds: ids.map((x) => `drafts.${x}`) }, RAW)
+  const byId = new Map<string, { published?: Doc; draft?: Doc }>()
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (!ours(row, grant.projectSlug)) continue
+    const rid = String(row._id)
+    const draft = rid.startsWith('drafts.')
+    const id = draft ? rid.slice('drafts.'.length) : rid
+    const entry = byId.get(id) ?? {}
+    if (draft) entry.draft = row
+    else entry.published = row
+    byId.set(id, entry)
+  }
+  if (!ids.every((id) => byId.has(id))) notFound()
+
+  if (op === 'addGroup') {
+    const found = await client.fetch<string[] | null>(
+      `*[_type == "taxonomyTerm" && projectSlug == $projectSlug && module == $module && kind == $kind && key in $keys].key`,
+      { projectSlug: grant.projectSlug, module: PEOPLE_MODULE_ID, kind: PEOPLE_GROUP_KIND, keys: [group] }
+    )
+    if (!Array.isArray(found) || !found.includes(group)) throw new PersonError('invalid_value', 'Unknown group.')
+  }
+
+  const result: PersonBulkResult = { changed: [], skipped: [], failed: [] }
+  const guard = singleProjectGuard(client, grant.projectSlug)
+  await guard // one project check for the whole call; a failure refuses everything
+  for (const id of ids) {
+    const { published, draft } = byId.get(id)!
+    if (anonymisedAtOf(published, draft)) {
+      result.skipped.push({ id, reason: 'anonymised' })
+      continue
+    }
+    if (archivedAtOf(published ?? draft)) {
+      result.skipped.push({ id, reason: 'archived' })
+      continue
+    }
+    try {
+      if (op === 'archive') {
+        if (!published) {
+          result.skipped.push({ id, reason: 'unpublished' })
+          continue
+        }
+        await runPersonLifecycle(ctx, projectId, { id, op: 'archive' }, deps)
+        result.changed.push(id)
+        continue
+      }
+      const docs = [published, draft].filter((d): d is Doc => Boolean(d))
+      const patches = docs.flatMap((d): Array<{ doc: Doc; set: Record<string, unknown> }> => {
+        if (op === 'show' || op === 'hide') {
+          const to: PersonVisibility = op === 'show' ? 'listed' : 'off'
+          const now = visibilityOf(d.visibility)
+          return (op === 'show' ? now === 'off' : now !== 'off') ? [{ doc: d, set: { visibility: to } }] : []
+        }
+        const groups = strings(d.groups)
+        if (op === 'addGroup') {
+          if (groups.includes(group)) return []
+          if (groups.length >= PERSON_LIMITS.groups) throw new PersonError('invalid_value', 'Too many groups.')
+          return [{ doc: d, set: { groups: [...groups, group] } }]
+        }
+        return groups.includes(group) ? [{ doc: d, set: { groups: groups.filter((k) => k !== group) } }] : []
+      })
+      if (!patches.length) {
+        result.skipped.push({ id, reason: 'unchanged' })
+        continue
+      }
+      await audited(
+        { ctx, projectId, contentType: 'person', contentId: id, intended: 'published', writer: deps.audit },
+        async (transactionId) => {
+          await commit(
+            client,
+            grant.projectSlug,
+            () => {
+              let tx = client.transaction()
+              for (const { doc, set } of patches) tx = tx.patch(String(doc._id), { ifRevisionID: doc._rev ?? '', set })
+              return tx.commit({ transactionId })
+            },
+            guard
+          )
+          return { value: undefined, action: null }
+        }
+      )
+      result.changed.push(id)
+    } catch (error) {
+      if (error instanceof TenantAuthorizationError) throw error
+      result.failed.push({ id, code: error instanceof PersonError ? error.code : 'failed' })
+    }
+  }
+  return result
 }
 
 // ── Picker search ─────────────────────────────────────────────────────────────

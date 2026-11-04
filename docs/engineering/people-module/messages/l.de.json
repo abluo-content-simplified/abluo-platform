@@ -1,0 +1,21 @@
+{
+  "clientDashboard": {
+    "submissions": {
+      "undo": "Rückgängig"
+    },
+    "documents": {
+      "undo": "Rückgängig"
+    },
+    "access": {
+      "undo": "Rückgängig"
+    },
+    "users": {
+      "undo": "Rückgängig"
+    }
+  },
+  "admin": {
+    "backlog": {
+      "undo": "Rückgängig"
+    }
+  }
+}

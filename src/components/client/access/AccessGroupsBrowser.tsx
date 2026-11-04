@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { useRouter } from '@/i18n/navigation'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { Button } from '@/components/app/ui/Button'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
-import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { Field } from '@/components/app/ui/Field'
 import { Notice } from '@/components/app/ui/Notice'
@@ -54,14 +54,21 @@ export function AccessGroupsBrowser({
   runner: AccessRunner
 }) {
   const t = useTranslations('clientDashboard.access')
+  const router = useRouter()
   const [passwordFor, setPasswordFor] = useState<AccessGroupView | null>(null)
   const [renaming, setRenaming] = useState<AccessGroupView | null>(null)
-  const [archiving, setArchiving] = useState<AccessGroupView | null>(null)
+  // Archiving shows at once ("Archived · Undo"); the refreshed list replaces this.
+  const [archivedNow, setArchivedNow] = useState<Set<string>>(new Set())
+  const [seenGroups, setSeenGroups] = useState(groups)
+  if (seenGroups !== groups) {
+    setSeenGroups(groups)
+    setArchivedNow(new Set())
+  }
   const [shared, setShared] = useState<{ group: string; password: string } | null>(null)
 
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<'active' | 'archived' | 'all'>('active')
-  const sorted = [...groups].sort((a, b) => Number(a.archived) - Number(b.archived) || a.name.localeCompare(b.name))
+  const sorted = groups.map((g) => (archivedNow.has(g.id) ? { ...g, archived: true } : g)).sort((a, b) => Number(a.archived) - Number(b.archived) || a.name.localeCompare(b.name))
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase()
     return sorted.filter((g) => (status === 'all' || (status === 'archived') === g.archived) && (!needle || g.name.toLowerCase().includes(needle)))
@@ -102,6 +109,27 @@ export function AccessGroupsBrowser({
     },
   ]
 
+  const archive = (g: AccessGroupView) => {
+    setArchivedNow((s) => new Set([...s, g.id]))
+    runner.schedule({
+      id: `archive:${g.id}`,
+      message: t('groups.archivedToast', { name: g.name }),
+      undoLabel: t('undo'),
+      failMessage: t('errors.failed'),
+      restore: () =>
+        setArchivedNow((s) => {
+          const n = new Set(s)
+          n.delete(g.id)
+          return n
+        }),
+      run: async () => {
+        const r = await setAccessGroupArchivedAction({ projectSlug, groupId: g.id, archived: true })
+        if (r.ok) router.refresh()
+        return r.ok
+      },
+    })
+  }
+
   const menuFor = (g: AccessGroupView): CardMenuItem[] => {
     if (!canManage) return []
     if (g.archived) return [{ key: 'restore', label: t('groups.restore'), onSelect: () => void runner.run(() => setAccessGroupArchivedAction({ projectSlug, groupId: g.id, archived: false }), t('groups.restored', { name: g.name })) }]
@@ -109,7 +137,7 @@ export function AccessGroupsBrowser({
     return [
       { key: 'password', label: inUse ? t('groups.changePassword') : t('groups.setPassword'), onSelect: () => setPasswordFor(g) },
       { key: 'rename', label: t('groups.rename'), onSelect: () => setRenaming(g) },
-      { key: 'archive', label: t('groups.archive'), onSelect: () => setArchiving(g), destructive: true, separated: true },
+      { key: 'archive', label: t('groups.archive'), onSelect: () => archive(g), destructive: true, separated: true },
     ]
   }
 
@@ -211,21 +239,6 @@ export function AccessGroupsBrowser({
           return ok === true
         }}
       />
-      {canManage ? (
-        <ConfirmDialog
-          open={archiving !== null}
-          title={t('groups.archiveConfirm.title', { name: archiving?.name ?? '' })}
-          body={t('groups.archiveConfirm.body')}
-          confirmLabel={t('groups.archive')}
-          busy={runner.busy}
-          onConfirm={() => {
-            const g = archiving!
-            setArchiving(null)
-            void runner.run(() => setAccessGroupArchivedAction({ projectSlug, groupId: g.id, archived: true }), t('groups.archivedToast', { name: g.name }))
-          }}
-          onCancel={() => setArchiving(null)}
-        />
-      ) : null}
       <SharePasswordSheet shared={shared} onClose={() => setShared(null)} />
     </div>
   )

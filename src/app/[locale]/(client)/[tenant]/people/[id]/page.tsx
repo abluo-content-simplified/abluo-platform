@@ -13,6 +13,7 @@ import {
   type PersonSnapshot,
 } from '@/lib/api/persons'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
+import { grantCanManageMedia } from '@/lib/api/media-permission'
 import { loadGroupTerms } from '@/lib/api/persons-groups'
 import { PersonEditor } from '@/components/client/persons/PersonEditor'
 import { PageShell } from '@/components/app/ui/PageShell'
@@ -55,6 +56,7 @@ export default async function PersonPage({ params }: { params: Promise<{ tenant:
         canDelete={grant.permissions.includes(PEOPLE_DELETE_PERMISSION)}
         canAnonymise={grant.permissions.includes(PEOPLE_ANONYMISE_PERMISSION)}
         canAddGroup={grant.permissions.includes('people.taxonomy.write')}
+        canSetFocus={grantCanManageMedia(grant)}
         canTranslate={grant.enabledModuleIds.includes('translate')}
       />
     </PageShell>

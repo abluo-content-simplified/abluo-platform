@@ -26,6 +26,8 @@ import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
 import { Select } from '@/components/app/ui/Select'
 import { TextArea, TextInput } from '@/components/app/ui/TextInput'
 import { ToggleChips } from '@/components/app/ui/ToggleChips'
+import type { FocalPoint } from '@/components/app/ui/FocalPointPicker'
+import { PersonEditorPhotoFocus } from './PersonEditorPhotoFocus'
 import { PERSON_ICONS, PERSON_UI_LIMITS } from './person-bits'
 import type { EditorApi } from './person-editor-types'
 
@@ -84,6 +86,9 @@ export function ProfileTab({ api }: { api: EditorApi & { setLang: (l: string) =>
   const { values: v, lang, d, editable, languageName } = api
   const translating = lang !== d
   const [picking, setPicking] = useState(false)
+  /** The photo asset's focus point (Media Library hotspot): read and saved by PersonEditorPhotoFocus, shown in both previews. */
+  const [focal, setFocal] = useState<FocalPoint | null>(null)
+  const [focusing, setFocusing] = useState(false)
   const [suggestion, setSuggestion] = useState<{ locale: string; text: string } | null>(null)
   const [shortening, setShortening] = useState(false)
   const [shortenError, setShortenError] = useState<string | null>(null)
@@ -115,7 +120,7 @@ export function ProfileTab({ api }: { api: EditorApi & { setLang: (l: string) =>
         </h2>
         <div className="flex items-start gap-4">
           <div className="size-28 shrink-0 overflow-hidden rounded-2xl bg-muted">
-            {photo?.url ? <MediaFrame src={photo.url} alt="" className="size-full" /> : <span className="grid size-full place-items-center px-2 text-center text-sm text-muted-foreground">{t('noPhoto')}</span>}
+            {photo?.url ? <MediaFrame src={photo.url} alt="" focal={focal} className="size-full" /> : <span className="grid size-full place-items-center px-2 text-center text-sm text-muted-foreground">{t('noPhoto')}</span>}
           </div>
           <div className="flex min-w-0 flex-col items-start gap-2">
             <p className="text-sm leading-5 text-muted-foreground">{photo ? t('photoHelper') : t('photoHelperEmpty')}</p>
@@ -124,11 +129,34 @@ export function ProfileTab({ api }: { api: EditorApi & { setLang: (l: string) =>
                 <Button onClick={() => setPicking((x) => !x)} aria-expanded={picking}>
                   {photo ? t('changePhoto') : t('addPhoto')}
                 </Button>
+                {photo && api.canSetFocus ? (
+                  <Button onClick={() => setFocusing((x) => !x)} aria-expanded={focusing}>
+                    {t('focal.toggle')}
+                  </Button>
+                ) : null}
                 {photo ? <Button onClick={() => api.change({ photo: null }, { photo: null })}>{t('removePhoto')}</Button> : null}
               </div>
             ) : null}
           </div>
+          {photo?.url ? (
+            <div className="flex shrink-0 flex-col items-start gap-1">
+              <MediaFrame src={photo.url} alt="" focal={focal} className="size-16 rounded-full" />
+              <span className="text-xs leading-4 text-muted-foreground">{t('focal.avatar')}</span>
+            </div>
+          ) : null}
         </div>
+        {photo && api.canSetFocus ? (
+          <PersonEditorPhotoFocus
+            key={photo.assetId}
+            projectSlug={api.projectSlug}
+            assetId={photo.assetId}
+            name={[v.firstName, v.lastName].filter(Boolean).join(' ')}
+            focal={focal}
+            onFocal={setFocal}
+            editable={editable}
+            show={focusing}
+          />
+        ) : null}
         {editable && picking ? (
           <Panel>
             <PhotoSource

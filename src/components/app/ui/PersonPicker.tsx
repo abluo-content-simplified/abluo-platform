@@ -48,6 +48,13 @@ export type PersonPickerProps = {
    * Omit it and the button is not offered. Reject (throw) to show an error in the sheet.
    */
   onCreate?: (input: { firstName: string; lastName: string }) => Promise<PersonPickerPerson>
+  /**
+   * Before "Add new person" makes a duplicate: the people who already have this name (INJECTED, like `search`;
+   * the caller decides what counts — the People service ignores case, accents and first/last order). Asked while
+   * the name is typed and again on submit. Found ⇒ a notice offers "Use this person" or "Create anyway".
+   * Reject (throw) to skip the check silently. Omit it and no check is made.
+   */
+  findDuplicates?: (input: { firstName: string; lastName: string }) => Promise<PersonPickerPerson[]>
   /** When given, the first person is the main one and is marked with this label ("Main author"). */
   primaryLabel?: string
   /** Most people allowed (multiple mode). */
@@ -89,7 +96,7 @@ function moveItem<T>(list: T[], from: number, to: number): T[] {
  * tap. "Add new person" in the sheet asks for first and last name only and
  * adds the new person without leaving the editor behind it.
  */
-export function PersonPicker({ label, mode = 'multiple', value, onChange, search, onCreate, primaryLabel, max, groupLabel = (k) => k, disabled = false, disabledReason }: PersonPickerProps) {
+export function PersonPicker({ label, mode = 'multiple', value, onChange, search, onCreate, findDuplicates, primaryLabel, max, groupLabel = (k) => k, disabled = false, disabledReason }: PersonPickerProps) {
   const t = useTranslations('app.ui.personPicker')
   const single = mode === 'single'
   const [open, setOpen] = useState(false)
@@ -172,6 +179,7 @@ export function PersonPicker({ label, mode = 'multiple', value, onChange, search
         onChange={onChange}
         search={search}
         onCreate={onCreate}
+        findDuplicates={findDuplicates}
         max={max}
         groupLabel={groupLabel}
       />
@@ -187,6 +195,7 @@ function PickerSheet({
   onChange,
   search,
   onCreate,
+  findDuplicates,
   max,
   groupLabel,
 }: {
@@ -197,6 +206,7 @@ function PickerSheet({
   onChange: (next: PersonPickerPerson[]) => void
   search: (query: string) => Promise<PersonPickerPerson[]>
   onCreate?: PersonPickerProps['onCreate']
+  findDuplicates?: PersonPickerProps['findDuplicates']
   max?: number
   groupLabel: (key: string) => string
 }) {
@@ -251,23 +261,27 @@ function PickerSheet({
     else if (room > 0) onChange([...value, p])
   }
 
+  /** A person who now belongs in the field (just created, or an existing one found by the duplicate check). */
+  const adopt = (person: PersonPickerPerson) => {
+    if (single) {
+      onChange([person])
+      onClose()
+    } else {
+      if (room > 0 && !chosen.has(person.id)) onChange([...value, person])
+      setView('search')
+      setQuery('')
+    }
+  }
+
   return (
     <BottomSheet open={open} title={view === 'create' ? t('createTitle') : t('title')} onClose={onClose} size="lg">
       {view === 'create' && onCreate ? (
         <CreateForm
           initialName={query.trim()}
           onCancel={() => setView('search')}
-          onCreate={async (input) => {
-            const person = await onCreate(input)
-            if (single) {
-              onChange([person])
-              onClose()
-            } else {
-              if (room > 0 && !chosen.has(person.id)) onChange([...value, person])
-              setView('search')
-              setQuery('')
-            }
-          }}
+          findDuplicates={findDuplicates}
+          onUse={adopt}
+          onCreate={async (input) => adopt(await onCreate(input))}
         />
       ) : (
         <div className="flex h-[min(80dvh,calc(100dvh-10rem))] flex-col gap-3">
@@ -349,7 +363,19 @@ function PickerSheet({
 }
 
 /** First and last name only — everything else is filled in later in People. */
-function CreateForm({ initialName, onCancel, onCreate }: { initialName: string; onCancel: () => void; onCreate: (input: { firstName: string; lastName: string }) => Promise<void> }) {
+function CreateForm({
+  initialName,
+  onCancel,
+  onCreate,
+  findDuplicates,
+  onUse,
+}: {
+  initialName: string
+  onCancel: () => void
+  onCreate: (input: { firstName: string; lastName: string }) => Promise<void>
+  findDuplicates?: PersonPickerProps['findDuplicates']
+  onUse: (person: PersonPickerPerson) => void
+}) {
   const t = useTranslations('app.ui.personPicker')
   // A typed "Anna Bianchi" is split at the last space as a starting point.
   const at = initialName.lastIndexOf(' ')
@@ -358,12 +384,43 @@ function CreateForm({ initialName, onCancel, onCreate }: { initialName: string; 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const ready = Boolean(first.trim())
+  const [duplicates, setDuplicates] = useState<PersonPickerPerson[]>([])
+  /** The name the person chose to create anyway: no notice for it again. */
+  const [allowed, setAllowed] = useState('')
+  const nameKey = `${first.trim()}|${last.trim()}`
+  const latestDuplicates = useRef(0)
 
-  async function submit() {
+  // Look for the same name while it is typed (a short pause).
+  useEffect(() => {
+    if (!findDuplicates || !first.trim()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- nothing to compare yet
+      setDuplicates([])
+      return
+    }
+    const n = ++latestDuplicates.current
+    const id = setTimeout(() => {
+      findDuplicates({ firstName: first.trim(), lastName: last.trim() })
+        .then((r) => n === latestDuplicates.current && setDuplicates(r))
+        .catch(() => n === latestDuplicates.current && setDuplicates([]))
+    }, 400)
+    return () => clearTimeout(id)
+  }, [first, last, findDuplicates])
+
+  async function submit(anyway = false) {
     if (!ready || busy) return
     setBusy(true)
     setError(null)
     try {
+      if (findDuplicates && !anyway && allowed !== nameKey) {
+        // The pause may not have elapsed yet: ask once more before making a duplicate.
+        const found = await findDuplicates({ firstName: first.trim(), lastName: last.trim() }).catch(() => [] as PersonPickerPerson[])
+        if (found.length) {
+          setDuplicates(found)
+          setBusy(false)
+          return
+        }
+      }
+      if (anyway) setAllowed(nameKey)
       await onCreate({ firstName: first.trim(), lastName: last.trim() })
     } catch {
       setError(t('createFailed'))
@@ -386,13 +443,28 @@ function CreateForm({ initialName, onCancel, onCreate }: { initialName: string; 
       <Field label={t('lastName')} hint={ready ? undefined : t('namesNeeded')} error={error}>
         {(p) => <TextInput {...p} autoComplete="off" value={last} maxLength={NAME_MAX} onChange={(e) => setLast(e.target.value)} />}
       </Field>
+      {ready && allowed !== nameKey && duplicates.length ? (
+        <div className="space-y-2">
+          {duplicates.slice(0, 3).map((d) => (
+            <Notice key={d.id} tone="info" layout="row" action={<Button onClick={() => onUse(d)}>{t('useThis')}</Button>}>
+              {t(d.archived ? 'duplicateArchived' : 'duplicate', { name: d.name })}
+            </Notice>
+          ))}
+        </div>
+      ) : null}
       <div className="flex flex-wrap justify-end gap-2">
         <Button variant="quiet" onClick={onCancel}>
           {t('back')}
         </Button>
-        <Button variant="primary" type="submit" disabled={!ready || busy}>
-          {busy ? t('creating') : t('create')}
-        </Button>
+        {ready && allowed !== nameKey && duplicates.length ? (
+          <Button onClick={() => void submit(true)} disabled={busy}>
+            {busy ? t('creating') : t('createAnyway')}
+          </Button>
+        ) : (
+          <Button variant="primary" type="submit" disabled={!ready || busy}>
+            {busy ? t('creating') : t('create')}
+          </Button>
+        )}
       </div>
     </form>
   )

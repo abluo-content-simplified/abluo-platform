@@ -70,7 +70,7 @@ export function SubmissionsBrowser({
   canDelete: boolean
 }) {
   const t = useTranslations('clientDashboard.submissions')
-  const { toast, show } = useUndo()
+  const { toast, show, schedule } = useUndo()
 
   // Local copy for optimistic updates; replaced when the server sends a fresh list.
   const [rows, setRows] = useState(submissions)
@@ -143,27 +143,29 @@ export function SubmissionsBrowser({
     return done
   }
 
-  /** Optimistic status change for one or many requests; what the server refuses rolls back. */
-  async function setStatus(ids: string[], next: SubmissionStatus) {
-    if (!canUpdate || !ids.length || busy) return
+  /** "Handled · Undo": the status shows at once, the server call waits; what the server refuses rolls back. */
+  function setStatus(ids: string[], next: SubmissionStatus) {
+    if (!canUpdate || !ids.length) return
     const before = new Map(rows.filter((r) => ids.includes(r.id)).map((r) => [r.id, r.status]))
-    setBusy(true)
     setRows((rs) => rs.map((r) => (before.has(r.id) ? { ...r, status: next } : r)))
-    let done: Set<string>
-    if (ids.length === 1) {
-      const r = await setSubmissionStatusAction({ projectSlug, submissionId: ids[0], status: next, locale }).catch(() => ({ ok: false }))
-      done = new Set(r.ok ? ids : [])
-    } else {
-      done = new Set(await runChunks(ids, (submissionIds) => setSubmissionsStatusBatchAction({ projectSlug, submissionIds, status: next, locale })))
-    }
-    if (done.size < ids.length) {
-      setRows((rs) => rs.map((r) => (before.has(r.id) && !done.has(r.id) ? { ...r, status: before.get(r.id)! } : r)))
-      show({ message: ids.length === 1 ? t('updateError') : t('batchError'), tone: 'error' })
-    } else {
-      show({ message: t(doneKey(next), { count: done.size }), tone: 'status' })
-      if (ids.length > 1) clearSelection()
-    }
-    setBusy(false)
+    if (ids.length > 1) clearSelection()
+    let done = new Set<string>()
+    schedule({
+      id: `status:${next}:${ids.join(',')}`,
+      message: t(doneKey(next), { count: ids.length }),
+      undoLabel: t('undo'),
+      failMessage: ids.length === 1 ? t('updateError') : t('batchError'),
+      restore: () => setRows((rs) => rs.map((r) => (before.has(r.id) && !done.has(r.id) && r.status === next ? { ...r, status: before.get(r.id)! } : r))),
+      run: async () => {
+        if (ids.length === 1) {
+          const r = await setSubmissionStatusAction({ projectSlug, submissionId: ids[0], status: next, locale }).catch(() => ({ ok: false }))
+          done = new Set(r.ok ? ids : [])
+        } else {
+          done = new Set(await runChunks(ids, (submissionIds) => setSubmissionsStatusBatchAction({ projectSlug, submissionIds, status: next, locale })))
+        }
+        return done.size === ids.length
+      },
+    })
   }
 
   async function remove(ids: string[]) {
@@ -193,9 +195,9 @@ export function SubmissionsBrowser({
   const menuFor = (s: DashboardSubmission): CardMenuItem[] => {
     const items: CardMenuItem[] = [{ key: 'open', label: t('open'), onSelect: () => setOpenId(s.id) }]
     if (canUpdate) {
-      if (s.status !== 'processed') items.push({ key: 'handled', label: t('markHandled'), onSelect: () => void setStatus([s.id], 'processed') })
-      if (s.status !== 'new') items.push({ key: 'new', label: t('markNew'), onSelect: () => void setStatus([s.id], 'new') })
-      if (s.status !== 'archived') items.push({ key: 'archive', label: t('markArchived'), onSelect: () => void setStatus([s.id], 'archived') })
+      if (s.status !== 'processed') items.push({ key: 'handled', label: t('markHandled'), onSelect: () => setStatus([s.id], 'processed') })
+      if (s.status !== 'new') items.push({ key: 'new', label: t('markNew'), onSelect: () => setStatus([s.id], 'new') })
+      if (s.status !== 'archived') items.push({ key: 'archive', label: t('markArchived'), onSelect: () => setStatus([s.id], 'archived') })
     }
     items.push({ key: 'export', label: t('exportOne'), onSelect: () => exportCsv([s]) })
     if (canDelete) items.push({ key: 'delete', label: t('delete'), onSelect: () => setConfirmDelete([s.id]), destructive: true })
@@ -389,7 +391,7 @@ export function SubmissionsBrowser({
         />
       ) : null}
 
-      <Toast message={toast?.message ?? null} tone={toast?.tone} />
+      <Toast message={toast?.message ?? null} tone={toast?.tone} action={toast?.undo ? t('undo') : undefined} onAction={toast?.undo} />
     </>
   )
 }

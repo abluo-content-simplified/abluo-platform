@@ -578,7 +578,8 @@
         "new": "{count, plural, one {# request marked as new.} other {# requests marked as new.}}",
         "archived": "{count, plural, one {# request archived.} other {# requests archived.}}",
         "deleted": "{count, plural, one {# request deleted.} other {# requests deleted.}}"
-      }
+      },
+      "undo": "Undo"
     },
     "home": {
       "title": "Welcome back",
@@ -1685,7 +1686,8 @@
         "described": "Described",
         "missing": "Missing",
         "focalSet": "Set",
-        "focalNone": "Not set"
+        "focalNone": "Not set",
+        "animation": "Animation"
       },
       "menu": {
         "label": "Actions for {name}",
@@ -1786,6 +1788,15 @@
           "empty": "No tags yet. Type a name to add the first one.",
           "placeholderAdd": "Search or add a tag",
           "addNamed": "Add “{name}”"
+        },
+        "modules": {
+          "people": {
+            "category": {
+              "empty": "No groups yet. Type a name to add the first one.",
+              "placeholderAdd": "Search or add a group",
+              "addNamed": "Add group “{name}”"
+            }
+          }
         }
       },
       "columns": {
@@ -2124,7 +2135,8 @@
         "not_owner": "Only a current Owner can step down.",
         "last_owner": "A client always needs at least one Owner.",
         "not_ready": "Making someone Owner isn’t available yet: a database update (056) is still needed. Nothing was changed."
-      }
+      },
+      "undo": "Undo"
     },
     "analytics": {
       "title": "Analytics",
@@ -3050,7 +3062,8 @@
         "too_large": "That file is too large. The limit is 20 MB.",
         "not_uploaded_yet": "The upload is taking longer than expected. Please try again.",
         "network": "The upload was interrupted. Check your connection and try again."
-      }
+      },
+      "undo": "Undo"
     },
     "documents": {
       "title": "Documents",
@@ -3231,7 +3244,8 @@
       "languageOf": "Language of the {field}",
       "notTranslated": "not translated yet",
       "fallbackHint": "Optional. If you leave it empty, visitors in this language see the {language} text: “{text}”.",
-      "fallbackHintEmpty": "Optional. If you leave it empty, visitors in this language see the {language} text."
+      "fallbackHintEmpty": "Optional. If you leave it empty, visitors in this language see the {language} text.",
+      "undo": "Undo"
     },
     "discover": {
       "title": "More You Can Add",
@@ -3413,7 +3427,9 @@
         "actions": {
           "edit": "Edit",
           "usedIn": "Where it’s shown",
-          "anonymise": "Anonymise…"
+          "anonymise": "Anonymise…",
+          "preview": "Preview",
+          "activity": "Activity"
         },
         "done": {
           "archived": "{name} is archived. It’s no longer on your website.",
@@ -3440,7 +3456,48 @@
           "sort_updated_asc": "Least recently updated",
           "showing": "{shown} of {total} people",
           "clear": "Clear filters",
-          "noMatch": "No one matches these filters."
+          "noMatch": "No one matches these filters.",
+          "missing": "Missing",
+          "missingAll": "Nothing",
+          "missingPhoto": "No photo",
+          "missingShortBio": "No short bio",
+          "missingLanguage": "Texts in {language}",
+          "chipPhoto": "Missing: photo",
+          "chipShortBio": "Missing: short bio",
+          "chipLanguage": "Missing: texts in {language}"
+        },
+        "previewFailed": "Couldn’t open the preview. Try again.",
+        "missing": {
+          "photo": "No photo",
+          "shortBio": "No short bio",
+          "languages": "Missing {languages}"
+        },
+        "bulk": {
+          "toolbar": "Selected people",
+          "count": "{count, plural, one {# person selected} other {# people selected}}",
+          "checkbox": "Select {name}",
+          "all": "Select all",
+          "allLabel": "Select all people in this list",
+          "bar": {
+            "groups": "Groups",
+            "show": "Show",
+            "hide": "Hide",
+            "archive": "Archive",
+            "clear": "Clear"
+          },
+          "groupsTitle": "Groups for {count, plural, one {# person} other {# people}}",
+          "addHeading": "Add to group",
+          "removeHeading": "Remove from group",
+          "message": {
+            "archive": "{count, plural, one {# person is} other {# people are}} archived. They’re no longer on your website.",
+            "show": "{count, plural, one {# person is} other {# people are}} shown on your website.",
+            "hide": "{count, plural, one {# person is} other {# people are}} hidden from your website.",
+            "addGroup": "{count, plural, one {# person} other {# people}} added to {group}.",
+            "removeGroup": "{count, plural, one {# person} other {# people}} removed from {group}."
+          },
+          "skipped": "{count} left as they were",
+          "nothing": "Nothing to change for the people you selected.",
+          "attention": "{count, plural, one {# person couldn’t} other {# people couldn’t}} be changed: {details}"
         }
       },
       "visibility": {
@@ -3483,7 +3540,11 @@
           "tooMany": "You’ve reached the number of people your plan includes.",
           "missingName": "A first name is required.",
           "failed": "We couldn’t create this person. Please try again."
-        }
+        },
+        "open": "Open",
+        "duplicate": "{name} is already in your People",
+        "duplicateArchived": "{name} is already in your People, but archived",
+        "createAnyway": "Create anyway"
       },
       "anonymise": {
         "title": "Anonymise {name}?",
@@ -3536,7 +3597,8 @@
           "anonymise": "Anonymise…",
           "activity": "Activity",
           "preview": "Preview",
-          "previewFailed": "The preview could not be opened. Try again in a moment."
+          "previewFailed": "The preview could not be opened. Try again in a moment.",
+          "viewOnWebsite": "View on website"
         },
         "confirm": {
           "discardTitle": "Discard your unpublished changes?",
@@ -3643,7 +3705,31 @@
           "useSuggestion": "Use This",
           "dismissSuggestion": "No Thanks",
           "dismiss": "Dismiss",
-          "suggestionUsed": "Suggestion used. You can still edit it."
+          "suggestionUsed": "Suggestion used. You can still edit it.",
+          "focal": {
+            "toggle": "Set focus point",
+            "avatar": "Round avatar",
+            "title": "Focus point",
+            "helper": "Tap or drag to the most important part of the photo. Every crop keeps it in view, on every page that uses this photo.",
+            "readOnly": "The focus point of this photo.",
+            "keys": "Use the arrow keys to move it; hold Shift for bigger steps.",
+            "label": "Focus point of the photo",
+            "valueText": "{x}% from the left, {y}% from the top",
+            "previews": "How it will be cropped",
+            "preview": {
+              "wide": "Wide",
+              "card": "Card",
+              "square": "Square",
+              "tall": "Phone"
+            },
+            "status": {
+              "saving": "Saving…",
+              "saved": "Saved",
+              "failed": "Couldn’t save. Try again."
+            },
+            "scope": "The focus point is saved on the photo in your Media library, so it applies everywhere this photo is used.",
+            "loadFailed": "We couldn’t load the photo. Please try again."
+          }
         },
         "about": {
           "bioTitle": "About",
@@ -3896,7 +3982,11 @@
         "namesNeeded": "Add a first name to continue.",
         "back": "Back",
         "creating": "Adding…",
-        "create": "Add Person"
+        "create": "Add Person",
+        "duplicate": "{name} is already in your People",
+        "duplicateArchived": "{name} is already in your People, but archived",
+        "useThis": "Use this person",
+        "createAnyway": "Create anyway"
       },
       "tree": {
         "instructions": "To move a category, use its grip: up and down arrows reorder it, the right arrow moves it into the category above, the left arrow moves it out of its parent. The ⋯ menu has the same moves.",
@@ -4723,7 +4813,8 @@
         "invalidValue": "Choose a valid value.",
         "invalidUrl": "Each link needs a full http(s) URL.",
         "tooMany": "Too many links (max 20)."
-      }
+      },
+      "undo": "Undo"
     },
     "announcements": {
       "title": "Announcements",
@@ -5064,7 +5155,14 @@
       "undo": "Undo",
       "deleteFailed": "The photo couldn't be deleted. It may be used somewhere.",
       "loadError": "We couldn't load the list of projects.",
-      "unknownProject": "There is no project called “{slug}”. Showing all projects."
+      "unknownProject": "There is no project called “{slug}”. Showing all projects.",
+      "addAnimation": "Add animation",
+      "chooseProjectToAddAnimation": "Choose a project first to add an animation.",
+      "animationUploading": "Adding the animation…",
+      "animationAdded": "Animation added to the library.",
+      "animationUnsupported": "That file is not a Lottie animation. Choose a .lottie or .json Lottie file.",
+      "animationTooLarge": "That animation is larger than 2 MB.",
+      "animationFailed": "The animation could not be added. Please try again."
     },
     "newProject": {
       "title": "New project",

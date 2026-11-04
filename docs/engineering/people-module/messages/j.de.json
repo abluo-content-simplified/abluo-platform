@@ -1,0 +1,55 @@
+{
+  "clientDashboard": {
+    "persons": {
+      "list": {
+        "previewFailed": "Die Vorschau konnte nicht geöffnet werden. Versuch es noch einmal.",
+        "actions": {
+          "preview": "Vorschau",
+          "activity": "Aktivität"
+        },
+        "missing": {
+          "photo": "Kein Foto",
+          "shortBio": "Keine Kurzbio",
+          "languages": "Es fehlen {languages}"
+        },
+        "filters": {
+          "missing": "Fehlt",
+          "missingAll": "Nichts",
+          "missingPhoto": "Kein Foto",
+          "missingShortBio": "Keine Kurzbio",
+          "missingLanguage": "Texte auf {language}",
+          "chipPhoto": "Fehlt: Foto",
+          "chipShortBio": "Fehlt: Kurzbio",
+          "chipLanguage": "Fehlt: Texte auf {language}"
+        },
+        "bulk": {
+          "toolbar": "Ausgewählte Personen",
+          "count": "{count, plural, one {# Person ausgewählt} other {# Personen ausgewählt}}",
+          "checkbox": "{name} auswählen",
+          "all": "Alle auswählen",
+          "allLabel": "Alle Personen dieser Liste auswählen",
+          "bar": {
+            "groups": "Gruppen",
+            "show": "Zeigen",
+            "hide": "Ausblenden",
+            "archive": "Archivieren",
+            "clear": "Abbrechen"
+          },
+          "groupsTitle": "Gruppen für {count, plural, one {# Person} other {# Personen}}",
+          "addHeading": "Zur Gruppe hinzufügen",
+          "removeHeading": "Aus Gruppe entfernen",
+          "message": {
+            "archive": "{count, plural, one {# Person ist} other {# Personen sind}} archiviert und nicht mehr auf deiner Website.",
+            "show": "{count, plural, one {# Person wird} other {# Personen werden}} auf deiner Website gezeigt.",
+            "hide": "{count, plural, one {# Person ist} other {# Personen sind}} auf deiner Website ausgeblendet.",
+            "addGroup": "{count, plural, one {# Person} other {# Personen}} zu {group} hinzugefügt.",
+            "removeGroup": "{count, plural, one {# Person} other {# Personen}} aus {group} entfernt."
+          },
+          "skipped": "{count} unverändert geblieben",
+          "nothing": "Für die ausgewählten Personen gibt es nichts zu ändern.",
+          "attention": "{count, plural, one {# Person konnte} other {# Personen konnten}} nicht geändert werden: {details}"
+        }
+      }
+    }
+  }
+}

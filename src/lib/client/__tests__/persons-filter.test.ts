@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   activePersonFilterCount,
   applyPersonFilters,
+  bulkTargets,
   canReorderPersons,
   DEFAULT_PERSON_FILTERS,
   isDefaultPersonFilters,
@@ -73,5 +74,69 @@ describe('people filters', () => {
     expect(canReorderPersons({ ...DEFAULT_PERSON_FILTERS, group: 'board' })).toBe(false)
     expect(canReorderPersons({ ...DEFAULT_PERSON_FILTERS, status: 'archived' })).toBe(false)
     expect(canReorderPersons({ ...DEFAULT_PERSON_FILTERS, sort: { column: 'name', dir: 'asc' } })).toBe(false)
+  })
+})
+
+describe('people filters — "Missing…"', () => {
+  const m = (photo: boolean, shortBio: boolean, languages: string[] = []) => ({ photo, shortBio, languages })
+  const list = [
+    p('a', 'Ana', { missing: m(true, false) }),
+    p('b', 'Bea', { missing: m(false, true, ['de']) }),
+    p('c', 'Cid', { missing: m(false, false) }),
+    p('d', 'Dan'),
+  ]
+  const ids = (missing: string) => applyPersonFilters(list, { ...DEFAULT_PERSON_FILTERS, missing }).map((x) => x.id)
+  it('filters by photo, short bio and a language', () => {
+    expect(ids('photo')).toEqual(['a'])
+    expect(ids('shortBio')).toEqual(['b'])
+    expect(ids('lang:de')).toEqual(['b'])
+    expect(ids('lang:fr')).toEqual([])
+    expect(ids('all')).toEqual(['a', 'b', 'c', 'd'])
+  })
+  it('round-trips through the URL and ignores unknown values', () => {
+    const f = parsePersonFilters(new URLSearchParams('missing=lang:de'))
+    expect(f.missing).toBe('lang:de')
+    expect(personFiltersToParams(f).get('missing')).toBe('lang:de')
+    expect(parsePersonFilters(new URLSearchParams('missing=banana')).missing).toBe('all')
+    expect(parsePersonFilters(new URLSearchParams('missing=lang:../x')).missing).toBe('all')
+    expect(personFiltersToParams(DEFAULT_PERSON_FILTERS).has('missing')).toBe(false)
+  })
+  it('counts as an active filter, is not default, and stops dragging', () => {
+    const f = { ...DEFAULT_PERSON_FILTERS, missing: 'photo' }
+    expect(activePersonFilterCount(f)).toBe(1)
+    expect(isDefaultPersonFilters(f)).toBe(false)
+    expect(canReorderPersons(f)).toBe(false)
+  })
+})
+
+describe('bulkTargets', () => {
+  const r = (id: string, over: Partial<FilterablePerson & { isPublished: boolean; anonymised: boolean }> = {}) => ({ ...p(id, id), isPublished: true, anonymised: false, ...over })
+  const rows = [
+    r('on', { visibility: 'listed', groups: ['team'] }),
+    r('page', { visibility: 'page' }),
+    r('off', { visibility: 'off' }),
+    r('arch', { state: 'archived' as const, visibility: 'off' }),
+    r('anon', { anonymised: true }),
+    r('draft', { isPublished: false, state: 'draft' as const }),
+  ]
+  const ids = (op: Parameters<typeof bulkTargets>[1], g?: string) => bulkTargets(rows, op, g).targets.map((x) => x.id)
+  it('skips archived and anonymised people for every action', () => {
+    for (const op of ['show', 'hide', 'archive', 'addGroup', 'removeGroup'] as const) {
+      expect(ids(op, 'team')).not.toContain('arch')
+      expect(ids(op, 'team')).not.toContain('anon')
+    }
+  })
+  it('show touches only hidden people, hide everyone not hidden', () => {
+    expect(ids('show')).toEqual(['off'])
+    expect(ids('hide')).toEqual(['on', 'page', 'draft'])
+  })
+  it('archive needs a published person', () => {
+    expect(ids('archive')).toEqual(['on', 'page', 'off'])
+  })
+  it('groups only change where they differ', () => {
+    expect(ids('addGroup', 'team')).toEqual(['page', 'off', 'draft'])
+    expect(ids('removeGroup', 'team')).toEqual(['on'])
+    expect(ids('addGroup')).toEqual([])
+    expect(bulkTargets(rows, 'archive').skipped).toBe(3)
   })
 })

@@ -6,10 +6,13 @@ import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
 import { getPathname, useRouter as useAppRouter } from '@/i18n/navigation'
 import type { PersonListItem, PersonState, PersonUsage } from '@/lib/api/persons'
-import { personLifecycleAction, reorderPersonsAction } from '@/app/[locale]/(client)/[tenant]/people/actions'
+import { bulkUpdatePersonsAction, personLifecycleAction, reorderPersonsAction } from '@/app/[locale]/(client)/[tenant]/people/actions'
+import { mintPersonPreviewAction } from '@/app/[locale]/(client)/[tenant]/people/preview-action'
+import { personPreviewUrl } from '@/lib/client/preview-url'
 import {
   activePersonFilterCount,
   applyPersonFilters,
+  bulkTargets,
   canReorderPersons,
   DEFAULT_PERSON_FILTERS,
   isDefaultPersonFilters,
@@ -17,15 +20,20 @@ import {
   parsePersonFilters,
   personFiltersToParams,
   personStateCounts,
+  type PersonBulkAction,
   type PersonFilters,
   type PersonSortColumn,
 } from '@/lib/client/persons-filter'
 import { DeletePermanentlyDialog } from '@/components/app/lifecycle/DeletePermanentlyDialog'
+import { BarButton, SheetItem } from '@/components/app/ui/BarButton'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { Button } from '@/components/app/ui/Button'
 import type { CardMenuItem } from '@/components/app/ui/CardMenu'
 import { EmptyState } from '@/components/app/ui/EmptyState'
+import { SelectAll } from '@/components/app/ui/list/ContentCard'
+import { idRange, SelectionBar } from '@/components/app/ui/SelectionBar'
 import { PageHeader } from '@/components/app/ui/PageHeader'
+import { ICONS as POST_ICONS } from '@/components/client/posts/post-bits'
 import { Toast } from '@/components/app/ui/Toast'
 import { dropIndex, usePointerDrag } from '@/components/app/ui/use-pointer-drag'
 import { useUndo } from '@/components/app/ui/use-undo'
@@ -36,6 +44,7 @@ import { PeopleFilters } from './PeopleFilters'
 import { PeopleTable, type PersonReorder } from './PeopleTable'
 import { PeopleCardsGrid, PeoplePhoneList } from './PeopleCards'
 import { NewPersonDialog } from './NewPersonDialog'
+import { PersonActivitySheet } from './PersonActivitySheet'
 import { PersonAnonymiseDialog } from './PersonAnonymiseDialog'
 import { PERSON_ICONS, toPersonRow, useGroupLabel, useUsageSummary, type PersonRow } from './person-bits'
 import { PersonUsedInLoader } from './PersonUsedInLoader'
@@ -57,17 +66,25 @@ type View = (typeof VIEWS)[number]
  * (the shared DragGrip: pointer drag or ArrowUp / ArrowDown); the order is
  * saved at once for the whole list.
  *
- * Row menu: Edit · Where it's used · Archive / Restore (Owner) · Delete (a
- * draft never published; Owner) / Delete permanently (archived; Owner) ·
- * Anonymise (Owner). The server re-checks every rule: deleting is refused
- * while any content shows the person, and the refusal names where. Without
- * people.person.write the list is read-only (no "New person", no dragging).
+ * Row menu: Edit · Preview · Where it's used · Activity · Archive / Restore
+ * (Owner) · Delete (a draft never published; Owner) / Delete permanently
+ * (archived; Owner) · Anonymise (Owner). The server re-checks every rule:
+ * deleting is refused while any content shows the person, and the refusal
+ * names where. Without people.person.write the list is read-only (no "New
+ * person", no dragging, no selecting).
+ *
+ * Selection (square checkboxes, shift selects a range) opens the SelectionBar:
+ * Groups (add / remove) · Show · Hide (write) · Archive (Owner). The change
+ * shows at once and the server call (bulkUpdatePersons) runs after the Undo
+ * delay; archiving one person from the menu works the same way ("Archived ·
+ * Undo"). Anonymise and permanent delete never have Undo.
  */
 export function PeopleBrowser({
   projectSlug,
   persons,
   defaultLocale,
   groupTerms,
+  languages,
   canWrite,
   canArchive = false,
   canDelete = false,
@@ -79,6 +96,8 @@ export function PeopleBrowser({
   defaultLocale: string
   /** The People groups (Categories & Tags), in the vocabulary's order. */
   groupTerms: PickerTerm[]
+  /** The site's languages (main first), for "Missing… texts in …". */
+  languages?: string[]
   canWrite: boolean
   canArchive?: boolean
   canDelete?: boolean
@@ -90,6 +109,7 @@ export function PeopleBrowser({
   const te = useTranslations('clientDashboard.persons.errors')
   const tl = useTranslations('app.lifecycle')
   const ta = useTranslations('clientDashboard.persons.anonymise')
+  const tb = useTranslations('clientDashboard.persons.list.bulk')
   const ui = useLocale()
   const router = useRouter()
   const appRouter = useAppRouter()
@@ -128,7 +148,7 @@ export function PeopleBrowser({
 
   // ── Rows (with changes shown at once, until the refresh lands) ─────────────
   const [hidden, setHidden] = useState<Set<string>>(new Set())
-  const [overlay, setOverlay] = useState<Record<string, PersonState>>({})
+  const [overlay, setOverlay] = useState<Record<string, Partial<Pick<PersonRow, 'state' | 'visibility' | 'groups'>>>>({})
   /** The site order as just dragged, until the refresh brings the saved one. */
   const [orderOverride, setOrderOverride] = useState<string[] | null>(null)
   const anonymisedName = t('anonymisedName')
@@ -137,7 +157,7 @@ export function PeopleBrowser({
       .filter((p) => !hidden.has(p.id))
       .map((p) => {
         const row = toPersonRow(p, projectSlug, anonymisedName)
-        return overlay[p.id] ? { ...row, state: overlay[p.id] } : row
+        return overlay[p.id] ? { ...row, ...overlay[p.id] } : row
       })
     if (!orderOverride) return base
     const at = new Map(orderOverride.map((id, n) => [id, n]))
@@ -152,6 +172,7 @@ export function PeopleBrowser({
   const [usedInOf, setUsedInOf] = useState<PersonRow | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<PersonRow | null>(null)
   const [confirmAnonymise, setConfirmAnonymise] = useState<PersonRow | null>(null)
+  const [activityOf, setActivityOf] = useState<PersonRow | null>(null)
   const [dialogError, setDialogError] = useState<string | null>(null)
   const { toast, show, schedule } = useUndo()
 
@@ -163,20 +184,64 @@ export function PeopleBrowser({
     else appRouter.push(p.href)
   }
 
-  async function lifecycle(p: PersonRow, op: 'archive' | 'restore') {
+  const dropOverlay = (ids: string[]) =>
+    setOverlay((o) => {
+      const n = { ...o }
+      for (const id of ids) delete n[id]
+      return n
+    })
+
+  /** Archive: shown at once, "Archived · Undo", the server runs after the delay. */
+  function archive(p: PersonRow) {
+    setOverlay((o) => ({ ...o, [p.id]: { ...o[p.id], state: 'archived' } }))
+    schedule({
+      id: p.id,
+      message: t('done.archived', { name: p.name }),
+      undoLabel: t('undo'),
+      failMessage: te('failed'),
+      restore: () => dropOverlay([p.id]),
+      run: async () => {
+        const r = await personLifecycleAction({ projectSlug, id: p.id, op: 'archive' })
+        if (r.ok) appRouter.refresh()
+        else {
+          dropOverlay([p.id])
+          show({ message: errorText(r.error, r.detail?.usedIn), tone: 'error' }, 9000)
+        }
+        return true // the refusal was already said, with its reason
+      },
+    })
+  }
+
+  async function restore(p: PersonRow) {
     if (busy) return
     setBusy(true)
     try {
-      const r = await personLifecycleAction({ projectSlug, id: p.id, op })
+      const r = await personLifecycleAction({ projectSlug, id: p.id, op: 'restore' })
       if (!r.ok) return show({ message: errorText(r.error, r.detail?.usedIn), tone: 'error' }, 9000)
-      const next: PersonState = op === 'archive' ? 'archived' : p.isPublished ? (p.hasDraft ? 'changes' : 'published') : 'draft'
-      setOverlay((o) => ({ ...o, [p.id]: next }))
-      show({ message: op === 'archive' ? t('done.archived', { name: p.name }) : t('done.restored', { name: p.name }), tone: 'status' })
+      const next: PersonState = p.isPublished ? (p.hasDraft ? 'changes' : 'published') : 'draft'
+      setOverlay((o) => ({ ...o, [p.id]: { ...o[p.id], state: next } }))
+      show({ message: t('done.restored', { name: p.name }), tone: 'status' })
       appRouter.refresh()
     } catch {
       show({ message: te('failed'), tone: 'error' }, 7000)
     } finally {
       setBusy(false)
+    }
+  }
+
+  /** The private, 15-minute preview of the profile page (as the editor does). */
+  async function preview(p: PersonRow) {
+    const tab = window.open('about:blank', '_blank')
+    if (tab) tab.opener = null
+    try {
+      const r = await mintPersonPreviewAction({ projectSlug, id: p.id })
+      if (!r.ok) throw new Error(r.error)
+      const url = personPreviewUrl({ origin: r.origin, locale: defaultLocale, projectSlug: r.projectSlug, id: p.id, token: r.token })
+      if (tab) tab.location.href = url
+      else window.location.assign(url)
+    } catch {
+      tab?.close()
+      show({ message: t('previewFailed'), tone: 'error' }, 7000)
     }
   }
 
@@ -290,13 +355,92 @@ export function PeopleBrowser({
         }
       : undefined
 
+  // ── Selection (square checkboxes; shift selects a range) and bulk changes ───
+  const canSelect = canWrite || canArchive
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [lastPicked, setLastPicked] = useState<string | null>(null)
+  const [groupSheet, setGroupSheet] = useState(false)
+  const selectedRows = shown.filter((r) => selected.has(r.id))
+  const allState: 'none' | 'some' | 'all' = selectedRows.length === 0 ? 'none' : selectedRows.length === shown.length ? 'all' : 'some'
+  const toggle = (id: string, checked: boolean, shift: boolean) => {
+    const order = shown.map((r) => r.id)
+    setSelected((cur) => {
+      const n = new Set(cur)
+      const ids = shift && lastPicked && lastPicked !== id ? idRange(order, lastPicked, id) : [id]
+      for (const x of ids) {
+        if (checked) n.add(x)
+        else n.delete(x)
+      }
+      return n
+    })
+    setLastPicked(id)
+  }
+  const toggleAll = (checked: boolean) => {
+    setSelected(checked ? new Set(shown.map((r) => r.id)) : new Set())
+    setLastPicked(null)
+  }
+  const clearSelection = () => {
+    setSelected(new Set())
+    setLastPicked(null)
+  }
+  const selection = canSelect
+    ? { selected, onToggle: toggle, allState, onToggleAll: toggleAll, rowLabel: (r: PersonRow) => tb('checkbox', { name: r.name }), allLabel: tb('allLabel') }
+    : undefined
+
+  /** Shown at once, "… · Undo"; the server call (one bulkUpdatePersons) runs after the delay. */
+  function runBulk(op: PersonBulkAction, group?: string) {
+    const { targets, skipped } = bulkTargets(selectedRows, op, group)
+    clearSelection()
+    setGroupSheet(false)
+    if (!targets.length) return show({ message: tb('nothing'), tone: 'status' }, 6000)
+    const ids = targets.map((r) => r.id)
+    setOverlay((o) => {
+      const n = { ...o }
+      for (const r of targets) {
+        const change: Partial<Pick<PersonRow, 'state' | 'visibility' | 'groups'>> =
+          op === 'archive' ? { state: 'archived' } : op === 'show' ? { visibility: 'listed' } : op === 'hide' ? { visibility: 'off' } : { groups: op === 'addGroup' ? [...r.groups, group!] : r.groups.filter((k) => k !== group) }
+        n[r.id] = { ...n[r.id], ...change }
+      }
+      return n
+    })
+    const note = skipped ? ` · ${tb('skipped', { count: skipped })}` : ''
+    schedule({
+      id: `bulk-${op}-${ids.join(',')}`,
+      message: tb(`message.${op}`, { count: ids.length, group: group ? groupLabel(group) : '' }) + note,
+      undoLabel: t('undo'),
+      failMessage: te('failed'),
+      restore: () => dropOverlay(ids),
+      run: async () => {
+        const r = await bulkUpdatePersonsAction({ projectSlug, ids, op, ...(group && { group }) })
+        if (!r.ok) {
+          dropOverlay(ids)
+          show({ message: errorText(r.error), tone: 'error' }, 9000)
+          return true
+        }
+        // Whoever the server skipped or could not change goes back to what they were.
+        const notChanged = [...r.skipped.map((x) => x.id), ...r.failed.map((x) => x.id)]
+        if (notChanged.length) dropOverlay(notChanged)
+        if (r.failed.length) {
+          const names = r.failed.slice(0, 3).map((f) => `${rows.find((x) => x.id === f.id)?.name ?? ''} — ${errorText(f.code)}`)
+          show({ message: tb('attention', { count: r.failed.length, details: names.join('; ') + (r.failed.length > 3 ? ` +${r.failed.length - 3}` : '') }), tone: 'error' }, 9000)
+        }
+        appRouter.refresh()
+        return true
+      },
+    })
+  }
+  const anyEditable = selectedRows.some((r) => !r.anonymised && r.state !== 'archived')
+  const groupChoices = groupTerms.map((g) => ({ key: g.value, label: groupLabel(g.value), add: bulkTargets(selectedRows, 'addGroup', g.value).targets.length, remove: bulkTargets(selectedRows, 'removeGroup', g.value).targets.length }))
+
   const menuFor = (p: PersonRow): CardMenuItem[] => {
     const items: CardMenuItem[] = [{ key: 'edit', label: t('actions.edit'), onSelect: () => appRouter.push(p.href) }]
+    if (!p.anonymised) items.push({ key: 'preview', label: t('actions.preview'), onSelect: () => void preview(p) })
     if (p.usageCount) items.push({ key: 'usedIn', label: t('actions.usedIn'), onSelect: () => setUsedInOf(p) })
+    items.push({ key: 'activity', label: t('actions.activity'), onSelect: () => setActivityOf(p) })
     if (p.state === 'archived') {
-      if (canArchive) items.push({ key: 'restore', label: tl('actions.restore'), onSelect: () => void lifecycle(p, 'restore') })
-    } else if (p.isPublished && canArchive) {
-      items.push({ key: 'archive', label: tl('actions.archive'), onSelect: () => void lifecycle(p, 'archive') })
+      if (canArchive) items.push({ key: 'restore', label: tl('actions.restore'), onSelect: () => void restore(p) })
+    } else if (p.isPublished && canArchive && !p.anonymised) {
+      items.push({ key: 'archive', label: tl('actions.archive'), onSelect: () => archive(p) })
     }
     if (canAnonymise && !p.anonymised) items.push({ key: 'anonymise', label: t('actions.anonymise'), onSelect: () => setConfirmAnonymise(p), separated: true })
     if (canDelete) {
@@ -344,6 +488,7 @@ export function PeopleBrowser({
       <BottomSheet open={usedInOf !== null} title={t('usedInTitle', { name: usedInOf?.name ?? '' })} onClose={() => setUsedInOf(null)}>
         {usedInOf ? <PersonUsedInLoader projectSlug={projectSlug} personId={usedInOf.id} /> : null}
       </BottomSheet>
+      <PersonActivitySheet open={activityOf !== null} onClose={() => setActivityOf(null)} projectSlug={projectSlug} personId={activityOf?.id ?? ''} />
       <DeletePermanentlyDialog
         open={confirmDelete !== null}
         titles={confirmDelete ? [confirmDelete.name] : []}
@@ -406,6 +551,7 @@ export function PeopleBrowser({
         total={rows.length}
         activeCount={activePersonFilterCount(filters)}
         showSortOnDesktop={view === 'cards'}
+        languages={(languages ?? []).filter((l) => l !== defaultLocale)}
       />
 
       {shown.length === 0 ? (
@@ -417,7 +563,6 @@ export function PeopleBrowser({
             {view === 'list' ? (
               <PeopleTable
                 rows={shown}
-                canWrite={canWrite}
                 sort={filters.sort}
                 onSort={(column: PersonSortColumn) => update({ sort: nextPersonSort(column, filters.sort) })}
                 onOpen={open}
@@ -425,17 +570,75 @@ export function PeopleBrowser({
                 menuFor={menuFor}
                 groupLabel={groupLabel}
                 reorder={reorder}
+                selection={selection}
               />
             ) : (
-              <PeopleCardsGrid rows={shown} canWrite={canWrite} onOpen={open} onUsedIn={setUsedInOf} menuFor={menuFor} groupLabel={groupLabel} />
+              <>
+                {selection ? (
+                  <div className="mb-3">
+                    <SelectAll label={tb('all')} ariaLabel={tb('allLabel')} state={allState} onChange={toggleAll} />
+                  </div>
+                ) : null}
+                <PeopleCardsGrid rows={shown} selection={selection} onOpen={open} onUsedIn={setUsedInOf} menuFor={menuFor} groupLabel={groupLabel} />
+              </>
             )}
           </div>
           {/* Phones */}
           <div className="md:hidden">
-            <PeoplePhoneList rows={shown} canWrite={canWrite} menuFor={menuFor} groupLabel={groupLabel} reorder={reorder} />
+            <PeoplePhoneList rows={shown} selection={selection} menuFor={menuFor} groupLabel={groupLabel} reorder={reorder} />
           </div>
         </>
       )}
+
+      {canSelect && selectedRows.length > 0 ? (
+        <SelectionBar label={tb('toolbar')} count={tb('count', { count: selectedRows.length })}>
+          {canWrite && groupTerms.length > 0 ? (
+            <BarButton disabled={!anyEditable} onPress={() => setGroupSheet(true)} icon={PERSON_ICONS.tag}>
+              {tb('bar.groups')}
+            </BarButton>
+          ) : null}
+          {canWrite ? (
+            <BarButton disabled={bulkTargets(selectedRows, 'show').targets.length === 0} onPress={() => runBulk('show')} icon={POST_ICONS.online}>
+              {tb('bar.show')}
+            </BarButton>
+          ) : null}
+          {canWrite ? (
+            <BarButton disabled={bulkTargets(selectedRows, 'hide').targets.length === 0} onPress={() => runBulk('hide')} icon={POST_ICONS.offline}>
+              {tb('bar.hide')}
+            </BarButton>
+          ) : null}
+          {canArchive ? (
+            <BarButton disabled={bulkTargets(selectedRows, 'archive').targets.length === 0} onPress={() => runBulk('archive')} icon={POST_ICONS.archiveAction}>
+              {tb('bar.archive')}
+            </BarButton>
+          ) : null}
+          <BarButton onPress={clearSelection} icon={POST_ICONS.x}>
+            {tb('bar.clear')}
+          </BarButton>
+        </SelectionBar>
+      ) : null}
+
+      <BottomSheet open={groupSheet} title={tb('groupsTitle', { count: selectedRows.length })} onClose={() => setGroupSheet(false)}>
+        <div className="mt-2 flex flex-col">
+          {groupChoices.some((g) => g.add > 0) ? <p className="px-3 pt-2 pb-1 text-sm font-semibold text-muted-foreground">{tb('addHeading')}</p> : null}
+          {groupChoices
+            .filter((g) => g.add > 0)
+            .map((g) => (
+              <SheetItem key={`add-${g.key}`} onPress={() => runBulk('addGroup', g.key)}>
+                {g.label}
+              </SheetItem>
+            ))}
+          {groupChoices.some((g) => g.remove > 0) ? <p className="px-3 pt-3 pb-1 text-sm font-semibold text-muted-foreground">{tb('removeHeading')}</p> : null}
+          {groupChoices
+            .filter((g) => g.remove > 0)
+            .map((g) => (
+              <SheetItem key={`remove-${g.key}`} onPress={() => runBulk('removeGroup', g.key)}>
+                {g.label}
+              </SheetItem>
+            ))}
+          {groupChoices.every((g) => g.add === 0 && g.remove === 0) ? <p className="px-3 py-2 text-[0.9375rem] text-muted-foreground">{tb('nothing')}</p> : null}
+        </div>
+      </BottomSheet>
 
       {dialogs}
     </div>

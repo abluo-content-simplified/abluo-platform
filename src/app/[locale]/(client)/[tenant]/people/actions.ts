@@ -16,6 +16,7 @@ import { searchLinkTargets, PostLinkSearchError, type LinkTargetResult } from '@
 import { BODY_LINK_TARGET_TYPES } from '@/lib/links/target-types'
 import {
   anonymisePerson,
+  bulkUpdatePersons,
   createPerson,
   discardPersonDraft,
   getPersonActivity,
@@ -31,6 +32,8 @@ import {
   savePersonDraft,
   savePersonPrivate,
   searchPersons,
+  type PersonBulkOp,
+  type PersonBulkResult,
   type PersonErrorCode,
   type PersonListItem,
   type PersonPickerItem,
@@ -156,6 +159,15 @@ export async function searchPersonsAction(input: {
 /** Archive / restore (owner), delete a never-published draft or an archived person for good (owner, only when unreferenced). */
 export async function personLifecycleAction(input: { projectSlug: string; id: string; op: PersonLifecycleOp }): Promise<Result<{ rev: string | null; privateRemoved?: boolean }>> {
   return run(input?.projectSlug, (ctx, pid) => runPersonLifecycle(ctx, pid, { id: input.id, op: input.op }))
+}
+
+/**
+ * Several people at once (list selection): add to / remove from a group, show on
+ * the website / hide (write), archive (owner). Per-person results; archived and
+ * anonymised people are skipped, never an error.
+ */
+export async function bulkUpdatePersonsAction(input: { projectSlug: string; ids: string[]; op: PersonBulkOp; group?: string }): Promise<Result<PersonBulkResult>> {
+  return run(input?.projectSlug, (ctx, pid) => bulkUpdatePersons(ctx, pid, { ids: input.ids, op: input.op, ...(input.group !== undefined && { group: input.group }) }))
 }
 
 /** Anonymise (owner): clears photo, bios, contacts, links and private data; cannot be undone. */

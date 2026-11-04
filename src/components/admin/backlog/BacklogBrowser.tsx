@@ -3,7 +3,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
-import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { FactRow } from '@/components/app/ui/FactRow'
 import type { FilterChip } from '@/components/app/ui/FilterSheet'
@@ -58,7 +57,7 @@ const ACTION_ERRORS = ['forbidden', 'not_set_up', 'not_found', 'invalid', 'faile
 export function BacklogBrowser({ items, projects }: { items: BacklogItem[]; projects: BacklogProjectOption[] }) {
   const t = useTranslations('admin.backlog')
   const router = useRouter()
-  const { toast, show } = useUndo()
+  const { toast, show, schedule } = useUndo()
 
   // Local copy for optimistic updates; replaced whenever the server sends a new list.
   const [source, setSource] = useState(items)
@@ -80,8 +79,6 @@ export function BacklogBrowser({ items, projects }: { items: BacklogItem[]; proj
   const [busy, setBusy] = useState(false)
   const [serverErrors, setServerErrors] = useState<BacklogFieldErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState<BacklogItem | null>(null)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const openItem = panel && panel.kind !== 'new' ? (list.find((i) => i.id === panel.id) ?? null) : null
 
@@ -144,26 +141,26 @@ export function BacklogBrowser({ items, projects }: { items: BacklogItem[]; proj
     }
   }
 
-  async function remove(item: BacklogItem) {
-    if (busy) return
-    setBusy(true)
-    setDeleteError(null)
-    try {
-      const r = await deleteBacklogItemAction(item.id)
-      if (!r.ok) {
-        setDeleteError(errorText(r.error))
-        return
-      }
-      setList((l) => l.filter((i) => i.id !== item.id))
-      setConfirmDelete(null)
-      openPanel(null)
-      show({ message: t('toast.deleted'), tone: 'status' })
-      router.refresh()
-    } catch {
-      setDeleteError(t('errors.failed'))
-    } finally {
-      setBusy(false)
-    }
+  /** "Deleted · Undo": the item leaves at once, the server call waits; a refusal puts it back. */
+  function remove(item: BacklogItem) {
+    setList((l) => l.filter((i) => i.id !== item.id))
+    openPanel(null)
+    let failure = t('errors.failed')
+    schedule({
+      id: `delete:${item.id}`,
+      message: t('toast.deleted'),
+      undoLabel: t('undo'),
+      get failMessage() {
+        return failure
+      },
+      restore: () => setList((l) => (l.some((i) => i.id === item.id) ? l : [item, ...l])),
+      run: async () => {
+        const r = await deleteBacklogItemAction(item.id)
+        if (!r.ok) failure = errorText(r.error)
+        else router.refresh()
+        return r.ok
+      },
+    })
   }
 
   // ── Toolbar ────────────────────────────────────────────────────────────────
@@ -316,10 +313,7 @@ export function BacklogBrowser({ items, projects }: { items: BacklogItem[]; proj
         <Button onClick={() => openPanel({ kind: 'edit', id: openItem.id })}>{t('detail.edit')}</Button>
         <Button
           variant="destructive"
-          onClick={() => {
-            setDeleteError(null)
-            setConfirmDelete(openItem)
-          }}
+          onClick={() => remove(openItem)}
         >
           {t('detail.delete')}
         </Button>
@@ -404,19 +398,7 @@ export function BacklogBrowser({ items, projects }: { items: BacklogItem[]; proj
         {panelBody}
       </SidePanel>
 
-      <ConfirmDialog
-        open={confirmDelete !== null}
-        title={t('confirmDelete.title')}
-        body={confirmDelete ? t('confirmDelete.body', { title: confirmDelete.title }) : ''}
-        confirmLabel={t('confirmDelete.confirm')}
-        cancelLabel={t('form.cancel')}
-        busy={busy}
-        error={deleteError}
-        onConfirm={() => confirmDelete && void remove(confirmDelete)}
-        onCancel={() => setConfirmDelete(null)}
-      />
-
-      <Toast message={toast?.message ?? null} tone={toast?.tone} />
+      <Toast message={toast?.message ?? null} tone={toast?.tone} action={toast?.undo ? t('undo') : undefined} onAction={toast?.undo} />
     </div>
   )
 }

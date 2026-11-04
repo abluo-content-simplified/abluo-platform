@@ -578,7 +578,8 @@
         "new": "{count, plural, one {# Anfrage als neu markiert.} other {# Anfragen als neu markiert.}}",
         "archived": "{count, plural, one {# Anfrage archiviert.} other {# Anfragen archiviert.}}",
         "deleted": "{count, plural, one {# Anfrage gelöscht.} other {# Anfragen gelöscht.}}"
-      }
+      },
+      "undo": "Rückgängig"
     },
     "home": {
       "title": "Willkommen zurück",
@@ -1685,7 +1686,8 @@
         "described": "Vorhanden",
         "missing": "Fehlt",
         "focalSet": "Gesetzt",
-        "focalNone": "Nicht gesetzt"
+        "focalNone": "Nicht gesetzt",
+        "animation": "Animation"
       },
       "menu": {
         "label": "Aktionen für {name}",
@@ -1786,6 +1788,15 @@
           "empty": "Noch keine Tags. Gib einen Namen ein, um das erste hinzuzufügen.",
           "placeholderAdd": "Tag suchen oder hinzufügen",
           "addNamed": "„{name}“ hinzufügen"
+        },
+        "modules": {
+          "people": {
+            "category": {
+              "empty": "Noch keine Gruppen. Tippe einen Namen, um die erste anzulegen.",
+              "placeholderAdd": "Gruppe suchen oder hinzufügen",
+              "addNamed": "Gruppe „{name}“ hinzufügen"
+            }
+          }
         }
       },
       "columns": {
@@ -2124,7 +2135,8 @@
         "not_owner": "Nur ein aktueller Inhaber kann zurücktreten.",
         "last_owner": "Ein Kunde braucht immer mindestens einen Inhaber.",
         "not_ready": "Das ist noch nicht verfügbar: Ein Datenbank-Update (056) fehlt noch. Es wurde nichts geändert."
-      }
+      },
+      "undo": "Rückgängig"
     },
     "analytics": {
       "title": "Statistiken",
@@ -3050,7 +3062,8 @@
         "too_large": "Die Datei ist zu groß. Das Limit liegt bei 20 MB.",
         "not_uploaded_yet": "Der Upload dauert länger als erwartet. Bitte versuch es erneut.",
         "network": "Der Upload wurde unterbrochen. Prüfe deine Verbindung und versuch es erneut."
-      }
+      },
+      "undo": "Rückgängig"
     },
     "documents": {
       "title": "Dokumente",
@@ -3231,7 +3244,8 @@
       "languageOf": "Sprache für {field}",
       "notTranslated": "noch nicht übersetzt",
       "fallbackHint": "Optional. Bleibt es leer, sehen Besucher in dieser Sprache den Text auf {language}: „{text}“.",
-      "fallbackHintEmpty": "Optional. Bleibt es leer, sehen Besucher in dieser Sprache den Text auf {language}."
+      "fallbackHintEmpty": "Optional. Bleibt es leer, sehen Besucher in dieser Sprache den Text auf {language}.",
+      "undo": "Rückgängig"
     },
     "discover": {
       "title": "Mehr zum Hinzufügen",
@@ -3413,7 +3427,9 @@
         "actions": {
           "edit": "Bearbeiten",
           "usedIn": "Wo gezeigt",
-          "anonymise": "Anonymisieren …"
+          "anonymise": "Anonymisieren …",
+          "preview": "Vorschau",
+          "activity": "Aktivität"
         },
         "done": {
           "archived": "{name} ist archiviert und nicht mehr auf deiner Website.",
@@ -3440,7 +3456,48 @@
           "sort_updated_asc": "Am längsten nicht aktualisiert",
           "showing": "{shown} von {total} Personen",
           "clear": "Filter zurücksetzen",
-          "noMatch": "Zu diesen Filtern passt niemand."
+          "noMatch": "Zu diesen Filtern passt niemand.",
+          "missing": "Fehlt",
+          "missingAll": "Nichts",
+          "missingPhoto": "Kein Foto",
+          "missingShortBio": "Keine Kurzbio",
+          "missingLanguage": "Texte auf {language}",
+          "chipPhoto": "Fehlt: Foto",
+          "chipShortBio": "Fehlt: Kurzbio",
+          "chipLanguage": "Fehlt: Texte auf {language}"
+        },
+        "previewFailed": "Die Vorschau konnte nicht geöffnet werden. Versuch es noch einmal.",
+        "missing": {
+          "photo": "Kein Foto",
+          "shortBio": "Keine Kurzbio",
+          "languages": "Es fehlen {languages}"
+        },
+        "bulk": {
+          "toolbar": "Ausgewählte Personen",
+          "count": "{count, plural, one {# Person ausgewählt} other {# Personen ausgewählt}}",
+          "checkbox": "{name} auswählen",
+          "all": "Alle auswählen",
+          "allLabel": "Alle Personen dieser Liste auswählen",
+          "bar": {
+            "groups": "Gruppen",
+            "show": "Zeigen",
+            "hide": "Ausblenden",
+            "archive": "Archivieren",
+            "clear": "Abbrechen"
+          },
+          "groupsTitle": "Gruppen für {count, plural, one {# Person} other {# Personen}}",
+          "addHeading": "Zur Gruppe hinzufügen",
+          "removeHeading": "Aus Gruppe entfernen",
+          "message": {
+            "archive": "{count, plural, one {# Person ist} other {# Personen sind}} archiviert und nicht mehr auf deiner Website.",
+            "show": "{count, plural, one {# Person wird} other {# Personen werden}} auf deiner Website gezeigt.",
+            "hide": "{count, plural, one {# Person ist} other {# Personen sind}} auf deiner Website ausgeblendet.",
+            "addGroup": "{count, plural, one {# Person} other {# Personen}} zu {group} hinzugefügt.",
+            "removeGroup": "{count, plural, one {# Person} other {# Personen}} aus {group} entfernt."
+          },
+          "skipped": "{count} unverändert geblieben",
+          "nothing": "Für die ausgewählten Personen gibt es nichts zu ändern.",
+          "attention": "{count, plural, one {# Person konnte} other {# Personen konnten}} nicht geändert werden: {details}"
         }
       },
       "visibility": {
@@ -3483,7 +3540,11 @@
           "tooMany": "Du hast die Anzahl an Personen erreicht, die dein Tarif enthält.",
           "missingName": "Ein Vorname ist erforderlich.",
           "failed": "Wir konnten die Person nicht anlegen. Bitte versuche es erneut."
-        }
+        },
+        "open": "Öffnen",
+        "duplicate": "{name} ist schon in deinen Personen",
+        "duplicateArchived": "{name} ist schon in deinen Personen, aber archiviert",
+        "createAnyway": "Trotzdem anlegen"
       },
       "anonymise": {
         "title": "{name} anonymisieren?",
@@ -3536,7 +3597,8 @@
           "anonymise": "Anonymisieren …",
           "activity": "Aktivität",
           "preview": "Vorschau",
-          "previewFailed": "Die Vorschau konnte nicht geöffnet werden. Versuch es gleich noch einmal."
+          "previewFailed": "Die Vorschau konnte nicht geöffnet werden. Versuch es gleich noch einmal.",
+          "viewOnWebsite": "Auf der Website ansehen"
         },
         "confirm": {
           "discardTitle": "Unveröffentlichte Änderungen verwerfen?",
@@ -3643,7 +3705,31 @@
           "useSuggestion": "Übernehmen",
           "dismissSuggestion": "Nein, danke",
           "dismiss": "Schließen",
-          "suggestionUsed": "Vorschlag übernommen. Du kannst ihn weiter bearbeiten."
+          "suggestionUsed": "Vorschlag übernommen. Du kannst ihn weiter bearbeiten.",
+          "focal": {
+            "toggle": "Fokuspunkt festlegen",
+            "avatar": "Runder Avatar",
+            "title": "Fokuspunkt",
+            "helper": "Tippe oder ziehe auf den wichtigsten Teil des Fotos. Jeder Zuschnitt behält ihn im Bild, auf jeder Seite, die dieses Foto verwendet.",
+            "readOnly": "Der Fokuspunkt dieses Fotos.",
+            "keys": "Mit den Pfeiltasten verschieben; mit Umschalt in größeren Schritten.",
+            "label": "Fokuspunkt des Fotos",
+            "valueText": "{x} % von links, {y} % von oben",
+            "previews": "So wird zugeschnitten",
+            "preview": {
+              "wide": "Breit",
+              "card": "Karte",
+              "square": "Quadrat",
+              "tall": "Handy"
+            },
+            "status": {
+              "saving": "Speichern…",
+              "saved": "Gespeichert",
+              "failed": "Speichern nicht möglich. Versuch es noch einmal."
+            },
+            "scope": "Der Fokuspunkt wird am Foto in deiner Mediathek gespeichert und gilt überall, wo dieses Foto verwendet wird.",
+            "loadFailed": "Wir konnten das Foto nicht laden. Bitte versuche es noch einmal."
+          }
         },
         "about": {
           "bioTitle": "Über",
@@ -3896,7 +3982,11 @@
         "namesNeeded": "Gib einen Vornamen ein, um fortzufahren.",
         "back": "Zurück",
         "creating": "Wird hinzugefügt …",
-        "create": "Person hinzufügen"
+        "create": "Person hinzufügen",
+        "duplicate": "{name} ist schon in deinen Personen",
+        "duplicateArchived": "{name} ist schon in deinen Personen, aber archiviert",
+        "useThis": "Diese Person verwenden",
+        "createAnyway": "Trotzdem anlegen"
       },
       "tree": {
         "instructions": "Um eine Kategorie zu verschieben, nutze ihren Griff: Pfeil nach oben und unten ändert die Reihenfolge, Pfeil nach rechts verschiebt sie in die Kategorie darüber, Pfeil nach links holt sie aus der übergeordneten Kategorie heraus. Das ⋯-Menü bietet dieselben Schritte.",
@@ -4723,7 +4813,8 @@
         "invalidValue": "Wähle einen gültigen Wert.",
         "invalidUrl": "Jeder Link braucht eine vollständige http(s)-URL.",
         "tooMany": "Zu viele Links (höchstens 20)."
-      }
+      },
+      "undo": "Rückgängig"
     },
     "announcements": {
       "title": "Hinweise",
@@ -5064,7 +5155,14 @@
       "undo": "Rückgängig",
       "deleteFailed": "Das Foto konnte nicht gelöscht werden. Es wird möglicherweise noch verwendet.",
       "loadError": "Die Projektliste konnte nicht geladen werden.",
-      "unknownProject": "Es gibt kein Projekt namens „{slug}“. Es werden alle Projekte angezeigt."
+      "unknownProject": "Es gibt kein Projekt namens „{slug}“. Es werden alle Projekte angezeigt.",
+      "addAnimation": "Animation hinzufügen",
+      "chooseProjectToAddAnimation": "Wähle zuerst ein Projekt, um eine Animation hinzuzufügen.",
+      "animationUploading": "Animation wird hinzugefügt …",
+      "animationAdded": "Animation zur Bibliothek hinzugefügt.",
+      "animationUnsupported": "Diese Datei ist keine Lottie-Animation. Wähle eine Lottie-Datei (.lottie oder .json).",
+      "animationTooLarge": "Die Animation ist größer als 2 MB.",
+      "animationFailed": "Die Animation konnte nicht hinzugefügt werden. Bitte versuche es noch einmal."
     },
     "newProject": {
       "title": "Neues Projekt",

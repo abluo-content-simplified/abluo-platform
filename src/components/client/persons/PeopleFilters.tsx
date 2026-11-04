@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl'
 import type { FilterChip } from '@/components/app/ui/FilterSheet'
 import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
+import { useLanguageName } from './person-bits'
 import { PERSON_STATES, type PersonFilters, type PersonListState, type PersonSort, type PersonSortColumn, type PersonVisibilityFilter } from '@/lib/client/persons-filter'
 
 const SORTS: PersonSort[] = (['order', 'name', 'updated'] as PersonSortColumn[]).flatMap<PersonSort>((column) =>
@@ -27,6 +28,7 @@ export function PeopleFilters({
   total,
   activeCount,
   showSortOnDesktop,
+  languages = [],
 }: {
   filters: PersonFilters
   update: (patch: Partial<PersonFilters>) => void
@@ -39,10 +41,15 @@ export function PeopleFilters({
   total: number
   activeCount: number
   showSortOnDesktop: boolean
+  /** The site's languages beyond the main one, for "Missing… texts in …". */
+  languages?: string[]
 }) {
   const t = useTranslations('clientDashboard.persons.list')
   const tl = useTranslations('app.lifecycle')
   const tv = useTranslations('clientDashboard.persons.visibility')
+  const languageName = useLanguageName()
+  const missingChip = (value: string): string =>
+    value === 'photo' ? t('filters.chipPhoto') : value === 'shortBio' ? t('filters.chipShortBio') : t('filters.chipLanguage', { language: languageName(value.slice(5)) })
   const stateLabel = (s: PersonListState) => (s === 'changes' ? tl('pendingChanges') : tl(`status.${s}`))
 
   const selects: ListToolbarFilter[] = [
@@ -75,6 +82,18 @@ export function PeopleFilters({
       onChange: (v) => update({ visibility: v as PersonVisibilityFilter }),
     },
     {
+      key: 'missing',
+      label: t('filters.missing'),
+      value: filters.missing,
+      options: [
+        { value: 'all', label: t('filters.missingAll') },
+        { value: 'photo', label: t('filters.missingPhoto') },
+        { value: 'shortBio', label: t('filters.missingShortBio') },
+        ...languages.map((l) => ({ value: `lang:${l}`, label: t('filters.missingLanguage', { language: languageName(l) }) })),
+      ],
+      onChange: (v) => update({ missing: v }),
+    },
+    {
       key: 'sort',
       label: t('filters.sort'),
       value: sortKey(filters.sort),
@@ -91,10 +110,12 @@ export function PeopleFilters({
   if (filters.group !== 'all') chips.push({ id: 'group', label: groups.find((g) => g.value === filters.group)?.label ?? filters.group })
   if (filters.status !== 'all') chips.push({ id: 'status', label: stateLabel(filters.status) })
   if (filters.visibility !== 'all') chips.push({ id: 'visibility', label: tv(filters.visibility) })
+  if (filters.missing !== 'all') chips.push({ id: 'missing', label: missingChip(filters.missing) })
   const removeChip = (id: string) => {
     if (id === 'group') update({ group: 'all' })
     else if (id === 'status') update({ status: 'all' })
     else if (id === 'visibility') update({ visibility: 'all' })
+    else if (id === 'missing') update({ missing: 'all' })
   }
 
   return (

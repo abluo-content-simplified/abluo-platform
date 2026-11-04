@@ -1,0 +1,55 @@
+{
+  "clientDashboard": {
+    "persons": {
+      "list": {
+        "previewFailed": "Couldn’t open the preview. Try again.",
+        "actions": {
+          "preview": "Preview",
+          "activity": "Activity"
+        },
+        "missing": {
+          "photo": "No photo",
+          "shortBio": "No short bio",
+          "languages": "Missing {languages}"
+        },
+        "filters": {
+          "missing": "Missing",
+          "missingAll": "Nothing",
+          "missingPhoto": "No photo",
+          "missingShortBio": "No short bio",
+          "missingLanguage": "Texts in {language}",
+          "chipPhoto": "Missing: photo",
+          "chipShortBio": "Missing: short bio",
+          "chipLanguage": "Missing: texts in {language}"
+        },
+        "bulk": {
+          "toolbar": "Selected people",
+          "count": "{count, plural, one {# person selected} other {# people selected}}",
+          "checkbox": "Select {name}",
+          "all": "Select all",
+          "allLabel": "Select all people in this list",
+          "bar": {
+            "groups": "Groups",
+            "show": "Show",
+            "hide": "Hide",
+            "archive": "Archive",
+            "clear": "Clear"
+          },
+          "groupsTitle": "Groups for {count, plural, one {# person} other {# people}}",
+          "addHeading": "Add to group",
+          "removeHeading": "Remove from group",
+          "message": {
+            "archive": "{count, plural, one {# person is} other {# people are}} archived. They’re no longer on your website.",
+            "show": "{count, plural, one {# person is} other {# people are}} shown on your website.",
+            "hide": "{count, plural, one {# person is} other {# people are}} hidden from your website.",
+            "addGroup": "{count, plural, one {# person} other {# people}} added to {group}.",
+            "removeGroup": "{count, plural, one {# person} other {# people}} removed from {group}."
+          },
+          "skipped": "{count} left as they were",
+          "nothing": "Nothing to change for the people you selected.",
+          "attention": "{count, plural, one {# person couldn’t} other {# people couldn’t}} be changed: {details}"
+        }
+      }
+    }
+  }
+}

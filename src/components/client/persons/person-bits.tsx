@@ -28,6 +28,8 @@ export type PersonRow = FilterablePerson & {
   usageCount: number
   usage: PersonListItem['usage']
   createdAt: string
+  /** Photo / short bio / languages still missing (calm badge + "Missing…" filter). */
+  missing: PersonListItem['missing']
   /** The person's editor. */
   href: string
 }
@@ -56,6 +58,7 @@ export function toPersonRow(p: PersonListItem, projectSlug: string, anonymisedNa
     visibility: p.visibility,
     updatedAt: p.updatedAt,
     createdAt: p.createdAt,
+    missing: p.missing,
     photoUrl: p.photoUrl,
     jobTitle: p.jobTitle,
     anonymised: p.anonymised,
@@ -71,6 +74,32 @@ export function toPersonRow(p: PersonListItem, projectSlug: string, anonymisedNa
 export function PersonStateBadge({ state, oneLine = false }: { state: PersonState; oneLine?: boolean }) {
   if (state === 'changes') return <LifecycleBadge status="published" changes oneLine={oneLine} />
   return <LifecycleBadge status={state} oneLine={oneLine} />
+}
+
+/**
+ * What a profile still lacks, as small outline pills with the attention dot:
+ * "No photo", "No short bio", "Missing DE, FR" (site languages without the
+ * title or short bio). Nothing when complete, archived or anonymised (the
+ * server sends nothing for anonymised people).
+ */
+export function MissingPills({ missing, state }: { missing: PersonRow['missing']; state: PersonState }) {
+  const t = useTranslations('clientDashboard.persons.list.missing')
+  if (state === 'archived') return null
+  const items = [
+    missing.photo ? t('photo') : '',
+    missing.shortBio ? t('shortBio') : '',
+    missing.languages.length ? t('languages', { languages: missing.languages.map((l) => l.toUpperCase()).join(', ') }) : '',
+  ].filter(Boolean)
+  if (!items.length) return null
+  return (
+    <span className="flex flex-wrap items-start gap-1.5">
+      {items.map((label) => (
+        <Pill key={label} tone="outline" icon={<span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-attention" />}>
+          {label}
+        </Pill>
+      ))}
+    </span>
+  )
 }
 
 /** "Hidden" · "Team list" · "Own page" — what the website does with the person. */
@@ -199,6 +228,7 @@ export const PERSON_ICONS = {
   page: svg('M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5', 20, 1.8),
   post: svg('M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z', 20, 1.8),
   calendar: svg('M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z', 20, 1.8),
+  tag: svg('M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01', 20, 1.8),
   trash: svg('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3', 18),
   lock: svg('M6 11V8a6 6 0 0 1 12 0v3M5 11h14v10H5z', 16, 2),
   globe: svg('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z', 16, 2),

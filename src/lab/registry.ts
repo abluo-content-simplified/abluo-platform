@@ -249,6 +249,22 @@ export const LAB_REGISTRY: LabEntry[] = [
     demo: () => import('./demos/image-viewer.demo'),
   },
   {
+    id: 'animation-preview',
+    name: 'AnimationPreview',
+    exports: ['AnimationPreview', 'stillFrame'],
+    source: 'src/components/app/ui/AnimationPreview.tsx',
+    group: 'data',
+    status: 'canonical',
+    summary: 'Plays a Lottie animation (.lottie / .json, ADR-046) in a box: a still frame that plays on hover (Media tiles, table) or loops on its own (photo panel), with named colour slots.',
+    rules: [
+      'Every Lottie animation in the dashboards goes through it — never a second player or a CDN script.',
+      'label = the accessible name; label={null} when the tile already names it (decorative).',
+      'play="loop" respects reduced motion (stays still); hover is the person\'s own action.',
+      'Colours come in through `colors` (hexToLottieColor of a design-system colour), never baked into a copy of the file.',
+    ],
+    demo: () => import('./demos/animation-preview.demo'),
+  },
+  {
     id: 'screenshot-grid',
     name: 'ScreenshotGrid',
     exports: ['ScreenshotGrid'],
@@ -1280,6 +1296,7 @@ export const LAB_REGISTRY: LabEntry[] = [
     summary: 'Chooses one or several people for a page, event or post; the first one can be the main person.',
     rules: [
       'search and onCreate are injected: the picker never reaches a backend itself.',
+      'findDuplicates is injected too (optional): while a new name is typed and on submit it offers Use this person or Create anyway.',
       'Order is the order of value; drag to reorder, and primaryLabel marks the first.',
       'Archived people stay visible with a label so nothing silently disappears.',
     ],
