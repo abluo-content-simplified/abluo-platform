@@ -86,7 +86,7 @@ export function TagsPanel({ screen, onAdd, onRename }: { screen: TaxonomyScreen;
         <EmptyState title={t('emptyTitle')} body={t('emptyBody')} action={view.can.write ? <Button variant="secondary" onClick={onAdd}>{t('add')}</Button> : null} />
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,16rem)]">
+          <div className="grid items-start gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,16rem)]">
             <Field label={t('search')}>{(p) => <TextInput {...p} type="search" value={query} onChange={(e) => setQuery(e.target.value)} />}</Field>
             <ProfileFilter value={profile} onChange={setProfile} />
           </div>

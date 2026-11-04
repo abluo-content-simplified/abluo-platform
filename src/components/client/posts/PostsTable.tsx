@@ -146,6 +146,7 @@ export function PostsTable({
 
   return (
     <DataTable
+      stickyLeadingColumns={2}
       rows={posts}
       columns={columns}
       rowKey={(p) => p._id}

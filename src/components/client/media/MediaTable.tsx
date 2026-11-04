@@ -163,6 +163,7 @@ export function MediaTable({
 
   return (
     <DataTable
+      stickyLeadingColumns={2}
       label={t('library.title')}
       rows={items}
       columns={columns}

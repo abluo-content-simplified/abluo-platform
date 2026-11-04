@@ -87,6 +87,32 @@ export default function DataTableDemo() {
           {selected.size} selected · {opened ? `Row clicked: ${opened}` : 'Click a row.'}
         </p>
       </DemoBlock>
+      <DemoBlock title="Frozen leading columns" note="stickyLeadingColumns={2}: in a narrow box the checkbox, image and title stay put while the rest scrolls sideways; the soft edge shows only once scrolled. Try hover and selection in light and dark.">
+        <div className="w-full max-w-xl">
+          <DataTable
+            label="Posts (frozen columns)"
+            rows={rows}
+            rowKey={(p) => p.id}
+            stickyLeadingColumns={2}
+            selection={{
+              selected,
+              onToggle,
+              allState,
+              onToggleAll: (checked) => setSelected(checked ? new Set(order) : new Set()),
+              rowLabel: (p) => `Select ${p.title}`,
+              allLabel: 'Select all posts',
+            }}
+            onRowClick={(p) => setOpened(p.title)}
+            columns={[
+              { key: 'image', header: 'Image', width: 'w-28', render: () => <CellImage src={null} /> },
+              { key: 'title', header: 'Title', width: 'min-w-56', render: (p) => <CellText primary={p.title} secondary={p.summary} /> },
+              { key: 'status', header: 'Status', width: 'w-32', render: (p) => <CellPill><Pill tone={p.status === 'Published' ? 'success' : 'muted'}>{p.status}</Pill></CellPill> },
+              { key: 'tags', header: 'Tags', width: 'min-w-40', render: (p) => <CellChips items={p.tags} max={2} /> },
+              { key: 'updated', header: 'Updated', width: 'w-32', render: (p) => <CellDate iso={p.updated} /> },
+            ]}
+          />
+        </div>
+      </DemoBlock>
     </DemoStack>
   )
 }

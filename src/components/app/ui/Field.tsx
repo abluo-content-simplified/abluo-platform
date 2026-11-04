@@ -19,16 +19,23 @@ export type FieldControlProps = {
  *   </Field>
  *
  * `p` carries id, aria-describedby (hint + error) and aria-invalid.
+ *
+ * `hintBelow` puts the hint under the control instead of under the label — for
+ * fields that sit side by side in a toolbar (search + filter), so every control
+ * starts right below its label and the inputs line up.
  */
 export function Field({
   label,
   hint,
   error,
   className = '',
+  hintBelow = false,
   children,
 }: {
   label: ReactNode
   hint?: ReactNode
+  /** Render the hint under the control (side-by-side toolbar fields), not under the label. */
+  hintBelow?: boolean
   error?: ReactNode
   className?: string
   children: (control: FieldControlProps) => ReactNode
@@ -40,10 +47,15 @@ export function Field({
   const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined
   return (
     <div className={className}>
-      <FieldLabel htmlFor={id} hint={hint} hintId={hintId}>
+      <FieldLabel htmlFor={id} hint={hintBelow ? undefined : hint} hintId={hintId}>
         {label}
       </FieldLabel>
       {children({ id, 'aria-describedby': describedBy, 'aria-invalid': error ? true : undefined })}
+      {hintBelow && hint ? (
+        <p id={hintId} className="mt-1.5 text-sm text-muted-foreground">
+          {hint}
+        </p>
+      ) : null}
       <FieldError id={errorId}>{error}</FieldError>
     </div>
   )

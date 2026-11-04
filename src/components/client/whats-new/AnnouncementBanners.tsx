@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Notice } from '@/components/app/ui/Notice'
+import { PAGE_WIDTH } from '@/components/app/ui/PageShell'
 import { dismissNoticeAction } from '@/app/[locale]/(client)/[tenant]/whats-new-actions'
 import { stillActive, type ClientNotice } from '@/lib/whats-new/notices'
 
@@ -29,27 +30,29 @@ export function AnnouncementBanners({ notices }: { notices: ClientNotice[] | nul
   if (visible.length === 0) return null
 
   return (
-    <div className="space-y-2 px-4 pt-4 md:px-6 md:pt-6">
-      {visible.map((n) => (
-        <Notice
-          key={n.id}
-          tone={n.tone === 'warning' ? 'neutral' : 'info'}
-          layout="row"
-          className={n.tone === 'warning' ? 'border-2' : ''}
-          title={n.tone === 'warning' ? t('warning') : undefined}
-          onDismiss={
-            n.dismissible
-              ? () => {
-                  setClosed((prev) => new Set([...prev, n.id]))
-                  void dismissNoticeAction(n.id)
-                }
-              : undefined
-          }
-          dismissLabel={n.dismissible ? t('dismiss') : undefined}
-        >
-          <span lang={n.lang}>{n.message}</span>
-        </Notice>
-      ))}
+    <div className="px-4 pt-4 md:px-6 md:pt-6">
+      <div className={`space-y-2 ${PAGE_WIDTH}`}>
+        {visible.map((n) => (
+          <Notice
+            key={n.id}
+            tone={n.tone === 'warning' ? 'neutral' : 'info'}
+            layout="row"
+            className={n.tone === 'warning' ? 'border-2' : ''}
+            title={n.tone === 'warning' ? t('warning') : undefined}
+            onDismiss={
+              n.dismissible
+                ? () => {
+                    setClosed((prev) => new Set([...prev, n.id]))
+                    void dismissNoticeAction(n.id)
+                  }
+                : undefined
+            }
+            dismissLabel={n.dismissible ? t('dismiss') : undefined}
+          >
+            <span lang={n.lang}>{n.message}</span>
+          </Notice>
+        ))}
+      </div>
     </div>
   )
 }

@@ -93,6 +93,7 @@ export function GalleriesTable({
 
   return (
     <DataTable
+      stickyLeadingColumns={2}
       rows={rows}
       columns={columns}
       rowKey={(g) => g.id}

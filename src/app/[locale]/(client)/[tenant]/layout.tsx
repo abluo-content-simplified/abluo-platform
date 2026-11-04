@@ -37,6 +37,7 @@ import { SupportReplyNotice } from '@/components/client/support/SupportReplyNoti
 import { getFormsDashboard } from '@/lib/api/dashboard/forms'
 import { SupportAccessNotice } from '@/components/client/support/SupportAccessNotice'
 import { BillingNotice } from '@/components/client/billing/BillingNotice'
+import { PAGE_WIDTH } from '@/components/app/ui/PageShell'
 
 /**
  * Project-scoped client dashboard shell (ADR-017 Phase 2 / task #81).
@@ -198,8 +199,8 @@ async function ClientProjectLayoutInner({
         />
         {/* #client-main: the main scroll container (the selection bar / scroll listeners use it); bottom padding on phones clears the fixed tab bar — the only place that does. */}
         <div id="client-main" className="min-h-screen min-w-0 flex-1 md:ml-64 md:group-data-[nav-t=rail]/nav:max-lg:ml-14 lg:group-data-[nav-d=rail]/nav:ml-14">
-          {/* A newer Abluo build is live: calm, never reloads by itself. */}
-          <NewVersionNotice className="mx-4 mt-4 md:mx-6 md:mt-6" />
+          {/* Notices above the page share its content width (PAGE_WIDTH) and gutters. A newer Abluo build is live: calm, never reloads by itself. */}
+          <NewVersionNotice className={`mx-4 mt-4 md:mx-6 md:mt-6 ${PAGE_WIDTH}`} />
           <PresenceHeartbeat />
           {/* Announcements (planned maintenance …) between their start and end. */}
           <AnnouncementBanners notices={notices} />
@@ -219,11 +220,11 @@ async function ClientProjectLayoutInner({
               projectSlug={activeGrant.projectSlug}
               billing={activeGrant.billing}
               canPay={billingTenantId ? billingAccess(ctx, billingTenantId).canManage : false}
-              className="mx-4 mt-4 md:mx-6 md:mt-6"
+              className={`mx-4 mt-4 md:mx-6 md:mt-6 ${PAGE_WIDTH}`}
             />
           ) : null}
           <main className={`p-4 pb-[calc(9.75rem+env(safe-area-inset-bottom))] md:p-6 ${quickAdd ? 'md:pb-[calc(6rem+env(safe-area-inset-bottom))]' : ''}`}>
-            <SupportReplyNotice projectSlug={activeGrant.projectSlug} count={supportUnread} className="mb-4" />
+            <SupportReplyNotice projectSlug={activeGrant.projectSlug} count={supportUnread} className={`mb-4 ${PAGE_WIDTH}`} />
             {supportNotices.length ? (
               <SupportAccessNotice
                 projectSlug={activeGrant.projectSlug}

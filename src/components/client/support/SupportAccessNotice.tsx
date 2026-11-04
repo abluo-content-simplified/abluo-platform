@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/app/ui/Button'
 import { Panel } from '@/components/app/ui/Panel'
+import { PAGE_WIDTH } from '@/components/app/ui/PageShell'
 import { decideSupportAction } from '@/app/[locale]/(client)/[tenant]/support-actions'
 import { useLocalTime } from './SupportBanner'
 
@@ -34,7 +35,7 @@ export function SupportAccessNotice({
 }) {
   if (!notices.length) return null
   return (
-    <div className="mb-4 flex flex-col gap-3">
+    <div className={`mb-4 flex flex-col gap-3 ${PAGE_WIDTH}`}>
       {notices.map((n) => (
         <NoticeCard key={n.sessionId} projectSlug={projectSlug} notice={n} minutes={minutes} />
       ))}
