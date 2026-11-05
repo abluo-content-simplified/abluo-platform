@@ -17,6 +17,8 @@
 import type { GeneratedHostRoute } from '@/lib/tenancy/generated/route-config'
 
 export type Reachability = {
+  /** `projects.id` — what the setup page's domain / go-live actions write to. */
+  projectId: string
   /** The project is in the route table of the version running now. */
   previewLive: boolean
   /** `projects.custom_domain` in Supabase now (normalised), or null. */
@@ -48,6 +50,7 @@ export function reachability(
   const customDomain = normaliseDomain(project.customDomain)
   const preview = mine.find((r) => r.hostKind === 'preview-subdomain') ?? mine[0] ?? null
   return {
+    projectId: project.id,
     previewLive: mine.length > 0,
     customDomain,
     domainLive: !!customDomain && mine.some((r) => r.hostKind === 'custom-domain' && r.host === customDomain),

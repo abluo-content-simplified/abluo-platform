@@ -5650,7 +5650,7 @@
             "body": "Öffne in Studio {name}: Designsystem und Startseite gehören nur dieser Website – Änderungen betreffen keine andere."
           },
           "domain": {
-            "title": "Domain hinzufügen (von Hand)",
+            "title": "Domain verbinden",
             "intro": "Domains sind noch nicht automatisiert. Gib die Domain ein, um die Schritte auszufüllen.",
             "label": "Domain",
             "placeholderDomain": "beispiel.de",
@@ -5667,7 +5667,27 @@
             "statusLive": "{domain} ist in der laufenden Version. Besucher erreichen sie, sobald die DNS-Einträge auf Vercel zeigen.",
             "statusNotLive": "{domain} ist in Supabase hinterlegt, aber die laufende Version kennt sie noch nicht — neu generieren und deployen.",
             "statusActive": "Live: Die laufende Version liefert die Website unter ihrer Domain aus.",
-            "statusActiveNotDeployed": "In Supabase auf active gesetzt — neu generieren und noch einmal deployen, um live zu gehen."
+            "statusActiveNotDeployed": "In Supabase auf active gesetzt — neu generieren und noch einmal deployen, um live zu gehen.",
+            "introSave": "Füge die Domain in Vercel und beim DNS-Anbieter hinzu und speichere sie dann hier — Abluo nutzt sie für das Routing und die Links der Website.",
+            "save": "Domain speichern",
+            "saving": "Wird gespeichert …",
+            "saved": "Gespeichert: {domain}. Neu generieren und deployen (Schritt 4), damit die Website darunter antwortet.",
+            "cleared": "Domain entfernt.",
+            "step3Save": "Speichere die Domain oben (Supabase oder Studio musst du nicht öffnen).",
+            "step5Live": "Wenn die Website fertig ist, schalte sie live — dann noch einmal neu generieren und deployen:",
+            "liveLabel": "Live auf {domain}",
+            "liveNeedsDomain": "Speichere zuerst eine Domain — eine Website geht auf ihrer eigenen Domain live.",
+            "liveOn": "Live: auf active gesetzt. Neu generieren und deployen, um sie auf ihrer Domain zu veröffentlichen.",
+            "liveOff": "Nicht live: nach dem nächsten Generieren und Deploy wieder nur unter der Vorschauadresse.",
+            "errors": {
+              "forbidden": "Nur ein Abluo-Admin kann das ändern.",
+              "invalid": "Das sieht nicht wie eine Domain aus. Schreibe sie wie example.com.",
+              "platform": "Das ist eine Abluo- oder Vercel-Adresse, nicht die eigene Domain des Kunden.",
+              "taken": "Ein anderes Projekt nutzt diese Domain bereits.",
+              "not_found": "Das Projekt wurde nicht gefunden.",
+              "needs_domain": "Speichere zuerst eine Domain.",
+              "failed": "Speichern nicht möglich. Bitte versuche es noch einmal."
+            }
           },
           "google": {
             "title": "Google verbinden",

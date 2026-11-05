@@ -5650,7 +5650,7 @@
             "body": "In Studio, open {name}: its design system and start page are its own — changes don’t affect any other site."
           },
           "domain": {
-            "title": "Add the domain (by hand)",
+            "title": "Connect the domain",
             "intro": "Domains are not automated yet. Type the domain to fill in the steps.",
             "label": "Domain",
             "placeholderDomain": "example.com",
@@ -5667,7 +5667,27 @@
             "statusLive": "{domain} is in the version running now. Visitors reach it once the DNS records point to Vercel.",
             "statusNotLive": "{domain} is set in Supabase, but the version running now doesn’t know it yet — regenerate and deploy.",
             "statusActive": "Live: the version running now serves the site on its domain.",
-            "statusActiveNotDeployed": "Set to active in Supabase — regenerate and deploy once more to go live."
+            "statusActiveNotDeployed": "Set to active in Supabase — regenerate and deploy once more to go live.",
+            "introSave": "Add the domain in Vercel and at the DNS provider, then save it here — Abluo stores it for routing and the website’s links.",
+            "save": "Save domain",
+            "saving": "Saving…",
+            "saved": "Saved: {domain}. Regenerate and deploy (step 4) so the site answers on it.",
+            "cleared": "Domain removed.",
+            "step3Save": "Save the domain above (no need to open Supabase or Studio).",
+            "step5Live": "When the site is ready, switch it live — then regenerate and deploy once more:",
+            "liveLabel": "Live on {domain}",
+            "liveNeedsDomain": "Save a domain first — a site goes live on its own domain.",
+            "liveOn": "Live: set to active. Regenerate and deploy to publish it on its domain.",
+            "liveOff": "Not live: back to its preview address after the next regenerate and deploy.",
+            "errors": {
+              "forbidden": "Only an Abluo admin can change this.",
+              "invalid": "That doesn’t look like a domain. Type it like example.com.",
+              "platform": "That is an Abluo or Vercel address, not the client’s own domain.",
+              "taken": "Another project already uses this domain.",
+              "not_found": "This project could not be found.",
+              "needs_domain": "Save a domain first.",
+              "failed": "Could not save. Please try again."
+            }
           },
           "google": {
             "title": "Connect Google",

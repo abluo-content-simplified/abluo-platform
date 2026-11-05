@@ -5650,7 +5650,7 @@
             "body": "In Studio apri {name}: design system e pagina iniziale sono solo suoi, le modifiche non toccano nessun altro sito."
           },
           "domain": {
-            "title": "Aggiungi il dominio (a mano)",
+            "title": "Collega il dominio",
             "intro": "I domini non sono ancora automatici. Scrivi il dominio per completare i passaggi.",
             "label": "Dominio",
             "placeholderDomain": "esempio.it",
@@ -5667,7 +5667,27 @@
             "statusLive": "{domain} è nella versione in funzione. I visitatori lo raggiungono quando i record DNS puntano a Vercel.",
             "statusNotLive": "{domain} è impostato in Supabase, ma la versione in funzione non lo conosce ancora — rigenera e fai il deploy.",
             "statusActive": "Online: la versione in funzione serve il sito sul suo dominio.",
-            "statusActiveNotDeployed": "Impostato su active in Supabase — rigenera e fai di nuovo il deploy per andare online."
+            "statusActiveNotDeployed": "Impostato su active in Supabase — rigenera e fai di nuovo il deploy per andare online.",
+            "introSave": "Aggiungi il dominio in Vercel e presso il provider DNS, poi salvalo qui — Abluo lo usa per l’instradamento e per i link del sito.",
+            "save": "Salva dominio",
+            "saving": "Salvataggio…",
+            "saved": "Salvato: {domain}. Rigenera e fai il deploy (passo 4) perché il sito risponda su questo indirizzo.",
+            "cleared": "Dominio rimosso.",
+            "step3Save": "Salva il dominio qui sopra (non serve aprire Supabase o Studio).",
+            "step5Live": "Quando il sito è pronto, mettilo online — poi rigenera e fai di nuovo il deploy:",
+            "liveLabel": "Online su {domain}",
+            "liveNeedsDomain": "Salva prima un dominio — un sito va online sul suo dominio.",
+            "liveOn": "Online: impostato su active. Rigenera e fai il deploy per pubblicarlo sul suo dominio.",
+            "liveOff": "Non online: torna al suo indirizzo di anteprima dopo il prossimo rigenera e deploy.",
+            "errors": {
+              "forbidden": "Solo un admin di Abluo può modificarlo.",
+              "invalid": "Non sembra un dominio. Scrivilo come example.com.",
+              "platform": "Questo è un indirizzo di Abluo o Vercel, non il dominio del cliente.",
+              "taken": "Un altro progetto usa già questo dominio.",
+              "not_found": "Progetto non trovato.",
+              "needs_domain": "Salva prima un dominio.",
+              "failed": "Impossibile salvare. Riprova."
+            }
           },
           "google": {
             "title": "Collega Google",

@@ -11,7 +11,9 @@ import { nextStep, type ProvisionStepId, type ProvisioningRunView, type RunStatu
 import { adminProjectHref } from '@/lib/admin/attention'
 import { previewSiteUrl } from '@/lib/admin/projects-filter'
 import { retryProvisioningAction, type WizardActionError } from '@/app/[locale]/(admin)/projects/new/actions'
-import type { Reachability } from '@/lib/admin/provisioning/reachability'
+import { normaliseDomain, type Reachability } from '@/lib/admin/provisioning/reachability'
+import { saveProjectDomainAction, setProjectLiveAction, type DomainActionError } from '@/app/[locale]/(admin)/projects/new/domain-actions'
+import { Switch } from '@/components/app/ui/Switch'
 
 /** Dictionary key per step id (next-intl keys cannot contain dots). */
 const STEP_KEY: Record<ProvisionStepId, string> = {
@@ -57,6 +59,35 @@ export function ProvisioningRunPanel({
   const [error, setError] = useState<WizardActionError | null>(null)
   const [pending, startTransition] = useTransition()
   const [domain, setDomain] = useState(reach?.customDomain ?? '')
+  // What Supabase holds now (saved here), vs what the running version routes (reach).
+  const [savedDomain, setSavedDomain] = useState<string | null>(reach?.customDomain ?? null)
+  const [liveStatus, setLiveStatus] = useState<string | null>(reach?.status ?? null)
+  const [domainNote, setDomainNote] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
+  const [liveNote, setLiveNote] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
+  const [savingDomain, startSaveDomain] = useTransition()
+  const [savingLive, startSaveLive] = useTransition()
+  const errorText = (e: DomainActionError) => t(`next.domain.errors.${e}`)
+
+  const saveDomain = () =>
+    startSaveDomain(async () => {
+      if (!reach) return
+      setDomainNote(null)
+      const r = await saveProjectDomainAction({ projectId: reach.projectId, domain })
+      if (!r.ok) return setDomainNote({ tone: 'error', text: errorText(r.error) })
+      setSavedDomain(r.domain)
+      setDomain(r.domain ?? '')
+      setDomainNote({ tone: 'ok', text: r.domain ? t('next.domain.saved', { domain: r.domain }) : t('next.domain.cleared') })
+    })
+
+  const setLive = (live: boolean) =>
+    startSaveLive(async () => {
+      if (!reach) return
+      setLiveNote(null)
+      const r = await setProjectLiveAction({ projectId: reach.projectId, live })
+      if (!r.ok) return setLiveNote({ tone: 'error', text: errorText(r.error) })
+      setLiveStatus(r.status)
+      setLiveNote({ tone: 'ok', text: r.status === 'active' ? t('next.domain.liveOn') : t('next.domain.liveOff') })
+    })
 
   const resumeAt = nextStep(run.plannedSteps, run.steps)
   const failedStep = run.status === 'failed' ? (run.plannedSteps.find((s) => run.steps[s]?.status === 'failed') ?? resumeAt) : null
@@ -171,8 +202,9 @@ export function ProvisioningRunPanel({
               {t('next.studio.body', { name: run.projectName })}
             </NextStep>
             <NextStep n={3} title={t('next.domain.title')}>
-              <span className="block">{t('next.domain.intro')}</span>
-              <label className="mt-3 block max-w-xs">
+              <span className="block">{reach ? t('next.domain.introSave') : t('next.domain.intro')}</span>
+              <div className="mt-3 flex flex-wrap items-end gap-3">
+              <label className="block w-full max-w-xs">
                 <span className="text-sm leading-5 font-semibold text-foreground">{t('next.domain.label')}</span>
                 <TextInput
                   controlSize="md"
@@ -185,6 +217,13 @@ export function ProvisioningRunPanel({
                   spellCheck={false}
                 />
               </label>
+              {reach ? (
+                <Button onClick={saveDomain} disabled={savingDomain || (normaliseDomain(domain) ?? '') === (savedDomain ?? '')} aria-busy={savingDomain || undefined}>
+                  {savingDomain ? t('next.domain.saving') : t('next.domain.save')}
+                </Button>
+              ) : null}
+              </div>
+              {domainNote ? <Note {...domainNote} /> : null}
               <ol className="mt-3 flex list-decimal flex-col gap-2 pl-5">
                 <li>{t('next.domain.step1', { domain: shownDomain })}</li>
                 <li>
@@ -209,28 +248,44 @@ export function ProvisioningRunPanel({
                   </table>
                   <span className="mt-1 block text-sm leading-5 text-muted-foreground">{t('next.domain.recordsNote')}</span>
                 </li>
-                <li>{t('next.domain.step3', { domain: shownDomain, slug: run.projectSlug })}</li>
+                <li>{reach ? t('next.domain.step3Save') : t('next.domain.step3', { domain: shownDomain, slug: run.projectSlug })}</li>
                 <li>
                   {t('next.domain.step4')} <Code>npm run routes:generate</Code>
                   <TerminalNote text={t('next.terminal')} />
                 </li>
-                <li>{t('next.domain.step5')}</li>
+                <li>
+                  {reach ? t('next.domain.step5Live') : t('next.domain.step5')}
+                  {reach ? (
+                    <span className="mt-2 flex items-center gap-3">
+                      <Switch
+                        checked={liveStatus === 'active'}
+                        onChange={setLive}
+                        disabled={savingLive || (!savedDomain && liveStatus !== 'active')}
+                        label={t('next.domain.liveLabel', { domain: savedDomain ?? shownDomain })}
+                      />
+                      <span className="text-sm leading-5 text-foreground">
+                        {savedDomain ? t('next.domain.liveLabel', { domain: savedDomain }) : t('next.domain.liveNeedsDomain')}
+                      </span>
+                    </span>
+                  ) : null}
+                  {liveNote ? <Note {...liveNote} /> : null}
+                </li>
               </ol>
               {reach ? (
                 <div className="mt-3 flex flex-col gap-2">
                   <Status
-                    done={reach.domainLive}
+                    done={reach.domainLive && savedDomain === reach.customDomain}
                     text={
-                      !reach.customDomain
+                      !savedDomain
                         ? t('next.domain.statusNone')
-                        : reach.domainLive
-                          ? t('next.domain.statusLive', { domain: reach.customDomain })
-                          : t('next.domain.statusNotLive', { domain: reach.customDomain })
+                        : reach.domainLive && savedDomain === reach.customDomain
+                          ? t('next.domain.statusLive', { domain: savedDomain })
+                          : t('next.domain.statusNotLive', { domain: savedDomain })
                     }
                   />
-                  {reach.deployedStatus === 'active' ? (
+                  {reach.deployedStatus === 'active' && liveStatus === 'active' ? (
                     <Status done text={t('next.domain.statusActive')} />
-                  ) : reach.status === 'active' ? (
+                  ) : liveStatus === 'active' ? (
                     <Status done={false} text={t('next.domain.statusActiveNotDeployed')} />
                   ) : null}
                 </div>
@@ -260,6 +315,15 @@ function NextStep({ n, title, children }: { n: number; title: string; children: 
         <div className="mt-1 text-muted-foreground">{children}</div>
       </div>
     </div>
+  )
+}
+
+/** The outcome of a save, under the control. */
+function Note({ tone, text }: { tone: 'ok' | 'error'; text: string }) {
+  return (
+    <span role={tone === 'error' ? 'alert' : 'status'} className={`mt-2 block text-sm leading-5 ${tone === 'error' ? 'text-destructive' : 'text-foreground'}`}>
+      {text}
+    </span>
   )
 }
 

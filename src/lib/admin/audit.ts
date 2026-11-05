@@ -74,6 +74,10 @@ export type AdminAuditAction =
   | 'billing.alert.ack'
   | 'billing.alert.resolve'
   | 'billing.subscription.cancel_at_period_end'
+  // Domain + go live from the setup page (2026-11-05): `detail` = projectSlug and
+  // the new domain / status (a domain is a public routing fact, not personal data).
+  | 'project.domain.update'
+  | 'project.status.update'
 
 export const ADMIN_AUDIT_ACTION_PATTERN = /^[a-z][a-z0-9_.]{2,63}$/
 

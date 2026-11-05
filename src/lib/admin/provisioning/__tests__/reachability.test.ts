@@ -17,6 +17,7 @@ const route = (o: Partial<GeneratedHostRoute>): GeneratedHostRoute => ({
 describe('reachability (What’s next status)', () => {
   it('a project not in the running table is not reachable yet', () => {
     expect(reachability([route({ projectId: 'other', projectSlug: 'other' })], { id: 'p1', slug: 'x' })).toEqual({
+      projectId: 'p1',
       previewLive: false,
       customDomain: null,
       domainLive: false,
