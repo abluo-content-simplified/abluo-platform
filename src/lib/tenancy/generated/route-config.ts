@@ -172,6 +172,16 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     status: "active",
   },
   {
+    host: "freeriders.app",
+    hostKind: "custom-domain",
+    tenantSlug: "freeriders",
+    projectSlug: "freeriders",
+    projectId: "70001c70-cca5-471f-9686-ff4d567c9091",
+    defaultLocale: "en",
+    supportedLocales: ["en", "it"],
+    status: "active",
+  },
+  {
     host: "freeriders.localhost",
     hostKind: "localhost-subdomain",
     tenantSlug: "freeriders",
@@ -179,7 +189,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectId: "70001c70-cca5-471f-9686-ff4d567c9091",
     defaultLocale: "en",
     supportedLocales: ["en", "it"],
-    status: "preview",
+    status: "active",
   },
   {
     host: "freeriders.preview.abluo.app",
@@ -189,7 +199,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectId: "70001c70-cca5-471f-9686-ff4d567c9091",
     defaultLocale: "en",
     supportedLocales: ["en", "it"],
-    status: "preview",
+    status: "active",
   },
   {
     host: "hoffmann.localhost",

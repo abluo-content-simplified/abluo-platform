@@ -279,7 +279,10 @@ describe('one tenant, N projects: freeriders owns nologo and t42', () => {
   it('has both projects in the generated table under one tenant', () => {
     const freeriders = GENERATED_HOST_ROUTES.filter((r) => r.tenantSlug === 'freeriders')
     const projectSlugs = [...new Set(freeriders.map((r) => r.projectSlug))].sort()
-    expect(projectSlugs).toEqual(['nologo', 't42'])
+    // The tenant has gained its own Freeriders website since (2026-11-05); the
+    // point here is that several projects sit under one tenant.
+    expect(projectSlugs).toEqual(expect.arrayContaining(['nologo', 't42']))
+    expect(projectSlugs.length).toBeGreaterThanOrEqual(2)
   })
 
   it('gives the two projects DIFFERENT hosts and different project ids (D-2)', () => {

@@ -57,9 +57,10 @@ vi.mock('@/lib/sanity/client', async () => ({
       if (query.includes('defaultLocale') && query.includes('supportedLocales') && query.length < 300) {
         return { defaultLocale: 'en', supportedLocales: SITE_CONFIG.supportedLocales }
       }
-      if (query.includes('_type == "siteConfig"')) return SITE_CONFIG
+      // Page queries first: their sections projection also mentions siteConfig (the hero's site logo).
       if (query.includes('pageType == "home"')) return HOME_PAGE
       if (query.includes('slug[$locale].current == $slug')) return RESTAURANT_PAGE
+      if (query.includes('_type == "siteConfig"')) return SITE_CONFIG
       return null
     },
   }),
