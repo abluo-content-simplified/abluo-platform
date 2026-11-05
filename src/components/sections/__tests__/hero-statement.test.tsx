@@ -70,3 +70,12 @@ describe('hero left accent line', () => {
     expect(render(hero({ hideAccentLine: true }))).not.toContain(line)
   })
 })
+
+describe("hero CTA 'pill' appearance", () => {
+  it('a light capsule in the brand tint, no arrow, not the solid button', () => {
+    const html = render(hero({ ctaLabel: 'Interested?', ctaHref: '#form', ctaAppearance: 'pill' }))
+    expect(html).toMatch(/class="inline-flex items-center gap-2 rounded-full px-6 py-2\.5[^"]*" style="color:var\(--color-primary\);border:1px solid color-mix\(in oklch, var\(--color-primary\) 22%, transparent\);background-color:color-mix\(in oklch, var\(--color-primary\) 8%, transparent\)/)
+    expect(html).not.toContain('→')
+    expect(html).not.toContain('h-12')
+  })
+})

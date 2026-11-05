@@ -55,8 +55,9 @@ interface Props {
 }
 
 /** Accent tint derived from the accent token — never a hardcoded colour. */
-const PILL_BG = 'color-mix(in oklch, var(--color-primary) 8%, transparent)'
-const PILL_BORDER = 'color-mix(in oklch, var(--color-primary) 22%, transparent)'
+/** Shared with the hero's 'pill' CTA, so the two capsules match. */
+export const PILL_BG = 'color-mix(in oklch, var(--color-primary) 8%, transparent)'
+export const PILL_BORDER = 'color-mix(in oklch, var(--color-primary) 22%, transparent)'
 
 /**
  * EyebrowLabel — shared eyebrow primitive: accent marker + text.

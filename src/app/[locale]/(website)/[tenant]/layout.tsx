@@ -11,7 +11,7 @@ import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfi
 import { canonicalOrigin } from '@/lib/seo/canonical'
 import { ogImageUrl } from '@/lib/sanity/image'
 import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic, ProjectIntegrations } from '@/lib/sanity/types'
-import { imageUrl } from '@/lib/sanity/image'
+import { imageUrl, iconUrl } from '@/lib/sanity/image'
 import { resolveNavLinks } from '@/lib/sanity/nav-links'
 import { isLocaleEnabledForProject } from '@/lib/i18n/locale-guard'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
@@ -581,8 +581,8 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
   // Identity assets are owned per-site (Website Settings), never the design system.
   // Precedence: siteConfig.faviconSvg → siteConfig.faviconPng
   const faviconSrc =
-    (siteConfigFavicon?.faviconSvg?.asset ? imageUrl(siteConfigFavicon.faviconSvg as any, 64) : null) ??
-    (siteConfigFavicon?.faviconPng?.asset ? imageUrl(siteConfigFavicon.faviconPng as any, 64) : null) ??
+    (siteConfigFavicon?.faviconSvg?.asset ? iconUrl(siteConfigFavicon.faviconSvg as any, 64) : null) ??
+    (siteConfigFavicon?.faviconPng?.asset ? iconUrl(siteConfigFavicon.faviconPng as any, 64) : null) ??
     undefined
 
   // ── Open Graph image ─────────────────────────────────────────────────────────
@@ -595,7 +595,7 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
     undefined
 
   const appleTouchIconSrc = siteConfigFavicon?.appleTouchIcon?.asset
-    ? imageUrl(siteConfigFavicon.appleTouchIcon as any, 180)
+    ? iconUrl(siteConfigFavicon.appleTouchIcon as any, 180)
     : undefined
 
   return {

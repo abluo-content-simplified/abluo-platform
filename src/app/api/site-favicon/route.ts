@@ -15,7 +15,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { resolveScopeFromHost } from '@/lib/tenancy/host-scope'
 import { asProjectSlug, unbrand } from '@/lib/tenancy/ids'
 import { tenantClient } from '@/lib/sanity/client'
-import { urlFor } from '@/lib/sanity/image'
+import { iconUrl } from '@/lib/sanity/image'
 import { siteConfigFaviconQuery } from '@/lib/sanity/queries'
 
 export const dynamic = 'force-dynamic'
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       // The same Website Settings read the page's <link rel="icon"> uses: SVG first, then PNG.
       const config = await fetchForTenant<{ faviconSvg?: IconRef; faviconPng?: IconRef } | null>(siteConfigFaviconQuery, {})
       const icon = hasAsset(config?.faviconSvg) ? config.faviconSvg : hasAsset(config?.faviconPng) ? config.faviconPng : null
-      if (icon) target = urlFor(icon).width(64).height(64).fit('max').format('png').url()
+      if (icon) target = iconUrl(icon, 64) ?? null
     } catch {
       target = null // Sanity unreachable: the platform icon, never an error
     }

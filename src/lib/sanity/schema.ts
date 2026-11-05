@@ -1137,6 +1137,7 @@ const heroSectionType = defineType({
         list: [
           { title: 'Button (default)', value: 'button' },
           { title: 'Text link — a quiet line, e.g. “Interested?”', value: 'text' },
+          { title: 'Pill — a light, secondary capsule', value: 'pill' },
         ],
         layout: 'radio',
       },
