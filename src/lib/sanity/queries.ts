@@ -576,6 +576,8 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       // every existing hero → today's button right under the copy.
       ctaAppearance,
       ctaPosition,
+      // heroSection extension — true hides the left accent line; null → shown.
+      hideAccentLine,
       // heroLiveCaptureSection + heroLensSection CTA array
       ctas[] { ${CTA_FIELDS} },
       ${focalImage('backgroundImage')},

@@ -1121,6 +1121,14 @@ const heroSectionType = defineType({
       description: 'How the primary CTA is coloured when the hero has a full-bleed image/video background. “On media” keeps the white button; “Brand” uses the design system’s primary button colours.',
     }),
     defineField({
+      name: 'hideAccentLine',
+      title: 'Hide the line on the left',
+      type: 'boolean',
+      group: 'style',
+      initialValue: false,
+      description: 'The hero shows a thin brand-colour line down its left edge when it has no full-bleed media. Turn on to hide it.',
+    }),
+    defineField({
       name: 'ctaAppearance',
       title: 'CTA Appearance',
       type: 'string',

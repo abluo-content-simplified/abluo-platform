@@ -62,3 +62,11 @@ describe('hero CTA appearance and position', () => {
     expect(html).toContain('mt-16')
   })
 })
+
+describe('hero left accent line', () => {
+  const line = 'absolute left-0 top-0 h-full w-[3px]'
+  it('shown by default, hidden when the hero asks', () => {
+    expect(render(hero())).toContain(line)
+    expect(render(hero({ hideAccentLine: true }))).not.toContain(line)
+  })
+})
