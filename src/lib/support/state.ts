@@ -163,6 +163,8 @@ export const SUPPORT_NEVER_WRITES: readonly string[] = [
   // C8 §8.2 (D-16, D-21): support never attests allergens for a client, and never takes Catalogue data out.
   'catalogue.allergen.update',
   'catalogue.export.use',
+  // Timetable build spec §3: online meeting rooms (links, meeting numbers, passcodes) are credentials; support may never change them.
+  'courses.meeting.manage',
 ]
 
 /** A permission that changes data. Only `*.read` permissions are reads (ADR-028 §2 vocabulary). */

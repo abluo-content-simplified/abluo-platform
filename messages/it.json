@@ -62,6 +62,7 @@
     "nav": {
       "blog": "Articoli",
       "events": "Eventi",
+      "courses": "Corsi",
       "live": "Live",
       "forms": "Richieste di contatto",
       "whatsapp": "WhatsApp",
@@ -3260,6 +3261,7 @@
         "blog": "Condividi novità e competenze con parole tue, dal telefono o dal computer.",
         "news": "Annuncia cosa succede nel tuo studio, in breve e con la data.",
         "events": "Pubblica workshop, open day e appuntamenti con date, luoghi e calendario.",
+        "courses": "Proponi corsi con lezioni settimanali, insegnanti e luoghi, e mostra l’orario sul tuo sito.",
         "faq": "Rispondi una volta alle domande che ti fanno sempre e mostra le risposte dove servono.",
         "live": "Condividi aggiornamenti rapidi mentre succedono, senza scrivere un articolo intero.",
         "gallery": "Mostra i tuoi spazi, il tuo lavoro e il tuo team in gallerie che stanno bene su ogni schermo.",
@@ -3775,6 +3777,325 @@
           "addressNeeded": "Aggiungi un indirizzo per la pagina",
           "useSuggestion": "Usa “{slug}”",
           "redirectNote": "Se cambi l’indirizzo in seguito, quello vecchio continua a funzionare e porta a quello nuovo."
+        }
+      }
+    },
+    "courses": {
+      "screen": {
+        "loadFailed": "Non siamo riusciti a caricare i tuoi corsi. Riprova.",
+        "retry": "Riprova"
+      },
+      "errors": {
+        "forbidden": "Non hai il permesso di farlo.",
+        "not_found": "Questo corso non esiste più.",
+        "invalid_field": "Questo non si può modificare qui.",
+        "invalid_value": "Qualcosa non va. Controlla quello che hai inserito e riprova.",
+        "too_large": "Troppo contenuto in una volta sola.",
+        "conflict": "Qualcun altro ha modificato questo corso nel frattempo. Ricarica per vedere la versione più recente.",
+        "in_use": "Questo corso è ancora usato in qualche punto. Toglilo prima da lì.",
+        "in_use_where": "Questo corso è ancora usato in: {places}. Toglilo prima da lì.",
+        "in_use_classes": "Questo corso ha ancora delle lezioni. Termina prima le sue lezioni.",
+        "archive_first": "Archivia questo corso prima di eliminarlo.",
+        "archived": "Questo corso è archiviato. Ripristinalo per modificarlo.",
+        "missing_title": "Serve un titolo nella lingua principale.",
+        "failed": "Qualcosa è andato storto. Riprova.",
+        "offline": "Sei offline. Le modifiche verranno salvate quando torni online."
+      },
+      "list": {
+        "title": "Corsi",
+        "new": "Nuovo Corso",
+        "untitled": "Corso senza titolo",
+        "emptyTitle": "Ancora nessun corso",
+        "emptyBody": "Aggiungi i tuoi corsi una volta sola, poi dai a ciascuno le sue lezioni settimanali. L’orario sul tuo sito nasce da lì.",
+        "missing": "Manca {languages}",
+        "classesCount": "{count, plural, =0 {Nessuna lezione} one {# lezione} other {# lezioni}}",
+        "menu": "Azioni per {name}",
+        "undo": "Annulla",
+        "view": {
+          "label": "Vista",
+          "list": "Elenco",
+          "cards": "Schede"
+        },
+        "columns": {
+          "title": "Corso",
+          "classes": "Lezioni settimanali",
+          "teachers": "Insegnanti",
+          "next": "Prossima lezione",
+          "status": "Stato",
+          "updated": "Aggiornato",
+          "actions": "Azioni"
+        },
+        "actions": {
+          "edit": "Modifica",
+          "activity": "Attività"
+        },
+        "done": {
+          "archived": "{name} è archiviato. Non è più sul tuo sito.",
+          "restored": "{name} è stato ripristinato.",
+          "deleted": "{name} è stato eliminato."
+        },
+        "filters": {
+          "label": "Filtra i corsi",
+          "search": "Cerca corsi",
+          "searchPlaceholder": "Cerca per titolo o insegnante",
+          "status": "Stato",
+          "statusAll": "Tutti",
+          "sort": "Ordina per",
+          "sort_updated_desc": "Aggiornati di recente",
+          "sort_updated_asc": "Aggiornati meno di recente",
+          "sort_title_asc": "Titolo, dalla A alla Z",
+          "sort_title_desc": "Titolo, dalla Z alla A",
+          "showing": "{shown} di {total} corsi",
+          "clear": "Cancella i filtri",
+          "noMatch": "Nessun corso corrisponde a questi filtri."
+        },
+        "timetable": "Orario"
+      },
+      "newCourse": {
+        "title": "Nuovo corso",
+        "intro": "Comincia con un titolo. Il resto, e le lezioni, lo aggiungi dopo.",
+        "titleLabel": "Titolo in {language}",
+        "titleNeeded": "Aggiungi un titolo per continuare.",
+        "cancel": "Annulla",
+        "creating": "Creazione in corso…",
+        "create": "Crea Corso",
+        "errors": {
+          "forbidden": "Non hai il permesso di aggiungere corsi.",
+          "tooMany": "Hai raggiunto il numero di corsi incluso nel tuo piano.",
+          "missingTitle": "Serve un titolo.",
+          "failed": "Non siamo riusciti a creare questo corso. Riprova."
+        }
+      },
+      "editor": {
+        "back": "Torna ai corsi",
+        "untitled": "Nuovo corso",
+        "publish": "Pubblica",
+        "publishing": "Pubblicazione…",
+        "published": "Pubblicato. Le tue modifiche sono sul tuo sito.",
+        "discarded": "Le modifiche non pubblicate sono state scartate.",
+        "restored": "Ripristinato.",
+        "archived": "Archiviato. Questo corso non è più sul tuo sito.",
+        "undo": "Annulla",
+        "dismiss": "Chiudi",
+        "language": "Lingua di modifica",
+        "wordsTitle": "Testi",
+        "titleLabel": "Titolo",
+        "titleOtherLanguage": "Facoltativo. Senza, i visitatori vedono il titolo in {language}.",
+        "titleRequired": "Per pubblicare serve un titolo nella lingua principale.",
+        "shortDescriptionLabel": "Descrizione breve",
+        "shortDescriptionHint": "Una o due frasi, mostrate nell’orario e negli elenchi.",
+        "colorLabel": "Colore",
+        "colorHint": "Come viene segnato questo corso nell’orario.",
+        "color": {
+          "none": "Nessuno",
+          "accent": "Accento",
+          "muted": "Tenue"
+        },
+        "classesTitle": "Lezioni",
+        "archivedTitle": "Questo corso è archiviato",
+        "archivedBody": "Ripristinalo per modificarlo.",
+        "readOnly": "Puoi guardare ma non modificare nulla qui.",
+        "publishBlocked": "Prima di pubblicare: aggiungi un titolo in {language}.",
+        "publishReason": {
+          "upToDate": "Niente di nuovo da pubblicare."
+        },
+        "menu": {
+          "label": "Altre azioni",
+          "discard": "Scarta le modifiche non pubblicate…",
+          "activity": "Attività"
+        },
+        "confirm": {
+          "discardTitle": "Scartare le modifiche non pubblicate?",
+          "discardBody": "La versione pubblicata resta com’è.",
+          "discard": "Scarta Modifiche",
+          "deleteTitle": "Eliminare {name}?",
+          "deleteBody": "Questo corso viene eliminato per sempre."
+        }
+      },
+      "classes": {
+        "add": "Aggiungi lezione",
+        "edit": "Modifica",
+        "menu": "Azioni per {name}",
+        "openClass": "Apri {name}",
+        "noDetails": "Ancora nessun luogo, insegnante o lingua",
+        "publishFirst": "Pubblica prima questo corso, poi aggiungi le sue lezioni.",
+        "loadError": "Impossibile caricare le lezioni. Ricarica la pagina per riprovare.",
+        "empty": {
+          "title": "Ancora nessuna lezione",
+          "body": "Aggiungi le lezioni settimanali di questo corso: il giorno, l’orario, dove si svolge e chi insegna. Formano il tuo orario.",
+          "readOnly": "Questo corso non ha ancora lezioni."
+        },
+        "mode": {
+          "inPerson": "In presenza",
+          "online": "Online",
+          "mixed": "Ibrida"
+        },
+        "repeat": "{count, plural, one {Ogni settimana} other {Ogni # settimane}}",
+        "sheet": {
+          "addTitle": "Aggiungi una lezione",
+          "editTitle": "Modifica lezione",
+          "readOnly": "Puoi guardare ma non modificare nulla qui.",
+          "weekday": "Giorno",
+          "repeat": "Si ripete",
+          "from": "Inizia",
+          "until": "Finisce",
+          "noEnd": "Nessun orario di fine",
+          "endBeforeStart": "La fine deve essere dopo l’inizio.",
+          "place": "Luogo",
+          "noPlace": "Nessun luogo",
+          "unknownPlace": "Un luogo che non è più sul tuo sito",
+          "teachers": "Insegnanti",
+          "languages": "Lingue",
+          "mode": "Come si svolge",
+          "room": "Sala online",
+          "noRoom": "Nessuna sala",
+          "noRooms": "Aggiungi prima le sale online nella pagina Orario.",
+          "term": "Periodo",
+          "noTerm": "Nessun periodo",
+          "startsOn": "Prima lezione",
+          "startsOnHint": "La prima lezione è il primo giorno corrispondente a partire da questa data.",
+          "endsOn": "Ultima lezione",
+          "endsOnHint": "Facoltativo. Anche la fine del periodo termina la lezione.",
+          "noEndDate": "Nessuna data finale",
+          "endBeforeStartDay": "L’ultima lezione non può essere prima della prima.",
+          "save": "Salva",
+          "saving": "Salvataggio…"
+        },
+        "end": {
+          "action": "Termina questa lezione",
+          "title": "Terminare {name}?",
+          "body": "Le sue date future vengono rimosse dall’orario. Le date passate restano.",
+          "confirm": "Termina lezione",
+          "done": "Lezione terminata."
+        },
+        "saved": {
+          "done": "Lezione salvata.",
+          "keptEdited": "{count, plural, one {Salvato. # data modificata a mano non corrisponde più alla lezione ed è stata mantenuta.} other {Salvato. # date modificate a mano non corrispondono più alla lezione e sono state mantenute.}}",
+          "truncated": "Salvato. Sono state create solo le prime date. Imposta una data finale per tenere breve l’elenco."
+        },
+        "errors": {
+          "inUse": "È ancora usato da alcune lezioni. Toglilo prima da lì.",
+          "missingName": "È richiesto un nome nella lingua principale."
+        }
+      },
+      "timetable": {
+        "title": "Orario",
+        "back": "Torna ai corsi",
+        "untitledCourse": "Corso senza titolo",
+        "openClass": "Apri {name}, {time}",
+        "changes": "{count, plural, one {# modifica} other {# modifiche}}",
+        "term": {
+          "select": "Periodo",
+          "all": "Tutte le lezioni",
+          "none": "Senza periodo",
+          "new": "Nuovo periodo",
+          "edit": "Modifica periodo",
+          "range": "dal {from} al {to}",
+          "newTitle": "Nuovo periodo",
+          "editTitle": "Modifica periodo",
+          "name": "Nome",
+          "startsOn": "Primo giorno",
+          "endsOn": "Ultimo giorno",
+          "endBeforeStart": "L’ultimo giorno non può essere prima del primo.",
+          "datesHint": "Cambiando le date le lezioni di questo periodo si spostano o terminano.",
+          "save": "Salva",
+          "saving": "Salvataggio…",
+          "saved": "Periodo salvato.",
+          "delete": "Elimina periodo",
+          "deleteTitle": "Eliminare {name}?",
+          "deleteBody": "Si può eliminare solo un periodo senza lezioni.",
+          "deleted": "Periodo eliminato."
+        },
+        "empty": {
+          "title": "Ancora nessuna lezione",
+          "body": "Aggiungi le lezioni dalla pagina di un corso. Compariranno qui.",
+          "termBody": "Questo periodo non ha ancora lezioni."
+        },
+        "grid": {
+          "label": "Orario settimanale",
+          "place": "Luogo",
+          "noPlace": "Nessun luogo"
+        },
+        "dates": {
+          "close": "Chiudi",
+          "loading": "Caricamento delle date",
+          "empty": "Nessuna data in programma.",
+          "cancel": "Annulla lezione",
+          "restore": "Ripristina",
+          "substitute": "Sostituzione",
+          "changeTime": "Cambia orario",
+          "addNote": "Aggiungi nota",
+          "editNote": "Modifica nota",
+          "showMore": "Mostra altre",
+          "saving": "Salvataggio…",
+          "save": "Salva",
+          "status": {
+            "cancelled": "Annullata",
+            "substitute": "Sostituzione: {names}",
+            "nobody": "nessuno",
+            "moved": "Orario cambiato"
+          },
+          "edit": {
+            "substitute": {
+              "title": "Sostituzione il {date}",
+              "hint": "Di solito insegna: {names}.",
+              "field": "Insegnanti in questa data",
+              "reset": "Torna agli insegnanti abituali"
+            },
+            "time": {
+              "title": "Cambia orario il {date}",
+              "from": "Inizia",
+              "until": "Finisce",
+              "noEnd": "Nessun orario di fine",
+              "endBeforeStart": "La fine deve essere dopo l’inizio."
+            },
+            "note": {
+              "title": "Nota per il {date}",
+              "hint": "Una breve nota mostrata con questa data, ad esempio “Porta un tappetino”.",
+              "field": "Nota",
+              "remove": "Rimuovi nota"
+            }
+          }
+        },
+        "holidays": {
+          "title": "Festività",
+          "hint": "Giorni senza lezione. Tutte le lezioni li saltano, in ogni periodo.",
+          "add": "Aggiungi festività",
+          "empty": "Ancora nessuna festività.",
+          "untitled": "Festività",
+          "range": "dal {from} al {to}",
+          "menu": "Azioni per {name}",
+          "remove": "Rimuovi",
+          "removed": "Festività rimossa.",
+          "addTitle": "Aggiungi una festività",
+          "editTitle": "Modifica festività",
+          "name": "Nome",
+          "from": "Primo giorno",
+          "to": "Ultimo giorno",
+          "endBeforeStart": "L’ultimo giorno non può essere prima del primo.",
+          "save": "Salva",
+          "saving": "Salvataggio…",
+          "saved": "Festività salvata."
+        },
+        "rooms": {
+          "title": "Sale online",
+          "hint": "Zoom e altre sale condivise dalle tue lezioni online. Solo i proprietari vedono i dettagli.",
+          "add": "Aggiungi sala",
+          "empty": "Ancora nessuna sala.",
+          "noDetails": "Ancora nessun dettaglio",
+          "menu": "Azioni per {name}",
+          "remove": "Rimuovi",
+          "removed": "Sala rimossa.",
+          "addTitle": "Aggiungi una sala",
+          "editTitle": "Modifica sala",
+          "label": "Nome",
+          "joinUrl": "Link per partecipare",
+          "joinUrlHttps": "Il link deve iniziare con https://.",
+          "meetingId": "ID riunione",
+          "passcode": "Passcode",
+          "save": "Salva",
+          "saving": "Salvataggio…",
+          "saved": "Sala salvata."
         }
       }
     }

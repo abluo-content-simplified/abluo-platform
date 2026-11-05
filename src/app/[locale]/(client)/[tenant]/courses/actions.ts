@@ -1,0 +1,103 @@
+'use server'
+
+/**
+ * Client dashboard — Courses server actions (ADR-045).
+ *
+ * Thin wrappers over `src/lib/api/course-drafts.ts`, which holds every check.
+ * Identity is re-resolved server-side on each call; the URL's projectSlug only
+ * picks one of the caller's own grants. Failures collapse to opaque codes
+ * (`CourseErrorCode`); `detail.usedIn` says what still uses a course (in_use).
+ *
+ * The Classes panel and the Timetable page have their own actions in
+ * `schedule-actions.ts`. Here the schedule only matters to the list (classes,
+ * teachers, next class) and to delete (refused while a course has classes).
+ */
+
+import { resolveProjectAction } from '@/lib/api/project-action'
+import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
+import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
+import {
+  createCourse,
+  discardCourseDraft,
+  getCourseActivity,
+  getCourseForEdit,
+  listCourses,
+  openCourseForEdit,
+  publishCourseDraft,
+  runCourseLifecycle,
+  saveCourseDraft,
+  CourseError,
+  type CourseErrorCode,
+  type CourseLifecycleOp,
+  type CourseListItem,
+  type CourseSite,
+  type CourseSnapshot,
+  type CourseUsage,
+} from '@/lib/api/course-drafts'
+import { courseScheduleDeps } from '@/lib/api/course-schedule'
+import type { ActivityItem } from '@/lib/lifecycle/activity'
+
+export type CourseActionError = 'unauthenticated' | CourseErrorCode
+type Fail = { ok: false; error: CourseActionError; detail?: { usedIn?: CourseUsage[] } }
+type Result<T> = ({ ok: true } & T) | Fail
+
+async function run<T>(projectSlug: unknown, fn: (ctx: TenantAuthorizationContext, projectId: string) => Promise<T>): Promise<Result<T>> {
+  const access = await resolveProjectAction(projectSlug)
+  if (!access.ok) return { ok: false, error: access.error }
+  const { ctx, grant } = access
+  try {
+    return { ok: true, ...(await fn(ctx, grant.projectId)) }
+  } catch (error) {
+    if (error instanceof CourseError) return { ok: false, error: error.code, ...(error.detail && { detail: error.detail }) }
+    if (error instanceof TenantAuthorizationError) return { ok: false, error: 'forbidden' }
+    return { ok: false, error: 'failed' }
+  }
+}
+
+/** The course store behind the list's schedule summary and delete's "has classes" check (slug from the grant). */
+function scheduleDeps(ctx: TenantAuthorizationContext, projectId: string) {
+  const slug = ctx.projects.find((p) => p.projectId === projectId)?.projectSlug ?? ''
+  return courseScheduleDeps(slug)
+}
+
+export async function listCoursesAction(input: { projectSlug: string }): Promise<Result<{ courses: CourseListItem[]; site: CourseSite }>> {
+  return run(input?.projectSlug, (ctx, pid) => listCourses(ctx, pid, scheduleDeps(ctx, pid)))
+}
+
+export async function getCourseAction(input: { projectSlug: string; id: string }): Promise<Result<{ course: CourseSnapshot }>> {
+  return run(input?.projectSlug, async (ctx, pid) => ({ course: await getCourseForEdit(ctx, pid, input.id) }))
+}
+
+/** New course: its title in the site's default language. */
+export async function createCourseAction(input: { projectSlug: string; title: string }): Promise<Result<{ id: string; publicId: string; rev: string }>> {
+  return run(input?.projectSlug, (ctx, pid) => createCourse(ctx, pid, { title: input.title }))
+}
+
+/** Creates drafts.<id> from the published course when missing. Call before the first edit. */
+export async function openCourseForEditAction(input: { projectSlug: string; id: string }): Promise<Result<{ id: string; rev: string; created: boolean }>> {
+  return run(input?.projectSlug, (ctx, pid) => openCourseForEdit(ctx, pid, { id: input.id }))
+}
+
+export async function saveCourseDraftAction(input: { projectSlug: string; id: string; rev: string; set: Record<string, unknown> }): Promise<Result<{ rev: string }>> {
+  return run(input?.projectSlug, (ctx, pid) => saveCourseDraft(ctx, pid, { id: input.id, rev: input.rev, set: input.set }))
+}
+
+export async function publishCourseDraftAction(input: { projectSlug: string; id: string; rev: string }): Promise<Result<{ rev: string }>> {
+  return run(input?.projectSlug, (ctx, pid) => publishCourseDraft(ctx, pid, { id: input.id, rev: input.rev }))
+}
+
+export async function discardCourseDraftAction(input: { projectSlug: string; id: string; rev: string }): Promise<Result<object>> {
+  return run(input?.projectSlug, async (ctx, pid) => {
+    await discardCourseDraft(ctx, pid, { id: input.id, rev: input.rev })
+    return {}
+  })
+}
+
+/** Archive / restore (write), delete a never-published draft or an archived course for good (owner; refused while the course is used or has classes). */
+export async function courseLifecycleAction(input: { projectSlug: string; id: string; op: CourseLifecycleOp }): Promise<Result<{ rev: string | null }>> {
+  return run(input?.projectSlug, (ctx, pid) => runCourseLifecycle(ctx, pid, { id: input.id, op: input.op }, scheduleDeps(ctx, pid)))
+}
+
+export async function getCourseActivityAction(input: { projectSlug: string; id: string }): Promise<Result<{ items: ActivityItem[] }>> {
+  return run(input?.projectSlug, async (ctx, pid) => ({ items: await getCourseActivity(ctx, pid, { id: input.id }) }))
+}

@@ -152,6 +152,8 @@ const MODULE_NAV: readonly NavSurface[] = sortByModuleOrder(
     moduleNav('blog', 'posts', 'blog', 'blog.post.read', 'content'),
     // `agenda`, not `events`: `/{project}/events` is the public website's events route.
     moduleNav('events', 'agenda', 'events', 'events.event.read', 'content'),
+    // ADR-045: Courses (weekly classes + timetable), next to Events. The Timetable page lives under /courses/timetable.
+    moduleNav('courses', 'courses', 'courses', 'courses.course.read', 'content'),
     // ADR-037 D9: the FAQ Sets library (list + editor).
     moduleNav('faq', 'faq-sets', 'faq', 'faq.set.read', 'content'),
     moduleNav('gallery', 'galleries', 'gallery', 'gallery.gallery.read', 'content'),

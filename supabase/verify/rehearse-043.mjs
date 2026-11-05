@@ -71,7 +71,7 @@ try {
   const other = await save({ project: pB, event: ev, startLocal: '2026-12-01 10:00', startsAt: '2026-12-01T09:00:00Z' })
   check('same event id in another project → its own schedule', other.series_id !== a.series_id)
   await expectError('a session cannot point at another project\'s series', () =>
-    q(`insert into public.event_occurrences (series_id, project_id, event_public_id, start_local, time_zone, starts_at) values ($1, $2, $3, '2026-10-01 10:00', 'Europe/Brussels', now())`, [a.series_id, pB, ev]), '23503')
+    q(`insert into public.event_occurrences (series_id, project_id, event_public_id, owner_type, owner_public_id, start_local, time_zone, starts_at) values ($1, $2, $3, 'event', $3, '2026-10-01 10:00', 'Europe/Brussels', now())`, [a.series_id, pB, ev]), '23503')
   await expectError('invalid place shape refused', () => save({ project: pA, event: ev, startLocal: '2026-11-02 10:00', startsAt: '2026-11-02T09:00:00Z', version: 2, place: { kind: 'venue', venuePublicId: 'nope' } }), '23514')
   await expectError('end before start refused', () => save({ project: pA, event: ev, startLocal: '2026-11-02 10:00', endLocal: '2026-11-02 09:00', startsAt: '2026-11-02T09:00:00Z', version: 2 }), '23514')
   // Cancel and restore one session.

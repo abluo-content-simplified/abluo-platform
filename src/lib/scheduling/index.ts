@@ -2,3 +2,4 @@
 // './store' directly by server code only.
 export * from './types'
 export { resolveSessionTimes, normaliseLocal, localOf, type SessionTimes } from './time'
+export * from './recurrence'

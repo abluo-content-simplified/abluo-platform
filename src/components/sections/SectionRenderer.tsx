@@ -13,6 +13,7 @@
 
 import { withSchedule, withSchedules } from '@/lib/scheduling/read.server'
 import { hydrateDownloadSections, type DownloadHydration } from '@/lib/access/download-section.server'
+import { hydrateTimetableSection } from '@/lib/modules/courses/timetable-section.server'
 import type { tenantClient } from '@/lib/sanity/client'
 import { HeroSection } from '@/components/sections/HeroSection'
 import { HeroLiveCaptureSection } from '@/components/sections/HeroLiveCaptureSection'
@@ -49,6 +50,7 @@ import type {
   NewsListingSection as NewsListingSectionType,
   EventsListingSection as EventsListingSectionType,
   LiveLatestSection as LiveLatestSectionType,
+  TimetableSection as TimetableSectionType,
   FormSection as FormSectionType,
   FormOverlayButtonSection as FormOverlayButtonSectionType,
   HeroLiveCaptureSection as HeroLiveCaptureSectionType,
@@ -381,6 +383,25 @@ export async function hydrateSections(
           ...event,
           categories: resolveEventCategories(event.categoryKeys, vocabulary),
         }))
+        return
+      }
+      if (section._type === 'timetableSection') {
+        // ADR-045 — classes come from scheduling (Supabase) per request. Online meeting
+        // details need the page to be Access-protected AND this visitor granted by the
+        // page gate (ctx.downloads carries the gate's outcome; absent = a public page).
+        // A failure leaves `timetable` unset and the section renders nothing.
+        try {
+          await hydrateTimetableSection(section as TimetableSectionType, {
+            projectSlug: ctx.projectSlug,
+            locale: ctx.locale,
+            defaultLocale: ctx.defaultLocale,
+            fetchForTenant: ctx.fetchForTenant,
+            pageId: ctx.downloads?.pageId ?? null,
+            pageProtected: ctx.downloads?.page.restricted === true,
+          })
+        } catch (err) {
+          console.error('[timetable] section hydration failed; section omitted', err)
+        }
         return
       }
       if (section._type === 'liveLatestSection') {

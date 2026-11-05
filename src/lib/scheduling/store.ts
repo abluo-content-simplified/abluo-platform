@@ -131,7 +131,8 @@ export function createSupabaseScheduleStore(dbOverride?: Db): ScheduleStore {
       .in('id', seriesIds)
       .is('removed_at', null)
     if (error) throw mapDbError(error)
-    return new Map((data ?? []).map((r: SeriesRow) => [String(r.id), seriesOf(r)]))
+    // Events only: course series (migration 064) have no event_public_id and are read by course-store.
+    return new Map((data ?? []).filter((r: SeriesRow) => typeof r.event_public_id === 'string').map((r: SeriesRow) => [String(r.id), seriesOf(r)]))
   }
 
   return {

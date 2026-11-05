@@ -32,7 +32,7 @@ export type ModuleGroupDef = {
 }
 
 export const MODULE_GROUPS: readonly ModuleGroupDef[] = [
-  { id: 'publish', label: 'Publish', modules: ['blog', 'news', 'events', 'faq', 'live'] },
+  { id: 'publish', label: 'Publish', modules: ['blog', 'news', 'events', 'courses', 'faq', 'live'] },
   // ADR-043: People (a shared list other modules pick from) closes Show.
   { id: 'show', label: 'Show', modules: ['gallery', 'catalogue', 'documents', 'people'] },
   // `members` is the Access module (label "Access").

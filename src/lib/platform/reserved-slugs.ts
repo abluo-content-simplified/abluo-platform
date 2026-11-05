@@ -82,6 +82,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'agenda',
   'apps',
   'catalogue',
+  'courses',   // Courses (ADR-045)
   'discover',  // More You Can Add
   'faq-sets',
   'galleries',

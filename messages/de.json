@@ -62,6 +62,7 @@
     "nav": {
       "blog": "Beiträge",
       "events": "Veranstaltungen",
+      "courses": "Kurse",
       "live": "Live",
       "forms": "Kontaktanfragen",
       "whatsapp": "WhatsApp",
@@ -3260,6 +3261,7 @@
         "blog": "Teile Neuigkeiten und Wissen in deinen eigenen Worten, vom Handy oder vom Computer.",
         "news": "Kündige an, was in deiner Praxis passiert, kurz und mit Datum.",
         "events": "Veröffentliche Workshops, Tage der offenen Tür und Termine mit Datum, Ort und Kalender.",
+        "courses": "Biete Kurse mit wöchentlichen Stunden, Lehrenden und Orten an und zeige den Stundenplan auf deiner Website.",
         "faq": "Beantworte die Fragen, die immer kommen, einmal und zeig die Antworten dort, wo sie helfen.",
         "live": "Teile kurze Updates, während sie passieren, ohne einen ganzen Artikel zu schreiben.",
         "gallery": "Zeig deine Räume, deine Arbeit und dein Team in Galerien, die auf jedem Bildschirm gut aussehen.",
@@ -3775,6 +3777,325 @@
           "addressNeeded": "Gib eine Adresse für die Seite ein",
           "useSuggestion": "„{slug}“ verwenden",
           "redirectNote": "Wenn du die Adresse später änderst, funktioniert die alte weiter und leitet auf die neue."
+        }
+      }
+    },
+    "courses": {
+      "screen": {
+        "loadFailed": "Wir konnten deine Kurse nicht laden. Bitte versuche es erneut.",
+        "retry": "Erneut versuchen"
+      },
+      "errors": {
+        "forbidden": "Dazu fehlt dir die Berechtigung.",
+        "not_found": "Dieser Kurs existiert nicht mehr.",
+        "invalid_field": "Das lässt sich hier nicht ändern.",
+        "invalid_value": "Etwas stimmt nicht. Prüfe deine Eingabe und versuche es erneut.",
+        "too_large": "Das ist auf einmal zu viel.",
+        "conflict": "Jemand anderes hat diesen Kurs inzwischen geändert. Lade die Seite neu, um die aktuelle Version zu sehen.",
+        "in_use": "Dieser Kurs wird noch irgendwo verwendet. Entferne ihn zuerst dort.",
+        "in_use_where": "Dieser Kurs wird noch verwendet in: {places}. Entferne ihn zuerst dort.",
+        "in_use_classes": "Dieser Kurs hat noch Stunden. Beende zuerst seine Stunden.",
+        "archive_first": "Archiviere diesen Kurs, bevor du ihn löschst.",
+        "archived": "Dieser Kurs ist archiviert. Stelle ihn wieder her, um Änderungen vorzunehmen.",
+        "missing_title": "Ein Titel in der Hauptsprache ist erforderlich.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+        "offline": "Du bist offline. Deine Änderungen werden gespeichert, sobald du wieder online bist."
+      },
+      "list": {
+        "title": "Kurse",
+        "new": "Neuer Kurs",
+        "untitled": "Kurs ohne Titel",
+        "emptyTitle": "Noch keine Kurse",
+        "emptyBody": "Lege deine Kurse einmal an und gib jedem seine wöchentlichen Stunden. Der Stundenplan auf deiner Website entsteht daraus.",
+        "missing": "Fehlt: {languages}",
+        "classesCount": "{count, plural, =0 {Keine Stunden} one {# Stunde} other {# Stunden}}",
+        "menu": "Aktionen für {name}",
+        "undo": "Rückgängig",
+        "view": {
+          "label": "Ansicht",
+          "list": "Liste",
+          "cards": "Karten"
+        },
+        "columns": {
+          "title": "Kurs",
+          "classes": "Wöchentliche Stunden",
+          "teachers": "Lehrende",
+          "next": "Nächste Stunde",
+          "status": "Status",
+          "updated": "Aktualisiert",
+          "actions": "Aktionen"
+        },
+        "actions": {
+          "edit": "Bearbeiten",
+          "activity": "Aktivität"
+        },
+        "done": {
+          "archived": "{name} ist archiviert. Es ist nicht mehr auf deiner Website.",
+          "restored": "{name} ist wiederhergestellt.",
+          "deleted": "{name} ist gelöscht."
+        },
+        "filters": {
+          "label": "Kurse filtern",
+          "search": "Kurse suchen",
+          "searchPlaceholder": "Nach Titel oder Lehrperson suchen",
+          "status": "Status",
+          "statusAll": "Alle",
+          "sort": "Sortieren nach",
+          "sort_updated_desc": "Zuletzt aktualisiert",
+          "sort_updated_asc": "Am längsten nicht aktualisiert",
+          "sort_title_asc": "Titel, A bis Z",
+          "sort_title_desc": "Titel, Z bis A",
+          "showing": "{shown} von {total} Kursen",
+          "clear": "Filter zurücksetzen",
+          "noMatch": "Kein Kurs passt zu diesen Filtern."
+        },
+        "timetable": "Stundenplan"
+      },
+      "newCourse": {
+        "title": "Neuer Kurs",
+        "intro": "Beginne mit einem Titel. Den Rest und die Stunden ergänzt du danach.",
+        "titleLabel": "Titel auf {language}",
+        "titleNeeded": "Gib einen Titel ein, um fortzufahren.",
+        "cancel": "Abbrechen",
+        "creating": "Wird erstellt …",
+        "create": "Kurs Erstellen",
+        "errors": {
+          "forbidden": "Du darfst keine Kurse hinzufügen.",
+          "tooMany": "Du hast die Anzahl der in deinem Tarif enthaltenen Kurse erreicht.",
+          "missingTitle": "Ein Titel ist erforderlich.",
+          "failed": "Wir konnten diesen Kurs nicht erstellen. Bitte versuche es erneut."
+        }
+      },
+      "editor": {
+        "back": "Zurück zu den Kursen",
+        "untitled": "Neuer Kurs",
+        "publish": "Veröffentlichen",
+        "publishing": "Wird veröffentlicht …",
+        "published": "Veröffentlicht. Deine Änderungen sind auf deiner Website.",
+        "discarded": "Deine unveröffentlichten Änderungen wurden verworfen.",
+        "restored": "Wiederhergestellt.",
+        "archived": "Archiviert. Dieser Kurs ist nicht mehr auf deiner Website.",
+        "undo": "Rückgängig",
+        "dismiss": "Schließen",
+        "language": "Bearbeitungssprache",
+        "wordsTitle": "Texte",
+        "titleLabel": "Titel",
+        "titleOtherLanguage": "Optional. Ohne Titel sehen Besucher den Titel auf {language}.",
+        "titleRequired": "Zum Veröffentlichen ist ein Titel in der Hauptsprache erforderlich.",
+        "shortDescriptionLabel": "Kurzbeschreibung",
+        "shortDescriptionHint": "Ein bis zwei Sätze, angezeigt im Stundenplan und in Listen.",
+        "colorLabel": "Farbe",
+        "colorHint": "Wie dieser Kurs im Stundenplan markiert wird.",
+        "color": {
+          "none": "Keine",
+          "accent": "Akzent",
+          "muted": "Dezent"
+        },
+        "classesTitle": "Stunden",
+        "archivedTitle": "Dieser Kurs ist archiviert",
+        "archivedBody": "Stelle ihn wieder her, um Änderungen vorzunehmen.",
+        "readOnly": "Du kannst hier nur ansehen, nichts ändern.",
+        "publishBlocked": "Vor dem Veröffentlichen: Titel auf {language} ergänzen.",
+        "publishReason": {
+          "upToDate": "Nichts Neues zu veröffentlichen."
+        },
+        "menu": {
+          "label": "Weitere Aktionen",
+          "discard": "Unveröffentlichte Änderungen verwerfen …",
+          "activity": "Aktivität"
+        },
+        "confirm": {
+          "discardTitle": "Unveröffentlichte Änderungen verwerfen?",
+          "discardBody": "Die veröffentlichte Version bleibt unverändert.",
+          "discard": "Änderungen Verwerfen",
+          "deleteTitle": "{name} löschen?",
+          "deleteBody": "Dieser Kurs wird endgültig entfernt."
+        }
+      },
+      "classes": {
+        "add": "Stunde hinzufügen",
+        "edit": "Bearbeiten",
+        "menu": "Aktionen für {name}",
+        "openClass": "{name} öffnen",
+        "noDetails": "Noch kein Ort, keine Lehrkraft und keine Sprache",
+        "publishFirst": "Veröffentliche zuerst diesen Kurs und füge dann seine Stunden hinzu.",
+        "loadError": "Die Stunden konnten nicht geladen werden. Lade die Seite neu, um es noch einmal zu versuchen.",
+        "empty": {
+          "title": "Noch keine Stunden",
+          "body": "Füge die wöchentlichen Stunden dieses Kurses hinzu: den Tag, die Uhrzeit, den Ort und wer unterrichtet. Daraus entsteht dein Stundenplan.",
+          "readOnly": "Dieser Kurs hat noch keine Stunden."
+        },
+        "mode": {
+          "inPerson": "Vor Ort",
+          "online": "Online",
+          "mixed": "Hybrid"
+        },
+        "repeat": "{count, plural, one {Jede Woche} other {Alle # Wochen}}",
+        "sheet": {
+          "addTitle": "Stunde hinzufügen",
+          "editTitle": "Stunde bearbeiten",
+          "readOnly": "Du kannst hier nur ansehen, nichts ändern.",
+          "weekday": "Tag",
+          "repeat": "Wiederholung",
+          "from": "Beginn",
+          "until": "Ende",
+          "noEnd": "Keine Endzeit",
+          "endBeforeStart": "Das Ende muss nach dem Beginn liegen.",
+          "place": "Ort",
+          "noPlace": "Kein Ort",
+          "unknownPlace": "Ein Ort, der nicht mehr auf deiner Website ist",
+          "teachers": "Lehrkräfte",
+          "languages": "Sprachen",
+          "mode": "Wie sie stattfindet",
+          "room": "Online-Raum",
+          "noRoom": "Kein Raum",
+          "noRooms": "Lege zuerst Online-Räume auf der Seite Stundenplan an.",
+          "term": "Zeitraum",
+          "noTerm": "Kein Zeitraum",
+          "startsOn": "Erste Stunde",
+          "startsOnHint": "Die erste Stunde ist der erste passende Tag ab diesem Datum.",
+          "endsOn": "Letzte Stunde",
+          "endsOnHint": "Optional. Auch das Ende des Zeitraums beendet die Stunde.",
+          "noEndDate": "Kein letztes Datum",
+          "endBeforeStartDay": "Die letzte Stunde darf nicht vor der ersten liegen.",
+          "save": "Speichern",
+          "saving": "Speichern…"
+        },
+        "end": {
+          "action": "Diese Stunde beenden",
+          "title": "{name} beenden?",
+          "body": "Die künftigen Termine dieser Stunde werden aus dem Stundenplan entfernt. Vergangene Termine bleiben.",
+          "confirm": "Stunde beenden",
+          "done": "Stunde beendet."
+        },
+        "saved": {
+          "done": "Stunde gespeichert.",
+          "keptEdited": "{count, plural, one {Gespeichert. # von dir geänderter Termin passt nicht mehr zur Stunde und wurde behalten.} other {Gespeichert. # von dir geänderte Termine passen nicht mehr zur Stunde und wurden behalten.}}",
+          "truncated": "Gespeichert. Es wurden nur die ersten Termine angelegt. Lege ein letztes Datum fest, um die Liste kurz zu halten."
+        },
+        "errors": {
+          "inUse": "Das wird noch von Stunden verwendet. Entferne es zuerst dort.",
+          "missingName": "Ein Name in der Hauptsprache ist erforderlich."
+        }
+      },
+      "timetable": {
+        "title": "Stundenplan",
+        "back": "Zurück zu den Kursen",
+        "untitledCourse": "Kurs ohne Titel",
+        "openClass": "{name}, {time} öffnen",
+        "changes": "{count, plural, one {# Änderung} other {# Änderungen}}",
+        "term": {
+          "select": "Zeitraum",
+          "all": "Alle Stunden",
+          "none": "Ohne Zeitraum",
+          "new": "Neuer Zeitraum",
+          "edit": "Zeitraum bearbeiten",
+          "range": "{from} bis {to}",
+          "newTitle": "Neuer Zeitraum",
+          "editTitle": "Zeitraum bearbeiten",
+          "name": "Name",
+          "startsOn": "Erster Tag",
+          "endsOn": "Letzter Tag",
+          "endBeforeStart": "Der letzte Tag darf nicht vor dem ersten liegen.",
+          "datesHint": "Wenn du die Daten änderst, werden die Stunden dieses Zeitraums verschoben oder beendet.",
+          "save": "Speichern",
+          "saving": "Speichern…",
+          "saved": "Zeitraum gespeichert.",
+          "delete": "Zeitraum löschen",
+          "deleteTitle": "{name} löschen?",
+          "deleteBody": "Nur ein Zeitraum ohne Stunden kann gelöscht werden.",
+          "deleted": "Zeitraum gelöscht."
+        },
+        "empty": {
+          "title": "Noch keine Stunden",
+          "body": "Füge Stunden auf der Seite eines Kurses hinzu. Dann erscheinen sie hier.",
+          "termBody": "Dieser Zeitraum hat noch keine Stunden."
+        },
+        "grid": {
+          "label": "Wöchentlicher Stundenplan",
+          "place": "Ort",
+          "noPlace": "Kein Ort"
+        },
+        "dates": {
+          "close": "Schließen",
+          "loading": "Termine werden geladen",
+          "empty": "Keine kommenden Termine.",
+          "cancel": "Stunde absagen",
+          "restore": "Wiederherstellen",
+          "substitute": "Vertretung",
+          "changeTime": "Zeit ändern",
+          "addNote": "Notiz hinzufügen",
+          "editNote": "Notiz bearbeiten",
+          "showMore": "Mehr anzeigen",
+          "saving": "Speichern…",
+          "save": "Speichern",
+          "status": {
+            "cancelled": "Abgesagt",
+            "substitute": "Vertretung: {names}",
+            "nobody": "niemand",
+            "moved": "Zeit geändert"
+          },
+          "edit": {
+            "substitute": {
+              "title": "Vertretung am {date}",
+              "hint": "Normalerweise unterrichtet: {names}.",
+              "field": "Lehrkräfte an diesem Termin",
+              "reset": "Zurück zu den üblichen Lehrkräften"
+            },
+            "time": {
+              "title": "Zeit ändern am {date}",
+              "from": "Beginn",
+              "until": "Ende",
+              "noEnd": "Keine Endzeit",
+              "endBeforeStart": "Das Ende muss nach dem Beginn liegen."
+            },
+            "note": {
+              "title": "Notiz für den {date}",
+              "hint": "Eine kurze Notiz, die bei diesem Termin angezeigt wird, zum Beispiel „Bring eine Matte mit“.",
+              "field": "Notiz",
+              "remove": "Notiz entfernen"
+            }
+          }
+        },
+        "holidays": {
+          "title": "Feiertage",
+          "hint": "Tage ohne Unterricht. Alle Stunden überspringen sie, in jedem Zeitraum.",
+          "add": "Feiertag hinzufügen",
+          "empty": "Noch keine Feiertage.",
+          "untitled": "Feiertag",
+          "range": "{from} bis {to}",
+          "menu": "Aktionen für {name}",
+          "remove": "Entfernen",
+          "removed": "Feiertag entfernt.",
+          "addTitle": "Feiertag hinzufügen",
+          "editTitle": "Feiertag bearbeiten",
+          "name": "Name",
+          "from": "Erster Tag",
+          "to": "Letzter Tag",
+          "endBeforeStart": "Der letzte Tag darf nicht vor dem ersten liegen.",
+          "save": "Speichern",
+          "saving": "Speichern…",
+          "saved": "Feiertag gespeichert."
+        },
+        "rooms": {
+          "title": "Online-Räume",
+          "hint": "Zoom und andere Räume, die sich deine Online-Stunden teilen. Nur Inhaber sehen die Details.",
+          "add": "Raum hinzufügen",
+          "empty": "Noch keine Räume.",
+          "noDetails": "Noch keine Details",
+          "menu": "Aktionen für {name}",
+          "remove": "Entfernen",
+          "removed": "Raum entfernt.",
+          "addTitle": "Raum hinzufügen",
+          "editTitle": "Raum bearbeiten",
+          "label": "Name",
+          "joinUrl": "Link zum Beitreten",
+          "joinUrlHttps": "Der Link muss mit https:// beginnen.",
+          "meetingId": "Meeting-ID",
+          "passcode": "Passcode",
+          "save": "Speichern",
+          "saving": "Speichern…",
+          "saved": "Raum gespeichert."
         }
       }
     }

@@ -62,6 +62,7 @@
     "nav": {
       "blog": "Posts",
       "events": "Events",
+      "courses": "Courses",
       "live": "Live",
       "forms": "Contact Requests",
       "whatsapp": "WhatsApp",
@@ -3260,6 +3261,7 @@
         "blog": "Share news and know-how in your own words, from your phone or your computer.",
         "news": "Announce what’s happening at your practice, short and dated.",
         "events": "Publish workshops, open days and appointments with dates, places and a calendar.",
+        "courses": "Offer courses with weekly classes, teachers and places, and show the timetable on your site.",
         "faq": "Answer the questions people always ask once, then show the answers wherever they help.",
         "live": "Share quick updates as they happen, without writing a full article.",
         "gallery": "Show your space, your work and your team in photo galleries that look good on any screen.",
@@ -3775,6 +3777,325 @@
           "addressNeeded": "Add an address for the page",
           "useSuggestion": "Use “{slug}”",
           "redirectNote": "If you change the address later, the old one keeps working and leads to the new one."
+        }
+      }
+    },
+    "courses": {
+      "screen": {
+        "loadFailed": "We couldn’t load your courses. Please try again.",
+        "retry": "Try again"
+      },
+      "errors": {
+        "forbidden": "You don’t have permission to do this.",
+        "not_found": "This course no longer exists.",
+        "invalid_field": "This can’t be changed here.",
+        "invalid_value": "Something isn’t right. Check what you entered and try again.",
+        "too_large": "That’s too much at once.",
+        "conflict": "Someone else changed this course in the meantime. Reload to see the latest version.",
+        "in_use": "This course is still used somewhere. Remove it there first.",
+        "in_use_where": "This course is still used in: {places}. Remove it there first.",
+        "in_use_classes": "This course still has classes. End its classes first.",
+        "archive_first": "Archive this course before deleting it.",
+        "archived": "This course is archived. Restore it to make changes.",
+        "missing_title": "A title in the main language is required.",
+        "failed": "Something went wrong. Please try again.",
+        "offline": "You’re offline. Your changes will save when you’re back online."
+      },
+      "list": {
+        "title": "Courses",
+        "new": "New Course",
+        "untitled": "Untitled course",
+        "emptyTitle": "No courses yet",
+        "emptyBody": "Add your courses once, then give each one its weekly classes. The timetable on your website is made from them.",
+        "missing": "Missing {languages}",
+        "classesCount": "{count, plural, =0 {No classes} one {# class} other {# classes}}",
+        "menu": "Actions for {name}",
+        "undo": "Undo",
+        "view": {
+          "label": "View",
+          "list": "List",
+          "cards": "Cards"
+        },
+        "columns": {
+          "title": "Course",
+          "classes": "Weekly classes",
+          "teachers": "Teachers",
+          "next": "Next class",
+          "status": "Status",
+          "updated": "Updated",
+          "actions": "Actions"
+        },
+        "actions": {
+          "edit": "Edit",
+          "activity": "Activity"
+        },
+        "done": {
+          "archived": "{name} is archived. It’s no longer on your website.",
+          "restored": "{name} is restored.",
+          "deleted": "{name} is deleted."
+        },
+        "filters": {
+          "label": "Filter courses",
+          "search": "Search courses",
+          "searchPlaceholder": "Search by title or teacher",
+          "status": "Status",
+          "statusAll": "All",
+          "sort": "Sort by",
+          "sort_updated_desc": "Recently updated",
+          "sort_updated_asc": "Least recently updated",
+          "sort_title_asc": "Title, A to Z",
+          "sort_title_desc": "Title, Z to A",
+          "showing": "{shown} of {total} courses",
+          "clear": "Clear filters",
+          "noMatch": "No course matches these filters."
+        },
+        "timetable": "Timetable"
+      },
+      "newCourse": {
+        "title": "New course",
+        "intro": "Start with a title. You can add the rest, and its classes, afterwards.",
+        "titleLabel": "Title in {language}",
+        "titleNeeded": "Add a title to continue.",
+        "cancel": "Cancel",
+        "creating": "Creating…",
+        "create": "Create Course",
+        "errors": {
+          "forbidden": "You don’t have permission to add courses.",
+          "tooMany": "You’ve reached the number of courses your plan includes.",
+          "missingTitle": "A title is required.",
+          "failed": "We couldn’t create this course. Please try again."
+        }
+      },
+      "editor": {
+        "back": "Back to courses",
+        "untitled": "New course",
+        "publish": "Publish",
+        "publishing": "Publishing…",
+        "published": "Published. Your changes are on your website.",
+        "discarded": "Your unpublished changes are discarded.",
+        "restored": "Restored.",
+        "archived": "Archived. This course is no longer on your website.",
+        "undo": "Undo",
+        "dismiss": "Dismiss",
+        "language": "Editing language",
+        "wordsTitle": "Words",
+        "titleLabel": "Title",
+        "titleOtherLanguage": "Optional. Without it, visitors see the title in {language}.",
+        "titleRequired": "A title in the main language is required to publish.",
+        "shortDescriptionLabel": "Short description",
+        "shortDescriptionHint": "One or two sentences, shown on the timetable and in lists.",
+        "colorLabel": "Colour",
+        "colorHint": "How this course is marked in the timetable.",
+        "color": {
+          "none": "None",
+          "accent": "Accent",
+          "muted": "Muted"
+        },
+        "classesTitle": "Classes",
+        "archivedTitle": "This course is archived",
+        "archivedBody": "Restore it to make changes.",
+        "readOnly": "You can look but not change anything here.",
+        "publishBlocked": "Before you can publish: add a title in {language}.",
+        "publishReason": {
+          "upToDate": "Nothing new to publish."
+        },
+        "menu": {
+          "label": "More actions",
+          "discard": "Discard unpublished changes…",
+          "activity": "Activity"
+        },
+        "confirm": {
+          "discardTitle": "Discard your unpublished changes?",
+          "discardBody": "The published version stays as it is.",
+          "discard": "Discard Changes",
+          "deleteTitle": "Delete {name}?",
+          "deleteBody": "This course is removed for good."
+        }
+      },
+      "classes": {
+        "add": "Add class",
+        "edit": "Edit",
+        "menu": "Actions for {name}",
+        "openClass": "Open {name}",
+        "noDetails": "No place, teachers or languages yet",
+        "publishFirst": "Publish this course first, then add its classes.",
+        "loadError": "The classes couldn’t be loaded. Reload the page to try again.",
+        "empty": {
+          "title": "No classes yet",
+          "body": "Add the weekly classes of this course: the day, the time, where it takes place and who teaches. They make your timetable.",
+          "readOnly": "This course has no classes yet."
+        },
+        "mode": {
+          "inPerson": "In person",
+          "online": "Online",
+          "mixed": "Hybrid"
+        },
+        "repeat": "{count, plural, one {Every week} other {Every # weeks}}",
+        "sheet": {
+          "addTitle": "Add a class",
+          "editTitle": "Edit class",
+          "readOnly": "You can look but not change anything here.",
+          "weekday": "Day",
+          "repeat": "Repeats",
+          "from": "Starts",
+          "until": "Ends",
+          "noEnd": "No end time",
+          "endBeforeStart": "The end must be after the start.",
+          "place": "Place",
+          "noPlace": "No place",
+          "unknownPlace": "A place that is no longer on your website",
+          "teachers": "Teachers",
+          "languages": "Languages",
+          "mode": "How it takes place",
+          "room": "Online room",
+          "noRoom": "No room",
+          "noRooms": "Add online rooms on the Timetable page first.",
+          "term": "Term",
+          "noTerm": "No term",
+          "startsOn": "First class",
+          "startsOnHint": "The first class is the first matching day on or after this date.",
+          "endsOn": "Last class",
+          "endsOnHint": "Optional. The end of the term also ends the class.",
+          "noEndDate": "No last date",
+          "endBeforeStartDay": "The last class can’t be before the first.",
+          "save": "Save",
+          "saving": "Saving…"
+        },
+        "end": {
+          "action": "End this class",
+          "title": "End {name}?",
+          "body": "Its future dates are removed from the timetable. Past dates stay.",
+          "confirm": "End class",
+          "done": "Class ended."
+        },
+        "saved": {
+          "done": "Class saved.",
+          "keptEdited": "{count, plural, one {Saved. # date you changed by hand no longer fits the class and was kept.} other {Saved. # dates you changed by hand no longer fit the class and were kept.}}",
+          "truncated": "Saved. Only the first dates were created. Set a last date to keep the list short."
+        },
+        "errors": {
+          "inUse": "This is still used by classes. Remove it from them first.",
+          "missingName": "A name in the main language is required."
+        }
+      },
+      "timetable": {
+        "title": "Timetable",
+        "back": "Back to courses",
+        "untitledCourse": "Untitled course",
+        "openClass": "Open {name}, {time}",
+        "changes": "{count, plural, one {# change} other {# changes}}",
+        "term": {
+          "select": "Term",
+          "all": "All classes",
+          "none": "Without a term",
+          "new": "New term",
+          "edit": "Edit term",
+          "range": "{from} to {to}",
+          "newTitle": "New term",
+          "editTitle": "Edit term",
+          "name": "Name",
+          "startsOn": "First day",
+          "endsOn": "Last day",
+          "endBeforeStart": "The last day can’t be before the first.",
+          "datesHint": "Changing the dates moves or ends the classes of this term.",
+          "save": "Save",
+          "saving": "Saving…",
+          "saved": "Term saved.",
+          "delete": "Delete term",
+          "deleteTitle": "Delete {name}?",
+          "deleteBody": "Only a term without classes can be deleted.",
+          "deleted": "Term deleted."
+        },
+        "empty": {
+          "title": "No classes yet",
+          "body": "Add classes from a course’s page. They appear here.",
+          "termBody": "This term has no classes yet."
+        },
+        "grid": {
+          "label": "Weekly timetable",
+          "place": "Place",
+          "noPlace": "No place"
+        },
+        "dates": {
+          "close": "Close",
+          "loading": "Loading dates",
+          "empty": "No upcoming dates.",
+          "cancel": "Cancel class",
+          "restore": "Restore",
+          "substitute": "Substitute",
+          "changeTime": "Change time",
+          "addNote": "Add note",
+          "editNote": "Edit note",
+          "showMore": "Show more",
+          "saving": "Saving…",
+          "save": "Save",
+          "status": {
+            "cancelled": "Cancelled",
+            "substitute": "Substitute: {names}",
+            "nobody": "nobody",
+            "moved": "Time changed"
+          },
+          "edit": {
+            "substitute": {
+              "title": "Substitute on {date}",
+              "hint": "Usually taught by: {names}.",
+              "field": "Teachers on this date",
+              "reset": "Back to the usual teachers"
+            },
+            "time": {
+              "title": "Change time on {date}",
+              "from": "Starts",
+              "until": "Ends",
+              "noEnd": "No end time",
+              "endBeforeStart": "The end must be after the start."
+            },
+            "note": {
+              "title": "Note for {date}",
+              "hint": "A short note shown with this date, for example “Bring a mat”.",
+              "field": "Note",
+              "remove": "Remove note"
+            }
+          }
+        },
+        "holidays": {
+          "title": "Holidays",
+          "hint": "Days with no class. Every class skips them, in every term.",
+          "add": "Add holiday",
+          "empty": "No holidays yet.",
+          "untitled": "Holiday",
+          "range": "{from} to {to}",
+          "menu": "Actions for {name}",
+          "remove": "Remove",
+          "removed": "Holiday removed.",
+          "addTitle": "Add a holiday",
+          "editTitle": "Edit holiday",
+          "name": "Name",
+          "from": "First day",
+          "to": "Last day",
+          "endBeforeStart": "The last day can’t be before the first.",
+          "save": "Save",
+          "saving": "Saving…",
+          "saved": "Holiday saved."
+        },
+        "rooms": {
+          "title": "Online rooms",
+          "hint": "Zoom and other rooms your online classes share. Only owners see the details.",
+          "add": "Add room",
+          "empty": "No rooms yet.",
+          "noDetails": "No details yet",
+          "menu": "Actions for {name}",
+          "remove": "Remove",
+          "removed": "Room removed.",
+          "addTitle": "Add a room",
+          "editTitle": "Edit room",
+          "label": "Name",
+          "joinUrl": "Link to join",
+          "joinUrlHttps": "The link must start with https://.",
+          "meetingId": "Meeting ID",
+          "passcode": "Passcode",
+          "save": "Save",
+          "saving": "Saving…",
+          "saved": "Room saved."
         }
       }
     }

@@ -12,6 +12,7 @@ import { catalogueSchemaTypes } from './catalogue/schema'
 import { CATALOGUE_TAXONOMY_SCHEMA_TYPE_NAMES } from './catalogue/schema-taxonomy'
 import { brandHubSchemaTypes } from './brand-hub/schema'
 import { peopleSchemaTypes } from './people/schema'
+import { coursesSchemaTypes } from './courses/schema'
 import { SEGMENT_REGEX_SOURCE } from './catalogue/segment'
 import { PROFILES, PROFILE_ORDER, profilesWith } from './catalogue/profiles'
 
@@ -1915,6 +1916,108 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     },
 
     changelog: 'V1.0.0 — ADR-043 foundation. person documents (public), person_private (Supabase, migration 063), peopleRefsField on team section / posts / events, PERSON_PUBLIC_FIELDS, Groups taxonomy.',
+  },
+
+
+  // ── Courses ────────────────────────────────────────────────────────────────
+  // ADR-045 + timetable build spec — weekly classes that generate a calendar.
+  //
+  // The module owns `course` documents (the words: title, short description,
+  // colour; Sanity) and, through scheduling (Supabase, migration 064), the
+  // classes of each course. A course is keyed by its `publicId`; teachers are
+  // stored on the classes and reference People — never here. Non-routable for
+  // now (no slug, no own page).
+  //
+  // Clients edit in the dashboard (Content → Courses); Studio is read-only.
+  // The website `timetableSection` (week / month, printable) is the module's
+  // section: declared in sectionTypes, so it is gated by the `courses`
+  // installation like every module section.
+  {
+    id: 'courses',
+    label: 'Courses',
+    version: '1.0.0',
+    status: 'released',
+    category: 'content',
+
+    platformContract: {
+      collections: [
+        {
+          id: 'courses-module',
+          label: 'Courses',
+          items: [
+            {
+              // Read-only in Studio (as People): no initial value template.
+              id: 'courses',
+              label: 'Courses',
+              schemaType: 'course',
+              filter: `_type == "course" && projectSlug == $slug`,
+              ordering: [{ field: '_updatedAt', direction: 'desc' as const }],
+            },
+          ],
+        },
+      ],
+
+      sectionTypes: ['timetableSection'],
+
+      schemaTypes: ['course', 'timetableSection'],
+
+      schemaDefinitions: () => coursesSchemaTypes,
+
+      permissions: [
+        {
+          id: 'courses.course.read',
+          label: 'View courses',
+          description: 'View and list the website\'s courses and their timetable.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'courses.course.write',
+          label: 'Create and edit courses',
+          description: 'Create courses, edit their words and colour, publish, archive and restore them.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'courses.course.delete',
+          label: 'Delete courses',
+          description: 'Permanently delete a course that has no classes.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'courses.schedule.write',
+          label: 'Manage classes and timetable',
+          description: 'Add and change weekly classes, cancel or substitute single dates, and set terms and holidays.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'courses.meeting.manage',
+          label: 'Manage online meeting details',
+          description: 'Create and change the online rooms (link, meeting number, passcode) that online classes use.',
+          defaultRoles: ['owner'],
+        },
+      ],
+
+      configSchema: [],
+
+      placement: {
+        surfaces: [],
+        note: 'Courses appear on the website through the Timetable section (week or month view, printable). A course has no page of its own yet.',
+      },
+    },
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [],
+      // Classes name teachers from People; events and courses share the scheduling engine.
+      integratesWith: ['people', 'events'],
+    },
+
+    dataStore: {
+      // Words in Sanity, classes / terms / closures / meeting rooms in Supabase (migration 064).
+      primary: 'hybrid',
+    },
+
+    changelog: 'V1.0.0 — ADR-045 foundation. course documents (words, colour, archive), courses.* permissions, Courses list and editor in the dashboard. Timetable section (week / month, print sheet).',
   },
 
 ]

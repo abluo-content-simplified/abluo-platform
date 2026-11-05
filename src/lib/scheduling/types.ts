@@ -60,3 +60,83 @@ export class ScheduleError extends Error {
     this.name = 'ScheduleError'
   }
 }
+
+// ── Course schedules (ADR-038 Amendment A, ADR-045, migration 064) ───────────
+//
+// A series/session now has an OWNER: an event or a course (the owner's Sanity
+// publicId). The event types above are unchanged (they keep `eventPublicId`);
+// these types describe repeating weekly classes that belong to a course.
+
+export type ScheduleOwnerType = 'event' | 'course'
+
+/** A weekly class: one series of a course (migration 064 columns on event_series). */
+export type ClassSeries = {
+  id: string
+  ownerType: ScheduleOwnerType
+  ownerPublicId: string
+  editionId: string | null
+  timeZone: string
+  /** First session ('YYYY-MM-DDTHH:mm'); also the anchor for "every N weeks". */
+  startLocal: LocalDateTime
+  endLocal: LocalDateTime | null
+  /** 'FREQ=WEEKLY;INTERVAL=n;BYDAY=XX' (null only for odd legacy rows). */
+  rule: string | null
+  /** 1 = Monday … 7 = Sunday. */
+  weekday: number | null
+  interval: number
+  /** First / last possible date of the class ('YYYY-MM-DD'). */
+  startsOn: string | null
+  endsOn: string | null
+  place: SchedulePlace | null
+  attendanceMode: AttendanceMode
+  instructorPublicIds: string[]
+  languages: string[]
+  meetingRoomId: string | null
+  /** 'ended' once the class was ended (its past sessions remain). */
+  status: 'active' | 'ended'
+  version: number
+}
+
+/** One dated class session, with the series defaults applied where it does not override them. */
+export type ClassOccurrence = Omit<Occurrence, 'eventPublicId'> & {
+  ownerType: ScheduleOwnerType
+  ownerPublicId: string
+  /** The date-time the rule generated (stable key; null = added by hand). */
+  originalStartLocal: LocalDateTime | null
+  /** True once edited individually: the rule never overwrites it again. */
+  isModified: boolean
+  languages: string[]
+  meetingRoomId: string | null
+}
+
+/** A term / edition. owner null = the whole site's timetable. */
+export type ScheduleEdition = {
+  id: string
+  ownerType: ScheduleOwnerType | null
+  ownerPublicId: string | null
+  label: Record<string, string>
+  startsOn: string
+  endsOn: string
+  timeZone: string
+  version: number
+}
+
+/** Holidays: no generated session takes place on these dates (inclusive). editionId null = every series. */
+export type ScheduleClosure = {
+  id: string
+  editionId: string | null
+  startsOn: string
+  endsOn: string
+  label: Record<string, string>
+}
+
+/** Private online meeting details. Server-only: never put one on a public page. */
+export type MeetingRoom = {
+  id: string
+  label: string
+  joinUrl: string | null
+  meetingId: string | null
+  passcode: string | null
+  note: Record<string, string> | null
+  version: number
+}

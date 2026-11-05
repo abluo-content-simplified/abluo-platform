@@ -1068,6 +1068,10 @@ const WEBSITE_ROUTES: Record<string, 'public-write (site access)' | 'public-read
   // R9: the members bar asks "is this browser signed in?" — GET only, answers
   // { signedIn } and nothing else; no database call without the cookie.
   '[tenant]/site-access/status': 'public-read (site access)',
+  // ADR-045: the Timetable section asks for another month — GET only, anonymous by
+  // nature; every request re-reads and re-gates the page, and meeting details need a
+  // granted visitor on a protected page (timetable-route.server.ts).
+  '[tenant]/site-access/timetable': 'public-read (site access)',
 }
 
 describe('route handlers outside src/app/api', () => {

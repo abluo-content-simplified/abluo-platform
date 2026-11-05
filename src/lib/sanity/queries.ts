@@ -623,6 +623,16 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       // projected: they live in Supabase and are added by hydrateSections, per
       // visitor, after the page gate. eyebrow/title/intro/image are shared keys.
       documentSort,
+      // timetableSection (Courses module, ADR-045). The classes are NOT
+      // projected: they live in Supabase and are added by hydrateSections, per
+      // request. title/eyebrow/intro are shared keys. The picked courses are
+      // weak references: only this website's courses survive the filter.
+      defaultView,
+      allowViewSwitch,
+      courseScope,
+      "courseIds": (courses[]->)[_type == "course" && projectSlug == $projectSlug].publicId,
+      showOnlineDetails,
+      showPrintButton,
       // ─── Platform sections added with the icon primitive ──────────────────
       // Every key below is NEW to this flat projection and resolves to null on
       // every section type that does not declare it. Fields these sections
@@ -2085,6 +2095,13 @@ export const homePageQuery = /* groq */ `
       // projected: they live in Supabase and are added by hydrateSections, per
       // visitor, after the page gate. eyebrow/title/intro/image are shared keys.
       documentSort,
+      // timetableSection — see PAGE_SECTIONS_PROJECTION.
+      defaultView,
+      allowViewSwitch,
+      courseScope,
+      "courseIds": (courses[]->)[_type == "course" && projectSlug == $projectSlug].publicId,
+      showOnlineDetails,
+      showPrintButton,
       "emptyStateHeading": ${loc('emptyStateHeading')},
       "emptyStateBody": ${loc('emptyStateBody')}
     }

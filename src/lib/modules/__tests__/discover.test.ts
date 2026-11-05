@@ -18,7 +18,7 @@ describe('discover', () => {
     expect(all).not.toContain('forms')
     expect(all).not.toContain('gallery')
     expect(groups.map((g) => g.id)).toEqual(['publish', 'show', 'visitors', 'tools'])
-    expect(groups[0].moduleIds).toEqual(['news', 'events', 'faq', 'live'])
+    expect(groups[0].moduleIds).toEqual(['news', 'events', 'courses', 'faq', 'live'])
   })
 
   it('is empty when everything is installed', () => {

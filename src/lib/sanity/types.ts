@@ -2337,6 +2337,42 @@ export interface DownloadSection {
   documents?: DownloadSectionDocument[]
 }
 
+/**
+ * What a Timetable section shows for THIS request, set by hydrateSections
+ * (never stored in Sanity). Plain JSON: the section's client part receives it.
+ */
+export interface TimetableHydration {
+  /** The month first shown ('YYYY-MM') and today, both in the site time zone. */
+  month: string
+  today: string
+  data: import('@/lib/modules/courses/timetable').TimetableData
+  /** Whether meeting details were allowed for this request (decided on the server). */
+  onlineDetails: boolean
+  /** The page this section sits on — lets the browser ask for other months through the timetable route. null = no navigation. */
+  pageId: string | null
+}
+
+/** Courses module (ADR-045) — the website timetable: week / month view, printable month sheet. */
+export interface TimetableSection {
+  _type: 'timetableSection'
+  _key: string
+  background?: FAQSection['background']
+  anchorId?: string
+  eyebrow?: string
+  title?: string
+  intro?: string
+  defaultView?: 'week' | 'month' | null
+  allowViewSwitch?: boolean | null
+  /** 'all' (default) or 'pick' — then `courseIds` lists the chosen courses. */
+  courseScope?: 'all' | 'pick' | null
+  /** publicIds of the picked courses of THIS website (weak references resolved in GROQ). */
+  courseIds?: (string | null)[] | null
+  showOnlineDetails?: boolean | null
+  showPrintButton?: boolean | null
+  /** Set by hydrateSections; undefined = not hydrated (renders nothing). */
+  timetable?: TimetableHydration
+}
+
 // ─── Price List Section (platform) ───────────────────────────────────────────
 // Prices are numbers; the renderer formats them per locale with the section
 // currency (src/lib/price-list/format.ts). Localized fields arrive resolved.
@@ -2423,6 +2459,7 @@ export type PageSection =
   | PriceListSection
   | CatalogueListingSection
   | DownloadSection
+  | TimetableSection
 
 export interface WebsiteHomePage {
   tenantSlug: string

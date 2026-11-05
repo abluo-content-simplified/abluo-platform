@@ -350,6 +350,24 @@ export const SECTION_PREVIEWS: Record<string, () => ReactNode> = {
       ))}
     </>
   ),
+  timetableSection: () => (
+    <>
+      <Title />
+      {[10, 26, 42, 58, 74, 90].map((x) => (
+        <rect key={`h${x}`} x={x} y={26} width={14} height={2.5} rx={1} fill="currentColor" opacity={HEAD} />
+      ))}
+      {[10, 26, 42, 58, 74, 90].map((x, i) =>
+        [34, 46, 58].map((y, j) =>
+          (i + j) % 2 === 0 ? (
+            <g key={`${x}-${y}`}>
+              <rect x={x} y={y} width={14} height={8} rx={1.5} fill="none" stroke="currentColor" strokeWidth={1} opacity={0.75} />
+              <rect x={x + 2} y={y + 3} width={9} height={1.5} rx={0.75} fill="currentColor" opacity={BODY} />
+            </g>
+          ) : null
+        )
+      )}
+    </>
+  ),
   catalogueListingSection: () => (
     <>
       <Title />

@@ -92,7 +92,7 @@ describe('buildClientNavItems', () => {
   })
 
   it('derives the exported segments from the registry', () => {
-    expect(MODULE_DASHBOARD_ROUTES).toEqual({ blog: 'posts', events: 'agenda', forms: 'submissions', gallery: 'galleries', faq: 'faq-sets', documents: 'document-library', members: 'access', catalogue: 'catalogue', people: 'people' })
+    expect(MODULE_DASHBOARD_ROUTES).toEqual({ blog: 'posts', events: 'agenda', forms: 'submissions', gallery: 'galleries', faq: 'faq-sets', documents: 'document-library', members: 'access', catalogue: 'catalogue', people: 'people', courses: 'courses' })
     expect(MEDIA_SEGMENT).toBe('media')
     expect(USERS_SEGMENT).toBe('users')
     expect(segmentOf('blog')).toBe('posts')

@@ -144,6 +144,8 @@ export const PAGE_SECTIONS_OF = [
   defineArrayMember({ type: 'catalogueListingSection' }),
   // ADR-040 §15 — Documents module section (module-gated at render time).
   defineArrayMember({ type: 'downloadSection' }),
+  // ADR-045 — Courses module section (module-gated at render time).
+  defineArrayMember({ type: 'timetableSection' }),
 ]
 
 // ── Icon picker field ────────────────────────────────────────────────────────

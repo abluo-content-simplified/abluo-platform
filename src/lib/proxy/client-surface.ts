@@ -59,6 +59,8 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   // 'documents' / 'downloads', which a site may well use as a page slug.
   'document-library',
   'agenda',
+  // ADR-045: Courses (`/{project}/courses`, `/{project}/courses/{id}`, later `/courses/timetable`).
+  'courses',
   'media',
   'people',
   'users',
