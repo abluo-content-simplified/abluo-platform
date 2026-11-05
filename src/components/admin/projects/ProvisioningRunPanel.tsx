@@ -11,6 +11,7 @@ import { nextStep, type ProvisionStepId, type ProvisioningRunView, type RunStatu
 import { adminProjectHref } from '@/lib/admin/attention'
 import { previewSiteUrl } from '@/lib/admin/projects-filter'
 import { retryProvisioningAction, type WizardActionError } from '@/app/[locale]/(admin)/projects/new/actions'
+import type { Reachability } from '@/lib/admin/provisioning/reachability'
 
 /** Dictionary key per step id (next-intl keys cannot contain dots). */
 const STEP_KEY: Record<ProvisionStepId, string> = {
@@ -39,13 +40,23 @@ const DNS_RECORDS = [
  * then "Connect Google" on the project page (never part of provisioning:
  * it needs the live domain, and a Google hiccup must not fail a run).
  */
-export function ProvisioningRunPanel({ run: initial }: { run: ProvisioningRunView }) {
+export function ProvisioningRunPanel({
+  run: initial,
+  reach = null,
+}: {
+  run: ProvisioningRunView
+  /**
+   * Whether the version running now already knows this site (server page only;
+   * null = not checked, e.g. right after "Create" in the wizard).
+   */
+  reach?: Reachability | null
+}) {
   const t = useTranslations('admin.newProject.run')
   const tn = useTranslations('admin.newProject')
   const [run, setRun] = useState(initial)
   const [error, setError] = useState<WizardActionError | null>(null)
   const [pending, startTransition] = useTransition()
-  const [domain, setDomain] = useState('')
+  const [domain, setDomain] = useState(reach?.customDomain ?? '')
 
   const resumeAt = nextStep(run.plannedSteps, run.steps)
   const failedStep = run.status === 'failed' ? (run.plannedSteps.find((s) => run.steps[s]?.status === 'failed') ?? resumeAt) : null
@@ -144,10 +155,17 @@ export function ProvisioningRunPanel({ run: initial }: { run: ProvisioningRunVie
           </ButtonLink>
 
           <section aria-labelledby="np-next" className="flex flex-col gap-4">
-            <SectionHeading id="np-next" title={t('next.heading')} />
+            <div className="space-y-1">
+              <SectionHeading id="np-next" title={t('next.heading')} />
+              {reach ? <p className="text-sm leading-5 text-muted-foreground">{t('next.statusNote')}</p> : null}
+            </div>
             <NextStep n={1} title={t('next.routes.title')}>
               {t('next.routes.body', { url: previewSiteUrl(run.projectSlug).replace(/^https:\/\//, '') })}
               <Code>npm run routes:generate</Code>
+              <TerminalNote text={t('next.terminal')} />
+              {reach ? (
+                <Status done={reach.previewLive} text={reach.previewLive ? t('next.routes.live') : t('next.routes.notLive')} />
+              ) : null}
             </NextStep>
             <NextStep n={2} title={t('next.studio.title')}>
               {t('next.studio.body', { name: run.projectName })}
@@ -194,9 +212,29 @@ export function ProvisioningRunPanel({ run: initial }: { run: ProvisioningRunVie
                 <li>{t('next.domain.step3', { domain: shownDomain, slug: run.projectSlug })}</li>
                 <li>
                   {t('next.domain.step4')} <Code>npm run routes:generate</Code>
+                  <TerminalNote text={t('next.terminal')} />
                 </li>
                 <li>{t('next.domain.step5')}</li>
               </ol>
+              {reach ? (
+                <div className="mt-3 flex flex-col gap-2">
+                  <Status
+                    done={reach.domainLive}
+                    text={
+                      !reach.customDomain
+                        ? t('next.domain.statusNone')
+                        : reach.domainLive
+                          ? t('next.domain.statusLive', { domain: reach.customDomain })
+                          : t('next.domain.statusNotLive', { domain: reach.customDomain })
+                    }
+                  />
+                  {reach.deployedStatus === 'active' ? (
+                    <Status done text={t('next.domain.statusActive')} />
+                  ) : reach.status === 'active' ? (
+                    <Status done={false} text={t('next.domain.statusActiveNotDeployed')} />
+                  ) : null}
+                </div>
+              ) : null}
             </NextStep>
             <NextStep n={4} title={t('next.google.title')}>
               <span className="block">{t('next.google.body')}</span>
@@ -222,6 +260,22 @@ function NextStep({ n, title, children }: { n: number; title: string; children: 
         <div className="mt-1 text-muted-foreground">{children}</div>
       </div>
     </div>
+  )
+}
+
+/** Where the command runs — so nobody wonders (Tom, 2026-11-05). */
+function TerminalNote({ text }: { text: string }) {
+  return <span className="mt-1 block text-sm leading-5 text-muted-foreground">{text}</span>
+}
+
+/** One "already done?" line: the version running now, compared with Supabase. */
+function Status({ done, text }: { done: boolean; text: string }) {
+  const t = useTranslations('admin.newProject.run.next')
+  return (
+    <span className="mt-2 flex items-start gap-2 text-sm leading-6">
+      <Pill tone={done ? 'success' : 'muted'}>{done ? t('done') : t('notYet')}</Pill>
+      <span className={done ? 'text-foreground' : 'text-muted-foreground'}>{text}</span>
+    </span>
   )
 }
 

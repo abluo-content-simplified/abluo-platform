@@ -127,7 +127,7 @@ export function BacklogForm({
             </Select>
           )}
         </Field>
-        <Field className="min-w-0" label={t('form.module')} hint={t('form.moduleHelp')} error={errorText(errors.moduleId)}>
+        <Field className="min-w-0" label={t('form.module')} hint={t('form.moduleHelp')} hintBelow error={errorText(errors.moduleId)}>
           {(p) => (
             <TextInput
               {...p}

@@ -329,10 +329,10 @@ function ClassForm({
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('sheet.startsOn')} hint={t('sheet.startsOnHint')}>
+        <Field label={t('sheet.startsOn')} hint={t('sheet.startsOnHint')} hintBelow>
           {(p) => <DatePicker {...p} value={d.startsOn} disabled={disabled} onChange={(startsOn) => set({ startsOn })} title={t('sheet.startsOn')} />}
         </Field>
-        <Field label={t('sheet.endsOn')} hint={t('sheet.endsOnHint')} error={!d.endsOn || d.endsOn >= d.startsOn ? undefined : t('sheet.endBeforeStartDay')}>
+        <Field label={t('sheet.endsOn')} hint={t('sheet.endsOnHint')} hintBelow error={!d.endsOn || d.endsOn >= d.startsOn ? undefined : t('sheet.endBeforeStartDay')}>
           {(p) => <DatePicker {...p} value={d.endsOn} min={d.startsOn || undefined} clearable disabled={disabled} onChange={(endsOn) => set({ endsOn })} title={t('sheet.endsOn')} placeholder={t('sheet.noEndDate')} />}
         </Field>
       </div>

@@ -5551,7 +5551,12 @@
         "help": "Diese Person erhält eine E-Mail-Einladung als Inhaber des Kunden: alle Websites, deren Personen und die Abrechnung.",
         "optional": "Bei einem bestehenden Kunden optional – leer lassen, wenn der Kunde schon einen Inhaber hat.",
         "name": "Name",
-        "email": "E-Mail"
+        "email": "E-Mail",
+        "noneYet": "{client} hat noch keinen Inhaber. Lade hier jemanden ein oder lass es leer und lade später über die Projektseite ein.",
+        "existingTitle": "Dieser Kunde hat bereits einen Inhaber",
+        "existingBody": "Der Inhaber besitzt alle Websites von {client}, also auch {project}. Es ist keine Einladung nötig.",
+        "invitedTitle": "Eine Einladung als Inhaber wartet auf Annahme",
+        "invitedBody": "Sobald sie angenommen ist, gehört auch {project} dazu. Es ist keine neue Einladung nötig."
       },
       "review": {
         "heading": "Überblick",
@@ -5569,7 +5574,9 @@
         "statusValue": "Vorschau – nicht online",
         "start": "Startseite",
         "startValue": "Ein Kopfbereich und ein Textabschnitt mit Platzhaltertext",
-        "domainNote": "Die Domain wird nicht automatisch verbunden. Nach dem Anlegen siehst du die Schritte, um sie in Vercel hinzuzufügen."
+        "domainNote": "Die Domain wird nicht automatisch verbunden. Nach dem Anlegen siehst du die Schritte, um sie in Vercel hinzuzufügen.",
+        "existingOwner": "{owner} — bereits Inhaber des Kunden",
+        "invitedOwner": "{email} — Einladung wartet auf Annahme"
       },
       "errors": {
         "required": "Erforderlich.",
@@ -5634,7 +5641,9 @@
           "heading": "Wie es weitergeht",
           "routes": {
             "title": "Website erreichbar machen",
-            "body": "Welche Website unter welcher Adresse antwortet, wird beim Build aus Supabase erzeugt. Führ dies aus, committe src/lib/tenancy/generated/route-config.ts und veröffentliche (dev → preview → main). Danach öffnet sich die Website unter {url}."
+            "body": "Welche Website unter welcher Adresse antwortet, wird beim Build aus Supabase erzeugt. Führ dies aus, committe src/lib/tenancy/generated/route-config.ts und veröffentliche (dev → preview → main). Danach öffnet sich die Website unter {url}.",
+            "live": "Die laufende Version öffnet diese Website.",
+            "notLive": "Die laufende Version kennt diese Website noch nicht."
           },
           "studio": {
             "title": "Design und Inhalte verfeinern",
@@ -5653,13 +5662,22 @@
             "recordsNote": "Vercel zeigt für jede Domain die genauen Einträge – wenn sie abweichen, gilt Vercel.",
             "step3": "In Supabase custom_domain = {domain} beim Projekt {slug} setzen (und Custom Domain beim Projekt in Studio).",
             "step4": "Routing-Tabelle neu erzeugen, committen und veröffentlichen:",
-            "step5": "Wenn die Website online gehen soll, den Projektstatus in Supabase auf active setzen, neu erzeugen und erneut veröffentlichen."
+            "step5": "Wenn die Website online gehen soll, den Projektstatus in Supabase auf active setzen, neu erzeugen und erneut veröffentlichen.",
+            "statusNone": "Am Projekt ist in Supabase noch keine Domain hinterlegt.",
+            "statusLive": "{domain} ist in der laufenden Version. Besucher erreichen sie, sobald die DNS-Einträge auf Vercel zeigen.",
+            "statusNotLive": "{domain} ist in Supabase hinterlegt, aber die laufende Version kennt sie noch nicht — neu generieren und deployen.",
+            "statusActive": "Live: Die laufende Version liefert die Website unter ihrer Domain aus.",
+            "statusActiveNotDeployed": "In Supabase auf active gesetzt — neu generieren und noch einmal deployen, um live zu gehen."
           },
           "google": {
             "title": "Google verbinden",
             "body": "Sobald die Website auf ihrer Domain live ist, Analytics und Search Console mit einem Klick auf der Projektseite einrichten.",
             "open": "Google-Karte öffnen"
-          }
+          },
+          "terminal": "Führe es im Terminal auf deinem Computer aus, im Ordner abluo-platform (zum Beispiel: cd ~/Abluo/abluo-platform).",
+          "statusNote": "Erledigt / Noch nicht: geprüft an der laufenden Version, als diese Seite geöffnet wurde. Lade die Seite nach einem Deploy neu.",
+          "done": "Erledigt",
+          "notYet": "Noch nicht"
         },
         "previewHint": "Die Vorschau funktioniert, sobald die Website erreichbar ist — siehe Schritt 1 unten."
       }

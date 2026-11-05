@@ -1283,7 +1283,7 @@ export const LAB_REGISTRY: LabEntry[] = [
     group: 'inputs',
     status: 'canonical',
     summary: 'One form field — label, control, hint and error — with the ids and aria wiring done once.',
-    rules: ['children is a function: spread its props onto the control.', 'Fields side by side (search + filter in a toolbar): hintBelow puts the hint under the control so labels and inputs line up; align the row items-start.'],
+    rules: ['children is a function: spread its props onto the control.', 'Fields side by side (a two-column form row, search + filter in a toolbar): hintBelow puts the hint under the control so labels and inputs line up — required, field-alignment.test.ts fails without it.'],
     replaces: ['FieldLabel + input + FieldError wired by hand'],
     demo: () => import('./demos/field.demo'),
   },

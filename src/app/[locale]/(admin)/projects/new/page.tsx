@@ -18,6 +18,8 @@ import { LOCALE_CODES, PLATFORM_LOCALES, type SupportedLocale } from '@/lib/i18n
 import { routing } from '@/i18n/routing'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sanityServerReadClient } from '@/lib/sanity/server-clients'
+import { GENERATED_HOST_ROUTES } from '@/lib/tenancy/generated/route-config'
+import { reachability, type Reachability } from '@/lib/admin/provisioning/reachability'
 
 export const dynamic = 'force-dynamic'
 
@@ -71,10 +73,19 @@ export default async function NewProjectPage({ searchParams }: { searchParams: P
       projectId: row.steps?.['supabase.project']?.status === 'done' ? row.project_id : null,
       detail: { runId: row.id, projectSlug: row.project_slug },
     })
+    // Finished: does the version running now already know this site? (What's next status.)
+    let reach: Reachability | null = null
+    if (row.status === 'completed' && row.project_id) {
+      const { data: p } = await db.from('projects').select('id, slug, custom_domain, status').eq('id', row.project_id).maybeSingle()
+      if (p) {
+        const project = p as { id: string; slug: string; custom_domain: string | null; status: string | null }
+        reach = reachability(GENERATED_HOST_ROUTES, { id: project.id, slug: project.slug, customDomain: project.custom_domain, status: project.status })
+      }
+    }
     return (
       <PageShell>
         {header}
-        <ProvisioningRunPanel key={`${row.id}-${row.updated_at}`} run={rowToRunView(row)} />
+        <ProvisioningRunPanel key={`${row.id}-${row.updated_at}`} run={rowToRunView(row)} reach={reach} />
       </PageShell>
     )
   }

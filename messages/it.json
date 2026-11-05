@@ -5551,7 +5551,12 @@
         "help": "Riceve via email un invito a diventare titolare del cliente: tutti i siti, le persone e la fatturazione.",
         "optional": "Facoltativo per un cliente esistente: lascia vuoto se il cliente ha già un titolare.",
         "name": "Nome",
-        "email": "Email"
+        "email": "Email",
+        "noneYet": "{client} non ha ancora un titolare. Invitalo qui, oppure lascia vuoto e invitalo più tardi dalla pagina del progetto.",
+        "existingTitle": "Questo cliente ha già un titolare",
+        "existingBody": "Il titolare possiede tutti i siti di {client}, quindi anche {project}. Non serve nessun invito.",
+        "invitedTitle": "Un invito come titolare è in attesa di essere accettato",
+        "invitedBody": "Appena lo accetta, possiede anche {project}. Non serve un nuovo invito."
       },
       "review": {
         "heading": "Riepilogo",
@@ -5569,7 +5574,9 @@
         "statusValue": "Anteprima — non online",
         "start": "Pagina iniziale",
         "startValue": "Un’intestazione e una sezione di testo con testo provvisorio",
-        "domainNote": "Il dominio non viene collegato automaticamente. Dopo la creazione vedrai i passaggi per aggiungerlo in Vercel."
+        "domainNote": "Il dominio non viene collegato automaticamente. Dopo la creazione vedrai i passaggi per aggiungerlo in Vercel.",
+        "existingOwner": "{owner} — già titolare del cliente",
+        "invitedOwner": "{email} — invito in attesa di essere accettato"
       },
       "errors": {
         "required": "Obbligatorio.",
@@ -5634,7 +5641,9 @@
           "heading": "Prossimi passi",
           "routes": {
             "title": "Rendi raggiungibile il sito",
-            "body": "Quale sito risponde a quale indirizzo viene generato da Supabase al momento della build. Esegui questo comando, fai il commit di src/lib/tenancy/generated/route-config.ts e pubblica (dev → preview → main). Il sito si aprirà su {url}."
+            "body": "Quale sito risponde a quale indirizzo viene generato da Supabase al momento della build. Esegui questo comando, fai il commit di src/lib/tenancy/generated/route-config.ts e pubblica (dev → preview → main). Il sito si aprirà su {url}.",
+            "live": "La versione in funzione apre questo sito.",
+            "notLive": "La versione in funzione non conosce ancora questo sito."
           },
           "studio": {
             "title": "Rifinisci design e contenuti",
@@ -5653,13 +5662,22 @@
             "recordsNote": "Vercel mostra i record esatti per ogni dominio: se sono diversi, segui Vercel.",
             "step3": "In Supabase imposta custom_domain = {domain} sul progetto {slug} (e Custom Domain sul progetto in Studio).",
             "step4": "Rigenera la tabella di instradamento, fai il commit e pubblica:",
-            "step5": "Quando il sito è pronto per andare online, imposta lo stato del progetto su active in Supabase, rigenera e pubblica di nuovo."
+            "step5": "Quando il sito è pronto per andare online, imposta lo stato del progetto su active in Supabase, rigenera e pubblica di nuovo.",
+            "statusNone": "Nessun dominio impostato sul progetto in Supabase.",
+            "statusLive": "{domain} è nella versione in funzione. I visitatori lo raggiungono quando i record DNS puntano a Vercel.",
+            "statusNotLive": "{domain} è impostato in Supabase, ma la versione in funzione non lo conosce ancora — rigenera e fai il deploy.",
+            "statusActive": "Online: la versione in funzione serve il sito sul suo dominio.",
+            "statusActiveNotDeployed": "Impostato su active in Supabase — rigenera e fai di nuovo il deploy per andare online."
           },
           "google": {
             "title": "Collega Google",
             "body": "Quando il sito è online sul suo dominio, configura Analytics e Search Console dalla pagina del progetto con un clic.",
             "open": "Apri la scheda Google"
-          }
+          },
+          "terminal": "Eseguilo nel Terminale del tuo computer, dentro la cartella abluo-platform (per esempio: cd ~/Abluo/abluo-platform).",
+          "statusNote": "Fatto / Non ancora: verificato sulla versione in funzione all’apertura di questa pagina. Ricarica la pagina dopo un deploy.",
+          "done": "Fatto",
+          "notYet": "Non ancora"
         },
         "previewHint": "L’anteprima funziona quando il sito è raggiungibile — vedi il passo 1 qui sotto."
       }

@@ -5551,7 +5551,12 @@
         "help": "They get an email invitation to become the client’s Owner: every website, its people and billing.",
         "optional": "Optional for an existing client — leave it empty if the client already has an Owner.",
         "name": "Name",
-        "email": "Email"
+        "email": "Email",
+        "noneYet": "{client} has no Owner yet. Invite one here, or leave it empty and invite them later from the project page.",
+        "existingTitle": "This client already has an Owner",
+        "existingBody": "The Owner owns every website of {client}, so they own {project} too. No invitation is needed.",
+        "invitedTitle": "An Owner invitation is waiting to be accepted",
+        "invitedBody": "Once they accept, they own {project} too. No new invitation is needed."
       },
       "review": {
         "heading": "Review",
@@ -5569,7 +5574,9 @@
         "statusValue": "Preview — not live",
         "start": "Start page",
         "startValue": "One header and one text section with placeholder text",
-        "domainNote": "The domain is not connected automatically. After the site is created you’ll see the steps to add it in Vercel."
+        "domainNote": "The domain is not connected automatically. After the site is created you’ll see the steps to add it in Vercel.",
+        "existingOwner": "{owner} — already the client’s Owner",
+        "invitedOwner": "{email} — invitation waiting to be accepted"
       },
       "errors": {
         "required": "Required.",
@@ -5634,7 +5641,9 @@
           "heading": "What’s next",
           "routes": {
             "title": "Make the site reachable",
-            "body": "Which site answers on which address is generated at build time from Supabase. Run this, commit src/lib/tenancy/generated/route-config.ts and deploy (dev → preview → main). The site then opens at {url}."
+            "body": "Which site answers on which address is generated at build time from Supabase. Run this, commit src/lib/tenancy/generated/route-config.ts and deploy (dev → preview → main). The site then opens at {url}.",
+            "live": "The version running now opens this site.",
+            "notLive": "The version running now doesn’t know this site yet."
           },
           "studio": {
             "title": "Fine-tune the design and content",
@@ -5653,13 +5662,22 @@
             "recordsNote": "Vercel shows the exact records for each domain — if they differ, follow Vercel.",
             "step3": "In Supabase, set custom_domain = {domain} on project {slug} (and Custom Domain on the project in Studio).",
             "step4": "Regenerate the routing table, commit and deploy:",
-            "step5": "When the site is ready to go live, set the project’s status to active in Supabase, regenerate and deploy once more."
+            "step5": "When the site is ready to go live, set the project’s status to active in Supabase, regenerate and deploy once more.",
+            "statusNone": "No domain set on the project in Supabase yet.",
+            "statusLive": "{domain} is in the version running now. Visitors reach it once the DNS records point to Vercel.",
+            "statusNotLive": "{domain} is set in Supabase, but the version running now doesn’t know it yet — regenerate and deploy.",
+            "statusActive": "Live: the version running now serves the site on its domain.",
+            "statusActiveNotDeployed": "Set to active in Supabase — regenerate and deploy once more to go live."
           },
           "google": {
             "title": "Connect Google",
             "body": "Once the site is live on its domain, set up Analytics and Search Console from the project page in one click.",
             "open": "Open the Google card"
-          }
+          },
+          "terminal": "Run it in Terminal on your computer, inside the abluo-platform folder (for example: cd ~/Abluo/abluo-platform).",
+          "statusNote": "Done / Not yet: checked against the version running now when this page opened. Reload the page after a deploy.",
+          "done": "Done",
+          "notYet": "Not yet"
         },
         "previewHint": "The preview works once the site is reachable — see step 1 below."
       }

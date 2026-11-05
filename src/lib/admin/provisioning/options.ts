@@ -10,16 +10,58 @@ import type { DesignSystemSource } from './design-system-copy'
 import { sanityDocIds, validateSlug, type ValidWizardInput, type WizardErrors } from './model'
 import type { PlanContext } from './plan'
 import { slugHeldByRun } from './store'
+import { readOwnersByTenant } from '@/lib/api/admin-dashboard/shared'
 
 export type SanityReader = { fetch: <T>(query: string, params?: Record<string, unknown>) => Promise<T> }
 
-export type ClientOption = { id: string; slug: string; name: string }
+/**
+ * A client to pick, with who owns it (Tom, 2026-11-05): the Owner belongs to the
+ * CLIENT and owns every one of its websites, so a new project of an existing
+ * client needs no invitation when it already has one. `owners` null = could
+ * not be read (the wizard then shows the plain fields, as before).
+ */
+export type ClientOption = {
+  id: string
+  slug: string
+  name: string
+  owners: { name: string; email: string }[] | null
+  /** An Owner invitation sent but not accepted yet (most recent), or null. */
+  pendingOwner: { email: string } | null
+}
 export type DesignSystemOption = { id: string; name: string; role: 'template' | 'active'; projectSlug: string | null; parentName: string | null }
 
-export async function loadClientOptions(db: SupabaseClient): Promise<ClientOption[] | null> {
+export async function loadClientOptions(db: SupabaseClient, now: Date = new Date()): Promise<ClientOption[] | null> {
   const { data, error } = await db.from('tenants').select('id, slug, display_name').order('display_name', { ascending: true })
   if (error) return null
-  return ((data ?? []) as { id: string; slug: string; display_name: string | null }[]).map((t) => ({ id: t.id, slug: t.slug, name: t.display_name || t.slug }))
+  const tenants = (data ?? []) as { id: string; slug: string; display_name: string | null }[]
+  const ids = tenants.map((t) => t.id)
+  // Owners and open Owner invitations: best effort — the client list still loads without them.
+  const [owners, pending] = await Promise.all([
+    readOwnersByTenant(db, ids).catch(() => null),
+    ids.length
+      ? db
+          .from('invitations')
+          .select('tenant_id, email, created_at')
+          .eq('scope_type', 'tenant')
+          .eq('role', 'owner')
+          .in('tenant_id', ids)
+          .is('accepted_at', null)
+          .is('revoked_at', null)
+          .gt('expires_at', now.toISOString())
+          .order('created_at', { ascending: false })
+          .then(({ data: rows, error: e }) => (e ? null : ((rows ?? []) as { tenant_id: string; email: string }[])))
+      : Promise.resolve([] as { tenant_id: string; email: string }[]),
+  ])
+  return tenants.map((t) => {
+    const invite = pending?.find((r) => r.tenant_id === t.id)
+    return {
+      id: t.id,
+      slug: t.slug,
+      name: t.display_name || t.slug,
+      owners: owners ? (owners.get(t.id) ?? []).map((o) => ({ name: o.name, email: o.email })) : null,
+      pendingOwner: invite?.email ? { email: invite.email } : null,
+    }
+  })
 }
 
 /** Published templates and every project's active system (drafts never). */

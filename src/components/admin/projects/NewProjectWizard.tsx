@@ -10,6 +10,7 @@ import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { Button } from '@/components/app/ui/Button'
 import { Field } from '@/components/app/ui/Field'
 import { FieldError } from '@/components/app/ui/FieldLabel'
+import { Notice } from '@/components/app/ui/Notice'
 import { ProgressBar } from '@/components/app/ui/ProgressBar'
 import { OptionCards } from '@/components/app/ui/OptionCards'
 import { Select } from '@/components/app/ui/Select'
@@ -60,8 +61,23 @@ const STEP_FIELDS: Record<WizardStepId, WizardField[]> = {
   review: [],
 }
 
-function toInput(d: Draft): WizardInput {
-  const owner = d.ownerName.trim() || d.ownerEmail.trim() ? { name: d.ownerName, email: d.ownerEmail } : null
+/**
+ * Whether the chosen existing client already has an Owner (or an Owner
+ * invitation waiting): the Owner belongs to the client and owns every one of
+ * its websites, so the owner step only shows who it is — no fields, no new
+ * invitation (Tom, 2026-11-05). Unknown (owners could not be read) = false,
+ * and the fields show as before.
+ */
+function clientOwnerState(d: Draft, clients: ClientOption[]): 'owner' | 'invited' | 'none' | 'unknown' | 'new' {
+  if (d.clientMode !== 'existing') return 'new'
+  const c = clients.find((x) => x.id === d.tenantId)
+  if (!c || c.owners === null) return 'unknown'
+  if (c.owners.length) return 'owner'
+  return c.pendingOwner ? 'invited' : 'none'
+}
+
+function toInput(d: Draft, ownerKnown = false): WizardInput {
+  const owner = !ownerKnown && (d.ownerName.trim() || d.ownerEmail.trim()) ? { name: d.ownerName, email: d.ownerEmail } : null
   return {
     client: d.clientMode === 'new' ? { mode: 'new', name: d.clientName, slug: d.clientSlug } : { mode: 'existing', tenantId: d.tenantId },
     project: { name: d.projectName, slug: d.projectSlug, defaultLocale: d.defaultLocale, supportedLocales: d.languages },
@@ -113,6 +129,10 @@ export function NewProjectWizard({
   const [pending, startTransition] = useTransition()
 
   const index = WIZARD_STEPS.indexOf(step)
+  const selectedClient = clients.find((c) => c.id === draft.tenantId) ?? null
+  const ownerState = clientOwnerState(draft, clients)
+  /** The client already has an Owner or an invitation out: nothing to ask. */
+  const ownerKnown = ownerState === 'owner' || ownerState === 'invited'
   const set = (patch: Partial<Draft>) => {
     setDraft((d) => {
       const next = { ...d, ...patch }
@@ -138,7 +158,7 @@ export function NewProjectWizard({
 
   /** Pure validation errors of the fields on this step (the server repeats the same check). */
   const localErrors = (s: WizardStepId): WizardErrors => {
-    const v = validateWizardInput(toInput(draft))
+    const v = validateWizardInput(toInput(draft, ownerKnown))
     const all: WizardErrors = v.ok ? {} : v.errors
     // A slug left empty because the name is empty reports on the name only.
     const out: WizardErrors = {}
@@ -187,7 +207,7 @@ export function NewProjectWizard({
 
   const create = () => {
     startTransition(async () => {
-      const r = await startProvisioningAction(toInput(draft))
+      const r = await startProvisioningAction(toInput(draft, ownerKnown))
       if (r.ok || r.run) {
         setRun(r.run ?? null)
         if (r.run) router.replace(`/projects/new?run=${r.run.id}`)
@@ -203,7 +223,6 @@ export function NewProjectWizard({
     })
   }
 
-  const selectedClient = clients.find((c) => c.id === draft.tenantId) ?? null
   const selectedDs = designSystems.find((d) => d.id === draft.designSystemId) ?? null
   const templates = useMemo(() => designSystems.filter((d) => d.role === 'template'), [designSystems])
   const others = useMemo(() => designSystems.filter((d) => d.role === 'active'), [designSystems])
@@ -255,7 +274,7 @@ export function NewProjectWizard({
                   <TextInput {...p} value={draft.clientName} placeholder={t('client.namePlaceholder')} onChange={(e) => set({ clientName: e.target.value })} autoComplete="off" />
                 )}
               </Field>
-              <Field className="min-w-0" label={t('client.slug')} hint={t('client.slugHelp')} error={errorText(errors.clientSlug)}>
+              <Field className="min-w-0" label={t('client.slug')} hint={t('client.slugHelp')} hintBelow error={errorText(errors.clientSlug)}>
                 {(p) => (
                   <TextInput
                     {...p}
@@ -282,7 +301,7 @@ export function NewProjectWizard({
                 <TextInput {...p} value={draft.projectName} placeholder={t('project.namePlaceholder')} onChange={(e) => set({ projectName: e.target.value })} autoComplete="off" />
               )}
             </Field>
-            <Field className="min-w-0" label={t('project.slug')} hint={t('project.slugHelp', { slug: draft.projectSlug || '…' })} error={errorText(errors.projectSlug)}>
+            <Field className="min-w-0" label={t('project.slug')} hint={t('project.slugHelp', { slug: draft.projectSlug || '…' })} hintBelow error={errorText(errors.projectSlug)}>
               {(p) => (
                 <TextInput
                   {...p}
@@ -376,18 +395,41 @@ export function NewProjectWizard({
           <div className="space-y-1">
             <SectionHeading id="np-owner" title={t('owner.heading')} />
             <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('owner.help')}</p>
-            {draft.clientMode === 'existing' ? <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('owner.optional')}</p> : null}
+            {ownerState === 'unknown' ? <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('owner.optional')}</p> : null}
+            {ownerState === 'none' ? (
+              <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('owner.noneYet', { client: selectedClient?.name ?? '' })}</p>
+            ) : null}
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field className="min-w-0" label={t('owner.name')} error={errorText(errors.ownerName)}>
-              {(p) => <TextInput {...p} value={draft.ownerName} onChange={(e) => set({ ownerName: e.target.value })} autoComplete="off" />}
-            </Field>
-            <Field className="min-w-0" label={t('owner.email')} error={errorText(errors.ownerEmail)}>
-              {(p) => (
-                <TextInput {...p} type="email" inputMode="email" value={draft.ownerEmail} onChange={(e) => set({ ownerEmail: e.target.value })} autoCapitalize="none" autoComplete="off" spellCheck={false} />
-              )}
-            </Field>
-          </div>
+          {ownerState === 'owner' && selectedClient?.owners ? (
+            <Notice tone="info" title={t('owner.existingTitle')}>
+              <ul className="flex flex-col gap-0.5">
+                {selectedClient.owners.map((o) => (
+                  <li key={o.email} className="text-foreground">
+                    {o.name ? `${o.name} · ${o.email}` : o.email}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1">{t('owner.existingBody', { client: selectedClient.name, project: draft.projectName.trim() || draft.projectSlug })}</p>
+            </Notice>
+          ) : null}
+          {ownerState === 'invited' && selectedClient?.pendingOwner ? (
+            <Notice tone="info" title={t('owner.invitedTitle')}>
+              <p className="text-foreground">{selectedClient.pendingOwner.email}</p>
+              <p className="mt-1">{t('owner.invitedBody', { project: draft.projectName.trim() || draft.projectSlug })}</p>
+            </Notice>
+          ) : null}
+          {!ownerKnown ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field className="min-w-0" label={t('owner.name')} error={errorText(errors.ownerName)}>
+                {(p) => <TextInput {...p} value={draft.ownerName} onChange={(e) => set({ ownerName: e.target.value })} autoComplete="off" />}
+              </Field>
+              <Field className="min-w-0" label={t('owner.email')} error={errorText(errors.ownerEmail)}>
+                {(p) => (
+                  <TextInput {...p} type="email" inputMode="email" value={draft.ownerEmail} onChange={(e) => set({ ownerEmail: e.target.value })} autoCapitalize="none" autoComplete="off" spellCheck={false} />
+                )}
+              </Field>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -410,7 +452,17 @@ export function NewProjectWizard({
             <FactRow label={t('review.designSystem')}>
               {selectedDs ? (selectedDs.role === 'template' ? t('review.dsTemplate', { name: selectedDs.name }) : t('review.dsCopy', { name: selectedDs.name })) : '—'}
             </FactRow>
-            <FactRow label={t('review.owner')}>{draft.ownerEmail.trim() ? `${draft.ownerName.trim()} · ${draft.ownerEmail.trim()}` : <span className="text-muted-foreground">{t('review.noOwner')}</span>}</FactRow>
+            <FactRow label={t('review.owner')}>
+              {ownerState === 'owner' && selectedClient?.owners?.length ? (
+                t('review.existingOwner', { owner: selectedClient.owners.map((o) => o.name || o.email).join(', ') })
+              ) : ownerState === 'invited' && selectedClient?.pendingOwner ? (
+                t('review.invitedOwner', { email: selectedClient.pendingOwner.email })
+              ) : draft.ownerEmail.trim() ? (
+                `${draft.ownerName.trim()} · ${draft.ownerEmail.trim()}`
+              ) : (
+                <span className="text-muted-foreground">{t('review.noOwner')}</span>
+              )}
+            </FactRow>
             <FactRow label={t('review.status')}>{t('review.statusValue')}</FactRow>
             <FactRow label={t('review.start')}>{t('review.startValue')}</FactRow>
           </dl>

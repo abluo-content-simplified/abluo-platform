@@ -21,8 +21,13 @@ export type FieldControlProps = {
  * `p` carries id, aria-describedby (hint + error) and aria-invalid.
  *
  * `hintBelow` puts the hint under the control instead of under the label — for
- * fields that sit side by side in a toolbar (search + filter), so every control
- * starts right below its label and the inputs line up.
+ * fields that sit side by side (a two-column form row, search + filter in a
+ * toolbar), so every control starts right below its label and the inputs line
+ * up. Required there: `field-alignment.test.ts` fails on a hinted Field in a
+ * multi-column row without it (Tom, 2026-11-05).
+ *
+ * The label is a block, so a narrow control (a Select with a max width) still
+ * starts on the line below it, never beside it.
  */
 export function Field({
   label,
@@ -47,7 +52,7 @@ export function Field({
   const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined
   return (
     <div className={className}>
-      <FieldLabel htmlFor={id} hint={hintBelow ? undefined : hint} hintId={hintId}>
+      <FieldLabel htmlFor={id} hint={hintBelow ? undefined : hint} hintId={hintId} className="block">
         {label}
       </FieldLabel>
       {children({ id, 'aria-describedby': describedBy, 'aria-invalid': error ? true : undefined })}

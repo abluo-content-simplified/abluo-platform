@@ -189,7 +189,7 @@ function TemplateSheet({
       >
         <LabelFields locales={locales} defaultLocale={defaultLocale} value={labels} onChange={setLabels} label={t('templateName')} />
         <div className="grid grid-cols-2 gap-3">
-          <Field label={t('quantity')} hint={t('quantityHint')} error={quantity === undefined ? t('quantityInvalid') : undefined}>
+          <Field label={t('quantity')} hint={t('quantityHint')} hintBelow error={quantity === undefined ? t('quantityInvalid') : undefined}>
             {(p) => <TextInput {...p} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />}
           </Field>
           <Field label={t('unit')}>

@@ -237,7 +237,7 @@ export function AffiliatePrograms({
                           </Select>
                         )}
                       </Field>
-                      <Field label={t('amazon.trackingId')} hint={hint ?? (isIncomplete(row) && editable ? t('amazon.incomplete') : undefined)} className="sm:flex-1">
+                      <Field label={t('amazon.trackingId')} hint={hint ?? (isIncomplete(row) && editable ? t('amazon.incomplete') : undefined)} hintBelow className="sm:flex-1">
                         {(p) => (
                           <TextInput
                             {...p}
