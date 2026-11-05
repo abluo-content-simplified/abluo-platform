@@ -463,6 +463,10 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       // heroSection extension — opt-in accent colour for the tagline. Null on
       // every hero authored before the field → default (headline) colour.
       taglineAccent,
+      // heroSection extension — the site's logo above the headline. Only read
+      // when the hero asks for it; null everywhere else (one surface: siteConfig).
+      showLogo,
+      "siteLogo": select(showLogo == true => *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ ${locImage('logo')} }.logo),
       "ctaLabel": ${loc('ctaLabel')},
       ctaHref,
       "title": ${loc('title')},

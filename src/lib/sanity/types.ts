@@ -1111,6 +1111,10 @@ export interface HeroSection {
    * the default `textPrimary` colour, so existing heroes are unchanged.
    */
   taglineAccent?: boolean | null
+  /** Show the site logo (siteConfig.logo) large above the headline. */
+  showLogo?: boolean | null
+  /** siteConfig.logo, projected only when `showLogo` is true. */
+  siteLogo?: (SanityImage & { alt?: string | null }) | null
   ctaLabel?: string
   ctaHref?: string
   // Media

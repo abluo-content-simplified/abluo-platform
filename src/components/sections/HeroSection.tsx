@@ -410,6 +410,10 @@ export function HeroSection({ section, surface, designSystem }: Props) {
     : null
   const heroImagePosition = focalObjectPosition(heroImage)
 
+  // The site logo above the headline (showLogo). SVG logos are served as they
+  // are; raster ones at a size that stays sharp at the largest display width.
+  const logoUrl = section.showLogo === true && section.siteLogo?.asset ? urlFor(section.siteLogo).width(1120).fit('max').auto('format').url() : null
+
   // Build poster URL for video
   const posterUrl = posterImage?.asset
     ? urlFor(posterImage).width(1920).height(1080).fit('crop').auto('format').url()
@@ -499,6 +503,19 @@ export function HeroSection({ section, surface, designSystem }: Props) {
             : undefined
         }
       >
+        {/* Site logo — opt-in (showLogo), from Website Settings. Large, above
+            everything else; follows the hero's alignment like the text does. */}
+        {logoUrl && (
+          <SlideUp duration={duration} ease={ease} delay={0} className="mb-10">
+            {/* eslint-disable-next-line @next/next/no-img-element -- Sanity CDN logo, often an SVG */}
+            <img
+              src={logoUrl}
+              alt={section.siteLogo?.alt ?? ''}
+              className="block h-auto w-[min(28rem,80vw)] max-w-full"
+            />
+          </SlideUp>
+        )}
+
         {/* Eyebrow */}
         {eyebrow && (
           <SlideUp duration={duration} ease={ease} delay={0} className="mb-8">
