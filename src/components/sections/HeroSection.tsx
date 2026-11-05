@@ -508,7 +508,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
           `layout.accentRail` is the single switch, so a site either has the
           rail or has this, never both. Only tmz sets it, so every other
           tenant's hero renders exactly as before. */}
-      {!showFullBleedMedia && designSystem?.layout?.accentRail !== true && (
+      {!showFullBleedMedia && designSystem?.layout?.accentRail !== true && section.hideAccentLine !== true && (
         <div
           className="absolute left-0 top-0 h-full w-[3px]"
           style={{ backgroundColor: 'var(--color-primary)' }}

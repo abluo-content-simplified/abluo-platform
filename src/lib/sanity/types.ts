@@ -1140,6 +1140,8 @@ export interface HeroSection {
    * hero has no full-bleed media — that path already uses DS colours.
    */
   ctaStyle?: 'onMedia' | 'brand' | null
+  /** true hides the thin brand-colour line down the hero's left edge (shown by default). */
+  hideAccentLine?: boolean | null
   /** 'button' (default) or 'text' — the primary CTA as a plain text link. */
   ctaAppearance?: 'button' | 'text' | null
   /** 'afterText' (default) or 'bottom' — the CTA row low in the hero, the headline centred above it. */
