@@ -75,6 +75,12 @@ const formFieldOptionMember = defineArrayMember({
       type: 'localizedString',
       description: 'Optional supporting line shown under the label — e.g. "I run a booking platform or tech product". Leave empty and the option renders exactly as before.',
     }),
+    defineField({
+      name: 'successNote',
+      title: 'Thank-you note for this choice',
+      type: 'localizedString',
+      description: 'Optional. Added to the thank-you screen when the visitor picked this option — e.g. "Happy riding!" for riders only. Leave empty for none.',
+    }),
   ],
   preview: {
     select: { value: 'value', label: 'label.en' },

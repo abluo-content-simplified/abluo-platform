@@ -1021,6 +1021,7 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   'auth/me': 'public-read', // returns only the caller's own role, or null
   version: 'public-read',
   'fonts/css': 'public-read',
+  'site-favicon': 'public-read', // /favicon.ico → the site's own icon (a redirect, no data)
   'fonts/file/[...path]': 'public-read',
   'forms/[projectSlug]/[formId]/submissions': 'public-write',
   'forms/[projectSlug]/[formId]/submissions/[id]/steps': 'public-write',

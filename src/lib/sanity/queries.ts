@@ -244,7 +244,7 @@ steps[]{
     maxLength,
     pattern,
     "patternMessage": ${loc('patternMessage')},
-    options[]{ value, "label": ${loc('label')}, "description": ${loc('description')} }
+    options[]{ value, "label": ${loc('label')}, "description": ${loc('description')}, "successNote": ${loc('successNote')} }
   }
 },
 "requireConsent": privacy.requireConsent,
@@ -571,6 +571,11 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       // media) | 'brand' (design-system button tokens). Null on every existing
       // hero, which the renderer treats exactly like 'onMedia'.
       ctaStyle,
+      // heroSection extension — 'button' (default) | 'text' (a plain text link),
+      // and where the CTA row sits: 'afterText' (default) | 'bottom'. Null on
+      // every existing hero → today's button right under the copy.
+      ctaAppearance,
+      ctaPosition,
       // heroLiveCaptureSection + heroLensSection CTA array
       ctas[] { ${CTA_FIELDS} },
       ${focalImage('backgroundImage')},

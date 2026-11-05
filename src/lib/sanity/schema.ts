@@ -902,11 +902,12 @@ const heroSectionType = defineType({
       type: 'string',
       group: 'layout',
       description:
-        'Standard is the usual hero — headline, a short rule, supporting copy. Display gives the headline the whole stage: each line of it lands separately against a vertical accent rule, and the short rule is dropped. Use Display when the headline IS the page (a name, a manifesto line) and there is little else to say.',
+        'Standard is the usual hero — headline, a short rule, supporting copy. Display gives the headline the whole stage: each line of it lands separately against a vertical accent rule, and the short rule is dropped. Use Display when the headline IS the page (a name, a manifesto line) and there is little else to say. Statement is a claim, a punchline and a closing line: write the headline on three lines — the middle one is shown large in the brand colour, the other two at two thirds of its size.',
       options: {
         list: [
           { title: 'Standard', value: 'standard' },
           { title: 'Display — headline on its own, vertical rule', value: 'display' },
+          { title: 'Statement — claim, big punchline, closing line', value: 'statement' },
         ],
         layout: 'radio',
       },
@@ -1118,6 +1119,34 @@ const heroSectionType = defineType({
       },
       initialValue: 'onMedia',
       description: 'How the primary CTA is coloured when the hero has a full-bleed image/video background. “On media” keeps the white button; “Brand” uses the design system’s primary button colours.',
+    }),
+    defineField({
+      name: 'ctaAppearance',
+      title: 'CTA Appearance',
+      type: 'string',
+      group: 'style',
+      options: {
+        list: [
+          { title: 'Button (default)', value: 'button' },
+          { title: 'Text link — a quiet line, e.g. “Interested?”', value: 'text' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'button',
+    }),
+    defineField({
+      name: 'ctaPosition',
+      title: 'CTA Position',
+      type: 'string',
+      group: 'layout',
+      options: {
+        list: [
+          { title: 'Right under the text (default)', value: 'afterText' },
+          { title: 'Low in the hero — the headline stays centred above it', value: 'bottom' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'afterText',
     }),
 
     // ── Optional extensions (additive) ───────────────────────────────────────
