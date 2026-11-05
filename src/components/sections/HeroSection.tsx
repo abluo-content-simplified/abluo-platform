@@ -18,7 +18,7 @@ import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
 import { useHostScoped } from '@/components/SiteLinkScope'
 import { CtaButton } from '@/components/ui/CtaButton'
 import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
-import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { EyebrowLabel, PILL_BG, PILL_BORDER } from '@/components/sections/EyebrowLabel'
 import { resolveEasing } from '@/lib/motion/easing'
 import { renderHeadline, lastContentLineIndex, accentsLine, HEADLINE_ACCENT_STYLE } from '@/lib/headline-accent'
 import { focalObjectPosition } from '@/lib/gallery/focal'
@@ -425,6 +425,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
   // media); 'bottom' parks the CTA row low in the hero with the copy centred
   // in the space above it.
   const ctaAsText = section.ctaAppearance === 'text'
+  const ctaAsPill = section.ctaAppearance === 'pill'
   const ctaAtBottom = section.ctaPosition === 'bottom'
   const textCtaClass = 'inline-flex items-center gap-2 font-semibold underline decoration-1 underline-offset-[0.3em] transition-opacity hover:opacity-75'
   const textCtaStyle = {
@@ -432,6 +433,15 @@ export function HeroSection({ section, surface, designSystem }: Props) {
     fontFamily: 'var(--font-heading)',
     fontSize: 'var(--font-size-h4, 1.5rem)',
   }
+  // 'pill': a light, secondary capsule — the eyebrow pill's tint and border
+  // (white over media), a step up from a text link, quieter than the button.
+  const pillCtaClass = 'inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-base font-semibold transition-[filter,transform] hover:brightness-110 active:scale-[0.98]'
+  const pillCtaStyle = showFullBleedMedia
+    ? { color: '#ffffff', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.12)', fontFamily: 'var(--font-heading)' }
+    : { color: 'var(--color-primary)', border: `1px solid ${PILL_BORDER}`, backgroundColor: PILL_BG, fontFamily: 'var(--font-heading)' }
+  const quietCta = ctaAsText || ctaAsPill
+  const quietCtaClass = ctaAsPill ? pillCtaClass : textCtaClass
+  const quietCtaStyle = ctaAsPill ? pillCtaStyle : textCtaStyle
 
   // Build image URL for heroImage background
   // Not pre-cropped to 16:9: the section's shape changes with the viewport, so
@@ -696,17 +706,17 @@ export function HeroSection({ section, surface, designSystem }: Props) {
                   key={`${cta.internalName}-${i}`}
                   cta={cta}
                   onFormClick={makeFormHandler(cta)}
-                  className={ctaAsText ? textCtaClass : 'inline-flex h-12 items-center gap-2 rounded-[var(--radius-btn)] px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85'}
+                  className={quietCta ? quietCtaClass : 'inline-flex h-12 items-center gap-2 rounded-[var(--radius-btn)] px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85'}
                   style={
-                    ctaAsText
-                      ? textCtaStyle
+                    quietCta
+                      ? quietCtaStyle
                       : i === 0
                       ? { backgroundColor: ctaBg, color: ctaText }
                       : { color: textPrimary, border: `1px solid ${dividerColor}`, backgroundColor: 'transparent' }
                   }
                 >
                   {cta.label}
-                  {i === 0 && !ctaAsText && (
+                  {i === 0 && !quietCta && (
                     <span aria-hidden="true" style={{ opacity: 0.6 }}>→</span>
                   )}
                 </CtaButton>
@@ -717,11 +727,11 @@ export function HeroSection({ section, surface, designSystem }: Props) {
           <SlideUp duration={duration} ease={ease} delay={d4} className={ctaAtBottom ? 'mt-16' : undefined}>
             <a
               href={ctaHref ?? '#'}
-              className={ctaAsText ? textCtaClass : 'inline-flex h-12 items-center gap-2 rounded-[var(--radius-btn)] px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85'}
-              style={ctaAsText ? textCtaStyle : { backgroundColor: ctaBg, color: ctaText }}
+              className={quietCta ? quietCtaClass : 'inline-flex h-12 items-center gap-2 rounded-[var(--radius-btn)] px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85'}
+              style={quietCta ? quietCtaStyle : { backgroundColor: ctaBg, color: ctaText }}
             >
               {ctaLabel}
-              {!ctaAsText && <span aria-hidden="true" style={{ opacity: 0.6 }}>→</span>}
+              {!quietCta && <span aria-hidden="true" style={{ opacity: 0.6 }}>→</span>}
             </a>
           </SlideUp>
         ) : null}

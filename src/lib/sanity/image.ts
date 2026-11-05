@@ -33,6 +33,21 @@ export function imageUrl(
 }
 
 /**
+ * A site icon (favicon, Apple touch icon) as a square PNG.
+ *
+ * Never auto('format'): that hands WebP/AVIF to browsers that accept them in
+ * page requests, and Safari will not use those as a tab or home-screen icon —
+ * it falls back to /favicon.ico. Icons are tiny, so PNG costs nothing.
+ */
+export function iconUrl(
+  source: ResolvedImage | { asset: { _ref: string } } | null | undefined,
+  size: number,
+): string | undefined {
+  if (!source?.asset) return undefined
+  return urlFor(source).width(size).height(size).fit('max').format('png').url()
+}
+
+/**
  * Build an absolute image URL optimised for Open Graph / social sharing.
  *
  * Forces JPEG output — social crawlers (WhatsApp, LinkedIn, Facebook, X/Twitter)
