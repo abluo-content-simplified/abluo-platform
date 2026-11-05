@@ -937,6 +937,18 @@ const heroSectionType = defineType({
       initialValue: false,
       hidden: ({ parent }) => !(parent as { tagline?: unknown } | undefined)?.tagline,
     }),
+    // Opt-in: the site's own logo (Website Settings → Logo), shown large above
+    // the headline — a holding page or a brand-first opening. The logo is NOT
+    // stored here: one configuration surface (ADR-014). Unset on every hero
+    // authored before this field → nothing changes.
+    defineField({
+      name: 'showLogo',
+      title: 'Show the site logo above the headline',
+      type: 'boolean',
+      group: 'content',
+      description: 'Shows the logo from Website Settings, large, above the headline (centre the hero in Layout for a centred logo). Off by default.',
+      initialValue: false,
+    }),
     defineField({ name: 'ctaLabel', title: 'CTA Button Label', type: 'localizedString', group: 'content' }),
     defineField({ name: 'ctaHref', title: 'CTA Button Link', type: 'string', group: 'content' }),
 
