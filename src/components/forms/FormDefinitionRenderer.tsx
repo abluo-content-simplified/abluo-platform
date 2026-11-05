@@ -30,6 +30,7 @@ import {
   applySuccessTemplate,
   resolveSuccessTitle,
   CONSENT_FIELD_ID,
+  selectedOptionSuccessNotes,
 } from '@/lib/forms/render-mapping'
 import { collectClientSource } from '@/lib/forms/source'
 import type { UrlProjectSegment } from '@/lib/tenancy/ids'
@@ -150,13 +151,14 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
   if (status === 'success') {
     const successTitle = resolveSuccessTitle(definition.successTitle, messages.successTitleNamed, values)
     const successBody = applySuccessTemplate(definition.successBody, values) ?? messages.successMessage
+    const successNotes = selectedOptionSuccessNotes(fields ?? [], values)
     return (
       <div ref={successRef} tabIndex={-1} role="status" aria-live="polite" className="py-8 text-center outline-none">
         {successTitle && (
           <p className="text-[var(--color-text-primary)] text-lg font-medium">{successTitle}</p>
         )}
         <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed mt-2">
-          {successBody}
+          {[successBody, ...successNotes].join(' ')}
         </p>
       </div>
     )

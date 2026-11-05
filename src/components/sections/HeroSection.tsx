@@ -113,9 +113,29 @@ export function resolveHeroMediaLayout(
  * before this option existed has none — both mean 'standard', which is the hero
  * this component has always rendered.
  */
-export function resolveHeroVariant(variant: string | null | undefined): 'standard' | 'display' {
-  return variant === 'display' ? 'display' : 'standard'
+export function resolveHeroVariant(variant: string | null | undefined): 'standard' | 'display' | 'statement' {
+  return variant === 'display' || variant === 'statement' ? variant : 'standard'
 }
+
+/**
+ * Statement treatment: which headline line is the punchline (full size, brand
+ * colour). With three or more lines it is the SECOND line with content — a
+ * claim above, the punchline, a closing line below ("We connect Riders and
+ * Stores / Easy. / Delivery made Simple."). With two lines it is the last one;
+ * a single line is its own punchline. -1 when no line has content.
+ */
+export function statementPunchIndex(lines: readonly string[]): number {
+  const content = lines.flatMap((line, i) => (line.trim() === '' ? [] : [i]))
+  if (content.length === 0) return -1
+  return content.length >= 3 ? content[1] : content[content.length - 1]
+}
+
+/**
+ * Statement treatment: the lines around the punchline are two thirds of its
+ * size. On wider screens they stay on one line, so they are also capped by the
+ * viewport width (6.4vw fits a ~28-character claim in heavy type).
+ */
+export const STATEMENT_LINE_SCALE = 2 / 3
 
 /**
  * Per-line entrance delays for the display treatment.
@@ -384,6 +404,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
   // The accent (when enabled) belongs to the last line that actually carries a
   // word — a headline ending in a stray "\n" must not accent an empty line.
   const accentLineIndex = lastContentLineIndex(headlineLines)
+  const punchIndex = heroVariant === 'statement' ? statementPunchIndex(headlineLines) : -1
 
   const heightClass = HEIGHT_CLASSES[heroHeight] ?? HEIGHT_CLASSES.large
   const widthClass = WIDTH_CLASSES[contentWidth] ?? WIDTH_CLASSES.standard
@@ -399,6 +420,18 @@ export function HeroSection({ section, surface, designSystem }: Props) {
   const dividerColor = showFullBleedMedia ? 'rgba(255,255,255,0.3)' : 'var(--color-primary)'
   const dividerOpacity = showFullBleedMedia ? undefined : 0.6
   const { ctaBg, ctaText } = resolveHeroCtaColors(section.ctaStyle, showFullBleedMedia)
+  // Opt-in CTA treatments; null on every existing hero → today's button right
+  // under the copy. A text CTA is a quiet line in the brand colour (white over
+  // media); 'bottom' parks the CTA row low in the hero with the copy centred
+  // in the space above it.
+  const ctaAsText = section.ctaAppearance === 'text'
+  const ctaAtBottom = section.ctaPosition === 'bottom'
+  const textCtaClass = 'inline-flex items-center gap-2 font-semibold underline decoration-1 underline-offset-[0.3em] transition-opacity hover:opacity-75'
+  const textCtaStyle = {
+    color: showFullBleedMedia ? textPrimary : 'var(--color-primary)',
+    fontFamily: 'var(--font-heading)',
+    fontSize: 'var(--font-size-h4, 1.5rem)',
+  }
 
   // Build image URL for heroImage background
   // Not pre-cropped to 16:9: the section's shape changes with the viewport, so
@@ -485,7 +518,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
 
       {/* ── Content ──────────────────────────────────────────────────────── */}
       <div
-        className={`relative w-full flex flex-col ${textAlignClass}${
+        className={`relative w-full flex flex-col ${textAlignClass}${ctaAtBottom ? ' flex-1' : ''}${
           // The display hero spans the design system's content width like every
           // other section. `mx-auto ${widthClass}` centres it inside a narrower
           // column, which left the hero starting ~350px in on a left-aligned
@@ -503,6 +536,10 @@ export function HeroSection({ section, surface, designSystem }: Props) {
             : undefined
         }
       >
+        {/* CTA at the bottom: two flexible spacers centre the copy in the
+            space above the CTA row (they collapse on a short screen). */}
+        {ctaAtBottom && <div className="flex-1" aria-hidden="true" />}
+
         {/* Site logo — opt-in (showLogo), from Website Settings. Large, above
             everything else; follows the hero's alignment like the text does. */}
         {logoUrl && (
@@ -566,6 +603,27 @@ export function HeroSection({ section, surface, designSystem }: Props) {
                           {accentsLine(headlineAccent, i, accentLineIndex) ? renderHeadline(line, headlineAccent) : line}
                         </span>
                       </SlideUp>
+                    ) : heroVariant === 'statement' ? (
+                      // Statement: the punchline at full size in the brand
+                      // colour, the other lines at two thirds in the text
+                      // colour — two sizes, one typeface. Around-lines stay on
+                      // one line from md up (capped by the viewport width).
+                      i === punchIndex ? (
+                        <span className="block" style={{ ...HEADLINE_ACCENT_STYLE, marginBlock: '0.08em' }}>
+                          {line}
+                        </span>
+                      ) : (
+                        <span
+                          className="block [--statement-cap:100vw] md:whitespace-nowrap md:[--statement-cap:5.6vw]"
+                          style={{
+                            fontSize: `min(calc(var(--font-size-h1, var(--fs-h1)) * ${STATEMENT_LINE_SCALE}), var(--statement-cap))`,
+                            lineHeight: 1.15,
+                            letterSpacing: '-0.02em',
+                          }}
+                        >
+                          {accentsLine(headlineAccent, i, accentLineIndex) ? renderHeadline(line, headlineAccent) : line}
+                        </span>
+                      )
                     ) : (
                       <span className="block">
                         {accentsLine(headlineAccent, i, accentLineIndex) ? renderHeadline(line, headlineAccent) : line}
@@ -580,7 +638,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
 
         {/* Divider — the display treatment already has the vertical rule, and a
             second short rule under the headline would be one mark too many. */}
-        {heroVariant !== 'display' && (
+        {heroVariant === 'standard' && (
           <SlideUp duration={duration} ease={ease} delay={d2} className="mb-8">
             <div
               className={`h-[1px] w-16 ${contentAlignment === 'center' ? 'mx-auto' : contentAlignment === 'right' ? 'ml-auto' : ''}`}
@@ -625,8 +683,9 @@ export function HeroSection({ section, surface, designSystem }: Props) {
         {/* CTA — `ctas[]` when authored, otherwise the legacy scalar pair.
             The legacy branch below is byte-identical to what shipped before
             `ctas` existed, so every existing hero renders exactly as it did. */}
+        {ctaAtBottom && <div className="flex-1" aria-hidden="true" />}
         {resolvedCtas.length > 0 ? (
-          <SlideUp duration={duration} ease={ease} delay={d4}>
+          <SlideUp duration={duration} ease={ease} delay={d4} className={ctaAtBottom ? 'mt-16' : undefined}>
             <div
               className={`flex flex-wrap items-center gap-4 ${
                 contentAlignment === 'center' ? 'justify-center' : contentAlignment === 'right' ? 'justify-end' : ''
@@ -637,15 +696,17 @@ export function HeroSection({ section, surface, designSystem }: Props) {
                   key={`${cta.internalName}-${i}`}
                   cta={cta}
                   onFormClick={makeFormHandler(cta)}
-                  className="inline-flex h-12 items-center gap-2 rounded-[var(--radius-btn)] px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85"
+                  className={ctaAsText ? textCtaClass : 'inline-flex h-12 items-center gap-2 rounded-[var(--radius-btn)] px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85'}
                   style={
-                    i === 0
+                    ctaAsText
+                      ? textCtaStyle
+                      : i === 0
                       ? { backgroundColor: ctaBg, color: ctaText }
                       : { color: textPrimary, border: `1px solid ${dividerColor}`, backgroundColor: 'transparent' }
                   }
                 >
                   {cta.label}
-                  {i === 0 && (
+                  {i === 0 && !ctaAsText && (
                     <span aria-hidden="true" style={{ opacity: 0.6 }}>→</span>
                   )}
                 </CtaButton>
@@ -653,14 +714,14 @@ export function HeroSection({ section, surface, designSystem }: Props) {
             </div>
           </SlideUp>
         ) : ctaLabel ? (
-          <SlideUp duration={duration} ease={ease} delay={d4}>
+          <SlideUp duration={duration} ease={ease} delay={d4} className={ctaAtBottom ? 'mt-16' : undefined}>
             <a
               href={ctaHref ?? '#'}
-              className="inline-flex h-12 items-center gap-2 rounded-[var(--radius-btn)] px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85"
-              style={{ backgroundColor: ctaBg, color: ctaText }}
+              className={ctaAsText ? textCtaClass : 'inline-flex h-12 items-center gap-2 rounded-[var(--radius-btn)] px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85'}
+              style={ctaAsText ? textCtaStyle : { backgroundColor: ctaBg, color: ctaText }}
             >
               {ctaLabel}
-              <span aria-hidden="true" style={{ opacity: 0.6 }}>→</span>
+              {!ctaAsText && <span aria-hidden="true" style={{ opacity: 0.6 }}>→</span>}
             </a>
           </SlideUp>
         ) : null}

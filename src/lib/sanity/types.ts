@@ -1090,7 +1090,7 @@ export interface HeroSection {
   anchorId?: string
   eyebrow?: string
   /** Hero treatment. Unset (null) is treated as 'standard'. */
-  variant?: 'standard' | 'display' | null
+  variant?: 'standard' | 'display' | 'statement' | null
   headline?: string
   /**
    * Optional headline accent — 'lastWord' paints the final word of the
@@ -1140,6 +1140,10 @@ export interface HeroSection {
    * hero has no full-bleed media — that path already uses DS colours.
    */
   ctaStyle?: 'onMedia' | 'brand' | null
+  /** 'button' (default) or 'text' — the primary CTA as a plain text link. */
+  ctaAppearance?: 'button' | 'text' | null
+  /** 'afterText' (default) or 'bottom' — the CTA row low in the hero, the headline centred above it. */
+  ctaPosition?: 'afterText' | 'bottom' | null
   // ── Optional extensions (additive) ────────────────────────────────────────
   /** Optional stat row rendered beneath the CTA. Absent → nothing renders. */
   stats?: HeroStat[]
@@ -1636,6 +1640,8 @@ export interface RenderableFormOption {
   label: string
   /** Optional localized supporting line shown under the option label. */
   description?: string
+  /** Optional thank-you line shown when the visitor picked this option. */
+  successNote?: string
 }
 export interface RenderableFormField {
   id: string

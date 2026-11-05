@@ -288,6 +288,31 @@ export function applySuccessTemplate(text: string | undefined, values: Record<st
 }
 
 /**
+ * Thank-you notes for the options the visitor picked (formFieldOption.successNote)
+ * — "Happy riding!" for a rider, nothing for a store. In field order, each note
+ * once, personalized like the body. Only choice fields count; a value is
+ * matched against its own field's options, never another field's.
+ */
+export function selectedOptionSuccessNotes(
+  fields: ReadonlyArray<{ id: string; options?: ReadonlyArray<{ value: string; successNote?: string | null }> }>,
+  values: Record<string, unknown>,
+): string[] {
+  const notes: string[] = []
+  for (const field of fields) {
+    if (!field.options?.length) continue
+    const raw = values[field.id]
+    const picked = new Set((Array.isArray(raw) ? raw : [raw]).filter((v): v is string => typeof v === 'string'))
+    for (const option of field.options) {
+      const note = option.successNote?.trim()
+      if (!note || !picked.has(option.value)) continue
+      const filled = applySuccessTemplate(note, values)
+      if (filled && !notes.includes(filled)) notes.push(filled)
+    }
+  }
+  return notes
+}
+
+/**
  * The success-state title shown to a visitor (plain text — React escapes it,
  * it is never rendered as HTML).
  *

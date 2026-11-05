@@ -59,6 +59,17 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '4mb',
     },
   },
+  // Each site's own /favicon.ico (src/app/api/site-favicon). `?default=1` is
+  // the route's way back to the platform file, so it is not rewritten again.
+  async rewrites() {
+    return {
+      beforeFiles: [
+        { source: '/favicon.ico', destination: '/api/site-favicon', missing: [{ type: 'query', key: 'default' }] },
+      ],
+      afterFiles: [],
+      fallback: [],
+    }
+  },
   async headers() {
     return [
       {
