@@ -120,6 +120,10 @@ const LIVE_HOSTS: HostCase[] = [
   { host: 'nologo.cloud',                 tenantSlug: 'freeriders',      projectSlug: 'nologo',          projectId: 'cd14c981-e458-48b6-9cd3-bb8c089d5cbc', defaultLocale: 'en' },
   { host: 'nologo.preview.abluo.app',     tenantSlug: 'freeriders',      projectSlug: 'nologo',          projectId: 'cd14c981-e458-48b6-9cd3-bb8c089d5cbc', defaultLocale: 'en' },
   { host: 'nologo.localhost',             tenantSlug: 'freeriders',      projectSlug: 'nologo',          projectId: 'cd14c981-e458-48b6-9cd3-bb8c089d5cbc', defaultLocale: 'en' },
+  // freeriders — active since v1.0.92 (freeriders.app, holding page). Same tenant as nologo, its own project.
+  { host: 'freeriders.app',               tenantSlug: 'freeriders',      projectSlug: 'freeriders',      projectId: '70001c70-cca5-471f-9686-ff4d567c9091', defaultLocale: 'en' },
+  { host: 'freeriders.preview.abluo.app', tenantSlug: 'freeriders',      projectSlug: 'freeriders',      projectId: '70001c70-cca5-471f-9686-ff4d567c9091', defaultLocale: 'en' },
+  { host: 'freeriders.localhost',         tenantSlug: 'freeriders',      projectSlug: 'freeriders',      projectId: '70001c70-cca5-471f-9686-ff4d567c9091', defaultLocale: 'en' },
   // hoffmann — an it-only site
   { host: 'ch-psicoterapeuta.com',        tenantSlug: 'hoffmann',        projectSlug: 'hoffmann',        projectId: '6d709178-f33a-4b4a-be52-521189e11290', defaultLocale: 'it' },
   { host: 'hoffmann.preview.abluo.app',   tenantSlug: 'hoffmann',        projectSlug: 'hoffmann',        projectId: '6d709178-f33a-4b4a-be52-521189e11290', defaultLocale: 'it' },
@@ -233,7 +237,7 @@ describe('an unknown URL segment still produces a clean 404, not an empty 200', 
     const activeSlugs = [
       ...new Set(GENERATED_HOST_ROUTES.filter((r) => r.status === 'active').map((r) => r.projectSlug)),
     ].sort()
-    expect(activeSlugs).toEqual(['abluo', 'amelie', 'hoffmann', 'livener', 'noemi', 'nologo', 'studiomartegani', 'tmz'])
+    expect(activeSlugs).toEqual(['abluo', 'amelie', 'freeriders', 'hoffmann', 'livener', 'noemi', 'nologo', 'studiomartegani', 'tmz'])
     for (const slug of activeSlugs) {
       expect(isKnownProjectSegment(asUrlProjectSegment(slug)), slug).toBe(true)
     }
