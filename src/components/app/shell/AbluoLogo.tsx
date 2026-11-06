@@ -1,8 +1,8 @@
 /**
  * The abluo logo (Option 2 — Friendly, 2026-11): the lowercase wordmark
  * "abluo." and the sigil "a.". Drawn inline so the letters follow the theme
- * (currentColor, i.e. the foreground on light and dark) and the dot takes the
- * primary colour of the Abluo App design system — no new colours.
+ * (currentColor, i.e. the foreground on light and dark). The dot is artwork:
+ * always the exact brand blue (the `--brand` token), in both themes.
  *
  * Master artwork + build script: ~/Abluo/Abluo/company/brand/logo/option-2/.
  * "Abluo" is the product name and is never translated.
@@ -35,7 +35,7 @@ export function AbluoLogo({ variant = 'wordmark', className = 'h-6 text-foregrou
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox={art.viewBox} className={`block w-auto shrink-0 ${className}`} focusable="false" {...a11y}>
       <path d={art.letters} fill="currentColor" />
-      <path d={art.dot} className="fill-primary" />
+      <path d={art.dot} className="fill-brand" />
     </svg>
   )
 }

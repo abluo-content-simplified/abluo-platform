@@ -707,7 +707,7 @@ export const LAB_REGISTRY: LabEntry[] = [
     source: 'src/components/app/shell/AbluoLogo.tsx',
     group: 'layout',
     status: 'canonical',
-    summary: 'The abluo logo: the wordmark "abluo." or the sigil "a.", drawn inline — letters in currentColor, the dot in the primary colour.',
+    summary: 'The abluo logo: the wordmark "abluo." or the sigil "a.", drawn inline — letters in currentColor, the dot always the exact brand blue (--brand).',
     rules: ['Never retype the brand as text — use this.', 'Set height (and colour) with className; width follows the artwork.', 'label={null} when visible text already names Abluo.'],
     demo: () => import('./demos/abluo-logo.demo'),
   },

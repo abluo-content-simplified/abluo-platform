@@ -106,6 +106,7 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-brand: var(--brand);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -273,6 +274,8 @@
    Source of truth: the "Abluo App" design system (tokens.json, OKLCH).
    Theme: no data-theme = follow the device; data-theme="light"|"dark" = the
    user's explicit choice (cookie `abluo-app-theme`, see src/lib/app-theme.ts).
+   Primary = the abluo brand blue #0A6CFF (2026-11-06); dark themes lift the
+   same hue to oklch(0.680 0.170 260.4) so text and lines stay readable.
    Admin amber (--admin) is reserved for the admin marker; defined later. */
 .abluo-app {
   --background: oklch(1 0 0);
@@ -289,11 +292,13 @@
   --input: oklch(0.660 0 0);
   --action: oklch(0.252 0 0);
   --action-foreground: oklch(1 0 0);
-  --primary: oklch(0.525 0.196 263.6);
+  --primary: oklch(0.5757 0.2332 260.4);
   --primary-foreground: oklch(1 0 0);
-  --accent: oklch(0.963 0.014 264.5);
-  --accent-foreground: oklch(0.462 0.175 262.6);
-  --ring: oklch(0.525 0.196 263.6);
+  --accent: oklch(0.963 0.014 260.4);
+  --accent-foreground: oklch(0.462 0.175 260.4);
+  --ring: oklch(0.5757 0.2332 260.4);
+  /* The abluo brand blue (#0A6CFF) — the logo dot. Same in both themes; never lifted. */
+  --brand: oklch(0.5757 0.2332 260.4);
   --destructive: oklch(0.539 0.182 33.7);
   --success: oklch(0.516 0.145 148.1);
   --overlay: oklch(0 0 0 / 0.4);
@@ -303,7 +308,7 @@
   --shadow-chip: 0 1px 3px oklch(0 0 0 / 0.25);
   --hover: oklch(0 0 0 / 0.04);
   --border-subtle: oklch(0 0 0 / 0.08);
-  --selected-tint: oklch(0.525 0.196 263.6 / 0.08);
+  --selected-tint: oklch(0.5757 0.2332 260.4 / 0.08);
   --shadow-raise: 0 6px 16px oklch(0 0 0 / 0.12);
   --shadow-bar: 0 -1px 0 oklch(0 0 0 / 0.06), 0 -4px 12px oklch(0 0 0 / 0.04);
   color-scheme: light;
@@ -335,17 +340,17 @@
   --input: oklch(0.503 0.015 266.6);
   --action: oklch(0.964 0.003 264.5);
   --action-foreground: oklch(0.168 0.004 264.4);
-  --primary: oklch(0.683 0.150 264.9);
+  --primary: oklch(0.680 0.170 260.4);
   --primary-foreground: oklch(0.168 0.004 264.4);
-  --accent: oklch(0.264 0.056 269.3);
-  --accent-foreground: oklch(0.839 0.073 269.3);
-  --ring: oklch(0.683 0.150 264.9);
+  --accent: oklch(0.264 0.056 260.4);
+  --accent-foreground: oklch(0.839 0.073 260.4);
+  --ring: oklch(0.680 0.170 260.4);
   --destructive: oklch(0.697 0.164 31.0);
   --success: oklch(0.715 0.165 151.0);
   --overlay: oklch(0 0 0 / 0.6);
   --hover: oklch(1 0 0 / 0.05);
   --border-subtle: oklch(1 0 0 / 0.08);
-  --selected-tint: oklch(0.683 0.150 264.9 / 0.14);
+  --selected-tint: oklch(0.680 0.170 260.4 / 0.14);
   --shadow-raise: 0 6px 16px oklch(0 0 0 / 0.5);
   --shadow-bar: 0 -1px 0 oklch(1 0 0 / 0.06);
   color-scheme: dark;
@@ -366,17 +371,17 @@
   --input: oklch(0.503 0.015 266.6);
   --action: oklch(0.964 0.003 264.5);
   --action-foreground: oklch(0.168 0.004 264.4);
-  --primary: oklch(0.683 0.150 264.9);
+  --primary: oklch(0.680 0.170 260.4);
   --primary-foreground: oklch(0.168 0.004 264.4);
-  --accent: oklch(0.264 0.056 269.3);
-  --accent-foreground: oklch(0.839 0.073 269.3);
-  --ring: oklch(0.683 0.150 264.9);
+  --accent: oklch(0.264 0.056 260.4);
+  --accent-foreground: oklch(0.839 0.073 260.4);
+  --ring: oklch(0.680 0.170 260.4);
   --destructive: oklch(0.697 0.164 31.0);
   --success: oklch(0.715 0.165 151.0);
   --overlay: oklch(0 0 0 / 0.6);
   --hover: oklch(1 0 0 / 0.05);
   --border-subtle: oklch(1 0 0 / 0.08);
-  --selected-tint: oklch(0.683 0.150 264.9 / 0.14);
+  --selected-tint: oklch(0.680 0.170 260.4 / 0.14);
   --shadow-raise: 0 6px 16px oklch(0 0 0 / 0.5);
   --shadow-bar: 0 -1px 0 oklch(1 0 0 / 0.06);
   color-scheme: dark;
