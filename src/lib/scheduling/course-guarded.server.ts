@@ -4,7 +4,7 @@
 // The ONLY entry the dashboard's course actions use to change a class or one of
 // its dates. course-store.ts checks shapes ("is a UUID", "is a valid key"); it has
 // no notion of a project slug. Before anything reaches Supabase this module proves:
-//   - the owning course is a published course OF THE CALLER'S PROJECT (Sanity read),
+//   - the owning course is a course (draft or published) OF THE CALLER'S PROJECT (Sanity read),
 //   - the place is one of that project's `siteConfig.locations` keys, or a saved
 //     venue (`eventVenue`) of that project,
 //   - every named person belongs to that project (guardInstructors).
@@ -22,7 +22,7 @@ type Fetcher = { fetch: (query: string, params: Record<string, unknown>, options
 type GuardDeps = { client?: Fetcher; assertPeople?: typeof assertPeopleBelongToProject }
 type WriteDeps = GuardDeps & { store?: CourseScheduleStore }
 
-export const COURSE_GUARD_QUERY = /* groq */ `count(*[_type == "course" && projectSlug == $projectSlug && publicId == $id && !(_id in path("drafts.**"))])`
+export const COURSE_GUARD_QUERY = /* groq */ `count(*[_type == "course" && projectSlug == $projectSlug && publicId == $id && !(_id in path("versions.**"))])`
 export const LOCATION_KEYS_QUERY = /* groq */ `*[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].locations[].key`
 export const VENUE_GUARD_QUERY = /* groq */ `count(*[_type == "eventVenue" && projectSlug == $projectSlug && publicId == $id && !(_id in path("drafts.**"))])`
 
@@ -39,7 +39,7 @@ async function read(client: Fetcher, query: string, params: Record<string, unkno
 
 const clientOf = (deps: GuardDeps) => deps.client ?? (sanityWriteClient as unknown as Fetcher)
 
-/** The course must be a published course of `projectSlug`, else ScheduleError('invalid'). */
+/** The course (draft or published) must belong to `projectSlug`, else ScheduleError('invalid'). Unpublished courses never reach the website: the timetable reads only visible courses. */
 export async function guardCourseOwner(projectSlug: string, coursePublicId: string, deps: GuardDeps = {}): Promise<void> {
   if (typeof projectSlug !== 'string' || !projectSlug || typeof coursePublicId !== 'string' || !UUID.test(coursePublicId)) throw refuse('course')
   const n = await read(clientOf(deps), COURSE_GUARD_QUERY, { projectSlug, id: coursePublicId.toLowerCase() })

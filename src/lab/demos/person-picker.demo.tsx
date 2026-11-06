@@ -26,6 +26,7 @@ function findDuplicates({ firstName, lastName }: { firstName: string; lastName: 
 export default function PersonPickerDemo() {
   const [many, setMany] = useState<PersonPickerPerson[]>([PEOPLE[0], PEOPLE[1]])
   const [one, setOne] = useState<PersonPickerPerson[]>([])
+  const [teachers, setTeachers] = useState<PersonPickerPerson[]>([])
   return (
     <DemoStack>
       <DemoBlock title="Several people, first is main" note="primaryLabel marks the first; drag to reorder. In Add new person, type “Rossi Anna”: findDuplicates offers Use this person or Create anyway.">
@@ -41,6 +42,11 @@ export default function PersonPickerDemo() {
               Promise.resolve({ id: `new-${firstName}-${lastName}`, name: `${firstName} ${lastName}`.trim() })
             }
           />
+        </div>
+      </DemoBlock>
+      <DemoBlock title="Its own wording" note="labels: the empty text, the add button and the sheet title say “teacher” instead of “people”.">
+        <div className="w-full max-w-md">
+          <PersonPicker label="Teachers" labels={{ empty: 'No teacher yet', add: 'Add teacher', title: 'Choose teachers' }} value={teachers} onChange={setTeachers} search={search} />
         </div>
       </DemoBlock>
       <DemoBlock title="One person" note="mode single">

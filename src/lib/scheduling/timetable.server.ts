@@ -48,6 +48,13 @@ export type TimetableOptions = {
   includeOnlineDetails: boolean
   locale: string
   defaultLocale: string
+  /**
+   * PRIVATE PREVIEW SEAM — set ONLY by the verified-token route
+   * `(website)/[tenant]/preview/course/[id]`. This course (draft fields) is shown
+   * as if published, whatever its state. Never derived from a request parameter:
+   * no visitor route, query string or body reaches this (see the isolation test).
+   */
+  previewCourse?: TimetableCourseInput
 }
 
 type Fetch = <T>(query: string, params?: Record<string, unknown>) => Promise<T>
@@ -73,11 +80,12 @@ export async function timetableForSection(projectSlug: string, opts: TimetableOp
     const params = { locale: opts.locale, defaultLocale: opts.defaultLocale }
 
     // Courses first: only published, non-archived courses are ever shown.
-    const courses = opts.coursePublicIds
+    const fetched = opts.coursePublicIds
       ? opts.coursePublicIds.length
         ? await fetchForTenant<TimetableCourseInput[]>(COURSES_BY_PUBLIC_IDS_QUERY, { ...params, publicIds: opts.coursePublicIds })
         : []
       : await fetchForTenant<TimetableCourseInput[]>(COURSES_LISTING_QUERY, params)
+    const courses = withPreviewCourse(fetched, opts.previewCourse)
     const courseIds = (courses ?? []).map((c) => c.publicId).filter((id): id is string => typeof id === 'string' && id.length > 0)
     if (!courseIds.length) return empty
 
@@ -128,6 +136,13 @@ export async function timetableForSection(projectSlug: string, opts: TimetableOp
     console.warn(`[timetable] unavailable for "${projectSlug}" — showing no classes:`, (error as Error)?.message)
     return empty
   }
+}
+
+/** The preview course replaces its published self (same publicId) or joins the list; nothing else changes. */
+export function withPreviewCourse(courses: TimetableCourseInput[] | null | undefined, preview: TimetableCourseInput | undefined): TimetableCourseInput[] {
+  const list = courses ?? []
+  if (!preview || typeof preview.publicId !== 'string' || !preview.publicId) return list
+  return [...list.filter((c) => c.publicId !== preview.publicId), preview]
 }
 
 function placeVenue(place: SchedulePlace | null): string | null {

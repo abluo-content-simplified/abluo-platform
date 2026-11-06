@@ -12,7 +12,7 @@
  *   2. Ids must be safe document ids; documents are re-read before every
  *      mutation and must be `course`s of the grant's project — anything else
  *      is "not_found", so ids cannot be probed.
- *   3. Patch allow-list (`title.<loc>`, `shortDescription.<loc>`, `color`);
+ *   3. Patch allow-list (`title.<loc>`, `shortDescription.<loc>`, `color`, `image`);
  *      languages must be the site's (or already stored in the draft).
  *   4. `assertSingleSanityProject` right before every mutation; revision
  *      guards → "conflict".
@@ -29,7 +29,10 @@ import { DRAFT_SAVE } from '@/lib/sanity/draft-save'
 import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
 import { readContentActivity, type ActivityItem } from '@/lib/lifecycle/activity'
 import * as lifecycle from '@/lib/lifecycle/service'
-import { snapshotOf } from '@/lib/lifecycle/transition'
+import { lifecycleAction, snapshotOf } from '@/lib/lifecycle/transition'
+import { deriveStatus } from '@/lib/lifecycle/status'
+import { readPlacementInfo } from '@/lib/api/course-placement'
+import { coursePlacement, type PlacementInfo } from '@/lib/modules/courses/placement'
 import { DEFAULT_COURSE_COLOR, isCourseColor, type CourseColor } from '@/lib/modules/courses/model'
 import {
   COURSE_DELETE_PERMISSION,
@@ -55,12 +58,15 @@ export const COURSE_LIMITS = {
   patchBytes: 50_000,
 } as const
 
-export type CourseState = 'draft' | 'published' | 'changes' | 'archived'
+/** `scheduled` = published with a go-live date in the future (not on the website yet). `changes` = live + unpublished edits. */
+export type CourseState = 'draft' | 'scheduled' | 'published' | 'changes' | 'archived'
 
 /** languages[0] = the default language. */
 export interface CourseSite {
   defaultLocale: string
   languages: string[]
+  /** The site's IANA time zone (dates are entered in it), or null. */
+  timeZone: string | null
 }
 
 /** What scheduling knows about a course; null per course (or overall) = not available yet. */
@@ -86,6 +92,8 @@ export interface CourseListItem {
   hasDraft: boolean
   isPublished: boolean
   archivedAt: string | null
+  /** The published version's go-live date (ISO), null when it has none (live since before dates existed, or never published). */
+  publishedAt: string | null
   /** From scheduling; null while it is not available. */
   schedule: CourseScheduleSummary | null
   updatedAt: string
@@ -104,17 +112,30 @@ export interface CourseSnapshot {
   hasDraft: boolean
   isPublished: boolean
   archivedAt: string | null
+  /** The published version's go-live date (ISO), or null. */
+  publishedAt: string | null
   state: CourseState
   title: Record<string, string>
   shortDescription: Record<string, string>
   color: CourseColor
+  /** The optional course image — a Media Library asset of this website (picked in the editor). */
+  image: CourseImage | null
   site: CourseSite
+}
+
+/** The course image as the editor shows it. `alt` is the asset's description per language. */
+export interface CourseImage {
+  assetId: string
+  url: string | null
+  alt: Record<string, string>
 }
 
 type Client = Pick<typeof sanityWriteClient, 'getDocument' | 'fetch' | 'create' | 'patch' | 'transaction'>
 export type CourseDeps = {
   client?: Client
   now?: () => Date
+  /** Where the site's timetables are (publish refuses a course nothing would show). Default: read from Sanity. */
+  placement?: (projectSlug: string) => Promise<PlacementInfo>
   /** New course ids. */
   uuid?: () => string
   /** New publicIds. */
@@ -172,6 +193,8 @@ const str = (v: unknown) => (typeof v === 'string' ? v : '')
 const objectOf = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null)
 const archivedAtOf = (doc: Doc | undefined): string | null => (typeof doc?.archivedAt === 'string' && doc.archivedAt ? doc.archivedAt : null)
 const colorOf = (v: unknown): CourseColor => (isCourseColor(v) ? v : DEFAULT_COURSE_COLOR)
+/** Media Library asset ids (document ids): letters, digits, dashes, underscores. */
+const ASSET_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
 
 function localized(value: unknown): Record<string, string> {
   const o = objectOf(value)
@@ -183,21 +206,29 @@ function localized(value: unknown): Record<string, string> {
 
 const firstOf = (map: Record<string, string>, defaultLocale: string): string => map[defaultLocale] ?? Object.values(map)[0] ?? ''
 
-function stateOf(published: Doc | undefined, draft: Doc | undefined): CourseState {
+const publishedAtOf = (doc: Doc | undefined): string | null => (typeof doc?.publishedAt === 'string' && doc.publishedAt ? doc.publishedAt : null)
+
+/** The published course is waiting for a future go-live date (ADR-032 status 'scheduled'). */
+function isScheduled(published: Doc | undefined, now: Date): boolean {
+  return Boolean(published) && deriveStatus({ published: { publishedAt: publishedAtOf(published), archivedAt: archivedAtOf(published) }, rule: 'optional' }, now).status === 'scheduled'
+}
+
+function stateOf(published: Doc | undefined, draft: Doc | undefined, now: Date): CourseState {
   if (archivedAtOf(published ?? draft)) return 'archived'
+  if (isScheduled(published, now)) return 'scheduled'
   if (published && draft) return 'changes'
   return published ? 'published' : 'draft'
 }
 
 async function readSite(client: Client, projectSlug: string): Promise<CourseSite> {
-  const site = await client.fetch<{ defaultLocale?: string | null; supportedLocales?: string[] | null } | null>(
-    `*[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales }`,
+  const site = await client.fetch<{ defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null>(
+    `*[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales, timeZone }`,
     { projectSlug }
   )
   const locales = site?.supportedLocales?.length ? site.supportedLocales : []
   const defaultLocale = site?.defaultLocale || locales[0]
   if (!defaultLocale) throw new CourseError('failed', 'Site languages are not configured.')
-  return { defaultLocale, languages: [defaultLocale, ...locales.filter((l) => l !== defaultLocale)] }
+  return { defaultLocale, languages: [defaultLocale, ...locales.filter((l) => l !== defaultLocale)], timeZone: typeof site?.timeZone === 'string' && site.timeZone ? site.timeZone : null }
 }
 
 // ── List ──────────────────────────────────────────────────────────────────────
@@ -205,7 +236,7 @@ async function readSite(client: Client, projectSlug: string): Promise<CourseSite
 /** Exported so tests assert exactly what runs. Raw perspective: drafts and published. */
 export const COURSE_LIST_QUERY = /* groq */ `*[_type == "course" && projectSlug == $projectSlug && !(_id in path("versions.**"))]
       | order(_updatedAt desc)[0...${COURSE_LIMITS.courses * 2}]{
-        _id, _createdAt, _updatedAt, publicId, title, shortDescription, color, archivedAt
+        _id, _createdAt, _updatedAt, publicId, title, shortDescription, color, archivedAt, publishedAt
       }`
 
 type ListRow = Doc & { _createdAt?: string; _updatedAt?: string }
@@ -234,6 +265,7 @@ export async function listCourses(ctx: TenantAuthorizationContext, projectId: st
   } catch {
     summaries = null
   }
+  const now = (deps.now ?? (() => new Date()))()
   const courses = [...byId].map(([id, e]): CourseListItem => {
     const row = (e.draft ?? e.published)!
     const base = (e.published ?? e.draft)!
@@ -242,16 +274,18 @@ export async function listCourses(ctx: TenantAuthorizationContext, projectId: st
     const publicId = str(row.publicId)
     const schedule = summaries?.get(publicId.toLowerCase()) ?? summaries?.get(publicId) ?? null
     const archivedAt = archivedAtOf(base)
+    const state = stateOf(e.published, e.draft, now)
     return {
       id,
       publicId,
       title: firstOf(titles, site.defaultLocale),
       shortDescription: firstOf(descriptions, site.defaultLocale),
       color: colorOf(row.color),
-      state: archivedAt ? 'archived' : e.published && e.draft ? 'changes' : e.published ? 'published' : 'draft',
+      state,
       hasDraft: Boolean(e.draft),
       isPublished: Boolean(e.published),
       archivedAt,
+      publishedAt: publishedAtOf(e.published),
       schedule,
       updatedAt: row._updatedAt ?? '',
       createdAt: e.createdAt || row._updatedAt || '',
@@ -280,12 +314,26 @@ export async function getCourseForEdit(ctx: TenantAuthorizationContext, projectI
     hasDraft: Boolean(draft),
     isPublished: Boolean(published),
     archivedAt: archivedAtOf(published ?? draft),
-    state: stateOf(published, draft),
+    publishedAt: publishedAtOf(published),
+    state: stateOf(published, draft, (deps.now ?? (() => new Date()))()),
     title: localized(doc.title),
     shortDescription: localized(doc.shortDescription),
     color: colorOf(doc.color),
+    image: await readImage(client, objectOf(doc.image)?._ref, grant.projectSlug),
     site,
   }
+}
+
+/** The image behind a course's reference: this website's asset only, else null (a dangling or foreign reference shows nothing). */
+async function readImage(client: Client, ref: unknown, projectSlug: string): Promise<CourseImage | null> {
+  const assetId = str(ref)
+  if (!assetId || !ASSET_ID.test(assetId)) return null
+  const row = await client.fetch<{ url?: unknown; alt?: unknown } | null>(
+    `*[_id == $id && _type == "mediaAsset" && projectSlug == $projectSlug][0]{ "url": image.asset->url, "alt": altText }`,
+    { id: assetId, projectSlug }
+  )
+  if (!row) return null
+  return { assetId, url: typeof row.url === 'string' ? row.url : null, alt: localized(row.alt) }
 }
 
 // ── Validation helpers ────────────────────────────────────────────────────────
@@ -376,7 +424,7 @@ export async function openCourseForEdit(
 // ── Save draft ────────────────────────────────────────────────────────────────
 
 /** Paths `saveCourseDraft` accepts. `<loc>` = a language of the site. */
-export const COURSE_PATCH_FIELDS = ['title.<loc>', 'shortDescription.<loc>', 'color'] as const
+export const COURSE_PATCH_FIELDS = ['title.<loc>', 'shortDescription.<loc>', 'color', 'image'] as const
 
 /**
  * Applies the typed changes to the draft. Incomplete drafts always save (a
@@ -398,7 +446,7 @@ export async function saveCourseDraft(
   // Field allow-list before any read.
   for (const path of Object.keys(input.set)) {
     const [field, locale, ...rest] = path.split('.')
-    const ok = path === 'color' || ((LOCALIZED_FIELDS as readonly string[]).includes(field) && !!locale && LOCALE_KEY.test(locale) && rest.length === 0)
+    const ok = path === 'color' || path === 'image' || ((LOCALIZED_FIELDS as readonly string[]).includes(field) && !!locale && LOCALE_KEY.test(locale) && rest.length === 0)
     if (!ok) throw new CourseError('invalid_field', `Field "${path}" cannot be changed here.`)
   }
 
@@ -414,6 +462,7 @@ export async function saveCourseDraft(
   if (archivedAtOf(published ?? draft)) throw new CourseError('archived', 'Restore this course to edit it.')
 
   const allowed = allowedLocales(site, draft)
+  let imageId: string | null = null
   const set: Record<string, unknown> = {}
   const unset: string[] = []
   const ensure: Record<string, unknown> = {}
@@ -423,12 +472,28 @@ export async function saveCourseDraft(
       set.color = value
       continue
     }
+    if (path === 'image') {
+      // null / '' removes the image; otherwise a Media Library asset id of THIS website (checked below).
+      if (value === null || value === '') {
+        unset.push('image')
+        continue
+      }
+      if (typeof value !== 'string' || !ASSET_ID.test(value)) throw new CourseError('invalid_value', 'Unknown image.')
+      imageId = value
+      set.image = { _type: 'reference', _ref: value }
+      continue
+    }
     const [field, locale] = path.split('.') as [(typeof LOCALIZED_FIELDS)[number], string]
     if (!allowed.has(locale)) throw new CourseError('invalid_field', `Language "${locale}" is not on this site.`)
     ensure[field] = { _type: LOCALIZED_TYPE[field] }
     const t = cleanText(value, field === 'title' ? COURSE_LIMITS.title : COURSE_LIMITS.shortDescription, `"${path}"`, field === 'shortDescription')
     if (t) set[path] = t
     else unset.push(path)
+  }
+
+  if (imageId) {
+    const ok = await client.fetch<string | null>(`*[_id == $id && _type == "mediaAsset" && projectSlug == $projectSlug && defined(image.asset)][0]._id`, { id: imageId, projectSlug: grant.projectSlug })
+    if (ok !== imageId) throw new CourseError('invalid_value', 'That image is not in this website’s Media Library.')
   }
 
   const result = (await commit(
@@ -448,31 +513,82 @@ export async function saveCourseDraft(
 
 // ── Publish / discard ─────────────────────────────────────────────────────────
 
-/** Makes the draft the live course. Needs a title in the site's main language. Write permission. */
+/** How the go-live date is set: `now`, `schedule` (a future `publishAt`), `keep` ("Update": a published course keeps its date; a never-published one goes live now). */
+export type PublishCourseInput = { id: string; rev: string; mode?: 'now' | 'schedule' | 'keep'; publishAt?: string }
+
+/** A go-live date may lie at most two years ahead (same rule as posts). */
+export const COURSE_MAX_SCHEDULE_MS = 2 * 366 * 24 * 60 * 60 * 1000
+const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/
+
+/** A valid future go-live date within two years, else `invalid_schedule`. */
+export function parseCoursePublishAt(value: unknown, now: Date): Date {
+  const at = typeof value === 'string' && ISO.test(value) ? new Date(value) : null
+  if (!at || Number.isNaN(at.getTime()) || at.getTime() <= now.getTime() || at.getTime() - now.getTime() > COURSE_MAX_SCHEDULE_MS) {
+    throw new CourseError('invalid_schedule', 'Pick a date and time in the future, within two years.')
+  }
+  return at
+}
+
+/** Publish = online: refuses when no published page has a timetable that shows the course (`no_timetable_page`). */
+async function assertWillAppear(client: Client, projectSlug: string, courseId: string, deps: CourseDeps) {
+  let info: PlacementInfo
+  try {
+    info = await (deps.placement ?? ((slug: string) => readPlacementInfo(client, slug)))(projectSlug)
+  } catch {
+    throw new CourseError('failed', 'Could not check the website.')
+  }
+  if (!coursePlacement(info, courseId).onWebsite) throw new CourseError('no_timetable_page', 'No timetable on the website shows this course.')
+}
+
+/**
+ * Makes the draft the live course. Needs a title in the site's main language,
+ * and (unless it is only an update of a course that is already published) a
+ * timetable on a published page that shows the course. Dates:
+ *   now      → publishedAt = now (a live course keeps its own date)
+ *   schedule → publishedAt = a future moment: the course is a published
+ *              document that the website shows once the date has passed
+ *              (no cron: COURSE_VISIBLE compares publishedAt with now())
+ *   keep     → a published course keeps its publishedAt; a new one = now
+ * Write permission.
+ */
 export async function publishCourseDraft(
   ctx: TenantAuthorizationContext,
   projectId: string,
-  input: { id: string; rev: string },
+  input: PublishCourseInput,
   deps: CourseDeps = {}
-): Promise<{ rev: string }> {
+): Promise<{ rev: string; publishedAt: string | null }> {
   return audited(
     { ctx, projectId, contentType: 'course', contentId: isCourseId(input?.id) ? input.id : null, intended: 'published', writer: deps.audit },
     async (transactionId) => {
       const grant = grantFor(ctx, projectId, COURSE_WRITE_PERMISSION)
       const client = deps.client ?? sanityWriteClient
+      const now = (deps.now ?? (() => new Date()))()
       if (!isCourseId(input?.id)) notFound()
       if (typeof input.rev !== 'string' || !input.rev) throw new CourseError('conflict', 'Missing revision.')
+      const mode = input.mode ?? 'keep'
+      if (mode !== 'now' && mode !== 'schedule' && mode !== 'keep') throw new CourseError('invalid_value', 'Unknown publish mode.')
+      const scheduledAt = mode === 'schedule' ? parseCoursePublishAt(input.publishAt, now) : null
       const [{ published, draft }, site] = await Promise.all([readPair(client, input.id, grant.projectSlug), readSite(client, grant.projectSlug)])
       if (!draft) notFound()
       if (draft._rev !== input.rev) throw new CourseError('conflict', 'This course was edited elsewhere.')
       if (archivedAtOf(published ?? draft)) throw new CourseError('archived', 'Restore this course before publishing.')
       if (!localized(draft.title)[site.defaultLocale]) throw new CourseError('missing_title', 'A title in the main language is required.')
 
+      // A live course keeps its date unless it is scheduled to a new one; a scheduled course published "now" goes live now.
+      const live = Boolean(published) && deriveStatus({ published: { publishedAt: publishedAtOf(published), archivedAt: null }, rule: 'optional' }, now).status === 'published'
+      // A live course is never moved into the future (that would take it offline).
+      if (live && mode === 'schedule') throw new CourseError('invalid_value', 'This course is already online.')
+      const keepDate = Boolean(published) && (mode === 'keep' || (mode === 'now' && live))
+      const publishedAt: string | null = keepDate ? publishedAtOf(published) : (scheduledAt ?? now).toISOString()
+      // Only an update of a course that is already published can skip the check.
+      if (!(published && mode === 'keep')) await assertWillAppear(client, grant.projectSlug, input.id, deps)
+
       const doc: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(draft)) if (!SYSTEM_FIELDS.has(k) && !WINDOW_FIELDS.has(k)) doc[k] = v
       doc._id = input.id
       doc._type = 'course'
       doc.projectSlug = grant.projectSlug
+      if (publishedAt) doc.publishedAt = publishedAt
       // The publicId never changes once published (class schedules key on it).
       if (published && typeof published.publicId === 'string' && published.publicId) doc.publicId = published.publicId
       if (typeof doc.publicId !== 'string' || !UUID_RE.test(doc.publicId)) doc.publicId = (deps.publicUuid ?? randomUUID)()
@@ -488,7 +604,81 @@ export async function publishCourseDraft(
         return tx.delete(`drafts.${input.id}`).commit({ transactionId })
       })
       const state = snapshotOf(doc)
-      return { value: { rev: transactionId }, action: published ? null : ('published' as const), state }
+      // published / scheduled / schedule_changed from the published state before and after; a plain content update records nothing.
+      return { value: { rev: transactionId, publishedAt }, action: lifecycleAction(snapshotOf(published), state, 'optional', now), state }
+    }
+  )
+}
+
+/**
+ * Changes the go-live date of a SCHEDULED course without touching its content
+ * (the dashboard's "Change date" and "Publish now instead"). `now` puts it on
+ * the website at once. Only a scheduled course can be re-dated: moving a live
+ * course into the future would take it offline. Same timetable check as
+ * publishing. Write permission.
+ */
+export async function setCoursePublishDate(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { id: string; mode: 'now' | 'schedule'; publishAt?: string },
+  deps: CourseDeps = {}
+): Promise<{ publishedAt: string }> {
+  const grant = grantFor(ctx, projectId, COURSE_WRITE_PERMISSION)
+  const client = (deps.client ?? sanityWriteClient) as lifecycle.LifecycleClient
+  const now = (deps.now ?? (() => new Date()))()
+  if (!isCourseId(input?.id)) notFound()
+  if (input.mode !== 'now' && input.mode !== 'schedule') throw new CourseError('invalid_value', 'Unknown publish mode.')
+  if (input.mode === 'schedule') parseCoursePublishAt(input.publishAt, now)
+  const { published } = await readPair(client as Client, input.id, grant.projectSlug)
+  if (!published) throw new CourseError('invalid_value', 'Publish this course first.')
+  if (archivedAtOf(published)) throw new CourseError('archived', 'Restore this course first.')
+  if (!isScheduled(published, now)) throw new CourseError('invalid_value', 'This course is not waiting for a date.')
+  await assertWillAppear(client as Client, grant.projectSlug, input.id, deps)
+  const d = courseLifecycle({ projectId, publicId: null, hasSchedule: noSchedule })
+  const r = await lifecycle.setDates(
+    d,
+    ctx,
+    projectId,
+    { id: input.id, rev: str(published._rev), publishedAt: input.mode === 'now' ? 'now' : new Date(input.publishAt as string).toISOString(), expiresAt: null },
+    { client, now: deps.now, audit: deps.audit }
+  )
+  return { publishedAt: str(r.doc.publishedAt) }
+}
+
+/**
+ * "Back to draft": takes a SCHEDULED course off its date. The published version
+ * (which was never on the website) is removed and the course goes on as a
+ * draft — the existing draft when there is one, else a copy of it. Its classes
+ * stay (they are keyed on the publicId). Write permission.
+ */
+export async function unscheduleCourse(ctx: TenantAuthorizationContext, projectId: string, input: { id: string }, deps: CourseDeps = {}): Promise<{ rev: string }> {
+  return audited(
+    { ctx, projectId, contentType: 'course', contentId: isCourseId(input?.id) ? input.id : null, intended: 'unpublished', writer: deps.audit },
+    async (transactionId) => {
+      const grant = grantFor(ctx, projectId, COURSE_WRITE_PERMISSION)
+      const client = deps.client ?? sanityWriteClient
+      const now = (deps.now ?? (() => new Date()))()
+      if (!isCourseId(input?.id)) notFound()
+      const { published, draft } = await readPair(client, input.id, grant.projectSlug)
+      if (!published) throw new CourseError('invalid_value', 'This course is not published.')
+      if (archivedAtOf(published)) throw new CourseError('archived', 'Restore this course first.')
+      if (!isScheduled(published, now)) throw new CourseError('invalid_value', 'This course is not waiting for a date.')
+      const draftId = `drafts.${input.id}`
+      await commit(client, grant.projectSlug, () => {
+        let tx = client.transaction().patch(input.id, { ifRevisionID: published._rev ?? '', unset: ['_publishGuard'] })
+        if (draft?._rev) {
+          tx = tx.patch(draftId, { ifRevisionID: draft._rev, unset: ['_publishGuard'] })
+        } else {
+          const copy: Record<string, unknown> = {}
+          for (const [k, v] of Object.entries(published)) if (!SYSTEM_FIELDS.has(k) && !WINDOW_FIELDS.has(k)) copy[k] = v
+          copy._id = draftId
+          copy._type = 'course'
+          copy.projectSlug = grant.projectSlug
+          tx = tx.create(copy as { _id: string; _type: string })
+        }
+        return tx.delete(input.id).commit({ transactionId })
+      })
+      return { value: { rev: transactionId }, action: 'unpublished' as const, state: null }
     }
   )
 }
@@ -539,6 +729,8 @@ export async function runCourseLifecycle(
   try {
     switch (input.op) {
       case 'archive': {
+        // A scheduled course was never on the website: it goes back to draft, not into the archive (a restore would put it live at once).
+        if (isScheduled(published, (deps.now ?? (() => new Date()))())) throw new CourseError('invalid_value', 'Take this course back to draft first.')
         const r = await lifecycle.archive(d, ctx, projectId, args, sdeps)
         return { rev: r.draftRev }
       }

@@ -62,7 +62,7 @@ export function CoursesTable({
       render: (c) => (
         <div className="flex flex-col items-start gap-1.5">
           <CellPill>
-            <CourseStateBadge state={c.state} />
+            <CourseStateBadge state={c.state} publishedAt={c.publishedAt} zone={c.zone} />
           </CellPill>
           <MissingPills languages={c.missingLanguages} state={c.state} />
         </div>

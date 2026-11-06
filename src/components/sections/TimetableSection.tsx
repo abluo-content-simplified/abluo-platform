@@ -73,6 +73,7 @@ export function TimetableSection({ section, surface, designSystem, moduleConfig,
           defaultView={section.defaultView === 'month' ? 'month' : 'week'}
           allowViewSwitch={section.allowViewSwitch !== false}
           showPrintButton={section.showPrintButton !== false}
+          showCourseDescriptions={section.showCourseDescriptions === true}
           title={title ?? ''}
           endpoint={hydrated.pageId ? `${siteBase}/site-access/timetable` : null}
           pageId={hydrated.pageId}

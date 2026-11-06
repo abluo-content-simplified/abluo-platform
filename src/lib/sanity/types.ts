@@ -2381,6 +2381,8 @@ export interface TimetableSection {
   courseIds?: (string | null)[] | null
   showOnlineDetails?: boolean | null
   showPrintButton?: boolean | null
+  /** Print: add a second page "About the courses" (title + description of each course shown). Default off. */
+  showCourseDescriptions?: boolean | null
   /** Set by hydrateSections; undefined = not hydrated (renders nothing). */
   timetable?: TimetableHydration
 }

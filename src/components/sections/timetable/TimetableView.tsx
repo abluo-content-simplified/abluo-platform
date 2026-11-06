@@ -28,7 +28,9 @@ import {
 } from '@/lib/modules/courses/timetable'
 import { addDays } from '@/lib/scheduling/recurrence'
 import { PRINT_CSS, PrintSheet, teacherHref, type ProfileLinks } from './PrintSheet'
-import { dayNumber, formatDate, languageName, monthTitle, safeHttps, splitTemplate, timeRange, weekdayName } from './format'
+import { ClassPanel } from './ClassPanel'
+import { courseTint, Meeting } from './parts'
+import { dayNumber, formatDate, languageName, monthTitle, splitTemplate, timeRange, weekdayName } from './format'
 
 type View = 'week' | 'month'
 
@@ -38,6 +40,8 @@ export type TimetableViewProps = {
   defaultView: View
   allowViewSwitch: boolean
   showPrintButton: boolean
+  /** Print: add the "About the courses" page. */
+  showCourseDescriptions?: boolean
   title: string
   /** Where other months are fetched from; null = no navigation beyond the hydrated data. */
   endpoint: string | null
@@ -52,7 +56,7 @@ const btn = 'inline-flex items-center justify-center px-3 py-1.5 text-sm font-me
 const btnStyle = { border: '1px solid var(--color-border)', borderRadius: 'var(--radius-btn)', color: 'var(--color-text-primary)', backgroundColor: 'transparent' } as const
 const btnActive = { ...btnStyle, backgroundColor: 'var(--color-primary)', borderColor: 'var(--color-primary)', color: 'var(--color-background)' } as const
 
-export function TimetableView({ locale, initial, defaultView, allowViewSwitch, showPrintButton, title, endpoint, pageId, sectionKey, profile }: TimetableViewProps) {
+export function TimetableView({ locale, initial, defaultView, allowViewSwitch, showPrintButton, showCourseDescriptions = false, title, endpoint, pageId, sectionKey, profile }: TimetableViewProps) {
   const msg = useMemo(() => getTimetableMessages(locale), [locale])
   const [view, setView] = useState<View>(defaultView)
   const [anchor, setAnchor] = useState(initial.today)
@@ -63,6 +67,8 @@ export function TimetableView({ locale, initial, defaultView, allowViewSwitch, s
   const inflight = useRef(new Set<string>())
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
+  /** The session whose details panel is open (id), or null. */
+  const [openId, setOpenId] = useState<string | null>(null)
 
   const data = useMemo(() => mergeTimetables(parts), [parts])
   const today = initial.today
@@ -127,6 +133,7 @@ export function TimetableView({ locale, initial, defaultView, allowViewSwitch, s
   }
 
   const seriesById = useMemo(() => new Map(data.series.map((s) => [s.id, s])), [data.series])
+  const openOcc = useMemo(() => (openId ? (data.occurrences.find((o) => o.id === openId) ?? null) : null), [openId, data.occurrences])
 
   // ── Print: make sure the month is loaded, then open the browser's print dialog.
   const printMonth = monthOf(anchor)
@@ -196,17 +203,19 @@ export function TimetableView({ locale, initial, defaultView, allowViewSwitch, s
           {msg.emptyTimetable}
         </p>
       ) : view === 'week' ? (
-        <WeekView dates={weekDates(monday)} data={data} seriesById={seriesById} today={today} locale={locale} msg={msg} profile={profile} />
+        <WeekView dates={weekDates(monday)} data={data} seriesById={seriesById} today={today} locale={locale} msg={msg} profile={profile} onOpen={setOpenId} />
       ) : (
-        <MonthView month={monthOf(anchor)} data={data} seriesById={seriesById} today={today} locale={locale} msg={msg} profile={profile} />
+        <MonthView month={monthOf(anchor)} data={data} seriesById={seriesById} today={today} locale={locale} msg={msg} profile={profile} onOpen={setOpenId} />
       )}
+
+      <ClassPanel occ={openOcc} data={data} seriesById={seriesById} locale={locale} msg={msg} profile={profile} onClose={() => setOpenId(null)} />
 
       {showPrintButton &&
         mounted &&
         createPortal(
           <div className="ab-tt-print-root" aria-hidden="true">
             <style>{PRINT_CSS}</style>
-            <PrintSheet print={print} data={data} title={title || msg.timetable} locale={locale} msg={msg} profile={profile} />
+            <PrintSheet print={print} data={data} title={title || msg.timetable} locale={locale} msg={msg} profile={profile} showCourseDescriptions={showCourseDescriptions} />
           </div>,
           document.body,
         )}
@@ -223,10 +232,19 @@ type ViewProps = {
   locale: string
   msg: TimetableMessages
   profile: ProfileLinks
+  /** Opens the class details panel for a session id. */
+  onOpen: (occurrenceId: string) => void
 }
 
-const courseTint = (color: 'none' | 'accent' | 'muted') =>
-  color === 'accent' ? { borderLeft: '3px solid var(--color-primary)' } : color === 'muted' ? { borderLeft: '3px solid var(--color-border)' } : {}
+/** A class title that opens its details: a real button, named "Details: course, date, time". */
+function OpenDetails({ occ, data, locale, msg, onOpen, children, className = '', style }: { occ: TimetableOccurrence; data: TimetableData; locale: string; msg: TimetableMessages; onOpen: (id: string) => void; children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  const what = `${data.courses[occ.courseId]?.title ?? ''}, ${formatDate(locale, occ.date, { weekday: 'long', day: 'numeric', month: 'long' })}, ${timeRange(occ.start, occ.end)}`
+  return (
+    <button type="button" aria-haspopup="dialog" aria-label={msg.openDetails(what)} onClick={() => onOpen(occ.id)} className={`cursor-pointer text-left hover:underline underline-offset-2 ${className}`} style={style}>
+      {children}
+    </button>
+  )
+}
 
 function Teachers({ occ, seriesById, data, locale, msg, profile }: { occ: TimetableOccurrence; seriesById: Map<string, TimetableSeries>; data: TimetableData; locale: string; msg: TimetableMessages; profile: ProfileLinks }) {
   const list = occ.teacherIds.flatMap((id) => (data.teachers[id] ? [data.teachers[id]] : []))
@@ -281,27 +299,9 @@ function Badges({ occ, locale, msg }: { occ: TimetableOccurrence; locale: string
   )
 }
 
-function Meeting({ occ, data, msg }: { occ: TimetableOccurrence; data: TimetableData; msg: TimetableMessages }) {
-  const room = occ.meetingRoomId ? data.rooms?.[occ.meetingRoomId] : null
-  if (!room || occ.status === 'cancelled') return null
-  const href = safeHttps(room.joinUrl)
-  return (
-    <p className="mt-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-      {href && (
-        <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
-          {msg.joinLink}
-          <span className="sr-only"> ({msg.opensInNewTab})</span>
-        </a>
-      )}
-      {room.meetingId && <span>{href ? ' · ' : ''}{msg.meetingId}: {room.meetingId}</span>}
-      {room.passcode && <span> · {msg.passcode}: {room.passcode}</span>}
-    </p>
-  )
-}
-
 // ── Week ─────────────────────────────────────────────────────────────────────
 
-function WeekView({ dates, data, seriesById, today, locale, msg, profile }: ViewProps & { dates: string[] }) {
+function WeekView({ dates, data, seriesById, today, locale, msg, profile, onOpen }: ViewProps & { dates: string[] }) {
   return (
     <div className="grid gap-3 md:grid-cols-7">
       {dates.map((date) => {
@@ -336,7 +336,9 @@ function WeekView({ dates, data, seriesById, today, locale, msg, profile }: View
                       {timeRange(o.start, o.end)}
                     </p>
                     <p className="text-sm font-medium leading-snug" style={{ color: 'var(--color-text-primary)', textDecoration: cancelled ? 'line-through' : undefined }}>
-                      {course?.title}
+                      <OpenDetails occ={o} data={data} locale={locale} msg={msg} onOpen={onOpen}>
+                        {course?.title}
+                      </OpenDetails>
                     </p>
                     {cancelled ? (
                       <p className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
@@ -373,7 +375,7 @@ function WeekView({ dates, data, seriesById, today, locale, msg, profile }: View
 
 // ── Month ────────────────────────────────────────────────────────────────────
 
-function MonthView({ month, data, seriesById, today, locale, msg, profile }: ViewProps & { month: string }) {
+function MonthView({ month, data, seriesById, today, locale, msg, profile, onOpen }: ViewProps & { month: string }) {
   const weeks = monthWeeks(month)
   const range = monthRange(month)
   const days = weeks.flat().filter((d) => d >= range.from && d <= range.to)
@@ -416,12 +418,14 @@ function MonthView({ month, data, seriesById, today, locale, msg, profile }: Vie
                       const cancelled = o.status === 'cancelled'
                       return (
                         <li key={o.id} className="truncate text-[11px] leading-snug" style={{ color: 'var(--color-text-secondary)', textDecoration: cancelled ? 'line-through' : undefined }} title={`${timeRange(o.start, o.end)} ${data.courses[o.courseId]?.title ?? ''}${cancelled ? ` — ${msg.cancelled}` : ''}`}>
-                          <span className="tabular-nums" style={{ color: 'var(--color-text-primary)' }}>
-                            {o.start}
-                          </span>{' '}
-                          {data.courses[o.courseId]?.title}
-                          {cancelled && <span className="sr-only"> ({msg.cancelled})</span>}
-                          {!cancelled && o.mode === 'mixed' && <span className="sr-only"> ({msg.hybrid})</span>}
+                          <OpenDetails occ={o} data={data} locale={locale} msg={msg} onOpen={onOpen} className="block w-full truncate">
+                            <span className="tabular-nums" style={{ color: 'var(--color-text-primary)' }}>
+                              {o.start}
+                            </span>{' '}
+                            {data.courses[o.courseId]?.title}
+                            {cancelled && <span className="sr-only"> ({msg.cancelled})</span>}
+                            {!cancelled && o.mode === 'mixed' && <span className="sr-only"> ({msg.hybrid})</span>}
+                          </OpenDetails>
                         </li>
                       )
                     })}
@@ -453,7 +457,9 @@ function MonthView({ month, data, seriesById, today, locale, msg, profile }: Vie
                   return (
                     <li key={o.id} className="flex flex-col gap-0.5 pl-2" style={courseTint(data.courses[o.courseId]?.color ?? 'none')}>
                       <p className="text-sm" style={{ color: 'var(--color-text-primary)', textDecoration: cancelled ? 'line-through' : undefined }}>
-                        <span className="tabular-nums font-semibold">{timeRange(o.start, o.end)}</span> {data.courses[o.courseId]?.title}
+                        <OpenDetails occ={o} data={data} locale={locale} msg={msg} onOpen={onOpen}>
+                          <span className="tabular-nums font-semibold">{timeRange(o.start, o.end)}</span> {data.courses[o.courseId]?.title}
+                        </OpenDetails>
                       </p>
                       {cancelled ? (
                         <p className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>

@@ -3781,6 +3781,11 @@
       }
     },
     "courses": {
+      "preview": {
+        "button": "Vorschau",
+        "hint": "Sieh dir den Stundenplan mit diesem Kurs an, bevor er online ist. Der Link ist privat und 15 Minuten gültig.",
+        "failed": "Die Vorschau konnte nicht geöffnet werden. Bitte versuche es erneut."
+      },
       "screen": {
         "loadFailed": "Wir konnten deine Kurse nicht laden. Bitte versuche es erneut.",
         "retry": "Erneut versuchen"
@@ -3798,6 +3803,8 @@
         "archive_first": "Archiviere diesen Kurs, bevor du ihn löschst.",
         "archived": "Dieser Kurs ist archiviert. Stelle ihn wieder her, um Änderungen vorzunehmen.",
         "missing_title": "Ein Titel in der Hauptsprache ist erforderlich.",
+        "no_timetable_page": "Dieser Kurs kann noch nicht online gehen: Deine Website hat keinen Stundenplan, der ihn zeigt. Bitte die Person, die deine Website betreut, einen hinzuzufügen.",
+        "invalid_schedule": "Wähle ein Datum und eine Uhrzeit in der Zukunft, höchstens zwei Jahre voraus.",
         "failed": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
         "offline": "Du bist offline. Deine Änderungen werden gespeichert, sobald du wieder online bist."
       },
@@ -3886,6 +3893,16 @@
         "shortDescriptionHint": "Ein bis zwei Sätze, angezeigt im Stundenplan und in Listen.",
         "colorLabel": "Farbe",
         "colorHint": "Wie dieser Kurs im Stundenplan markiert wird.",
+        "imageLabel": "Bild",
+        "imageHint": "Optional. Wird in den Kursdetails auf deiner Website angezeigt. Wähle es aus der Mediathek.",
+        "imageChoose": "Bild auswählen",
+        "imageChange": "Bild ändern",
+        "imageRemove": "Bild entfernen",
+        "noPageTitle": "Dieser Kurs kann noch nicht online gehen",
+        "noPageBody": "Keine Seite deiner Website zeigt bisher den Stundenplan.",
+        "noPageStudio": "Stundenplan zu einer Seite hinzufügen",
+        "noPageAskAdmin": "Bitte deinen Website-Administrator, einen hinzuzufügen.",
+        "opensInNewTab": "öffnet in einem neuen Tab",
         "color": {
           "none": "Keine",
           "accent": "Akzent",
@@ -3896,6 +3913,23 @@
         "archivedBody": "Stelle ihn wieder her, um Änderungen vorzunehmen.",
         "readOnly": "Du kannst hier nur ansehen, nichts ändern.",
         "publishBlocked": "Vor dem Veröffentlichen: Titel auf {language} ergänzen.",
+        "publishNow": "Jetzt veröffentlichen",
+        "publishedNowToast": "Veröffentlicht. Der Kurs ist online.",
+        "scheduledToast": "Geplant. Der Kurs geht am {date} online.",
+        "updatedScheduledToast": "Aktualisiert. Er bleibt für den {date} geplant.",
+        "dateSaved": "Datum gespeichert.",
+        "backToDraftDone": "Wieder ein Entwurf. Er ist nicht mehr geplant.",
+        "onlineTitle": "Auf deiner Website",
+        "onlineLive": "Dieser Kurs ist online.",
+        "notOnlineYet": "Noch nicht online. Veröffentliche ihn, um ihn auf deine Website zu stellen.",
+        "viewOnWebsite": "Auf der Website ansehen",
+        "publishOn": "Veröffentlichen am",
+        "schedule": "Planen",
+        "scheduleHelp": "Wähle Datum und Uhrzeit. Der Kurs geht dann von selbst online.",
+        "scheduledSentence": "Geht am {date} online. Bis dahin ist er nicht auf deiner Website.",
+        "backToDraft": "Zurück zum Entwurf",
+        "updateScheduled": "Geplanten Kurs aktualisieren",
+        "changesNotScheduled": "Du hast Änderungen, die noch nicht in der geplanten Version sind.",
         "publishReason": {
           "upToDate": "Nichts Neues zu veröffentlichen."
         },
@@ -3918,7 +3952,7 @@
         "menu": "Aktionen für {name}",
         "openClass": "{name} öffnen",
         "noDetails": "Noch kein Ort, keine Lehrkraft und keine Sprache",
-        "publishFirst": "Veröffentliche zuerst diesen Kurs und füge dann seine Stunden hinzu.",
+        "publishFirst": "Noch nicht auf der Website: Diese Stunden erscheinen im Stundenplan, sobald der Kurs online ist.",
         "loadError": "Die Stunden konnten nicht geladen werden. Lade die Seite neu, um es noch einmal zu versuchen.",
         "empty": {
           "title": "Noch keine Stunden",
@@ -3953,11 +3987,29 @@
           "term": "Zeitraum",
           "noTerm": "Kein Zeitraum",
           "startsOn": "Erste Stunde",
-          "startsOnHint": "Die erste Stunde ist der erste passende Tag ab diesem Datum.",
+          "startsOnHint": "Es lassen sich nur Tage wählen, an denen die Stunde stattfindet.",
           "endsOn": "Letzte Stunde",
-          "endsOnHint": "Optional. Auch das Ende des Zeitraums beendet die Stunde.",
+          "endsOnHint": "Optional. Es lassen sich nur Tage wählen, an denen die Stunde stattfindet. Auch das Ende des Zeitraums beendet die Stunde.",
           "noEndDate": "Kein letztes Datum",
           "endBeforeStartDay": "Die letzte Stunde darf nicht vor der ersten liegen.",
+          "repeatOnce": "Einmalig",
+          "repeatMonthlyWeekday": "Jeden Monat, an einem Wochentag",
+          "repeatMonthlyDay": "Jeden Monat, an einem Datum",
+          "days": "Tage",
+          "daysNeeded": "Wähle mindestens einen Tag.",
+          "ordinal": "Welcher",
+          "ordinalFirst": "Erster",
+          "ordinalSecond": "Zweiter",
+          "ordinalThird": "Dritter",
+          "ordinalFourth": "Vierter",
+          "ordinalLast": "Letzter",
+          "monthDay": "Tag des Monats",
+          "monthDayHint": "Monate ohne diesen Tag werden übersprungen.",
+          "onDate": "Datum",
+          "datesAdjusted": "Die Daten wurden an die Tage angepasst, an denen die Stunde stattfindet.",
+          "teachersEmpty": "Noch keine Lehrkraft",
+          "teachersAdd": "Lehrkraft hinzufügen",
+          "teachersTitle": "Lehrkräfte auswählen",
           "save": "Speichern",
           "saving": "Speichern…"
         },
@@ -3975,6 +4027,7 @@
         },
         "errors": {
           "inUse": "Das wird noch von Stunden verwendet. Entferne es zuerst dort.",
+          "outsideTerm": "Dieses Datum liegt außerhalb des Zeitraums. Wähle ein Datum innerhalb des Zeitraums oder einen anderen Zeitraum.",
           "missingName": "Ein Name in der Hauptsprache ist erforderlich."
         }
       },

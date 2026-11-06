@@ -11,6 +11,8 @@ import {
   isCourseId,
   type CourseSnapshot,
 } from '@/lib/api/course-drafts'
+import { getCoursePlacement } from '@/lib/api/course-placement'
+import type { CoursePlacement } from '@/lib/modules/courses/placement'
 import { listClasses, SCHEDULE_WRITE_PERMISSION, type ClassesScreen } from '@/lib/api/course-schedule'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { CourseEditor } from '@/components/client/courses/CourseEditor'
@@ -55,8 +57,16 @@ export default async function CoursePage({ params }: { params: Promise<{ tenant:
     classesScreen = null
   }
   const mayEditClasses = grant.permissions.includes(SCHEDULE_WRITE_PERMISSION) && !course.archivedAt
-  // Classes belong to the PUBLISHED course (the schedule guard checks it): a draft-only course is published first.
-  const canSchedule = mayEditClasses && course.isPublished
+  // Classes can be added to a draft or scheduled course too; the website shows them only once the course is online.
+  const canSchedule = mayEditClasses
+  // Will a published course appear on the website? (A timetable on a published page must show it.) null = could not be checked: the server decides on Publish.
+  let placement: CoursePlacement | null = null
+  try {
+    placement = await getCoursePlacement(ctx, grant.projectId, { id })
+  } catch (error) {
+    if (error instanceof TenantAuthorizationError) notFound()
+    placement = null
+  }
   const tc = await getTranslations('clientDashboard.courses.classes')
 
   return (
@@ -67,9 +77,11 @@ export default async function CoursePage({ params }: { params: Promise<{ tenant:
         initial={course}
         canWrite={grant.permissions.includes(COURSE_WRITE_PERMISSION)}
         canDelete={grant.permissions.includes(COURSE_DELETE_PERMISSION)}
+        placement={placement}
+        canOpenStudio={ctx.platformRole === 'abluo_admin'}
         classes={
           classesScreen ? (
-            <CourseClasses key={course.id} projectSlug={projectSlug} courseId={course.publicId} initial={classesScreen} canEdit={canSchedule} publishFirst={mayEditClasses && !course.isPublished} />
+            <CourseClasses key={course.id} projectSlug={projectSlug} courseId={course.publicId} initial={classesScreen} canEdit={canSchedule} publishFirst={mayEditClasses && (course.state === 'draft' || course.state === 'scheduled')} />
           ) : (
             <Notice tone="error">{tc('loadError')}</Notice>
           )

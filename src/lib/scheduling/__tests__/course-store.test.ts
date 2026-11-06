@@ -62,7 +62,7 @@ const invalid = async (p: Promise<unknown>) => {
 }
 
 describe('saveSeries — validation and RPC mapping', () => {
-  it('maps a new weekly class to schedule_series_save (first session = first Monday on/after startsOn)', async () => {
+  it('maps a new weekly class to schedule_series_save (an unaligned first date rolls to the first Monday)', async () => {
     const f = fakeDb({}, { schedule_series_save: { data: [{ series_id: S1, version: 1 }] } })
     const out = await createCourseScheduleStore(f.db).saveSeries({ ...classInput, actorId: PERSON })
     expect(out).toEqual({ seriesId: S1, version: 1 })
@@ -72,7 +72,7 @@ describe('saveSeries — validation and RPC mapping', () => {
     expect(args).toMatchObject({
       p_project_id: P, p_series_id: null, p_owner_type: 'course', p_owner_public_id: COURSE, p_edition_id: ED, p_time_zone: 'Europe/Brussels',
       p_start_local: '2026-12-07T18:00', p_end_local: '2026-12-07T19:30', p_rule: 'FREQ=WEEKLY;INTERVAL=1;BYDAY=MO', p_rule_weekday: 1,
-      p_starts_on: '2026-12-02', p_ends_on: '2026-12-28', p_place: { kind: 'location', key: 'brey' }, p_attendance_mode: 'inPerson',
+      p_starts_on: '2026-12-07', p_ends_on: '2026-12-28', p_place: { kind: 'location', key: 'brey' }, p_attendance_mode: 'inPerson',
       p_instructors: [PERSON], p_languages: ['fr'], p_meeting_room_id: ROOM, p_expected_version: null, p_actor: PERSON,
     })
   })
@@ -81,7 +81,46 @@ describe('saveSeries — validation and RPC mapping', () => {
     const f = fakeDb({}, { schedule_series_save: { data: { series_id: S1, version: 5 } } })
     const out = await createCourseScheduleStore(f.db).saveSeries({ ...classInput, seriesId: S1, expectedVersion: 4, interval: 2 })
     expect(out.version).toBe(5)
-    expect(f.rpcCalls[0][1]).toMatchObject({ p_series_id: S1, p_expected_version: 4, p_rule: 'FREQ=WEEKLY;INTERVAL=2;BYDAY=MO' })
+    expect(f.rpcCalls[0][1]).toMatchObject({ p_series_id: S1, p_expected_version: 4, p_rule: 'FREQ=WEEKLY;INTERVAL=2;BYDAY=MO', p_ends_on: '2026-12-21' }) // 28 Dec is an off week: rolls back
+  })
+
+  it('saves several days, monthly and once presets (rule text, first weekday, dates)', async () => {
+    const f = fakeDb({}, { schedule_series_save: { data: [{ series_id: S1, version: 1 }] } })
+    const store = createCourseScheduleStore(f.db)
+    await store.saveSeries({ ...classInput, repeat: { kind: 'weekly', weekdays: [3, 1], interval: 1 }, startsOn: '2026-12-02', endsOn: '2026-12-28' })
+    expect(f.rpcCalls[0][1]).toMatchObject({ p_rule: 'FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE', p_rule_weekday: 1, p_start_local: '2026-12-02T18:00' })
+    await store.saveSeries({ ...classInput, repeat: { kind: 'monthlyWeekday', ordinal: -1, weekday: 7 }, startsOn: '2026-12-27', endsOn: null })
+    expect(f.rpcCalls[1][1]).toMatchObject({ p_rule: 'FREQ=MONTHLY;BYDAY=-1SU', p_rule_weekday: 7, p_ends_on: null })
+    await store.saveSeries({ ...classInput, repeat: { kind: 'monthlyDay', day: 15 }, startsOn: '2026-12-15', endsOn: '2027-03-15' })
+    expect(f.rpcCalls[2][1]).toMatchObject({ p_rule: 'FREQ=MONTHLY;BYMONTHDAY=15', p_rule_weekday: 2 })
+    await store.saveSeries({ ...classInput, repeat: { kind: 'once' }, startsOn: '2026-12-12', endsOn: null })
+    expect(f.rpcCalls[3][1]).toMatchObject({ p_rule: 'FREQ=DAILY;COUNT=1', p_rule_weekday: 6, p_starts_on: '2026-12-12', p_ends_on: '2026-12-12', p_start_local: '2026-12-12T18:00' })
+  })
+
+  it('rolls an unaligned first date forward and last date back; refuses only when nothing fits', async () => {
+    const f = fakeDb({}, { schedule_series_save: { data: [{ series_id: S1, version: 1 }] } })
+    const store = createCourseScheduleStore(f.db)
+    await store.saveSeries({ ...classInput, startsOn: '2026-12-08', endsOn: '2026-12-29' }) // Tuesday → Monday 14th; 29th → Monday 28th
+    expect(f.rpcCalls[0][1]).toMatchObject({ p_starts_on: '2026-12-14', p_start_local: '2026-12-14T18:00', p_ends_on: '2026-12-28' })
+    await store.saveSeries({ ...classInput, repeat: { kind: 'monthlyDay', day: 15 }, startsOn: '2026-12-16', endsOn: null })
+    expect(f.rpcCalls[1][1]).toMatchObject({ p_starts_on: '2027-01-15', p_rule_weekday: 5 })
+    await invalid(store.saveSeries({ ...classInput, startsOn: '2026-12-08', endsOn: '2026-12-10' })) // no Monday between
+    await invalid(store.saveSeries({ ...classInput, repeat: { kind: 'monthlyDay', day: 40 }, startsOn: '2026-12-15', endsOn: null }))
+    expect(f.rpcCalls).toHaveLength(2)
+  })
+
+  it('a class (a once class in particular) cannot start outside its term', async () => {
+    const term = { data: [{ starts_on: '2026-12-01', ends_on: '2026-12-31' }] }
+    const f = fakeDb({ schedule_editions: term }, { schedule_series_save: { data: [{ series_id: S1, version: 1 }] } })
+    const store = createCourseScheduleStore(f.db)
+    const outside = await store.saveSeries({ ...classInput, repeat: { kind: 'once' }, startsOn: '2027-01-09', endsOn: null }).catch((e) => e)
+    expect(outside).toBeInstanceOf(ScheduleError)
+    expect(outside.code).toBe('outside_term')
+    const before = await store.saveSeries({ ...classInput, startsOn: '2026-11-23', endsOn: null }).catch((e) => e)
+    expect(before.code).toBe('outside_term')
+    expect(f.rpcCalls).toHaveLength(0)
+    await store.saveSeries({ ...classInput, repeat: { kind: 'once' }, startsOn: '2026-12-12', endsOn: null })
+    expect(f.rpcCalls).toHaveLength(1)
   })
 
   it('refuses bad input before any call', async () => {
@@ -95,6 +134,7 @@ describe('saveSeries — validation and RPC mapping', () => {
     await invalid(store.saveSeries({ ...classInput, endTime: '17:00' })) // ends before it starts
     await invalid(store.saveSeries({ ...classInput, timeZone: 'Mars/Base' }))
     await invalid(store.saveSeries({ ...classInput, startsOn: '2026-13-01' }))
+    await invalid(store.saveSeries({ ...classInput, repeat: { kind: 'weekly', weekdays: [], interval: 1 } }))
     await invalid(store.saveSeries({ ...classInput, endsOn: '2026-12-01' }))
     await invalid(store.saveSeries({ ...classInput, languages: ['FR'] }))
     await invalid(store.saveSeries({ ...classInput, languages: ['fr', 'fr'] }))
@@ -148,6 +188,20 @@ describe('syncSeries — builds the full row set from the expander', () => {
     const cl = f.calls.find((c) => c.table === 'schedule_closures')!
     expect(cl.ops).toContainEqual(['eq', 'project_id', P])
     expect(cl.ops).toContainEqual(['or', `edition_id.is.null,edition_id.eq.${ED}`])
+  })
+
+  it('expands several days, and a once class, from their stored rules', async () => {
+    const run = async (row: Record<string, unknown>) => {
+      const f = fakeDb(
+        { event_series: [{ data: [{ ...row, edition_id: null }] }], schedule_closures: { data: [] }, event_occurrences: { data: [] } },
+        { schedule_occurrences_sync: { data: [{ inserted: 1, updated: 0, removed: 0 }] } },
+      )
+      await createCourseScheduleStore(f.db).syncSeries(P, S1, { now: new Date('2026-12-02T10:00:00Z') })
+      return (f.rpcCalls[0][1].p_rows as Array<{ original_start_local: string }>).map((r) => r.original_start_local.slice(0, 10))
+    }
+    expect(await run({ ...seriesRow, rule: 'FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE', ends_on: '2026-12-16' })).toEqual(['2026-12-07', '2026-12-09', '2026-12-14', '2026-12-16'])
+    expect(await run({ ...seriesRow, rule: 'FREQ=DAILY;COUNT=1', rule_weekday: 1, ends_on: '2026-12-07' })).toEqual(['2026-12-07'])
+    expect(await run({ ...seriesRow, rule: 'FREQ=MONTHLY;BYDAY=1MO', ends_on: '2027-02-28', start_local: '2026-12-07T18:00:00' })).toEqual(['2026-12-07', '2027-01-04', '2027-02-01'])
   })
 
   it('refuses a series that does not repeat weekly and a missing series', async () => {

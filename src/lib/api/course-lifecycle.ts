@@ -32,6 +32,12 @@ export type CourseErrorCode =
   | 'archive_first'
   | 'archived'
   | 'missing_title'
+  /** A class's first date (a "once" class's date) is outside its term. */
+  | 'outside_term'
+  /** No published page has a timetable that would show the course: publishing it would put it nowhere. */
+  | 'no_timetable_page'
+  /** The "Publish on" date is missing, in the past or more than two years away. */
+  | 'invalid_schedule'
   | 'failed'
 
 /** Where a course is still used: other documents, or its classes. */

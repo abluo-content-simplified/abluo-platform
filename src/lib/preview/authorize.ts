@@ -116,3 +116,32 @@ export async function authorizePersonPreview(input: {
   }
   return claims
 }
+
+/**
+ * Course preview (Courses module): the same rules, for a token of kind
+ * 'course'. A course may be previewed from its draft or, when it has no
+ * unpublished changes, its published version; either must be a `course` of this
+ * project. Nothing is read before the token, URL and host agree.
+ */
+export async function authorizeCoursePreview(input: {
+  token: unknown
+  courseId: string
+  urlProject: string
+  host: string | null | undefined
+  getDoc: (documentId: string) => Promise<DraftLite>
+  secret?: Buffer | null
+  now?: number
+}): Promise<DraftPreviewClaims | null> {
+  if (typeof input.courseId !== 'string' || !DOC_ID.test(input.courseId)) return null
+  const claims = verifyDraftPreviewToken(input.token, { secret: input.secret, now: input.now })
+  if (!claims || claims.kind !== 'course') return null
+  if (claims.draftId !== input.courseId || claims.projectSlug !== input.urlProject) return null
+  if (!hostMayServeProject(input.host, claims.projectSlug)) return null
+  try {
+    const doc = (await input.getDoc(`drafts.${input.courseId}`)) ?? (await input.getDoc(input.courseId))
+    if (!doc || doc._type !== 'course' || doc.projectSlug !== claims.projectSlug) return null
+  } catch {
+    return null
+  }
+  return claims
+}

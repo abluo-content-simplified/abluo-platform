@@ -21,7 +21,7 @@
 
 import { isValidTimeZone } from '@/lib/time/zones'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
-import { addDays, dayNumber, expandWeekly, formatWeeklyRule, parseWeeklyRule, weekdayOf, MAX_WEEK_INTERVAL } from './recurrence'
+import { addDays, coerceClassRule, dayNumber, expandRule, formatClassRule, parseClassRule, nextStartDate, previousRuleDate, ruleWeekdays, MAX_WEEK_INTERVAL, type ClassRule } from './recurrence'
 import { localOf, normaliseLocal, resolveSessionTimes, type SessionTimes } from './time'
 import {
   ScheduleError,
@@ -58,13 +58,16 @@ export type SaveClassInput = {
   ownerPublicId: string
   editionId?: string | null
   timeZone: string
-  /** 1 = Monday … 7 = Sunday. */
-  weekday: number
+  /** How the class repeats (a preset). Omitted = the legacy weekly form below. */
+  repeat?: ClassRule
+  /** Legacy: weekly on ONE weekday (1 = Monday … 7 = Sunday), every `interval` weeks. Used only when `repeat` is omitted. */
+  weekday?: number
   interval?: number
   startTime: string
   endTime?: string | null
-  /** First possible date; the first session is the first matching weekday on/after it. */
+  /** The class's first session: must be a date the repeat produces (for "once", its one date). */
   startsOn: string
+  /** Last possible date, optional (empty = until the term ends / open). Must be a date the repeat produces; ignored for "once" (stored equal to `startsOn`). */
   endsOn?: string | null
   place: SchedulePlace | null
   attendanceMode: AttendanceMode
@@ -253,7 +256,9 @@ const ROOM_COLUMNS = 'id, label, join_url, meeting_id, passcode, note, version'
 
 function seriesOf(r: Row): ClassSeries {
   const rule = typeof r.rule === 'string' ? r.rule : null
-  const parsed = parseWeeklyRule(rule)
+  const parsed = parseClassRule(rule)
+  const firstDate = local(r.start_local).slice(0, 10) || null
+  const weekdays = parsed ? ruleWeekdays(parsed, firstDate) : typeof r.rule_weekday === 'number' ? [r.rule_weekday] : []
   return {
     id: String(r.id),
     ownerType: ownerType(r.owner_type),
@@ -263,8 +268,9 @@ function seriesOf(r: Row): ClassSeries {
     startLocal: local(r.start_local),
     endLocal: r.end_local ? local(r.end_local) : null,
     rule,
-    weekday: typeof r.rule_weekday === 'number' ? r.rule_weekday : parsed?.weekday ?? null,
-    interval: parsed?.interval ?? 1,
+    weekday: typeof r.rule_weekday === 'number' ? r.rule_weekday : weekdays[0] ?? null,
+    weekdays,
+    interval: parsed?.kind === 'weekly' ? parsed.interval : 1,
     startsOn: r.starts_on ? dateOnly(r.starts_on) : null,
     endsOn: r.ends_on ? dateOnly(r.ends_on) : null,
     place: place(r.place),
@@ -330,9 +336,16 @@ const roomOf = (r: Row): MeetingRoom => ({
   version: Number(r.version) || 1,
 })
 
-/** The first date on/after `from` that falls on `weekday` (1..7). */
-function firstWeekdayOnOrAfter(from: string, weekday: number): string {
-  return addDays(from, (weekday - weekdayOf(from) + 7) % 7)
+/** The repeat of a save: the preset given, else the legacy weekday + interval as a weekly rule. */
+function repeatOf(input: SaveClassInput): ClassRule {
+  if (input.repeat !== undefined) {
+    const clean = coerceClassRule(input.repeat)
+    if (!clean) throw new ScheduleError('invalid', 'The repeat is not valid.')
+    return clean
+  }
+  const interval = input.interval ?? 1
+  if (!Number.isInteger(interval) || interval < 1 || interval > MAX_WEEK_INTERVAL) throw new ScheduleError('invalid', 'The interval is not valid.')
+  return { kind: 'weekly', weekdays: [input.weekday as number], interval }
 }
 
 // ── The store ────────────────────────────────────────────────────────────────
@@ -340,6 +353,14 @@ function firstWeekdayOnOrAfter(from: string, weekday: number): string {
 export function createCourseScheduleStore(dbOverride?: Db): CourseScheduleStore {
   const withDb = <T>(fn: (db: Db) => Promise<T>): Promise<T> =>
     dbOverride ? fn(dbOverride) : runAsTrustedSystemOperation(REASON, (sb) => fn(sb as unknown as Db))
+
+  /** The dates of a live term, or null when it does not exist (the database then refuses the id). */
+  async function termOf(db: Db, projectId: string, editionId: string): Promise<{ startsOn: string; endsOn: string } | null> {
+    const { data, error } = await db.from('schedule_editions').select('starts_on, ends_on').eq('project_id', projectId).eq('id', editionId).is('removed_at', null).limit(1)
+    if (error) throw mapDbError(error)
+    const row = (data ?? [])[0]
+    return row ? { startsOn: dateOnly(row.starts_on), endsOn: dateOnly(row.ends_on) } : null
+  }
 
   async function seriesById(db: Db, projectId: string, id: string): Promise<ClassSeries> {
     const { data, error } = await db.from('event_series').select(SERIES_COLUMNS).eq('project_id', projectId).eq('id', id).is('removed_at', null).limit(1)
@@ -359,8 +380,8 @@ export function createCourseScheduleStore(dbOverride?: Db): CourseScheduleStore 
 
   async function syncSeriesDb(db: Db, projectId: string, seriesId: string, now: Date): Promise<SyncResult> {
     const s = await seriesById(db, projectId, seriesId)
-    const rule = parseWeeklyRule(s.rule)
-    if (!rule) throw new ScheduleError('invalid', 'This class does not repeat weekly.')
+    const rule = parseClassRule(s.rule)
+    if (!rule) throw new ScheduleError('invalid', 'This class does not repeat in a way scheduling knows.')
 
     let edition: ScheduleEdition | null = null
     if (s.editionId) {
@@ -380,9 +401,8 @@ export function createCourseScheduleStore(dbOverride?: Db): CourseScheduleStore 
     const ends = [s.endsOn, edition?.endsOn].filter((d): d is string => !!d)
     const until = ends.length ? ends.reduce((a, b) => (a < b ? a : b)) : addDays(from, OPEN_ENDED_DAYS)
 
-    const expanded = expandWeekly({
-      weekday: rule.weekday,
-      interval: rule.interval,
+    const expanded = expandRule({
+      rule,
       startTime: s.startLocal.slice(11, 16),
       endTime: s.endLocal ? s.endLocal.slice(11, 16) : null,
       timeZone: s.timeZone,
@@ -432,13 +452,13 @@ export function createCourseScheduleStore(dbOverride?: Db): CourseScheduleStore 
     }
   }
 
-  /** Re-syncs the live weekly classes of a project that a term or holiday change affects (edition null = all). */
+  /** Re-syncs the live classes of a project that a term or holiday change affects (edition null = all). */
   async function resyncAffected(db: Db, projectId: string, editionIds: Array<string | null>): Promise<number> {
     let q = db.from('event_series').select('id, edition_id, rule').eq('project_id', projectId).eq('owner_type', 'course').is('removed_at', null)
     if (!editionIds.includes(null)) q = q.in('edition_id', editionIds.filter((x): x is string => !!x))
     const { data, error } = await q
     if (error) throw mapDbError(error)
-    const rows = ((data ?? []) as Row[]).filter((r) => parseWeeklyRule(typeof r.rule === 'string' ? r.rule : null))
+    const rows = ((data ?? []) as Row[]).filter((r) => parseClassRule(typeof r.rule === 'string' ? r.rule : null))
     for (const r of rows) await syncSeriesDb(db, projectId, String(r.id), new Date())
     return rows.length
   }
@@ -489,19 +509,33 @@ export function createCourseScheduleStore(dbOverride?: Db): CourseScheduleStore 
           assertDate(input.endsOn, 'last date')
           if (input.endsOn < input.startsOn) throw new ScheduleError('invalid', 'The last date is before the first.')
         }
-        const interval = input.interval ?? 1
-        if (!Number.isInteger(interval) || interval < 1 || interval > MAX_WEEK_INTERVAL) throw new ScheduleError('invalid', 'The interval is not valid.')
-        const rule = formatWeeklyRule({ weekday: input.weekday, interval }) // validates the weekday too
+        const repeat = repeatOf(input)
+        const rule = formatClassRule(repeat) // validates the repeat too
+        // An unaligned first date rolls forward to the next class day, an unaligned last date back to the previous one;
+        // only when nothing fits is the input refused. The first session is that first date (also the "every N weeks" anchor).
+        const startsOn = nextStartDate(repeat, input.startsOn)
+        if (!startsOn) throw new ScheduleError('invalid', 'The first class is not on one of the class days.')
+        let endsOn: string | null = null
+        if (repeat.kind === 'once') endsOn = startsOn // one date: the last date is that date
+        else if (input.endsOn != null) {
+          endsOn = previousRuleDate(repeat, input.endsOn, startsOn)
+          if (!endsOn || endsOn < startsOn) throw new ScheduleError('invalid', 'The last class is before the first class day.')
+        }
+        // A class cannot start outside its term (a "once" class in particular would have no session).
+        if (input.editionId != null) {
+          const term = await termOf(db, input.projectId, input.editionId)
+          if (term && (startsOn < term.startsOn || startsOn > term.endsOn)) throw new ScheduleError('outside_term', 'The first class is outside the term.')
+        }
+        const weekday = ruleWeekdays(repeat, startsOn)[0]
         if ((input.seriesId === null) !== (input.expectedVersion === null)) {
           throw new ScheduleError('invalid', input.seriesId === null ? 'A new class has no version.' : 'The version is required.')
         }
 
         // The series' own start is its first session: that date is also the "every N weeks" anchor.
-        const first = firstWeekdayOnOrAfter(input.startsOn, input.weekday)
         const times = resolveSessionTimes({
           timeZone: input.timeZone,
-          startLocal: `${first}T${input.startTime}`,
-          endLocal: input.endTime ? `${first}T${input.endTime}` : null,
+          startLocal: `${startsOn}T${input.startTime}`,
+          endLocal: input.endTime ? `${startsOn}T${input.endTime}` : null,
         })
         const { data, error } = await db.rpc('schedule_series_save', {
           p_project_id: input.projectId,
@@ -513,9 +547,9 @@ export function createCourseScheduleStore(dbOverride?: Db): CourseScheduleStore 
           p_start_local: times.startLocal,
           p_end_local: times.endLocal,
           p_rule: rule,
-          p_rule_weekday: input.weekday,
-          p_starts_on: input.startsOn,
-          p_ends_on: input.endsOn ?? null,
+          p_rule_weekday: weekday, // the first weekday (keeps readers of rule_weekday working)
+          p_starts_on: startsOn,
+          p_ends_on: endsOn,
           p_place: input.place,
           p_attendance_mode: input.attendanceMode,
           p_instructors: instructors,

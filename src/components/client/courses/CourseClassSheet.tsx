@@ -14,14 +14,29 @@ import { Notice } from '@/components/app/ui/Notice'
 import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
 import { Select } from '@/components/app/ui/Select'
 import { ToggleChips } from '@/components/app/ui/ToggleChips'
-import { classLanguages, defaultStartsOn, textOf, timeOptions, timesOrdered, todayIn } from './schedule-model'
+import {
+  ORDINAL_OPTIONS,
+  applyRepeatKey,
+  canEndOn,
+  canStartOn,
+  classLanguages,
+  defaultStartsOn,
+  repeatDraftOf,
+  repeatKeyOf,
+  repeatKeys,
+  ruleOfDraft,
+  snapDates,
+  textOf,
+  timeOptions,
+  timesOrdered,
+  todayIn,
+  type RepeatDraft,
+} from './schedule-model'
 import { TeacherField, WEEKDAYS, useScheduleErrorText, useScheduleFormat } from './schedule-bits'
 
-type Draft = {
-  weekday: number
+type Draft = RepeatDraft & {
   startTime: string
   endTime: string
-  interval: number
   placeToken: string
   instructors: PersonRef[]
   languages: string[]
@@ -33,42 +48,67 @@ type Draft = {
 }
 
 const MODES: AttendanceMode[] = ['inPerson', 'online', 'mixed']
-const INTERVALS = [1, 2, 3, 4]
+const MONTH_DAYS = Array.from({ length: 31 }, (_, i) => i + 1)
+const ORDINAL_KEYS = {
+  1: 'ordinalFirst',
+  2: 'ordinalSecond',
+  3: 'ordinalThird',
+  4: 'ordinalFourth',
+  [-1]: 'ordinalLast',
+} as const
 
-function initialDraft(cls: ClassView | null, site: ScheduleSite, editions: EditionView[], defaultEditionId: string): Draft {
+/** The form's starting values; `adjusted` when a stored date did not fit the class days and moved. */
+function initialDraft(cls: ClassView | null, site: ScheduleSite, editions: EditionView[], defaultEditionId: string): { draft: Draft; adjusted: boolean } {
   if (cls) {
+    const repeat = repeatDraftOf(cls.repeat, cls.startsOn ?? '')
+    const rule = ruleOfDraft(repeat)
+    const snap = rule
+      ? snapDates(rule, cls.startsOn ?? '', cls.endsOn ?? '')
+      : {
+          startsOn: cls.startsOn ?? '',
+          endsOn: cls.endsOn ?? '',
+          adjusted: false,
+        }
     return {
-      weekday: cls.weekday,
-      startTime: cls.startTime,
-      endTime: cls.endTime ?? '',
-      interval: cls.interval,
-      placeToken: cls.placeToken,
-      instructors: cls.instructors,
-      languages: cls.languages,
-      mode: cls.attendanceMode,
-      meetingRoomId: cls.meetingRoomId ?? '',
-      editionId: cls.editionId ?? '',
-      startsOn: cls.startsOn ?? '',
-      endsOn: cls.endsOn ?? '',
+      adjusted: snap.adjusted,
+      draft: {
+        ...repeat,
+        startTime: cls.startTime,
+        endTime: cls.endTime ?? '',
+        placeToken: cls.placeToken,
+        instructors: cls.instructors,
+        languages: cls.languages,
+        mode: cls.attendanceMode,
+        meetingRoomId: cls.meetingRoomId ?? '',
+        editionId: cls.editionId ?? '',
+        startsOn: snap.startsOn,
+        endsOn: snap.endsOn,
+      },
     }
   }
   const today = todayIn(editingZone(site.timeZone))
   const edition = editions.find((e) => e.id === defaultEditionId)
+  const startsOn = defaultStartsOn(edition, today)
   return {
-    weekday: 1,
-    startTime: '18:00',
-    endTime: '19:00',
-    interval: 1,
-    placeToken: '',
-    instructors: [],
-    languages: classLanguages([site.defaultLocale]),
-    mode: 'inPerson',
-    meetingRoomId: '',
-    editionId: defaultEditionId,
-    startsOn: defaultStartsOn(edition, today),
-    endsOn: '',
+    adjusted: false,
+    draft: {
+      ...repeatDraftOf({ kind: 'weekly', weekdays: [weekdayNumber(startsOn)], interval: 1 }, startsOn),
+      startTime: '18:00',
+      endTime: '19:00',
+      placeToken: '',
+      instructors: [],
+      languages: classLanguages([site.defaultLocale]),
+      mode: 'inPerson',
+      meetingRoomId: '',
+      editionId: defaultEditionId,
+      startsOn,
+      endsOn: '',
+    },
   }
 }
+
+/** 1 = Monday … 7 = Sunday of an ISO day. */
+const weekdayNumber = (day: string) => ((new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7) + 1
 
 export type ClassSheetState = { key: number; cls: ClassView | null }
 
@@ -156,22 +196,42 @@ function ClassForm({
   const t = useTranslations('clientDashboard.courses.classes')
   const errorText = useScheduleErrorText()
   const { weekdayName, languageName, interval } = useScheduleFormat()
-  const [d, setD] = useState<Draft>(() => initialDraft(cls, site, editions, defaultEditionId))
+  const [start] = useState(() => initialDraft(cls, site, editions, defaultEditionId))
+  const [d, setD] = useState<Draft>(start.draft)
+  const [adjusted, setAdjusted] = useState(start.adjusted)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const set = (patch: Partial<Draft>) => setD((prev) => ({ ...prev, ...patch }))
+  /** Applies a change; when the days of the class changed, the dates move to the days that still fit (and the form says so). */
+  const set = (patch: Partial<Draft>) => {
+    const next = { ...d, ...patch }
+    // A newly chosen term: a first date outside it moves to the term's start (then to the next class day).
+    const newTerm = 'editionId' in patch ? editions.find((e) => e.id === next.editionId) : undefined
+    if (newTerm && next.startsOn && (next.startsOn < newTerm.startsOn || next.startsOn > newTerm.endsOn)) next.startsOn = newTerm.startsOn
+    const rule = ruleOfDraft(next)
+    if (rule) {
+      const snap = snapDates(rule, next.startsOn, next.endsOn, 'startsOn' in patch && !newTerm)
+      next.startsOn = snap.startsOn
+      next.endsOn = snap.endsOn
+      if (snap.adjusted) setAdjusted(true)
+    }
+    setD(next)
+  }
+  const rule = ruleOfDraft(d)
+  const once = d.kind === 'once'
   const disabled = !canEdit || busy
   const languages = classLanguages(site.languages)
   // A stored language that is not a site language stays visible, so editing never drops it silently.
   const languageOptions = [...new Set([...languages, ...d.languages])]
   const ordered = timesOrdered(d.startTime, d.endTime)
-  const datesOk = !!d.startsOn && (!d.endsOn || d.endsOn >= d.startsOn)
+  const term = editions.find((e) => e.id === d.editionId)
+  const outsideTerm = !!term && !!d.startsOn && (d.startsOn < term.startsOn || d.startsOn > term.endsOn)
+  const datesOk = !outsideTerm && !!rule && !!d.startsOn && canStartOn(rule, d.startsOn) && (once || !d.endsOn || canEndOn(rule, d.endsOn, d.startsOn))
   const needsRoom = d.mode !== 'inPerson'
   const placeKnown = !d.placeToken || places.some((p) => p.token === d.placeToken)
   const editionLabel = (e: EditionView) => textOf(e.label, site.defaultLocale) || e.startsOn
 
   async function save() {
-    if (!canEdit || busy) return
+    if (!canEdit || busy || !rule) return
     setBusy(true)
     setError(null)
     const r = await saveClassAction({
@@ -180,12 +240,11 @@ function ClassForm({
         seriesId: cls?.id ?? null,
         courseId,
         editionId: d.editionId || null,
-        weekday: d.weekday,
-        interval: d.interval,
+        repeat: rule ?? undefined,
         startTime: d.startTime,
         endTime: d.endTime || null,
         startsOn: d.startsOn,
-        endsOn: d.endsOn || null,
+        endsOn: once ? null : d.endsOn || null,
         placeToken: d.placeToken,
         attendanceMode: d.mode,
         instructorPublicIds: d.instructors.map((p) => p.publicId),
@@ -214,28 +273,85 @@ function ClassForm({
       {!canEdit ? <Notice tone="info">{t('sheet.readOnly')}</Notice> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('sheet.weekday')}>
-          {(p) => (
-            <Select {...p} value={String(d.weekday)} disabled={disabled} onChange={(e) => set({ weekday: Number(e.target.value) })}>
-              {WEEKDAYS.map((n) => (
-                <option key={n} value={n}>
-                  {weekdayName(n)}
-                </option>
-              ))}
-            </Select>
-          )}
-        </Field>
         <Field label={t('sheet.repeat')}>
           {(p) => (
-            <Select {...p} value={String(d.interval)} disabled={disabled} onChange={(e) => set({ interval: Number(e.target.value) })}>
-              {INTERVALS.map((n) => (
-                <option key={n} value={n}>
-                  {interval(n)}
+            <Select {...p} value={repeatKeyOf(d)} disabled={disabled} onChange={(e) => set(applyRepeatKey(d, e.target.value))}>
+              {repeatKeys(d).map((key) => (
+                <option key={key} value={key}>
+                  {key === 'once'
+                    ? t('sheet.repeatOnce')
+                    : key === 'monthlyWeekday'
+                      ? t('sheet.repeatMonthlyWeekday')
+                      : key === 'monthlyDay'
+                        ? t('sheet.repeatMonthlyDay')
+                        : interval(Number(key.slice(7)))}
                 </option>
               ))}
             </Select>
           )}
         </Field>
+        {d.kind === 'monthlyDay' ? (
+          <Field label={t('sheet.monthDay')} hint={t('sheet.monthDayHint')} hintBelow>
+            {(p) => (
+              <Select {...p} value={String(d.monthDay)} disabled={disabled} onChange={(e) => set({ monthDay: Number(e.target.value) })}>
+                {MONTH_DAYS.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        ) : null}
+        {d.kind === 'monthlyWeekday' ? (
+          <>
+            <Field label={t('sheet.ordinal')}>
+              {(p) => (
+                <Select {...p} value={String(d.ordinal)} disabled={disabled} onChange={(e) => set({ ordinal: Number(e.target.value) as Draft['ordinal'] })}>
+                  {ORDINAL_OPTIONS.map((o) => (
+                    <option key={o} value={o}>
+                      {t(`sheet.${ORDINAL_KEYS[o]}`)}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+            <Field label={t('sheet.weekday')}>
+              {(p) => (
+                <Select {...p} value={String(d.monthWeekday)} disabled={disabled} onChange={(e) => set({ monthWeekday: Number(e.target.value) })}>
+                  {WEEKDAYS.map((n) => (
+                    <option key={n} value={n}>
+                      {weekdayName(n)}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+          </>
+        ) : null}
+      </div>
+
+      {d.kind === 'weekly' ? (
+        <div className="space-y-2">
+          <p className="text-[0.9375rem] font-medium text-foreground">{t('sheet.days')}</p>
+          <ToggleChips
+            label={t('sheet.days')}
+            options={WEEKDAYS.map((n) => ({
+              value: String(n),
+              label: weekdayName(n, 'short'),
+            }))}
+            value={d.weekdays.map(String)}
+            onChange={(next) =>
+              set({
+                weekdays: disabled ? d.weekdays : next.map(Number).sort((a, b) => a - b),
+              })
+            }
+          />
+          {d.weekdays.length === 0 ? <p className="text-sm leading-5 text-destructive">{t('sheet.daysNeeded')}</p> : null}
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t('sheet.from')}>
           {(p) => (
             <Select {...p} value={d.startTime} disabled={disabled} onChange={(e) => set({ startTime: e.target.value })}>
@@ -275,14 +391,28 @@ function ClassForm({
         )}
       </Field>
 
-      <TeacherField projectSlug={projectSlug} label={t('sheet.teachers')} value={d.instructors} onChange={(instructors) => set({ instructors })} disabled={disabled} />
+      <TeacherField
+        projectSlug={projectSlug}
+        label={t('sheet.teachers')}
+        labels={{
+          empty: t('sheet.teachersEmpty'),
+          add: t('sheet.teachersAdd'),
+          title: t('sheet.teachersTitle'),
+        }}
+        value={d.instructors}
+        onChange={(instructors) => set({ instructors })}
+        disabled={disabled}
+      />
 
       {languageOptions.length ? (
         <div className="space-y-2">
           <p className="text-[0.9375rem] font-medium text-foreground">{t('sheet.languages')}</p>
           <ToggleChips
             label={t('sheet.languages')}
-            options={languageOptions.map((l) => ({ value: l, label: languageName(l) }))}
+            options={languageOptions.map((l) => ({
+              value: l,
+              label: languageName(l),
+            }))}
             value={d.languages}
             onChange={(next) => set({ languages: disabled ? d.languages : next })}
           />
@@ -296,7 +426,11 @@ function ClassForm({
           appearance="soft"
           value={d.mode}
           onChange={(mode: AttendanceMode) => set({ mode })}
-          options={MODES.map((m) => ({ value: m, label: t(`mode.${m}`), disabled }))}
+          options={MODES.map((m) => ({
+            value: m,
+            label: t(`mode.${m}`),
+            disabled,
+          }))}
         />
       </div>
 
@@ -329,13 +463,39 @@ function ClassForm({
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('sheet.startsOn')} hint={t('sheet.startsOnHint')} hintBelow>
-          {(p) => <DatePicker {...p} value={d.startsOn} disabled={disabled} onChange={(startsOn) => set({ startsOn })} title={t('sheet.startsOn')} />}
+        <Field label={once ? t('sheet.onDate') : t('sheet.startsOn')} hint={once ? undefined : t('sheet.startsOnHint')} hintBelow error={outsideTerm ? t('errors.outsideTerm') : undefined}>
+          {(p) => (
+            <DatePicker
+              {...p}
+              value={d.startsOn}
+              min={term?.startsOn}
+              max={term?.endsOn}
+              disabled={disabled}
+              isDisabled={rule ? (day) => !canStartOn(rule, day) : undefined}
+              onChange={(startsOn) => set({ startsOn })}
+              title={once ? t('sheet.onDate') : t('sheet.startsOn')}
+            />
+          )}
         </Field>
-        <Field label={t('sheet.endsOn')} hint={t('sheet.endsOnHint')} hintBelow error={!d.endsOn || d.endsOn >= d.startsOn ? undefined : t('sheet.endBeforeStartDay')}>
-          {(p) => <DatePicker {...p} value={d.endsOn} min={d.startsOn || undefined} clearable disabled={disabled} onChange={(endsOn) => set({ endsOn })} title={t('sheet.endsOn')} placeholder={t('sheet.noEndDate')} />}
-        </Field>
+        {once ? null : (
+          <Field label={t('sheet.endsOn')} hint={t('sheet.endsOnHint')} hintBelow error={!d.endsOn || d.endsOn >= d.startsOn ? undefined : t('sheet.endBeforeStartDay')}>
+            {(p) => (
+              <DatePicker
+                {...p}
+                value={d.endsOn}
+                min={d.startsOn || undefined}
+                isDisabled={rule && d.startsOn ? (day) => !canEndOn(rule, day, d.startsOn) : undefined}
+                clearable
+                disabled={disabled}
+                onChange={(endsOn) => set({ endsOn })}
+                title={t('sheet.endsOn')}
+                placeholder={t('sheet.noEndDate')}
+              />
+            )}
+          </Field>
+        )}
       </div>
+      {adjusted ? <Notice tone="info">{t('sheet.datesAdjusted')}</Notice> : null}
 
       {error ? <Notice tone="error">{error}</Notice> : null}
 

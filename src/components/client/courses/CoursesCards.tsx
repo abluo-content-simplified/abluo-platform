@@ -44,7 +44,7 @@ export function CoursesCardsGrid({ rows, onOpen, menuFor }: CardProps) {
             overlay={<CardMenu variant="chip" label={t('menu', { name: c.title })} items={menuFor(c)} />}
           >
             <span className="flex flex-wrap items-start gap-1.5">
-              <CourseStateBadge state={c.state} />
+              <CourseStateBadge state={c.state} publishedAt={c.publishedAt} zone={c.zone} />
             </span>
             <MissingPills languages={c.missingLanguages} state={c.state} />
             <p className="text-sm leading-5 text-muted-foreground">
@@ -73,7 +73,7 @@ export function CoursesPhoneList({ rows, menuFor }: Pick<CardProps, 'rows' | 'me
           <span className="line-clamp-2 text-[0.9375rem] leading-[1.375rem] font-semibold text-foreground">{c.title || t('untitled')}</span>
           {c.shortDescription ? <span className="line-clamp-2 text-sm leading-5 text-foreground">{c.shortDescription}</span> : null}
           <span className="flex flex-wrap items-start gap-1.5">
-            <CourseStateBadge state={c.state} />
+            <CourseStateBadge state={c.state} publishedAt={c.publishedAt} zone={c.zone} />
           </span>
           <MissingPills languages={c.missingLanguages} state={c.state} />
           <span className="text-sm leading-5 text-muted-foreground">{classesText(c.schedule)}</span>

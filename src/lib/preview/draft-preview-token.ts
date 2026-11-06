@@ -19,8 +19,8 @@ export const PREVIEW_TOKEN_TTL_SECONDS = 15 * 60
 /** Clock skew tolerated between the minting and the rendering server. */
 const SKEW_SECONDS = 60
 
-/** What a token previews: a blog post draft, or a gallery draft (optionally inside one page). */
-export type DraftPreviewKind = 'post' | 'gallery' | 'person'
+/** What a token previews: a blog post draft, a gallery draft (optionally inside one page), a person, or a course. */
+export type DraftPreviewKind = 'post' | 'gallery' | 'person' | 'course'
 
 export type DraftPreviewClaims = {
   /** Public document id (no `drafts.` prefix): the post, or the gallery. */
@@ -37,7 +37,7 @@ export type DraftPreviewClaims = {
   exp: number
 }
 
-type Payload = { v: 1; d: string; p: string; u: string; e: number; k?: 'g' | 'p'; pg?: string }
+type Payload = { v: 1; d: string; p: string; u: string; e: number; k?: 'g' | 'p' | 'c'; pg?: string }
 
 const b64 = (buf: Buffer) => buf.toString('base64url')
 
@@ -69,6 +69,7 @@ export function signDraftPreviewToken(
     e: exp,
     ...(claims.kind === 'gallery' && { k: 'g' as const }),
     ...(claims.kind === 'person' && { k: 'p' as const }),
+    ...(claims.kind === 'course' && { k: 'c' as const }),
     ...(claims.kind === 'gallery' && claims.pageId && { pg: claims.pageId }),
   }
   const body = b64(Buffer.from(JSON.stringify(payload), 'utf8'))
@@ -99,14 +100,14 @@ export function verifyDraftPreviewToken(
     // A token can never live longer than the TTL, even if a key leaked into a
     // minting bug: reject anything expiring further out than mint could set.
     if (p.e > now + PREVIEW_TOKEN_TTL_SECONDS + SKEW_SECONDS) return null
-    if (p.k !== undefined && p.k !== 'g' && p.k !== 'p') return null
+    if (p.k !== undefined && p.k !== 'g' && p.k !== 'p' && p.k !== 'c') return null
     if (p.pg !== undefined && (p.k !== 'g' || typeof p.pg !== 'string' || !p.pg)) return null
     return {
       draftId: p.d,
       projectSlug: p.p,
       userId: p.u,
       exp: p.e,
-      kind: p.k === 'g' ? 'gallery' : p.k === 'p' ? 'person' : 'post',
+      kind: p.k === 'g' ? 'gallery' : p.k === 'p' ? 'person' : p.k === 'c' ? 'course' : 'post',
       pageId: typeof p.pg === 'string' ? p.pg : null,
     }
   } catch {

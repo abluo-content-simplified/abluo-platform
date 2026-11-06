@@ -18,7 +18,10 @@ import {
   publishCourseDraft,
   runCourseLifecycle,
   saveCourseDraft,
+  setCoursePublishDate,
+  unscheduleCourse,
 } from '../course-drafts'
+import type { PlacementInfo } from '@/lib/modules/courses/placement'
 import { COURSE_DELETE_REFERRERS, CourseError } from '../course-lifecycle'
 import { TenantAuthorizationError } from '../tenant-scoped-sanity'
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
@@ -58,7 +61,10 @@ const docsWithDraftOnly = (): Docs => {
   return d
 }
 
-type Opts = { docs?: Docs; deleteRefs?: Array<{ _id: string; _type: string; label?: unknown }>; commitError?: unknown; count?: number }
+const PLACED: PlacementInfo = { origin: 'https://www.cyce.info', defaultLocale: 'fr', pages: [{ id: 'p1', pageType: 'services', slugs: { fr: 'horaires' }, open: true, timetables: [{ courseScope: 'all', courseIds: [] }] }] }
+const NO_PAGE: PlacementInfo = { ...PLACED, pages: [] }
+
+type Opts = { docs?: Docs; deleteRefs?: Array<{ _id: string; _type: string; label?: unknown }>; commitError?: unknown; count?: number; placement?: PlacementInfo }
 
 function fake(opts: Opts = {}, hasSchedule: (publicId: string, projectId: string) => Promise<boolean> = async () => false) {
   const docs = opts.docs ?? docsWithDraftOnly()
@@ -98,6 +104,11 @@ function fake(opts: Opts = {}, hasSchedule: (publicId: string, projectId: string
     if (q.includes('count(*[_type == "project"')) return 1
     if (q.includes('_type == "siteConfig"')) return { defaultLocale: 'fr', supportedLocales: ['fr', 'en', 'de'] }
     if (q === COURSE_DELETE_REFERRERS) return opts.deleteRefs ?? []
+    if (q.includes('_type == "mediaAsset"')) {
+      // Media Library: only this website's assets (`asset-*`) exist.
+      if (p.projectSlug !== 'cyce' || !String(p.id).startsWith('asset-')) return null
+      return q.includes('[0]._id') ? p.id : { url: 'https://cdn.example/x.jpg', alt: { _type: 'localizedString', fr: 'Une salle' } }
+    }
     if (q.startsWith('count(*[_type == "course"')) return opts.count ?? 3
     if (q === COURSE_LIST_QUERY) return Object.values(docs).filter((d) => d._type === 'course' && d.projectSlug === p.projectSlug)
     throw new Error(`unexpected query ${q}`)
@@ -118,6 +129,7 @@ function fake(opts: Opts = {}, hasSchedule: (publicId: string, projectId: string
       uuid: () => 'new-course',
       publicUuid: () => '66666666-6666-4666-8666-666666666666',
       now: () => new Date('2026-11-04T10:00:00Z'),
+      placement: vi.fn(async () => opts.placement ?? PLACED),
       audit,
       hasSchedule: hasScheduleFn,
     },
@@ -194,7 +206,7 @@ describe('cross-project — ids cannot be probed', () => {
 describe('list and get', () => {
   it('shows the draft’s title in the default language, the state, and no schedule until scheduling is wired', async () => {
     const { courses, site } = await listCourses(ctx(viewer()), PID, fake().deps)
-    expect(site).toEqual({ defaultLocale: 'fr', languages: ['fr', 'en', 'de'] })
+    expect(site).toEqual({ defaultLocale: 'fr', languages: ['fr', 'en', 'de'], timeZone: null })
     const iy = courses.find((x) => x.id === 'iyengar')!
     expect(iy).toMatchObject({ title: 'Yoga Iyengar', shortDescription: 'Pour tous', state: 'changes', hasDraft: true, isPublished: true, color: 'accent', schedule: null, publicId: PUB })
     expect(iy.missingLanguages).toEqual(['en', 'de'])
@@ -268,6 +280,29 @@ describe('open and save a draft', () => {
     expect(f.patchOps).toContainEqual(['setIfMissing', { title: { _type: 'localizedString' }, shortDescription: { _type: 'localizedText' } }])
   })
 
+  it('the image is a Media Library reference of this website: set, removed, or refused before any write', async () => {
+    const f = fake()
+    await saveCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', set: { image: 'asset-1' } }, f.deps)
+    expect(f.patchOps).toContainEqual(['set', { image: { _type: 'reference', _ref: 'asset-1' } }])
+    const g = fake()
+    await saveCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', set: { image: null } }, g.deps)
+    expect(g.patchOps).toContainEqual(['unset', ['image']])
+    const h = fake()
+    for (const image of ['other-site-asset', '../x', 42]) {
+      await expect(saveCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', set: { image } }, h.deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    }
+    expect(h.client.patch).not.toHaveBeenCalled()
+  })
+
+  it('the editor snapshot carries the image of this website (url and description), never a foreign one', async () => {
+    const docs = docsWithDraftOnly()
+    docs['drafts.iyengar'].image = { _type: 'reference', _ref: 'asset-1' }
+    const snap = await getCourseForEdit(ctx(editor()), PID, 'iyengar', fake({ docs }).deps)
+    expect(snap.image).toEqual({ assetId: 'asset-1', url: 'https://cdn.example/x.jpg', alt: { fr: 'Une salle' } })
+    docs['drafts.iyengar'].image = { _type: 'reference', _ref: 'foreign-asset' }
+    expect((await getCourseForEdit(ctx(editor()), PID, 'iyengar', fake({ docs }).deps)).image).toBeNull()
+  })
+
   it('a cleared text is removed (incomplete drafts always save)', async () => {
     const f = fake()
     await saveCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', set: { 'title.fr': '  ' } }, f.deps)
@@ -333,6 +368,177 @@ describe('publish and discard', () => {
     await expect(discardCourseDraft(ctx(editor()), PID, { id: 'draftonly', rev: 'o1' }, f.deps)).rejects.toMatchObject({ code: 'invalid_value' })
     await discardCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1' }, f.deps)
     expect(f.txOps.filter(([k]) => k === 'delete').map(([, v]) => v)).toEqual(['drafts.iyengar'])
+  })
+})
+
+// ── Publish = online · dates ──────────────────────────────────────────────────
+
+const FUTURE = '2026-12-01T09:00:00Z'
+const replacedDoc = (f: ReturnType<typeof fake>) => (f.txOps.find(([k]) => k === 'createOrReplace' || k === 'create')![1] as Record<string, unknown>)
+const scheduledDocs = (withDraft: boolean): Docs => {
+  const d = baseDocs()
+  d.iyengar = { ...d.iyengar, publishedAt: FUTURE }
+  if (!withDraft) delete d['drafts.iyengar']
+  return d
+}
+
+describe('publish = online: a timetable must show the course', () => {
+  it('a never-published course goes online now (publishedAt = now) when a timetable shows it', async () => {
+    const f = fake()
+    const r = await publishCourseDraft(ctx(editor()), PID, { id: 'draftonly', rev: 'o1', mode: 'now' }, f.deps)
+    expect(replacedDoc(f).publishedAt).toBe('2026-11-04T10:00:00.000Z')
+    expect(r.publishedAt).toBe('2026-11-04T10:00:00.000Z')
+    expect(f.deps.placement).toHaveBeenCalledWith('cyce')
+  })
+
+  it('refuses with no_timetable_page — before anything is written — when no published page would show it', async () => {
+    const f = fake({ placement: NO_PAGE })
+    await expect(publishCourseDraft(ctx(editor()), PID, { id: 'draftonly', rev: 'o1', mode: 'now' }, f.deps)).rejects.toMatchObject({ code: 'no_timetable_page' })
+    await expect(publishCourseDraft(ctx(editor()), PID, { id: 'draftonly', rev: 'o1', mode: 'schedule', publishAt: '2027-01-10T09:00:00Z' }, f.deps)).rejects.toMatchObject({ code: 'no_timetable_page' })
+    expect(f.writes).toEqual([])
+  })
+
+  it('a section that picks other courses does not count; one that picks this course does', async () => {
+    const others: PlacementInfo = { ...PLACED, pages: [{ ...PLACED.pages[0], timetables: [{ courseScope: 'pick', courseIds: ['other'] }] }] }
+    await expect(publishCourseDraft(ctx(editor()), PID, { id: 'draftonly', rev: 'o1', mode: 'now' }, fake({ placement: others }).deps)).rejects.toMatchObject({ code: 'no_timetable_page' })
+    const mine: PlacementInfo = { ...PLACED, pages: [{ ...PLACED.pages[0], timetables: [{ courseScope: 'pick', courseIds: ['draftonly'] }] }] }
+    await expect(publishCourseDraft(ctx(editor()), PID, { id: 'draftonly', rev: 'o1', mode: 'now' }, fake({ placement: mine }).deps)).resolves.toBeDefined()
+  })
+
+  it('a failing website read refuses (failed), never publishes blind', async () => {
+    const f = fake()
+    f.deps.placement.mockRejectedValueOnce(new Error('sanity down'))
+    await expect(publishCourseDraft(ctx(editor()), PID, { id: 'draftonly', rev: 'o1', mode: 'now' }, f.deps)).rejects.toMatchObject({ code: 'failed' })
+    expect(f.writes).toEqual([])
+  })
+
+  it('updating a course that is already published needs no check and keeps its date (none = visible)', async () => {
+    const f = fake({ placement: NO_PAGE })
+    const r = await publishCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1' }, f.deps)
+    expect(f.deps.placement).not.toHaveBeenCalled()
+    expect(replacedDoc(f)).not.toHaveProperty('publishedAt')
+    expect(r.publishedAt).toBeNull()
+    expect(f.audit).not.toHaveBeenCalled() // a content update is not a lifecycle event
+  })
+
+  it('"now" on a live course keeps its original date', async () => {
+    const docs = baseDocs()
+    docs.iyengar = { ...docs.iyengar, publishedAt: '2026-10-01T08:00:00Z' }
+    const f = fake({ docs })
+    await publishCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', mode: 'now' }, f.deps)
+    expect(replacedDoc(f).publishedAt).toBe('2026-10-01T08:00:00Z')
+  })
+})
+
+describe('Publish on… (schedule)', () => {
+  it('publishes with a future publishedAt and records "scheduled"', async () => {
+    const f = fake()
+    const r = await publishCourseDraft(ctx(editor()), PID, { id: 'draftonly', rev: 'o1', mode: 'schedule', publishAt: '2026-12-01T09:00:00+01:00' }, f.deps)
+    expect(replacedDoc(f).publishedAt).toBe('2026-12-01T08:00:00.000Z')
+    expect(r.publishedAt).toBe('2026-12-01T08:00:00.000Z')
+    expect(f.audit).toHaveBeenCalledWith(expect.objectContaining({ action: 'scheduled' }))
+  })
+
+  it('refuses a missing, malformed, past or more than two years away date (invalid_schedule) before any read', async () => {
+    const f = fake()
+    for (const publishAt of [undefined, 'tomorrow', '2026-11-04T09:00:00Z', '2026-11-04T10:00:00Z', '2029-01-01T00:00:00Z']) {
+      await expect(publishCourseDraft(ctx(editor()), PID, { id: 'draftonly', rev: 'o1', mode: 'schedule', publishAt }, f.deps)).rejects.toMatchObject({ code: 'invalid_schedule' })
+    }
+    expect(f.client.getDocument).not.toHaveBeenCalled()
+    expect(f.writes).toEqual([])
+  })
+
+  it('never moves a live course into the future (that would take it offline)', async () => {
+    const f = fake()
+    await expect(publishCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', mode: 'schedule', publishAt: '2026-12-01T09:00:00Z' }, f.deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    expect(f.writes).toEqual([])
+  })
+
+  it('refuses an unknown mode', async () => {
+    await expect(publishCourseDraft(ctx(editor()), PID, { id: 'draftonly', rev: 'o1', mode: 'later' as never }, fake().deps)).rejects.toMatchObject({ code: 'invalid_value' })
+  })
+
+  it('a scheduled course is "scheduled" in the list and when opened; with a draft it stays scheduled', async () => {
+    const f = fake({ docs: scheduledDocs(true) })
+    const list = await listCourses(ctx(viewer()), PID, f.deps)
+    expect(list.courses.find((c) => c.id === 'iyengar')).toMatchObject({ state: 'scheduled', publishedAt: FUTURE, hasDraft: true })
+    expect(await getCourseForEdit(ctx(viewer()), PID, 'iyengar', f.deps)).toMatchObject({ state: 'scheduled', publishedAt: FUTURE })
+    // once the date has passed it is simply published
+    const later = await getCourseForEdit(ctx(viewer()), PID, 'iyengar', { ...f.deps, now: () => new Date('2026-12-02T00:00:00Z') })
+    expect(later.state).toBe('changes')
+  })
+
+  it('"keep" updates a scheduled course without moving its date', async () => {
+    const f = fake({ docs: scheduledDocs(true) })
+    const r = await publishCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', mode: 'keep' }, f.deps)
+    expect(replacedDoc(f).publishedAt).toBe(FUTURE)
+    expect(r.publishedAt).toBe(FUTURE)
+  })
+
+  it('"now" on a scheduled course puts it online now (the check applies)', async () => {
+    const f = fake({ docs: scheduledDocs(true) })
+    await publishCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', mode: 'now' }, f.deps)
+    expect(replacedDoc(f).publishedAt).toBe('2026-11-04T10:00:00.000Z')
+    await expect(publishCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', mode: 'now' }, fake({ docs: scheduledDocs(true), placement: NO_PAGE }).deps)).rejects.toMatchObject({ code: 'no_timetable_page' })
+  })
+
+  it('an open draft never carries the publication date over from the published course', async () => {
+    const f = fake({ docs: scheduledDocs(false) })
+    await openCourseForEdit(ctx(editor()), PID, { id: 'iyengar' }, f.deps)
+    expect(f.created[0]).not.toHaveProperty('publishedAt')
+  })
+})
+
+describe('change the date · publish now instead · back to draft', () => {
+  it('changes the go-live date of a scheduled course on both versions, without publishing the draft', async () => {
+    const f = fake({ docs: scheduledDocs(true) })
+    const r = await setCoursePublishDate(ctx(editor()), PID, { id: 'iyengar', mode: 'schedule', publishAt: '2026-12-15T09:00:00Z' }, f.deps)
+    expect(r.publishedAt).toBe('2026-12-15T09:00:00.000Z')
+    const patched = f.txOps.filter(([k]) => k === 'patch').map(([, v]) => v as [string, { set?: Record<string, unknown> }])
+    expect(patched.map(([id]) => id).sort()).toEqual(['drafts.iyengar', 'iyengar'])
+    expect(patched.every(([, v]) => v.set?.publishedAt === '2026-12-15T09:00:00.000Z')).toBe(true)
+    expect(f.txOps.some(([k]) => k === 'createOrReplace' || k === 'delete')).toBe(false)
+  })
+
+  it('"now" puts it online at once; both need a timetable, a valid date and a scheduled course', async () => {
+    const f = fake({ docs: scheduledDocs(false) })
+    expect((await setCoursePublishDate(ctx(editor()), PID, { id: 'iyengar', mode: 'now' }, f.deps)).publishedAt).toBe('2026-11-04T10:00:00.000Z')
+    await expect(setCoursePublishDate(ctx(editor()), PID, { id: 'iyengar', mode: 'now' }, fake({ docs: scheduledDocs(false), placement: NO_PAGE }).deps)).rejects.toMatchObject({ code: 'no_timetable_page' })
+    await expect(setCoursePublishDate(ctx(editor()), PID, { id: 'iyengar', mode: 'schedule', publishAt: '2026-10-01T09:00:00Z' }, fake({ docs: scheduledDocs(false) }).deps)).rejects.toMatchObject({ code: 'invalid_schedule' })
+    // a live course cannot be re-dated (it would go offline); a never-published one has no date to change
+    await expect(setCoursePublishDate(ctx(editor()), PID, { id: 'iyengar', mode: 'schedule', publishAt: '2026-12-15T09:00:00Z' }, fake().deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(setCoursePublishDate(ctx(editor()), PID, { id: 'draftonly', mode: 'now' }, fake().deps)).rejects.toMatchObject({ code: 'invalid_value' })
+  })
+
+  it('back to draft removes the scheduled version and keeps the draft (or makes one from it)', async () => {
+    const withDraft = fake({ docs: scheduledDocs(true) })
+    await unscheduleCourse(ctx(editor()), PID, { id: 'iyengar' }, withDraft.deps)
+    expect(withDraft.txOps.filter(([k]) => k === 'delete').map(([, v]) => v)).toEqual(['iyengar'])
+    expect(withDraft.txOps.some(([k]) => k === 'create')).toBe(false)
+
+    const alone = fake({ docs: scheduledDocs(false) })
+    await unscheduleCourse(ctx(editor()), PID, { id: 'iyengar' }, alone.deps)
+    expect(alone.txOps.filter(([k]) => k === 'delete').map(([, v]) => v)).toEqual(['iyengar'])
+    const copy = alone.txOps.find(([k]) => k === 'create')![1] as Record<string, unknown>
+    expect(copy).toMatchObject({ _id: 'drafts.iyengar', _type: 'course', projectSlug: 'cyce', publicId: PUB, title: { fr: 'Iyengar Yoga' } })
+    expect(copy).not.toHaveProperty('publishedAt')
+    expect(copy).not.toHaveProperty('_rev')
+    expect(alone.audit).toHaveBeenCalledWith(expect.objectContaining({ action: 'unpublished' }))
+  })
+
+  it('back to draft only works on a scheduled course', async () => {
+    await expect(unscheduleCourse(ctx(editor()), PID, { id: 'iyengar' }, fake().deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(unscheduleCourse(ctx(editor()), PID, { id: 'draftonly' }, fake().deps)).rejects.toMatchObject({ code: 'invalid_value' })
+  })
+
+  it('a scheduled course cannot be archived (it goes back to draft instead); viewers cannot change dates', async () => {
+    await expect(runCourseLifecycle(ctx(editor()), PID, { id: 'iyengar', op: 'archive' }, fake({ docs: scheduledDocs(true) }).deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    for (const call of [
+      () => setCoursePublishDate(ctx(viewer()), PID, { id: 'iyengar', mode: 'now' }, fake({ docs: scheduledDocs(true) }).deps),
+      () => unscheduleCourse(ctx(viewer()), PID, { id: 'iyengar' }, fake({ docs: scheduledDocs(true) }).deps),
+    ]) {
+      await expect(call()).rejects.toBeInstanceOf(TenantAuthorizationError)
+    }
   })
 })
 

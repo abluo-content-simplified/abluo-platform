@@ -59,6 +59,14 @@ const courseType = defineType({
       options: { list: COURSE_COLORS.map((c) => ({ title: c === 'none' ? 'None' : c === 'accent' ? 'Accent' : 'Muted', value: c })), layout: 'radio' },
       description: 'How the course is marked in the timetable. Only design-system colours.',
     }),
+    defineField({
+      name: 'image',
+      title: 'Image',
+      type: 'reference',
+      to: [{ type: 'mediaAsset' }],
+      group: 'content',
+      description: 'Optional. A Media Library image shown in the class details on the website. Its focal point is set there, once.',
+    }),
     // ADR-032 D1 — archive only, no publication window. Written by the dashboard's Archive / Restore.
     ...archivedFields(),
   ],
@@ -149,6 +157,14 @@ const timetableSectionType = defineType({
       initialValue: false,
       description:
         'Shows the join link, meeting number and passcode of online classes. Only works on a page that is protected by Access and only for signed-in members; on a public page nothing is shown, whatever this says.',
+    }),
+    defineField({
+      name: 'showCourseDescriptions',
+      title: 'Add an "About the courses" page to the printout',
+      type: 'boolean',
+      initialValue: false,
+      description: 'A second printed page with each course shown in the month and its description.',
+      hidden: ({ parent }) => (parent as { showPrintButton?: boolean } | undefined)?.showPrintButton === false,
     }),
     defineField({
       name: 'showPrintButton',

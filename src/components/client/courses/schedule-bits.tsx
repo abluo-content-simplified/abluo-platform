@@ -6,9 +6,10 @@ import { formatDateTime } from '@/lib/i18n/date-locale'
 import { useDateLocale } from '@/lib/i18n/date-locale-context'
 import { searchTeachersAction, type ScheduleActionError } from '@/app/[locale]/(client)/[tenant]/courses/schedule-actions'
 import type { ClassView, PersonRef, PlaceOption } from '@/lib/api/course-schedule'
+import { describeClassRepeat } from '@/lib/scheduling/repeat-label'
 import type { AttendanceMode } from '@/lib/scheduling/types'
 import { Field } from '@/components/app/ui/Field'
-import { PersonPicker, type PersonPickerPerson } from '@/components/app/ui/PersonPicker'
+import { PersonPicker, type PersonPickerLabels, type PersonPickerPerson } from '@/components/app/ui/PersonPicker'
 import { Pill, type PillTone } from '@/components/app/ui/list/cells'
 import { TextInput } from '@/components/app/ui/TextInput'
 
@@ -61,6 +62,7 @@ export function useScheduleErrorText() {
   return useCallback(
     (code: ScheduleActionError): string => {
       if (code === 'in_use') return t('inUse')
+      if (code === 'outside_term') return t('outsideTerm')
       if (code === 'missing_title') return t('missingName')
       if (code === 'unauthenticated' || code === 'forbidden') return te('forbidden')
       return te(code)
@@ -78,12 +80,15 @@ export function placeName(places: PlaceOption[], token: string): string {
 export function TeacherField({
   projectSlug,
   label,
+  labels,
   value,
   onChange,
   disabled,
 }: {
   projectSlug: string
   label: string
+  /** Wording for the field (empty text, add button, sheet title); omitted = the generic "people" wording. */
+  labels?: PersonPickerLabels
   value: PersonRef[]
   onChange: (next: PersonRef[]) => void
   disabled?: boolean
@@ -99,6 +104,7 @@ export function TeacherField({
   return (
     <PersonPicker
       label={label}
+      labels={labels}
       value={value.map((p) => ({ id: p.publicId, name: p.name }))}
       onChange={(next) => onChange(next.map((p) => ({ publicId: p.id, name: p.name })))}
       search={search}
@@ -137,8 +143,19 @@ export function LanguageTextFields({
   )
 }
 
-/** Title of a class for lists: weekday and time. */
+/** How a class repeats in words ("Every Thursday", "Last Sunday of the month", "Once, 12 December"), in the viewer's language; the weekday alone for a rule scheduling does not know. */
+export function useRepeatText() {
+  const uiLocale = useLocale()
+  const { weekdayName } = useScheduleFormat()
+  return useCallback(
+    (c: Pick<ClassView, 'rule' | 'weekday' | 'startsOn'>) => describeClassRepeat(c.rule, uiLocale, { date: c.startsOn, withYear: true }) || weekdayName(c.weekday),
+    [uiLocale, weekdayName]
+  )
+}
+
+/** Title of a class for lists: how it repeats, and the time. */
 export function useClassTitle() {
-  const { weekdayName, timeRange } = useScheduleFormat()
-  return (c: Pick<ClassView, 'weekday' | 'startTime' | 'endTime'>) => `${weekdayName(c.weekday)} ${timeRange(c.startTime, c.endTime)}`
+  const { timeRange } = useScheduleFormat()
+  const repeatText = useRepeatText()
+  return (c: Pick<ClassView, 'rule' | 'weekday' | 'startsOn' | 'startTime' | 'endTime'>) => `${repeatText(c)} · ${timeRange(c.startTime, c.endTime)}`
 }

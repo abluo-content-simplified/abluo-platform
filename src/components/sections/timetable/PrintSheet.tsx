@@ -24,9 +24,11 @@ type Props = {
   locale: string
   msg: TimetableMessages
   profile: ProfileLinks
+  /** Add the second page "About the courses" (each shown course's title and description). */
+  showCourseDescriptions?: boolean
 }
 
-export function PrintSheet({ print, data, title, locale, msg, profile }: Props) {
+export function PrintSheet({ print, data, title, locale, msg, profile, showCourseDescriptions = false }: Props) {
   const year = print.month.slice(0, 4)
   const fmt = (date: string) => shortDate(locale, date, date.slice(0, 4) !== year)
 
@@ -54,6 +56,8 @@ export function PrintSheet({ print, data, title, locale, msg, profile }: Props) 
     switch (e.kind) {
       case 'cancelled':
         return `${d} ${msg.noClass}${e.note ? ` (${e.note})` : ''}`
+      case 'closed':
+        return `${d} ${msg.noClass}`
       case 'substitute':
         return `${d} ${msg.substitute(listNames(locale, teachers(e.teacherIds).map((t) => t.name)))}`
       case 'time':
@@ -82,6 +86,7 @@ export function PrintSheet({ print, data, title, locale, msg, profile }: Props) 
     return (
       <div className="ab-tt-class" key={c.seriesId}>
         <div className="ab-tt-class-main">
+          {c.dates && c.dates.length > 0 && <>{c.dates.map((d) => fmt(d)).join(', ')} </>}
           <strong>{timeRange(c.start, c.end)}</strong> {course?.title}
           {c.teacherIds.length > 0 && <> · {teacherNames(c.teacherIds)}</>}
           {c.languages.length > 0 && (
@@ -165,7 +170,26 @@ export function PrintSheet({ print, data, title, locale, msg, profile }: Props) 
           </ul>
         </section>
       )}
+
+      {showCourseDescriptions && <AboutCourses print={print} data={data} locale={locale} msg={msg} />}
     </div>
+  )
+}
+
+/** The optional second page: every course shown on the sheet, with its description (courses without one are listed by title). */
+function AboutCourses({ print, data, msg }: { print: PrintMonth; data: TimetableData; locale: string; msg: TimetableMessages }) {
+  const courses = print.courseIds.flatMap((id) => (data.courses[id] ? [data.courses[id]] : []))
+  if (courses.length === 0) return null
+  return (
+    <section className="ab-tt-about">
+      <h2>{msg.aboutCourses}</h2>
+      {courses.map((c) => (
+        <div key={c.id} className="ab-tt-about-item">
+          <h3>{c.title}</h3>
+          {c.description && <p>{c.description}</p>}
+        </div>
+      ))}
+    </section>
   )
 }
 
@@ -197,6 +221,11 @@ export const PRINT_CSS = `
   .ab-tt-rooms { margin-top: 3mm; break-inside: avoid; }
   .ab-tt-rooms h3 { font-size: 9pt; margin: 0 0 1mm; }
   .ab-tt-rooms ul { margin: 0; padding-left: 4mm; }
+  .ab-tt-about { break-before: page; page-break-before: always; font-size: 9pt; line-height: 1.4; }
+  .ab-tt-about h2 { font-size: 13pt; margin: 0 0 4mm; font-family: var(--font-heading, inherit); }
+  .ab-tt-about-item { break-inside: avoid; margin: 0 0 4mm; }
+  .ab-tt-about-item h3 { font-size: 10pt; margin: 0 0 1mm; }
+  .ab-tt-about-item p { margin: 0; white-space: pre-line; }
   .ab-tt-print-root a { color: #000; text-decoration: none; }
 }
 `

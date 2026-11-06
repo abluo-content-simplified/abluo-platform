@@ -12,6 +12,7 @@
 
 import { siteTimeZone, timetableForSection, type TimetableDeps } from '@/lib/scheduling/timetable.server'
 import type { TimetableSection } from '@/lib/sanity/types'
+import type { TimetableCourseInput } from './timetable'
 import { addDays } from '@/lib/scheduling/recurrence'
 import { monthOf, monthRange, onlineDetailsAllowed, todayIn, weekStart } from './timetable'
 
@@ -27,6 +28,8 @@ export type TimetableHydrationContext = {
   /** The page is Access-protected and the gate granted this visitor. */
   pageProtected: boolean
   now?: Date
+  /** Preview route only (verified token): this course is shown as if published. See TimetableOptions.previewCourse. */
+  previewCourse?: TimetableCourseInput
   /** Test seam: the scheduling store / project resolver (defaults to the real ones). */
   deps?: Omit<TimetableDeps, 'fetchForTenant'>
 }
@@ -51,7 +54,7 @@ export async function hydrateTimetableSection(section: TimetableSection, ctx: Ti
   const onlineDetails = onlineDetailsAllowed({ showOnlineDetails: section.showOnlineDetails, pageProtected: ctx.pageProtected })
   const data = await timetableForSection(
     ctx.projectSlug,
-    { from, to, coursePublicIds: sectionCourseIds(section), includeOnlineDetails: onlineDetails, locale: ctx.locale, defaultLocale: ctx.defaultLocale },
+    { from, to, coursePublicIds: sectionCourseIds(section), includeOnlineDetails: onlineDetails, locale: ctx.locale, defaultLocale: ctx.defaultLocale, previewCourse: ctx.previewCourse },
     { ...ctx.deps, fetchForTenant: ctx.fetchForTenant },
   )
   section.timetable = { month, today, data: { ...data, timeZone: data.timeZone ?? timeZone }, onlineDetails, pageId: ctx.pageId ?? null }

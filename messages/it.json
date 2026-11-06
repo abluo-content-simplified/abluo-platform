@@ -3781,6 +3781,11 @@
       }
     },
     "courses": {
+      "preview": {
+        "button": "Anteprima",
+        "hint": "Guarda il calendario con questo corso, prima che sia online. Il link è privato e vale 15 minuti.",
+        "failed": "Non siamo riusciti ad aprire l’anteprima. Riprova."
+      },
       "screen": {
         "loadFailed": "Non siamo riusciti a caricare i tuoi corsi. Riprova.",
         "retry": "Riprova"
@@ -3798,6 +3803,8 @@
         "archive_first": "Archivia questo corso prima di eliminarlo.",
         "archived": "Questo corso è archiviato. Ripristinalo per modificarlo.",
         "missing_title": "Serve un titolo nella lingua principale.",
+        "no_timetable_page": "Questo corso non può ancora andare online: il tuo sito non ha un orario che lo mostri. Chiedi all’amministratore del sito di aggiungerne uno.",
+        "invalid_schedule": "Scegli una data e un’ora nel futuro, entro due anni.",
         "failed": "Qualcosa è andato storto. Riprova.",
         "offline": "Sei offline. Le modifiche verranno salvate quando torni online."
       },
@@ -3886,6 +3893,16 @@
         "shortDescriptionHint": "Una o due frasi, mostrate nell’orario e negli elenchi.",
         "colorLabel": "Colore",
         "colorHint": "Come viene segnato questo corso nell’orario.",
+        "imageLabel": "Immagine",
+        "imageHint": "Facoltativa. Appare nei dettagli della lezione sul tuo sito. Scegli dalla Libreria multimediale.",
+        "imageChoose": "Scegli immagine",
+        "imageChange": "Cambia immagine",
+        "imageRemove": "Rimuovi immagine",
+        "noPageTitle": "Questo corso non può ancora andare online",
+        "noPageBody": "Nessuna pagina del tuo sito mostra ancora l’orario.",
+        "noPageStudio": "Aggiungi un orario a una pagina",
+        "noPageAskAdmin": "Chiedi all’amministratore del tuo sito di aggiungerne uno.",
+        "opensInNewTab": "si apre in una nuova scheda",
         "color": {
           "none": "Nessuno",
           "accent": "Accento",
@@ -3896,6 +3913,23 @@
         "archivedBody": "Ripristinalo per modificarlo.",
         "readOnly": "Puoi guardare ma non modificare nulla qui.",
         "publishBlocked": "Prima di pubblicare: aggiungi un titolo in {language}.",
+        "publishNow": "Pubblica ora",
+        "publishedNowToast": "Pubblicato. Il corso è online.",
+        "scheduledToast": "Programmato. Il corso va online il {date}.",
+        "updatedScheduledToast": "Aggiornato. Resta programmato per il {date}.",
+        "dateSaved": "Data salvata.",
+        "backToDraftDone": "Di nuovo in bozza. Non è più programmato.",
+        "onlineTitle": "Sul tuo sito",
+        "onlineLive": "Questo corso è online.",
+        "notOnlineYet": "Non è ancora online. Pubblicalo per metterlo sul tuo sito.",
+        "viewOnWebsite": "Vedi sul sito",
+        "publishOn": "Pubblica il",
+        "schedule": "Programma",
+        "scheduleHelp": "Scegli data e ora. Il corso va online da solo.",
+        "scheduledSentence": "Va online il {date}. Fino ad allora non è sul tuo sito.",
+        "backToDraft": "Riporta in bozza",
+        "updateScheduled": "Aggiorna il corso programmato",
+        "changesNotScheduled": "Hai modifiche che non sono ancora nella versione programmata.",
         "publishReason": {
           "upToDate": "Niente di nuovo da pubblicare."
         },
@@ -3918,7 +3952,7 @@
         "menu": "Azioni per {name}",
         "openClass": "Apri {name}",
         "noDetails": "Ancora nessun luogo, insegnante o lingua",
-        "publishFirst": "Pubblica prima questo corso, poi aggiungi le sue lezioni.",
+        "publishFirst": "Non ancora sul sito: queste lezioni compaiono nell’orario quando il corso è online.",
         "loadError": "Impossibile caricare le lezioni. Ricarica la pagina per riprovare.",
         "empty": {
           "title": "Ancora nessuna lezione",
@@ -3953,11 +3987,29 @@
           "term": "Periodo",
           "noTerm": "Nessun periodo",
           "startsOn": "Prima lezione",
-          "startsOnHint": "La prima lezione è il primo giorno corrispondente a partire da questa data.",
+          "startsOnHint": "Si possono scegliere solo i giorni in cui si svolge la lezione.",
           "endsOn": "Ultima lezione",
-          "endsOnHint": "Facoltativo. Anche la fine del periodo termina la lezione.",
+          "endsOnHint": "Facoltativo. Si possono scegliere solo i giorni in cui si svolge la lezione. Anche la fine del periodo termina la lezione.",
           "noEndDate": "Nessuna data finale",
           "endBeforeStartDay": "L’ultima lezione non può essere prima della prima.",
+          "repeatOnce": "Una volta",
+          "repeatMonthlyWeekday": "Ogni mese, in un giorno della settimana",
+          "repeatMonthlyDay": "Ogni mese, in una data",
+          "days": "Giorni",
+          "daysNeeded": "Scegli almeno un giorno.",
+          "ordinal": "Quale",
+          "ordinalFirst": "Primo",
+          "ordinalSecond": "Secondo",
+          "ordinalThird": "Terzo",
+          "ordinalFourth": "Quarto",
+          "ordinalLast": "Ultimo",
+          "monthDay": "Giorno del mese",
+          "monthDayHint": "I mesi senza questo giorno vengono saltati.",
+          "onDate": "Data",
+          "datesAdjusted": "Le date sono state adattate ai giorni in cui si svolge la lezione.",
+          "teachersEmpty": "Ancora nessun insegnante",
+          "teachersAdd": "Aggiungi insegnante",
+          "teachersTitle": "Scegli gli insegnanti",
           "save": "Salva",
           "saving": "Salvataggio…"
         },
@@ -3975,6 +4027,7 @@
         },
         "errors": {
           "inUse": "È ancora usato da alcune lezioni. Toglilo prima da lì.",
+          "outsideTerm": "Quella data è fuori dal periodo. Scegli una data dentro il periodo, oppure un altro periodo.",
           "missingName": "È richiesto un nome nella lingua principale."
         }
       },

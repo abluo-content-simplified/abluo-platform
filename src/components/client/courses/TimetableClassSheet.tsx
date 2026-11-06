@@ -14,7 +14,7 @@ import { Pill } from '@/components/app/ui/list/cells'
 import { SidePanel } from '@/components/app/ui/SidePanel'
 import { Select } from '@/components/app/ui/Select'
 import { Skeleton } from '@/components/app/ui/Skeleton'
-import { LanguageTextFields, TeacherField, useScheduleErrorText, useScheduleFormat } from './schedule-bits'
+import { LanguageTextFields, TeacherField, useRepeatText, useScheduleErrorText, useScheduleFormat } from './schedule-bits'
 import { textOf, timeOptions, timesOrdered } from './schedule-model'
 
 const PAGE = 8
@@ -51,7 +51,8 @@ export function TimetableClassSheet({
 }) {
   const t = useTranslations('clientDashboard.courses.timetable.dates')
   const errorText = useScheduleErrorText()
-  const { dayLabel, timeRange, weekdayName } = useScheduleFormat()
+  const { dayLabel, timeRange } = useScheduleFormat()
+  const repeatText = useRepeatText()
   const [rows, setRows] = useState<OccurrenceView[] | null>(null)
   const [hasMore, setHasMore] = useState(false)
   const [count, setCount] = useState(PAGE)
@@ -113,7 +114,7 @@ export function TimetableClassSheet({
 
   return (
     <>
-      <SidePanel open={cls !== null} title={title} subtitle={cls ? `${weekdayName(cls.weekday)} ${timeRange(cls.startTime, cls.endTime)}${placeLine ? ` · ${placeLine}` : ''}` : undefined} closeLabel={t('close')} onClose={onClose}>
+      <SidePanel open={cls !== null} title={title} subtitle={cls ? `${repeatText(cls)} · ${timeRange(cls.startTime, cls.endTime)}${placeLine ? ` · ${placeLine}` : ''}` : undefined} closeLabel={t('close')} onClose={onClose}>
         <div className="space-y-3">
           {error ? <Notice tone="error">{error}</Notice> : null}
           {rows === null && !error ? (

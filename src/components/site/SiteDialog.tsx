@@ -77,8 +77,8 @@ export interface SiteDialogProps {
   onClose: () => void
   /** Accessible label for the close button (localized by the caller). */
   closeLabel: string
-  /** Optional overlay heading; when absent the header collapses to just the X. */
-  title?: string | null
+  /** Optional overlay heading (text, or text with a small marker); when absent the header collapses to just the X. */
+  title?: ReactNode
   /** Optional eyebrow above the title (e.g. a short CTA/context label). */
   eyebrow?: string | null
   children: ReactNode
@@ -90,10 +90,17 @@ export interface SiteDialogProps {
    * (e.g. the Brand Hub welcome) turns it on.
    */
   closeOnBackdrop?: boolean
+  /**
+   * `center` (default): a centred card. `sheet`: a bottom sheet on phones (full
+   * width, rounded top, slides up) and the same centred card from `md` up —
+   * for read-only details people open from a list.
+   */
+  variant?: 'center' | 'sheet'
 }
 
-export function SiteDialog({ isOpen, onClose, closeLabel, title, eyebrow, children, footer, closeOnBackdrop = false }: SiteDialogProps) {
+export function SiteDialog({ isOpen, onClose, closeLabel, title, eyebrow, children, footer, closeOnBackdrop = false, variant = 'center' }: SiteDialogProps) {
   const dialogId = useId()
+  const sheet = variant === 'sheet'
   const panelRef = useRef<HTMLDivElement>(null)
   const [mounted, setMounted] = useState(false)
 
@@ -147,15 +154,19 @@ export function SiteDialog({ isOpen, onClose, closeLabel, title, eyebrow, childr
             aria-modal="true"
             aria-labelledby={title ? `${dialogId}-title` : undefined}
             tabIndex={-1}
-            initial={{ opacity: 0, y: 20, scale: 0.97 }}
+            initial={{ opacity: 0, y: sheet ? 48 : 20, scale: sheet ? 1 : 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 14, scale: 0.97 }}
+            exit={{ opacity: 0, y: sheet ? 48 : 14, scale: sheet ? 1 : 0.97 }}
             transition={{ duration: 0.25, ease: [0, 0, 0.2, 1] }}
-            className="fixed inset-x-4 top-1/2 z-[510] mx-auto flex -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-lg)] shadow-2xl backdrop-blur-[24px] saturate-150 md:inset-x-auto md:left-1/2 md:w-[36rem] md:-translate-x-1/2"
+            className={
+              sheet
+                ? 'fixed inset-x-0 bottom-0 z-[510] mx-auto flex flex-col overflow-hidden rounded-t-[var(--radius-lg)] shadow-2xl backdrop-blur-[24px] saturate-150 md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-[36rem] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[var(--radius-lg)]'
+                : 'fixed inset-x-4 top-1/2 z-[510] mx-auto flex -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-lg)] shadow-2xl backdrop-blur-[24px] saturate-150 md:inset-x-auto md:left-1/2 md:w-[36rem] md:-translate-x-1/2'
+            }
             style={{
               backgroundColor: 'color-mix(in oklch, var(--color-background, var(--background)) 90%, transparent)',
               border: '1px solid var(--color-border, var(--border))',
-              maxHeight: '80dvh',
+              maxHeight: sheet ? '88dvh' : '80dvh',
               outline: 'none',
             }}
           >

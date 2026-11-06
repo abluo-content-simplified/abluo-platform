@@ -6,6 +6,8 @@ import type { FilterableCourse } from '@/lib/client/courses-filter'
 import type { CourseColor } from '@/lib/modules/courses/model'
 import { LifecycleBadge } from '@/components/app/lifecycle/LifecycleBadge'
 import { Pill } from '@/components/app/ui/list/cells'
+import { shortMoment } from '@/components/app/lifecycle/publish-plan'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 /** Shared bits of the Courses screens (ADR-045): the list row type, the status badge, colour, limits and icons. */
 
@@ -17,6 +19,10 @@ export type CourseRow = FilterableCourse & {
   isPublished: boolean
   hasDraft: boolean
   schedule: CourseListItem['schedule']
+  /** The published version's go-live date (ISO) — shown on a Scheduled badge. */
+  publishedAt: string | null
+  /** The site's time zone, for that date. */
+  zone: string
   missingLanguages: string[]
   createdAt: string
   /** The course's editor. */
@@ -30,7 +36,7 @@ export type CourseRow = FilterableCourse & {
  */
 export const COURSE_UI_LIMITS = { title: 120, shortDescription: 600 } as const
 
-export function toCourseRow(c: CourseListItem, projectSlug: string): CourseRow {
+export function toCourseRow(c: CourseListItem, projectSlug: string, zone: string): CourseRow {
   return {
     id: c.id,
     publicId: c.publicId,
@@ -42,6 +48,8 @@ export function toCourseRow(c: CourseListItem, projectSlug: string): CourseRow {
     isPublished: c.isPublished,
     hasDraft: c.hasDraft,
     schedule: c.schedule,
+    publishedAt: c.publishedAt,
+    zone,
     missingLanguages: c.missingLanguages,
     updatedAt: c.updatedAt,
     createdAt: c.createdAt,
@@ -49,9 +57,15 @@ export function toCourseRow(c: CourseListItem, projectSlug: string): CourseRow {
   }
 }
 
-/** The course's status as the shared lifecycle badge: Draft · Published (+ Pending changes) · Archived. */
-export function CourseStateBadge({ state, oneLine = false }: { state: CourseState; oneLine?: boolean }) {
+/**
+ * The course's status as the shared lifecycle badge: Draft · Scheduled (+ its
+ * date) · Published (+ Pending changes) · Archived.
+ */
+export function CourseStateBadge({ state, publishedAt = null, zone, oneLine = false }: { state: CourseState; publishedAt?: string | null; zone?: string; oneLine?: boolean }) {
+  const tp = useTranslations('app.lifecycle.publish')
+  const dateLocale = useDateLocale()
   if (state === 'changes') return <LifecycleBadge status="published" changes oneLine={oneLine} />
+  if (state === 'scheduled' && publishedAt && zone) return <LifecycleBadge status="scheduled" extra={tp('moment', shortMoment(publishedAt, zone, dateLocale))} oneLine={oneLine} />
   return <LifecycleBadge status={state} oneLine={oneLine} />
 }
 

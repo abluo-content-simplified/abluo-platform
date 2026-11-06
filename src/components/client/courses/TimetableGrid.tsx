@@ -5,7 +5,7 @@ import type { ClassView, PlaceOption } from '@/lib/api/course-schedule'
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
 import { ListRow } from '@/components/app/ui/list/ListRow'
 import { Pill } from '@/components/app/ui/list/cells'
-import { ModePill, useScheduleFormat } from './schedule-bits'
+import { ModePill, useRepeatText, useScheduleFormat } from './schedule-bits'
 import { groupByPlace, weekdaysWithClasses, type PlaceRow } from './schedule-model'
 
 type Shared = {
@@ -22,6 +22,9 @@ type Shared = {
 function ClassItem({ c, courses, exceptions, onOpen, placeLine }: Pick<Shared, 'courses' | 'exceptions' | 'onOpen'> & { c: ClassView; placeLine?: string }) {
   const t = useTranslations('clientDashboard.courses.timetable')
   const { timeRange, languageName } = useScheduleFormat()
+  const repeatText = useRepeatText()
+  // A plain "every week on one day" is already said by the column; anything else is said in words.
+  const plain = c.repeat?.kind === 'weekly' && c.repeat.interval === 1 && c.repeat.weekdays.length === 1
   const title = courses[c.courseId] || t('untitledCourse')
   const changes = exceptions[c.id] ?? 0
   const detail = [c.instructors.map((p) => p.name).join(', '), c.languages.map((l) => languageName(l)).join(' · '), placeLine].filter(Boolean).join(' · ')
@@ -29,6 +32,7 @@ function ClassItem({ c, courses, exceptions, onOpen, placeLine }: Pick<Shared, '
     <ListRow onOpen={() => onOpen(c)} label={t('openClass', { name: title, time: timeRange(c.startTime, c.endTime) })}>
       <span className="text-[0.9375rem] leading-6 font-semibold text-foreground">{timeRange(c.startTime, c.endTime)}</span>
       <span className="text-[0.9375rem] leading-6 text-foreground">{title}</span>
+      {plain ? null : <span className="text-sm leading-5 text-muted-foreground">{repeatText(c)}</span>}
       {detail ? <span className="text-sm leading-5 text-muted-foreground">{detail}</span> : null}
       <span className="flex flex-wrap items-start gap-1.5">
         <ModePill mode={c.attendanceMode} />
@@ -64,7 +68,7 @@ export function TimetableGrid(props: Shared) {
         header: weekdayName(day),
         width: 'min-w-52',
         render: (row) => {
-          const here = row.items.filter((c) => c.weekday === day).sort(byTime)
+          const here = row.items.filter((c) => c.weekdays.includes(day)).sort(byTime)
           if (!here.length) return <span className="text-sm text-muted-foreground">—</span>
           return (
             <ul className="flex flex-col gap-2">
@@ -89,7 +93,7 @@ export function TimetableGrid(props: Shared) {
             <h2 className="text-[1.0625rem] leading-7 font-semibold text-foreground">{weekdayName(day)}</h2>
             <ul className="flex flex-col gap-3">
               {classes
-                .filter((c) => c.weekday === day)
+                .filter((c) => c.weekdays.includes(day))
                 .sort(byTime)
                 .map((c) => (
                   <ClassItem key={c.id} c={c} courses={courses} exceptions={exceptions} onOpen={onOpen} placeLine={places.find((p) => p.token === c.placeToken)?.name} />

@@ -2,7 +2,7 @@
 //
 // Courses have no page of their own yet, so the website reads them only by
 // publicId: the timetable section resolves the course behind each class. Only
-// PUBLISHED, non-archived, non-draft courses reach the website. No schedule
+// PUBLISHED, non-archived, non-draft courses whose go-live date has passed reach the website. No schedule
 // data and no meeting details are read here (those live in Supabase).
 
 /** The public fields of a course, locale-resolved with the usual fallback. */
@@ -10,11 +10,24 @@ export const COURSE_PUBLIC_FIELDS = /* groq */ `
   publicId,
   "title": coalesce(title[$locale], title[$defaultLocale], title.en),
   "shortDescription": coalesce(shortDescription[$locale], shortDescription[$defaultLocale], shortDescription.en),
-  "color": coalesce(color, "none")
+  "color": coalesce(color, "none"),
+  // The optional course image: a Media Library asset of THIS website (focal point and alt text live on the asset).
+  "image": select(image->projectSlug == $projectSlug => image->{
+    "asset": image.asset,
+    "hotspot": image.hotspot,
+    "crop": image.crop,
+    "alt": coalesce(altText[$locale], altText[$defaultLocale], altText.en, select(!defined(altText._type) => altText))
+  })
 `
 
-/** A course is on the website when it exists as a published document and is not archived. */
-export const COURSE_VISIBLE = /* groq */ `!(_id in path("drafts.**")) && !defined(archivedAt)`
+/**
+ * A course is on the website when it exists as a published document, is not
+ * archived and its go-live date (if it has one) has passed. Courses published
+ * before dates existed have no publishedAt and stay visible; a "Publish on…"
+ * course is a published document with a future publishedAt, so it appears by
+ * itself on the date (the website is rendered per request, no cache to flush).
+ */
+export const COURSE_VISIBLE = /* groq */ `!(_id in path("drafts.**")) && !defined(archivedAt) && (!defined(publishedAt) || publishedAt <= now())`
 
 /** Courses named by publicId (the timetable section's courses). Order is the caller's. */
 export const COURSES_BY_PUBLIC_IDS_QUERY = /* groq */ `

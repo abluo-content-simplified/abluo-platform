@@ -1199,7 +1199,7 @@ export const LAB_REGISTRY: LabEntry[] = [
     summary: 'Just the calendar: one or two month grids with arrows and full keyboard support, picking one day or a range. No frame and no buttons, so it goes inside any sheet, popover or overlay.',
     rules: [
       'Every calendar in the dashboard is this one: never a native date picker or a hand-made month grid.',
-      'Values are ISO days (YYYY-MM-DD); min / max switch the days outside off.',
+      'Values are ISO days (YYYY-MM-DD); min / max switch the days outside off, isDisabled switches single days off (the arrow keys skip them).',
       'Framing (title, close, Done, extra information) belongs to the component that holds it.',
     ],
     replaces: ['the month grid inside DateRangePicker', 'the browser\'s own date-time popup'],
@@ -1235,7 +1235,7 @@ export const LAB_REGISTRY: LabEntry[] = [
     summary: 'A calendar day (no time): a field that opens a sheet with the Calendar and Done. The date-only sibling of DateTimePicker.',
     rules: [
       'Values are ISO days (YYYY-MM-DD); empty string or null means no date.',
-      'min / max switch days off; clearable adds Clear to the sheet for optional dates.',
+      'min / max switch days off; isDisabled switches single days off (only a class\'s days) and the keyboard skips them; clearable adds Clear to the sheet for optional dates.',
       'Spread Field\'s control props onto it. Never a native <input type="date"> for a day in the dashboard.',
     ],
     replaces: ['<input type="date"> / DateInput type="date"'],
@@ -1298,6 +1298,7 @@ export const LAB_REGISTRY: LabEntry[] = [
     rules: [
       'search and onCreate are injected: the picker never reaches a backend itself.',
       'findDuplicates is injected too (optional): while a new name is typed and on submit it offers Use this person or Create anyway.',
+      'labels (empty, add, title) give the wording for a list that is not "people" in general (teachers, hosts); the caller translates them. Each part falls back to the generic text.',
       'Order is the order of value; drag to reorder, and primaryLabel marks the first.',
       'Archived people stay visible with a label so nothing silently disappears.',
     ],

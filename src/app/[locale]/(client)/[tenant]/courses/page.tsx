@@ -51,6 +51,7 @@ export default async function CoursesPage({
         projectSlug={projectSlug}
         courses={courses}
         defaultLocale={site.defaultLocale}
+        timeZone={site.timeZone}
         canWrite={grant.permissions.includes(COURSE_WRITE_PERMISSION)}
         canDelete={grant.permissions.includes(COURSE_DELETE_PERMISSION)}
         initialQuery={query.toString()}

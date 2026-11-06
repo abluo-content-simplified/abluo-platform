@@ -90,7 +90,9 @@ describe('shapeTimetable', () => {
   })
 
   it('resolves places from the site locations, in their order, with address lines', () => {
-    expect(data.places.brey).toEqual({ key: 'brey', name: 'BREY', lines: ['Avenue d’Auderghem 45', '1040 Etterbeek', 'Room 04, 4th floor'] })
+    expect(data.places.brey).toMatchObject({ key: 'brey', name: 'BREY', lines: ['Avenue d’Auderghem 45', '1040 Etterbeek', 'Room 04, 4th floor'] })
+    // A link, never an embed: from the address when the place has no pasted link or pin.
+    expect(data.places.brey.mapsUrl).toMatch(/^https:\/\/maps\.google\.com\/\?q=.*Auderghem/)
     expect(data.placeOrder).toEqual(['brey']) // l51 is not used
     expect(data.series.find((s) => s.id === S2)!.placeKey).toBeNull() // online
   })
@@ -164,10 +166,16 @@ describe('exceptions and the print month (CYCE style)', () => {
     const monday = print.rows[0].cells[1]
     expect(monday).toHaveLength(1)
     expect(monday[0]).toMatchObject({ courseId: COURSE_A, start: '12:30', end: '13:30', mode: 'mixed', languages: ['fr', 'en'], teacherIds: [P1] })
-    expect(monday[0].exceptions.map((e) => `${e.date} ${e.kind}`)).toEqual(['2026-12-07 substitute', '2026-12-08 mode'])
+    expect(monday[0].exceptions.map((e) => `${e.date} ${e.kind}`)).toEqual(['2026-12-07 substitute', '2026-12-08 mode', '2026-12-21 closed', '2026-12-28 closed'])
     const thursday = print.rows[1].cells[4]
     expect(thursday[0].courseId).toBe(COURSE_B)
-    expect(thursday[0].exceptions.map((e) => `${e.date} ${e.kind}`)).toEqual(['2026-12-10 cancelled', '2026-12-17 time'])
+    expect(thursday[0].exceptions.map((e) => `${e.date} ${e.kind}`)).toEqual(['2026-12-10 cancelled', '2026-12-17 time', '2026-12-24 closed', '2026-12-31 closed'])
+  })
+
+  it('lists the holiday dates a weekly class would meet but does not, and the courses shown (for the About page)', () => {
+    expect(print.courseIds).toEqual([COURSE_A, COURSE_B].sort((a, b) => data.courses[a].title.localeCompare(data.courses[b].title)))
+    const nov = buildPrintMonth(data, '2026-11')
+    expect(nov.rows.flatMap((r) => Object.values(r.cells).flat()).flatMap((c) => c.exceptions).some((e) => e.kind === 'closed')).toBe(false)
   })
 
   it('carries the closure sentence data and the rooms block only when online details are allowed', () => {

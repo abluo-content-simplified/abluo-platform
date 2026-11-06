@@ -644,6 +644,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       "courseIds": (courses[]->)[_type == "course" && projectSlug == $projectSlug].publicId,
       showOnlineDetails,
       showPrintButton,
+      showCourseDescriptions,
       // ─── Platform sections added with the icon primitive ──────────────────
       // Every key below is NEW to this flat projection and resolves to null on
       // every section type that does not declare it. Fields these sections
@@ -2113,6 +2114,7 @@ export const homePageQuery = /* groq */ `
       "courseIds": (courses[]->)[_type == "course" && projectSlug == $projectSlug].publicId,
       showOnlineDetails,
       showPrintButton,
+      showCourseDescriptions,
       "emptyStateHeading": ${loc('emptyStateHeading')},
       "emptyStateBody": ${loc('emptyStateBody')}
     }

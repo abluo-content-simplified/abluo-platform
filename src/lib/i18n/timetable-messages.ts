@@ -63,6 +63,16 @@ export interface TimetableMessages {
   joinLink: string
   /** Screen-reader hint on a link that opens in a new tab. */
   opensInNewTab: string
+  /** Class details panel (website): close button, the button that opens it, section labels. */
+  close: string
+  /** Accessible name of the button that opens a class's details; receives "Course, date, time". */
+  openDetails: (what: string) => string
+  teachersLabel: string
+  placeLabel: string
+  languagesLabel: string
+  openInMaps: string
+  /** Heading of the optional printed page that describes the courses. */
+  aboutCourses: string
 }
 
 const MESSAGES: Record<string, TimetableMessages> = {
@@ -101,6 +111,13 @@ const MESSAGES: Record<string, TimetableMessages> = {
     passcode: 'Passcode',
     joinLink: 'Join',
     opensInNewTab: 'opens in a new tab',
+    close: 'Close',
+    openDetails: (w) => `Details: ${w}`,
+    teachersLabel: 'Teachers',
+    placeLabel: 'Place',
+    languagesLabel: 'Languages',
+    openInMaps: 'Open in maps',
+    aboutCourses: 'About the courses',
   },
   it: {
     timetable: 'Orario',
@@ -137,6 +154,13 @@ const MESSAGES: Record<string, TimetableMessages> = {
     passcode: 'Codice di accesso',
     joinLink: 'Partecipa',
     opensInNewTab: 'si apre in una nuova scheda',
+    close: 'Chiudi',
+    openDetails: (w) => `Dettagli: ${w}`,
+    teachersLabel: 'Insegnanti',
+    placeLabel: 'Luogo',
+    languagesLabel: 'Lingue',
+    openInMaps: 'Apri nelle mappe',
+    aboutCourses: 'Informazioni sui corsi',
   },
   de: {
     timetable: 'Stundenplan',
@@ -173,6 +197,13 @@ const MESSAGES: Record<string, TimetableMessages> = {
     passcode: 'Zugangscode',
     joinLink: 'Beitreten',
     opensInNewTab: 'öffnet in einem neuen Tab',
+    close: 'Schließen',
+    openDetails: (w) => `Details: ${w}`,
+    teachersLabel: 'Lehrende',
+    placeLabel: 'Ort',
+    languagesLabel: 'Sprachen',
+    openInMaps: 'In Karten öffnen',
+    aboutCourses: 'Über die Kurse',
   },
   fr: {
     timetable: 'Horaires',
@@ -209,6 +240,13 @@ const MESSAGES: Record<string, TimetableMessages> = {
     passcode: 'Code d’accès',
     joinLink: 'Rejoindre',
     opensInNewTab: 's’ouvre dans un nouvel onglet',
+    close: 'Fermer',
+    openDetails: (w) => `Détails : ${w}`,
+    teachersLabel: 'Enseignants',
+    placeLabel: 'Lieu',
+    languagesLabel: 'Langues',
+    openInMaps: 'Ouvrir dans les cartes',
+    aboutCourses: 'À propos des cours',
   },
   es: {
     timetable: 'Horario',
@@ -245,6 +283,13 @@ const MESSAGES: Record<string, TimetableMessages> = {
     passcode: 'Código de acceso',
     joinLink: 'Unirse',
     opensInNewTab: 'se abre en una pestaña nueva',
+    close: 'Cerrar',
+    openDetails: (w) => `Detalles: ${w}`,
+    teachersLabel: 'Profesores',
+    placeLabel: 'Lugar',
+    languagesLabel: 'Idiomas',
+    openInMaps: 'Abrir en mapas',
+    aboutCourses: 'Sobre los cursos',
   },
   pt: {
     timetable: 'Horário',
@@ -281,6 +326,13 @@ const MESSAGES: Record<string, TimetableMessages> = {
     passcode: 'Código de acesso',
     joinLink: 'Entrar',
     opensInNewTab: 'abre num novo separador',
+    close: 'Fechar',
+    openDetails: (w) => `Detalhes: ${w}`,
+    teachersLabel: 'Professores',
+    placeLabel: 'Local',
+    languagesLabel: 'Idiomas',
+    openInMaps: 'Abrir nos mapas',
+    aboutCourses: 'Sobre os cursos',
   },
   nl: {
     timetable: 'Lesrooster',
@@ -317,6 +369,13 @@ const MESSAGES: Record<string, TimetableMessages> = {
     passcode: 'Toegangscode',
     joinLink: 'Deelnemen',
     opensInNewTab: 'opent in een nieuw tabblad',
+    close: 'Sluiten',
+    openDetails: (w) => `Details: ${w}`,
+    teachersLabel: 'Docenten',
+    placeLabel: 'Locatie',
+    languagesLabel: 'Talen',
+    openInMaps: 'Openen in kaarten',
+    aboutCourses: 'Over de cursussen',
   },
 }
 

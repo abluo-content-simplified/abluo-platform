@@ -26,6 +26,8 @@ import {
   publishCourseDraft,
   runCourseLifecycle,
   saveCourseDraft,
+  setCoursePublishDate,
+  unscheduleCourse,
   CourseError,
   type CourseErrorCode,
   type CourseLifecycleOp,
@@ -82,8 +84,19 @@ export async function saveCourseDraftAction(input: { projectSlug: string; id: st
   return run(input?.projectSlug, (ctx, pid) => saveCourseDraft(ctx, pid, { id: input.id, rev: input.rev, set: input.set }))
 }
 
-export async function publishCourseDraftAction(input: { projectSlug: string; id: string; rev: string }): Promise<Result<{ rev: string }>> {
-  return run(input?.projectSlug, (ctx, pid) => publishCourseDraft(ctx, pid, { id: input.id, rev: input.rev }))
+/** Publish now, "Publish on…" (schedule + publishAt) or update (keep). `no_timetable_page`: nothing on the website would show the course. */
+export async function publishCourseDraftAction(input: { projectSlug: string; id: string; rev: string; mode?: 'now' | 'schedule' | 'keep'; publishAt?: string }): Promise<Result<{ rev: string; publishedAt: string | null }>> {
+  return run(input?.projectSlug, (ctx, pid) => publishCourseDraft(ctx, pid, { id: input.id, rev: input.rev, mode: input.mode, publishAt: input.publishAt }))
+}
+
+/** A scheduled course: new go-live date, or `now`. */
+export async function setCoursePublishDateAction(input: { projectSlug: string; id: string; mode: 'now' | 'schedule'; publishAt?: string }): Promise<Result<{ publishedAt: string }>> {
+  return run(input?.projectSlug, (ctx, pid) => setCoursePublishDate(ctx, pid, { id: input.id, mode: input.mode, publishAt: input.publishAt }))
+}
+
+/** A scheduled course goes back to draft. */
+export async function unscheduleCourseAction(input: { projectSlug: string; id: string }): Promise<Result<{ rev: string }>> {
+  return run(input?.projectSlug, (ctx, pid) => unscheduleCourse(ctx, pid, { id: input.id }))
 }
 
 export async function discardCourseDraftAction(input: { projectSlug: string; id: string; rev: string }): Promise<Result<object>> {

@@ -13,11 +13,13 @@
 // Dates are local 'YYYY-MM-DD' and times 'HH:mm' (24-hour) in the class's own
 // time zone, exactly as scheduling stores them; no conversion happens here.
 
-import { formatLocationAddress } from '@/lib/maps/locations'
-import { addDays, dayNumber, weekdayOf } from '@/lib/scheduling/recurrence'
+import { formatLocationAddress, getLocationMapsLink } from '@/lib/maps/locations'
+import { imageUrl } from '@/lib/sanity/image'
+import { focalObjectPosition } from '@/lib/gallery/focal'
+import { addDays, dayNumber, parseClassRule, ruleOccursOn, ruleWeekdays, weekdayOf, type ClassRule } from '@/lib/scheduling/recurrence'
 import type { AttendanceMode, ClassOccurrence, ClassSeries, MeetingRoom, ScheduleClosure } from '@/lib/scheduling/types'
 import { personDisplayName } from '@/lib/modules/people/model'
-import type { SiteLocation } from '@/lib/sanity/types'
+import type { ResolvedImage, SiteLocation } from '@/lib/sanity/types'
 
 // ── The one privacy rule ─────────────────────────────────────────────────────
 
@@ -33,9 +35,20 @@ export function onlineDetailsAllowed(input: { showOnlineDetails: unknown; pagePr
 
 // ── Public data shapes ───────────────────────────────────────────────────────
 
-export type TimetableCourse = { id: string; title: string; color: 'none' | 'accent' | 'muted' }
-export type TimetableTeacher = { id: string; name: string; hasPage: boolean; slug: string | null }
-export type TimetablePlace = { key: string; name: string; lines: string[] }
+/** A Media Library image, ready to render: a CDN url (sized for its use), alt text and the focal point as a CSS object-position. */
+export type TimetableImage = { src: string; alt: string; position: string }
+export type TimetableCourse = {
+  id: string
+  title: string
+  color: 'none' | 'accent' | 'muted'
+  /** The course's description (page language), for the class panel and the printed "About the courses" page. */
+  description: string | null
+  /** The course's optional image (Media Library). */
+  image: TimetableImage | null
+}
+export type TimetableTeacher = { id: string; name: string; hasPage: boolean; slug: string | null; /** A small portrait when People has one (decorative: the name is written beside it). */ photo: TimetableImage | null }
+/** `mapsUrl`: an outbound "open in maps" link (never an embed), or null when the place carries nothing to point at. */
+export type TimetablePlace = { key: string; name: string; lines: string[]; mapsUrl: string | null }
 export type TimetableRoom = { id: string; label: string; joinUrl: string | null; meetingId: string | null; passcode: string | null; note: string | null }
 
 export type TimetableOccurrence = {
@@ -59,8 +72,15 @@ export type TimetableOccurrence = {
 export type TimetableSeries = {
   id: string
   courseId: string
+  /** The first weekday of the class (1 = Monday … 7 = Sunday). */
   weekday: number
+  /** Every weekday the class meets (several for "Monday and Wednesday"; the weekday of the first date for monthly-by-date and once). */
+  weekdays: number[]
   interval: number
+  /** The stored repeat rule (`describeClassRepeat` reads it; ruleOccursOn decides closed dates). */
+  rule: string | null
+  /** The date of the pattern's first class ('YYYY-MM-DD'): "every N weeks" counts from its week. */
+  anchor: string
   start: string
   end: string | null
   startsOn: string | null
@@ -107,10 +127,22 @@ export function emptyTimetable(window: { from: string; to: string }, timeZone: s
 // ── Shaping ──────────────────────────────────────────────────────────────────
 
 /** The fields of a person the shaping reads (PERSON_PUBLIC_FIELDS subset). */
-export type TimetablePersonInput = { publicId: string; displayName?: string | null; firstName?: string | null; lastName?: string | null; hasPage?: boolean | null; slug?: { current?: string | null } | null }
-export type TimetableCourseInput = { publicId: string; title?: string | null; color?: string | null }
+export type TimetableImageInput = Partial<ResolvedImage> | null
+export type TimetablePersonInput = { publicId: string; displayName?: string | null; firstName?: string | null; lastName?: string | null; hasPage?: boolean | null; slug?: { current?: string | null } | null; photo?: TimetableImageInput }
+export type TimetableCourseInput = { publicId: string; title?: string | null; color?: string | null; shortDescription?: string | null; image?: TimetableImageInput }
 export type TimetableVenueInput = { publicId: string; name?: string | null; address?: SiteLocation['address'] | null }
-export type TimetableSiteLocation = Pick<SiteLocation, 'key' | 'name' | 'address' | 'accessNote'>
+export type TimetableSiteLocation = Pick<SiteLocation, 'key' | 'name' | 'address' | 'accessNote'> & Partial<Pick<SiteLocation, 'mapsUrl' | 'pin'>>
+
+/** Image widths: the panel's course image is shown at most ~34rem wide; a teacher's portrait is a 48px circle. */
+const COURSE_IMAGE_WIDTH = 960
+const TEACHER_PHOTO_WIDTH = 96
+
+function imageOf(input: TimetableImageInput | undefined, width: number): TimetableImage | null {
+  if (!input?.asset) return null
+  const src = imageUrl(input as ResolvedImage, width)
+  if (!src) return null
+  return { src, alt: typeof input.alt === 'string' ? input.alt.trim() : '', position: focalObjectPosition(input) }
+}
 
 export type ShapeInput = {
   window: { from: string; to: string }
@@ -159,7 +191,13 @@ export function shapeTimetable(input: ShapeInput): TimetableData {
   const courses: Record<string, TimetableCourse> = {}
   for (const c of input.courses) {
     if (!c?.publicId || !c.title?.trim()) continue
-    courses[c.publicId] = { id: c.publicId, title: c.title.trim(), color: courseColor(c.color) }
+    courses[c.publicId] = {
+      id: c.publicId,
+      title: c.title.trim(),
+      color: courseColor(c.color),
+      description: c.shortDescription?.trim() || null,
+      image: imageOf(c.image, COURSE_IMAGE_WIDTH),
+    }
   }
 
   const teachers: Record<string, TimetableTeacher> = {}
@@ -168,7 +206,8 @@ export function shapeTimetable(input: ShapeInput): TimetableData {
     const name = personDisplayName(p)
     if (!name) continue
     const slug = p.slug?.current || null
-    teachers[p.publicId] = { id: p.publicId, name, hasPage: p.hasPage === true && !!slug, slug }
+    const photo = imageOf(p.photo, TEACHER_PHOTO_WIDTH)
+    teachers[p.publicId] = { id: p.publicId, name, hasPage: p.hasPage === true && !!slug, slug, photo: photo ? { ...photo, alt: '' } : null }
   }
 
   // Places: the site's locations (in their order), then venues.
@@ -180,13 +219,14 @@ export function shapeTimetable(input: ShapeInput): TimetableData {
       key: l.key,
       name: l.name?.trim() || l.key,
       lines: [...formatLocationAddress(l.address), ...(l.accessNote?.trim() ? [l.accessNote.trim()] : [])],
+      mapsUrl: getLocationMapsLink({ mapsUrl: l.mapsUrl, pin: l.pin, address: l.address }),
     }
     placeOrder.push(l.key)
   }
   for (const v of input.venues ?? []) {
     if (!v?.publicId) continue
     const key = `venue:${v.publicId}`
-    places[key] = { key, name: v.name?.trim() || '', lines: formatLocationAddress(v.address ?? undefined) }
+    places[key] = { key, name: v.name?.trim() || '', lines: formatLocationAddress(v.address ?? undefined), mapsUrl: getLocationMapsLink({ address: v.address ?? undefined }) }
     placeOrder.push(key)
   }
   const knownPlace = (key: string | null) => (key && places[key] ? key : null)
@@ -194,12 +234,15 @@ export function shapeTimetable(input: ShapeInput): TimetableData {
   const teacherIdsOf = (ids: readonly string[]) => ids.filter((id) => teachers[id])
 
   const series: TimetableSeries[] = input.series
-    .filter((s) => courses[s.ownerPublicId] && s.status === 'active' && s.weekday !== null)
+    .filter((s) => courses[s.ownerPublicId] && s.status === 'active' && classRuleOf(s) !== null)
     .map((s) => ({
       id: s.id,
       courseId: s.ownerPublicId,
-      weekday: s.weekday as number,
+      weekday: weekdaysOf(s)[0],
+      weekdays: weekdaysOf(s),
       interval: s.interval,
+      rule: s.rule,
+      anchor: s.startLocal.slice(0, 10),
       start: s.startLocal.slice(11, 16),
       end: s.endLocal ? s.endLocal.slice(11, 16) : null,
       startsOn: s.startsOn,
@@ -233,7 +276,7 @@ export function shapeTimetable(input: ShapeInput): TimetableData {
     .sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start) || a.courseId.localeCompare(b.courseId))
 
   // Closures overlapping the window, with the class dates around them.
-  const activeSeries = input.series.filter((s) => courses[s.ownerPublicId] && s.status === 'active' && s.weekday !== null)
+  const activeSeries = input.series.filter((s) => courses[s.ownerPublicId] && s.status === 'active' && classRuleOf(s) !== null)
   const closures: TimetableClosure[] = input.closures
     .filter((c) => c.endsOn >= window.from && c.startsOn <= window.to)
     .map((c) => ({
@@ -288,25 +331,33 @@ export function shapeTimetable(input: ShapeInput): TimetableData {
 
 const SEARCH_DAYS = 400
 
-type PatternLike = Pick<ClassSeries, 'weekday' | 'interval' | 'startLocal' | 'startsOn' | 'endsOn'>
+type PatternLike = Pick<ClassSeries, 'weekday' | 'interval' | 'startLocal' | 'startsOn' | 'endsOn'> & { rule?: string | null; weekdays?: number[] }
+
+/** The class's repeat: its stored rule, else (hand-built rows without one) weekly on its weekday. Null when it has neither. */
+function classRuleOf(s: Pick<PatternLike, 'rule' | 'weekday' | 'interval'>): ClassRule | null {
+  const parsed = parseClassRule(s.rule)
+  if (parsed) return parsed
+  return s.weekday !== null && s.weekday >= 1 && s.weekday <= 7 ? { kind: 'weekly', weekdays: [s.weekday], interval: Math.max(1, s.interval) } : null
+}
+
+function weekdaysOf(s: PatternLike): number[] {
+  const rule = classRuleOf(s)
+  return rule ? ruleWeekdays(rule, s.startLocal.slice(0, 10)) : s.weekdays?.length ? s.weekdays : [s.weekday ?? 1]
+}
 
 function inClosure(date: string, closures: readonly Pick<ScheduleClosure, 'startsOn' | 'endsOn'>[]): boolean {
   return closures.some((c) => date >= c.startsOn && date <= c.endsOn)
 }
 
-/** Does the weekly class take place on this date (ignoring closures and single-date edits)? */
+/** Does the class take place on this date by its repeat (ignoring closures and single-date edits)? */
 export function patternOccursOn(s: PatternLike, date: string): boolean {
-  if (s.weekday === null || weekdayOf(date) !== s.weekday) return false
+  const rule = classRuleOf(s)
+  if (!rule) return false
   const anchor = s.startLocal.slice(0, 10)
   if (date < anchor) return false
   if (s.startsOn && date < s.startsOn) return false
   if (s.endsOn && date > s.endsOn) return false
-  const a = dayNumber(anchor)
-  const d = dayNumber(date)
-  if (a === null || d === null) return false
-  // "Every N weeks" counts from the Monday–Sunday week of the anchor.
-  const weeks = Math.floor((d - (a - (weekdayOf(anchor) - 1))) / 7)
-  return weeks % Math.max(1, s.interval) === 0
+  return ruleOccursOn(rule, date, anchor)
 }
 
 function classDateBefore(series: readonly PatternLike[], date: string, closures: readonly Pick<ScheduleClosure, 'startsOn' | 'endsOn'>[]): string | null {
@@ -405,12 +456,16 @@ export function mergeTimetables(parts: readonly TimetableData[]): TimetableData 
 
 export type PrintException =
   | { kind: 'cancelled'; date: string; note: string | null }
+  /** The weekly class would fall on this date but the site is closed (holiday): no session exists. */
+  | { kind: 'closed'; date: string }
   | { kind: 'substitute'; date: string; teacherIds: string[] }
   | { kind: 'time'; date: string; start: string; end: string | null }
   | { kind: 'mode'; date: string; mode: AttendanceMode }
   | { kind: 'note'; date: string; note: string }
 
 export type PrintClass = {
+  /** For a class that is not plainly weekly (monthly, once): its date(s) in THIS month, printed beside the time so it does not read as weekly. null = weekly. */
+  dates: string[] | null
   seriesId: string
   courseId: string
   start: string
@@ -438,6 +493,8 @@ export type PrintMonth = {
   rows: PrintRow[]
   /** Meeting rooms of the shown month's online / hybrid classes — null unless online details are allowed. */
   rooms: TimetableRoom[] | null
+  /** The courses shown on the sheet (each once), by title — for the optional "About the courses" page. */
+  courseIds: string[]
 }
 
 /** Exceptions of one dated session against its weekly pattern. */
@@ -448,6 +505,19 @@ export function exceptionsOf(o: TimetableOccurrence, s: TimetableSeries): PrintE
   if (o.start !== s.start || (o.end ?? null) !== (s.end ?? null)) out.push({ kind: 'time', date: o.date, start: o.start, end: o.end })
   if (o.mode !== s.mode) out.push({ kind: 'mode', date: o.date, mode: o.mode })
   if (o.note) out.push({ kind: 'note', date: o.date, note: o.note })
+  return out
+}
+
+/** Dates of the month where the weekly pattern would meet but a closure (holiday) removed the session. */
+function closedDatesOf(s: TimetableSeries, sessions: readonly TimetableOccurrence[], closures: readonly TimetableClosure[], range: { from: string; to: string }): PrintException[] {
+  const out: PrintException[] = []
+  const have = new Set(sessions.map((o) => o.date))
+  const pattern = { rule: s.rule, weekday: s.weekday, interval: s.interval, startLocal: `${s.anchor}T00:00`, startsOn: s.startsOn, endsOn: s.endsOn }
+  for (const c of closures) {
+    const from = c.startsOn > range.from ? c.startsOn : range.from
+    const to = c.endsOn < range.to ? c.endsOn : range.to
+    for (let d = from; d <= to; d = addDays(d, 1)) if (!have.has(d) && patternOccursOn(pattern, d)) out.push({ kind: 'closed', date: d })
+  }
   return out
 }
 
@@ -473,8 +543,9 @@ export function buildPrintMonth(data: TimetableData, month: string): PrintMonth 
     const { key, kind } = rowOf(s)
     const row = rows.get(key) ?? { key, kind, cells: {} }
     rows.set(key, row)
-    const exceptions = sessions.flatMap((o) => exceptionsOf(o, s)).sort((a, b) => a.date.localeCompare(b.date))
-    ;(row.cells[s.weekday] ??= []).push({
+    const all = [...sessions.flatMap((o) => exceptionsOf(o, s)), ...closedDatesOf(s, sessions, data.closures, range)].sort((a, b) => a.date.localeCompare(b.date))
+    const cell = (dates: string[] | null, exceptions: PrintException[]): PrintClass => ({
+      dates,
       seriesId: s.id,
       courseId: s.courseId,
       start: s.start,
@@ -485,7 +556,24 @@ export function buildPrintMonth(data: TimetableData, month: string): PrintMonth 
       meetingRoomId: s.meetingRoomId,
       exceptions,
     })
-    weekdays.add(s.weekday)
+    const ruleKind = parseClassRule(s.rule)?.kind
+    if (ruleKind === 'monthlyWeekday' || ruleKind === 'monthlyDay' || ruleKind === 'once') {
+      // Not plainly weekly: the column is the weekday the session(s) actually fall on this month, and the date is printed.
+      const byWeekday = new Map<number, string[]>()
+      for (const o of sessions) byWeekday.set(weekdayOf(o.date), [...(byWeekday.get(weekdayOf(o.date)) ?? []), o.date])
+      for (const [wd, dates] of byWeekday) {
+        ;(row.cells[wd] ??= []).push(cell([...new Set(dates)].sort(), all.filter((e) => weekdayOf(e.date) === wd)))
+        weekdays.add(wd)
+      }
+      continue
+    }
+    // Weekly (one or several days): a column per weekday, with only that weekday's exceptions and holiday dates.
+    for (const wd of s.weekdays) {
+      // (A session moved to a day the class never meets on stays with the first column, so it is not lost.)
+      const mine = (e: PrintException) => weekdayOf(e.date) === wd || (!s.weekdays.includes(weekdayOf(e.date)) && wd === s.weekdays[0])
+      ;(row.cells[wd] ??= []).push(cell(null, all.filter(mine)))
+      weekdays.add(wd)
+    }
   }
   for (const row of rows.values()) for (const list of Object.values(row.cells)) list.sort((a, b) => a.start.localeCompare(b.start) || a.courseId.localeCompare(b.courseId))
 
@@ -499,12 +587,17 @@ export function buildPrintMonth(data: TimetableData, month: string): PrintMonth 
     rooms = [...ids].map((id) => data.rooms![id]).filter((r): r is TimetableRoom => !!r)
   }
 
+  const shown = new Set<string>()
+  for (const row of sortedRows) for (const list of Object.values(row.cells)) for (const c of list) shown.add(c.courseId)
+  const courseIds = [...shown].filter((id) => data.courses[id]).sort((a, b) => data.courses[a].title.localeCompare(data.courses[b].title))
+
   return {
     month,
     closures: data.closures.filter((c) => c.endsOn >= range.from && c.startsOn <= range.to),
     weekdays: [...weekdays].sort((a, b) => a - b),
     rows: sortedRows,
     rooms,
+    courseIds,
   }
 }
 

@@ -16,7 +16,8 @@ import { useDateLocale } from '@/lib/i18n/date-locale-context'
  *
  * Values are ISO days (YYYY-MM-DD); '' / null = no date. `min` / `max`
  * (ISO days, inclusive) switch the days outside off. `clearable` adds a
- * "Clear" button to the sheet (onChange('')) for optional dates.
+ * "Clear" button to the sheet (onChange('')) for optional dates. `isDisabled`
+ * switches single days off (only a class's days, no weekends …).
  *
  *   <Field label="Start">{(p) => <DatePicker {...p} value={day} onChange={setDay} />}</Field>
  */
@@ -33,6 +34,7 @@ export function DatePickerSheet({
   value,
   min,
   max,
+  isDisabled,
   clearable = false,
   onDone,
   onClose,
@@ -42,23 +44,24 @@ export function DatePickerSheet({
   value: string | null
   min?: string
   max?: string
+  isDisabled?: (day: string) => boolean
   clearable?: boolean
   onDone: (day: string) => void
   onClose: () => void
 }) {
   return (
     <BottomSheet open={open} title={title} onClose={onClose}>
-      {open ? <SheetBody value={value} min={min} max={max} clearable={clearable} onDone={onDone} /> : null}
+      {open ? <SheetBody value={value} min={min} max={max} isDisabled={isDisabled} clearable={clearable} onDone={onDone} /> : null}
     </BottomSheet>
   )
 }
 
-function SheetBody({ value, min, max, clearable, onDone }: { value: string | null; min?: string; max?: string; clearable: boolean; onDone: (day: string) => void }) {
+function SheetBody({ value, min, max, isDisabled, clearable, onDone }: { value: string | null; min?: string; max?: string; isDisabled?: (day: string) => boolean; clearable: boolean; onDone: (day: string) => void }) {
   const t = useTranslations('app.ui.datePicker')
   const [day, setDay] = useState<string | null>(value || null)
   return (
     <div className="flex flex-col gap-4">
-      <Calendar mode="single" value={day} onChange={setDay} min={min} max={max} />
+      <Calendar mode="single" value={day} onChange={setDay} min={min} max={max} isDisabled={isDisabled} />
       <div className="flex flex-col gap-2">
         <p className="min-h-5 text-sm text-muted-foreground" aria-live="polite">
           {day ? '' : t('pickDay')}
@@ -82,6 +85,7 @@ export function DatePicker({
   onChange,
   min,
   max,
+  isDisabled,
   clearable,
   title,
   placeholder,
@@ -98,6 +102,8 @@ export function DatePicker({
   onChange: (day: string) => void
   min?: string
   max?: string
+  /** Days that cannot be picked (a pure function of the ISO day), on top of min / max. */
+  isDisabled?: (day: string) => boolean
   /** Optional date: the sheet offers "Clear". */
   clearable?: boolean
   /** The sheet's title (default "Pick a date"). */
@@ -135,6 +141,7 @@ export function DatePicker({
         value={value}
         min={min}
         max={max}
+        isDisabled={isDisabled}
         clearable={clearable}
         onClose={() => setOpen(false)}
         onDone={(day) => {

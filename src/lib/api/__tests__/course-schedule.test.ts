@@ -288,6 +288,22 @@ describe('the Classes panel', () => {
     expect(r).toMatchObject({ truncated: true, keptEdited: 2 })
   })
 
+  it('passes the repeat preset on, and refuses one that is not a preset', async () => {
+    const store = fakeStore()
+    await saveClass(ctx(editor()), PID, { ...NEW_CLASS, repeat: { kind: 'weekly', weekdays: [1, 3], interval: 2 } }, deps(store))
+    expect(store.saveSeries).toHaveBeenCalledWith(expect.objectContaining({ repeat: { kind: 'weekly', weekdays: [1, 3], interval: 2 } }))
+    const junk = { kind: 'weekly', weekdays: 'MO', interval: 1 } as never
+    const other = fakeStore()
+    expect(await code(saveClass(ctx(editor()), PID, { ...NEW_CLASS, repeat: junk }, deps(other)))).toBe('invalid_value')
+    expect(other.saveSeries).not.toHaveBeenCalled()
+  })
+
+  it('reports a class outside its term with its own code', async () => {
+    const { ScheduleError } = await import('@/lib/scheduling/types')
+    const store = fakeStore({ saveSeries: vi.fn(async () => { throw new ScheduleError('outside_term', 'x') }) })
+    expect(await code(saveClass(ctx(editor()), PID, NEW_CLASS, deps(store)))).toBe('outside_term')
+  })
+
   it('refuses a course, place or person that is not this website\'s, before saving', async () => {
     const foreignCourse = deps(fakeStore(), fakeClient({ courseExists: false }))
     expect(await code(saveClass(ctx(editor()), PID, NEW_CLASS, foreignCourse))).toBe('invalid_value')

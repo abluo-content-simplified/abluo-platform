@@ -65,6 +65,29 @@ describe('timetableForSection', () => {
     expect(occurrencesInWindow).not.toHaveBeenCalled()
   })
 
+  it('classes of a course that is not visible (draft, scheduled, archived) never reach the website', async () => {
+    // The website query returns only visible courses; a draft course's classes exist in scheduling but its id is never asked for.
+    const { deps, occurrencesInWindow } = fakes()
+    const visibleOnly = { ...deps, fetchForTenant: (async () => [COURSES[0]]) as TimetableDeps['fetchForTenant'] }
+    await timetableForSection('cyce', { ...opts, includeOnlineDetails: false }, visibleOnly)
+    const asked = (occurrencesInWindow.mock.calls[0] as unknown as [string, { ownerPublicIds: string[] }])[1].ownerPublicIds
+    expect(asked).toEqual([COURSES[0].publicId])
+    // none visible → scheduling is not even read
+    const none = fakes()
+    const empty = await timetableForSection('cyce', { ...opts, includeOnlineDetails: false }, { ...none.deps, fetchForTenant: (async () => []) as TimetableDeps['fetchForTenant'] })
+    expect(empty.occurrences).toEqual([])
+    expect(none.occurrencesInWindow).not.toHaveBeenCalled()
+  })
+
+  it('the website course queries use COURSE_VISIBLE: published, not archived, go-live date passed (no date = visible)', async () => {
+    const q = await import('@/lib/modules/courses/queries')
+    for (const query of [q.COURSES_BY_PUBLIC_IDS_QUERY, q.COURSES_LISTING_QUERY]) {
+      expect(query).toContain('!(_id in path("drafts.**"))')
+      expect(query).toContain('!defined(archivedAt)')
+      expect(query).toContain('(!defined(publishedAt) || publishedAt <= now())')
+    }
+  })
+
   it('fails soft: store down, unknown project, bad window → an empty timetable, never a throw', async () => {
     const down = await timetableForSection('cyce', { ...opts, includeOnlineDetails: true }, fakes({ failStore: true }).deps)
     expect(down).toMatchObject({ occurrences: [], series: [], rooms: null })

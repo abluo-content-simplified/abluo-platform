@@ -33,12 +33,12 @@ const fakeStore = () => {
 const code = async (p: Promise<unknown>) => ((await p.then(() => null, (e) => e)) as ScheduleError | null)?.code
 
 describe('ownership and place checks', () => {
-  it('the course must be a published course of the caller\'s project', async () => {
+  it('the course must be a course (draft or published) of the caller\'s project', async () => {
     const ok = clientReturning({ 'count(*[_type == "course"': 1 })
     await expect(guardCourseOwner('slug-a', COURSE, { client: ok })).resolves.toBeUndefined()
     expect(ok.fetch).toHaveBeenCalledWith(COURSE_GUARD_QUERY, { projectSlug: 'slug-a', id: COURSE }, { perspective: 'raw' })
     expect(COURSE_GUARD_QUERY).toContain('projectSlug == $projectSlug')
-    expect(COURSE_GUARD_QUERY).toContain('!(_id in path("drafts.**"))')
+    expect(COURSE_GUARD_QUERY).not.toContain('drafts.**')
     expect(await code(guardCourseOwner('slug-a', COURSE, { client: clientReturning({ 'count(*[_type == "course"': 0 }) }))).toBe('invalid')
     expect(await code(guardCourseOwner('slug-a', 'not-a-uuid', { client: ok }))).toBe('invalid')
     expect(await code(guardCourseOwner('', COURSE, { client: ok }))).toBe('invalid')

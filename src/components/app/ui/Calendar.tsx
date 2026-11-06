@@ -29,7 +29,9 @@ import { useDateLocale } from '@/lib/i18n/date-locale-context'
  *   mode="range":  value is { from, to }; first tap = start, second = end
  *                  (swapped if earlier), hover previews the range.
  *
- * `min` / `max` (ISO days, inclusive) switch the days outside off.
+ * `min` / `max` (ISO days, inclusive) switch the days outside off. `isDisabled`
+ * switches individual days off (only Thursdays, no weekends …): the arrow keys
+ * skip them, so the keyboard never gets stuck.
  *
  *   <Calendar mode="single" value={day} onChange={setDay} min={today} />
  *   <Calendar mode="range" value={range} onChange={setRange} months={2} />
@@ -43,6 +45,8 @@ export type CalendarProps = (SingleProps | RangeProps) & {
   /** First and last day that can be picked (inclusive). */
   min?: string
   max?: string
+  /** Days (ISO) that cannot be picked, besides those outside min / max. Must be a pure function of the day. */
+  isDisabled?: (day: string) => boolean
   className?: string
 }
 
@@ -63,15 +67,33 @@ const ym = (iso: string) => {
   return p.y * 12 + p.m
 }
 
+/**
+ * The first day from `iso` that is not `blocked`, stepping `dir` days at a time (at most two months);
+ * null when there is none, or when the walk leaves the min / max range (`stop`).
+ */
+function settle(iso: string, dir: 1 | -1, blocked: (day: string) => boolean, stop?: (day: string) => boolean): string | null {
+  let day = iso
+  for (let i = 0; i <= 62; i++) {
+    if (stop?.(day)) return null
+    if (!blocked(day)) return day
+    day = addDays(day, dir)
+  }
+  return null
+}
+
 export function Calendar(props: CalendarProps) {
-  const { months = 1, min, max, className = '' } = props
+  const { months = 1, min, max, isDisabled, className = '' } = props
   const t = useTranslations('app.ui.calendar')
   const locale = useLocale()
   const dateLocale = useDateLocale()
   const today = useMemo(() => todayISO(), [])
   const weekStart = useMemo(() => weekStartForLocale(locale), [locale])
   const range: DateRange = props.mode === 'range' ? props.value : { from: props.value, to: props.value }
-  const start = range.from ?? (min && today < min ? min : today)
+  const beyond = (iso: string) => (min ? iso < min : false) || (max ? iso > max : false)
+  const outside = (iso: string) => beyond(iso) || (isDisabled ? isDisabled(iso) : false)
+  const rawStart = range.from ?? (min && today < min ? min : today)
+  // The focus (tab stop) starts on the picked day, else today — or the next day that can be picked.
+  const start = settle(rawStart, 1, outside) ?? rawStart
   const [view, setView] = useState<YearMonth>(() => monthOf(start) ?? { y: 2026, m: 0 })
   const [hover, setHover] = useState<string | null>(null)
   const [focus, setFocus] = useState<string>(start)
@@ -86,7 +108,6 @@ export function Calendar(props: CalendarProps) {
     [weekStart, weekdayFmt]
   )
   const shown = useMemo(() => Array.from({ length: months }, (_, i) => addMonths(view, i)), [view, months])
-  const outside = (iso: string) => (min ? iso < min : false) || (max ? iso > max : false)
   const canPrev = !min || view.y * 12 + view.m > ym(min)
   const lastShown = shown[shown.length - 1]
   const canNext = !max || lastShown.y * 12 + lastShown.m < ym(max)
@@ -94,8 +115,9 @@ export function Calendar(props: CalendarProps) {
   // Range mode previews the range while hovering after the first tap.
   const previewTo = props.mode === 'range' && range.from && !range.to ? hover : range.to
 
-  const moveFocus = (iso: string) => {
-    if (outside(iso)) return
+  const moveFocus = (wanted: string, dir: 1 | -1 = 1) => {
+    const iso = settle(wanted, dir, outside, (d) => beyond(d))
+    if (!iso) return
     setFocus(iso)
     const idx = ym(iso)
     const p = parseISO(iso)!
@@ -113,17 +135,17 @@ export function Calendar(props: CalendarProps) {
     const step: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }
     if (e.key in step) {
       e.preventDefault()
-      moveFocus(addDays(focus, step[e.key]))
+      moveFocus(addDays(focus, step[e.key]), step[e.key] < 0 ? -1 : 1)
     } else if (e.key === 'PageUp' || e.key === 'PageDown') {
       e.preventDefault()
       const p = parseISO(focus)!
       const n = addMonths({ y: p.y, m: p.m }, e.key === 'PageUp' ? -1 : 1)
-      moveFocus(`${String(n.y).padStart(4, '0')}-${String(n.m + 1).padStart(2, '0')}-${String(Math.min(p.d, 28)).padStart(2, '0')}`)
+      moveFocus(`${String(n.y).padStart(4, '0')}-${String(n.m + 1).padStart(2, '0')}-${String(Math.min(p.d, 28)).padStart(2, '0')}`, e.key === 'PageUp' ? -1 : 1)
     } else if (e.key === 'Home' || e.key === 'End') {
       e.preventDefault()
       const p = parseISO(focus)!
       const off = (new Date(Date.UTC(p.y, p.m, p.d)).getUTCDay() - weekStart + 7) % 7
-      moveFocus(addDays(focus, e.key === 'Home' ? -off : 6 - off))
+      moveFocus(addDays(focus, e.key === 'Home' ? -off : 6 - off), e.key === 'Home' ? 1 : -1)
     }
     // Enter / Space activate the focused day button natively.
   }

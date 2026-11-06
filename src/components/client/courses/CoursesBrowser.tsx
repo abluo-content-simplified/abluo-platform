@@ -33,6 +33,7 @@ import { CoursesTable } from './CoursesTable'
 import { CoursesCardsGrid, CoursesPhoneList } from './CoursesCards'
 import { NewCourseDialog } from './NewCourseDialog'
 import { CourseActivitySheet } from './CourseActivitySheet'
+import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import { COURSE_ICONS, toCourseRow, type CourseRow } from './course-bits'
 
 const VIEW_KEY = 'abluo.courses.view'
@@ -56,6 +57,7 @@ export function CoursesBrowser({
   projectSlug,
   courses,
   defaultLocale,
+  timeZone = null,
   canWrite,
   canDelete = false,
   initialQuery = '',
@@ -63,6 +65,8 @@ export function CoursesBrowser({
   projectSlug: string
   courses: CourseListItem[]
   defaultLocale: string
+  /** The site's IANA time zone (dates on Scheduled badges). */
+  timeZone?: string | null
   canWrite: boolean
   canDelete?: boolean
   /** The page's query string at request time. */
@@ -72,6 +76,7 @@ export function CoursesBrowser({
   const te = useTranslations('clientDashboard.courses.errors')
   const tl = useTranslations('app.lifecycle')
   const ui = useLocale()
+  const zone = editingZone(timeZone)
   const router = useRouter()
   const appRouter = useAppRouter()
   const pathname = usePathname()
@@ -113,10 +118,10 @@ export function CoursesBrowser({
       courses
         .filter((c) => !hidden.has(c.id))
         .map((c) => {
-          const row = toCourseRow(c, projectSlug)
+          const row = toCourseRow(c, projectSlug, zone)
           return overlay[c.id] ? { ...row, ...overlay[c.id] } : row
         }),
-    [courses, hidden, overlay, projectSlug]
+    [courses, hidden, overlay, projectSlug, zone]
   )
   const shown = useMemo(() => applyCourseFilters(rows, filters), [rows, filters])
   const counts = useMemo(() => courseStateCounts(rows, filters), [rows, filters])
@@ -233,7 +238,7 @@ export function CoursesBrowser({
     items.push({ key: 'activity', label: t('actions.activity'), onSelect: () => setActivityOf(c) })
     if (c.state === 'archived') {
       if (canWrite) items.push({ key: 'restore', label: tl('actions.restore'), onSelect: () => void restore(c) })
-    } else if (c.isPublished && canWrite) {
+    } else if (c.isPublished && canWrite && c.state !== 'scheduled') {
       items.push({ key: 'archive', label: tl('actions.archive'), onSelect: () => archive(c) })
     }
     if (canDelete) {

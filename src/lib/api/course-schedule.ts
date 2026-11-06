@@ -41,6 +41,7 @@ import {
   saveEditionGuarded,
   updateOccurrenceGuarded,
 } from '@/lib/scheduling/course-guarded.server'
+import { coerceClassRule, parseClassRule, type ClassRule } from '@/lib/scheduling/recurrence'
 import { ScheduleError, type AttendanceMode, type ClassOccurrence, type ClassSeries, type MeetingRoom, type SchedulePlace } from '@/lib/scheduling/types'
 
 export const SCHEDULE_WRITE_PERMISSION = COURSES_PERMISSIONS.scheduleWrite
@@ -70,10 +71,16 @@ export type ClassView = {
   /** The course's permanent publicId. */
   courseId: string
   editionId: string | null
-  /** 1 = Monday … 7 = Sunday. */
+  /** The FIRST weekday of the class, 1 = Monday … 7 = Sunday (sorting; for monthly-by-date / once: the weekday of the first date). */
   weekday: number
-  /** Every N weeks. */
+  /** Every weekday the class meets (several for "Monday + Wednesday"); where a class is placed on a weekday grid. */
+  weekdays: number[]
+  /** Every N weeks (1 unless weekly). */
   interval: number
+  /** The repeat preset (once / weekly on days / monthly on the nth weekday / monthly on day N); null for an unknown stored rule. */
+  repeat: ClassRule | null
+  /** The stored rule text, for `describeClassRepeat`. */
+  rule: string | null
   startTime: string
   endTime: string | null
   timeZone: string
@@ -184,7 +191,7 @@ const clientOf = (deps: CourseScheduleDeps) => deps.client ?? (sanityWriteClient
 const storeOf = (deps: CourseScheduleDeps) => deps.store ?? createCourseScheduleStore()
 const guardDeps = (deps: CourseScheduleDeps) => ({ client: deps.client, assertPeople: deps.assertPeople, store: deps.store })
 
-const CODE: Record<ScheduleError['code'], CourseErrorCode> = { conflict: 'conflict', not_found: 'not_found', invalid: 'invalid_value', unavailable: 'failed' }
+const CODE: Record<ScheduleError['code'], CourseErrorCode> = { conflict: 'conflict', not_found: 'not_found', invalid: 'invalid_value', unavailable: 'failed', outside_term: 'outside_term' }
 
 /** Runs a scheduling call and turns its errors into opaque course error codes. */
 async function guarded<T>(fn: () => Promise<T>): Promise<T> {
@@ -287,7 +294,10 @@ function classView(s: ClassSeries, names: Map<string, string>, rooms: Map<string
     courseId: s.ownerPublicId,
     editionId: s.editionId,
     weekday: s.weekday ?? 1,
+    weekdays: s.weekdays?.length ? s.weekdays : [s.weekday ?? 1],
     interval: s.interval,
+    repeat: parseClassRule(s.rule),
+    rule: s.rule,
     startTime: s.startLocal.slice(11, 16),
     endTime: s.endLocal ? s.endLocal.slice(11, 16) : null,
     timeZone: s.timeZone,
@@ -544,11 +554,16 @@ export type SaveClassInput = {
   /** The course's permanent publicId. */
   courseId: string
   editionId?: string | null
-  weekday: number
+  /** How it repeats (a preset). */
+  repeat?: ClassRule
+  /** Legacy: weekly on ONE weekday; used only when `repeat` is omitted. */
+  weekday?: number
   interval?: number
   startTime: string
   endTime?: string | null
+  /** The first class: must be a date the repeat produces. */
   startsOn: string
+  /** The last class (optional; empty = until the term ends): must be a date the repeat produces. Ignored for "once". */
   endsOn?: string | null
   /** '' = no place; `location:<key>` or `venue:<publicId>`. */
   placeToken: string
@@ -571,6 +586,8 @@ export async function saveClass(ctx: TenantAuthorizationContext, projectId: stri
   if (input.endTime != null) assertTime(input.endTime, 'end time')
   assertDay(input.startsOn, 'first date')
   if (input.endsOn != null) assertDay(input.endsOn, 'last date')
+  const repeat = input.repeat === undefined ? undefined : coerceClassRule(input.repeat) // a request body: only a preset gets through
+  if (input.repeat !== undefined && !repeat) throw invalid('The repeat is not valid.')
   const store = storeOf(deps)
   const courseId = input.courseId.toLowerCase()
   // An existing class must be THIS course's, in this project.
@@ -594,6 +611,7 @@ export async function saveClass(ctx: TenantAuthorizationContext, projectId: stri
         ownerPublicId: courseId,
         editionId: input.editionId ?? null,
         timeZone: existing?.timeZone ?? editionZone ?? zoneFor(site, input.timeZone),
+        repeat: repeat ?? undefined,
         weekday: input.weekday,
         interval: input.interval ?? 1,
         startTime: input.startTime,

@@ -30,9 +30,21 @@ export type PersonPickerPerson = {
   archived?: boolean
 }
 
+/** Wording for the place the picker is used in; each part falls back to the generic "people" text. */
+export type PersonPickerLabels = {
+  /** Under the field when nobody is chosen ("No teacher yet"). */
+  empty?: string
+  /** The button that opens the sheet (multiple mode: "Add teacher"). */
+  add?: string
+  /** Title of the sheet ("Choose teachers"). */
+  title?: string
+}
+
 export type PersonPickerProps = {
   /** Accessible name of the whole field ("Authors", "Hosts"). */
   label: string
+  /** Context wording (empty text, add button, sheet title) for lists that are not "people" in general — teachers, hosts. */
+  labels?: PersonPickerLabels
   /** multiple (default): an ordered list; single: exactly one or nobody. */
   mode?: 'multiple' | 'single'
   /** The chosen people, in order. The caller holds the objects, so the picker never needs a lookup. */
@@ -96,7 +108,7 @@ function moveItem<T>(list: T[], from: number, to: number): T[] {
  * tap. "Add new person" in the sheet asks for first and last name only and
  * adds the new person without leaving the editor behind it.
  */
-export function PersonPicker({ label, mode = 'multiple', value, onChange, search, onCreate, findDuplicates, primaryLabel, max, groupLabel = (k) => k, disabled = false, disabledReason }: PersonPickerProps) {
+export function PersonPicker({ label, labels, mode = 'multiple', value, onChange, search, onCreate, findDuplicates, primaryLabel, max, groupLabel = (k) => k, disabled = false, disabledReason }: PersonPickerProps) {
   const t = useTranslations('app.ui.personPicker')
   const single = mode === 'single'
   const [open, setOpen] = useState(false)
@@ -114,7 +126,7 @@ export function PersonPicker({ label, mode = 'multiple', value, onChange, search
   return (
     <div role="group" aria-label={label} className="space-y-3">
       {value.length === 0 ? (
-        <p className="text-[0.9375rem] leading-6 text-muted-foreground">{single ? t('noneSingle') : t('none')}</p>
+        <p className="text-[0.9375rem] leading-6 text-muted-foreground">{labels?.empty ?? (single ? t('noneSingle') : t('none'))}</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {value.map((p, n) => (
@@ -158,7 +170,7 @@ export function PersonPicker({ label, mode = 'multiple', value, onChange, search
 
       <div className="flex flex-col items-start gap-1">
         <Button onClick={() => setOpen(true)} disabled={disabled || full} aria-describedby={disabled || full ? `${label}-why` : undefined}>
-          {single ? (value.length ? t('change') : t('choose')) : t('add')}
+          {single ? (value.length ? t('change') : t('choose')) : (labels?.add ?? t('add'))}
         </Button>
         {disabled && disabledReason ? (
           <p id={`${label}-why`} className="text-sm leading-5 text-muted-foreground">
@@ -182,6 +194,7 @@ export function PersonPicker({ label, mode = 'multiple', value, onChange, search
         findDuplicates={findDuplicates}
         max={max}
         groupLabel={groupLabel}
+        title={labels?.title}
       />
     </div>
   )
@@ -198,6 +211,7 @@ function PickerSheet({
   findDuplicates,
   max,
   groupLabel,
+  title,
 }: {
   open: boolean
   onClose: () => void
@@ -209,6 +223,7 @@ function PickerSheet({
   findDuplicates?: PersonPickerProps['findDuplicates']
   max?: number
   groupLabel: (key: string) => string
+  title?: string
 }) {
   const t = useTranslations('app.ui.personPicker')
   const [view, setView] = useState<'search' | 'create'>('search')
@@ -274,7 +289,7 @@ function PickerSheet({
   }
 
   return (
-    <BottomSheet open={open} title={view === 'create' ? t('createTitle') : t('title')} onClose={onClose} size="lg">
+    <BottomSheet open={open} title={view === 'create' ? t('createTitle') : (title ?? t('title'))} onClose={onClose} size="lg">
       {view === 'create' && onCreate ? (
         <CreateForm
           initialName={query.trim()}

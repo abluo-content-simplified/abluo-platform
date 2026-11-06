@@ -9,5 +9,5 @@
 export const DRAFT_PREVIEW_HEADER = 'x-abluo-draft-preview'
 
 export function isDraftPreviewPath(pathname: string): boolean {
-  return /\/preview\/(post|gallery|person)\/[^/]+\/?$/.test(pathname)
+  return /\/preview\/(post|gallery|person|course)\/[^/]+\/?$/.test(pathname)
 }

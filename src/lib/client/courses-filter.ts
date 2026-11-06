@@ -11,7 +11,7 @@
 
 import { normalizeSearch } from './posts-filter'
 
-export type CourseListState = 'draft' | 'published' | 'changes' | 'archived'
+export type CourseListState = 'draft' | 'scheduled' | 'published' | 'changes' | 'archived'
 export type CourseSortColumn = 'title' | 'updated'
 export type CourseSort = { column: CourseSortColumn; dir: 'asc' | 'desc' }
 
@@ -34,7 +34,7 @@ export type CourseFilters = {
 
 export const DEFAULT_COURSE_FILTERS: CourseFilters = { q: '', status: 'all', sort: { column: 'updated', dir: 'desc' } }
 
-export const COURSE_STATES: readonly CourseListState[] = ['published', 'changes', 'draft', 'archived']
+export const COURSE_STATES: readonly CourseListState[] = ['published', 'changes', 'scheduled', 'draft', 'archived']
 const COLUMNS: readonly string[] = ['title', 'updated']
 
 /** Clicking a column header: flip when already sorted by it, else its natural order (A→Z, newest first). */
@@ -63,7 +63,7 @@ export function applyCourseFilters<T extends FilterableCourse>(rows: T[], f: Cou
 /** Counts per status option, respecting the search ("all" = not archived). */
 export function courseStateCounts(rows: FilterableCourse[], f: CourseFilters): Record<CourseListState | 'all', number> {
   const q = normalizeSearch(f.q.trim())
-  const counts: Record<CourseListState | 'all', number> = { all: 0, published: 0, changes: 0, draft: 0, archived: 0 }
+  const counts: Record<CourseListState | 'all', number> = { all: 0, published: 0, changes: 0, scheduled: 0, draft: 0, archived: 0 }
   for (const c of rows) {
     if (q && !normalizeSearch(`${c.title} ${c.searchText}`).includes(q)) continue
     if (c.state !== 'archived') counts.all++

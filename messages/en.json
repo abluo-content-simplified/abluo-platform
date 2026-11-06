@@ -3781,6 +3781,11 @@
       }
     },
     "courses": {
+      "preview": {
+        "button": "Preview",
+        "hint": "See your timetable with this course in it, before it is online. The link is private and works for 15 minutes.",
+        "failed": "We couldn’t open the preview. Please try again."
+      },
       "screen": {
         "loadFailed": "We couldn’t load your courses. Please try again.",
         "retry": "Try again"
@@ -3798,6 +3803,8 @@
         "archive_first": "Archive this course before deleting it.",
         "archived": "This course is archived. Restore it to make changes.",
         "missing_title": "A title in the main language is required.",
+        "no_timetable_page": "This course can’t go online yet: your website has no timetable showing it. Ask your website administrator to add one.",
+        "invalid_schedule": "Pick a date and time in the future, within two years.",
         "failed": "Something went wrong. Please try again.",
         "offline": "You’re offline. Your changes will save when you’re back online."
       },
@@ -3886,6 +3893,16 @@
         "shortDescriptionHint": "One or two sentences, shown on the timetable and in lists.",
         "colorLabel": "Colour",
         "colorHint": "How this course is marked in the timetable.",
+        "imageLabel": "Image",
+        "imageHint": "Optional. Shown in the class details on your website. Choose it from the Media Library.",
+        "imageChoose": "Choose image",
+        "imageChange": "Change image",
+        "imageRemove": "Remove image",
+        "noPageTitle": "This course can’t go online yet",
+        "noPageBody": "No page on your website shows the timetable yet.",
+        "noPageStudio": "Add a timetable to a page",
+        "noPageAskAdmin": "Ask your website administrator to add one.",
+        "opensInNewTab": "opens in a new tab",
         "color": {
           "none": "None",
           "accent": "Accent",
@@ -3896,6 +3913,23 @@
         "archivedBody": "Restore it to make changes.",
         "readOnly": "You can look but not change anything here.",
         "publishBlocked": "Before you can publish: add a title in {language}.",
+        "publishNow": "Publish now",
+        "publishedNowToast": "Published. The course is online.",
+        "scheduledToast": "Scheduled. The course goes online on {date}.",
+        "updatedScheduledToast": "Updated. It stays scheduled for {date}.",
+        "dateSaved": "Date saved.",
+        "backToDraftDone": "Back to draft. It’s not scheduled any more.",
+        "onlineTitle": "On your website",
+        "onlineLive": "This course is online.",
+        "notOnlineYet": "Not online yet. Publish it to put it on your website.",
+        "viewOnWebsite": "View on website",
+        "publishOn": "Publish on",
+        "schedule": "Schedule",
+        "scheduleHelp": "Pick a date and time. The course goes online by itself then.",
+        "scheduledSentence": "Goes online on {date}. Until then it’s not on your website.",
+        "backToDraft": "Back to draft",
+        "updateScheduled": "Update scheduled course",
+        "changesNotScheduled": "You have changes that aren’t in the scheduled version yet.",
         "publishReason": {
           "upToDate": "Nothing new to publish."
         },
@@ -3918,7 +3952,7 @@
         "menu": "Actions for {name}",
         "openClass": "Open {name}",
         "noDetails": "No place, teachers or languages yet",
-        "publishFirst": "Publish this course first, then add its classes.",
+        "publishFirst": "Not on the website yet: these classes appear in the timetable once the course is online.",
         "loadError": "The classes couldn’t be loaded. Reload the page to try again.",
         "empty": {
           "title": "No classes yet",
@@ -3953,11 +3987,29 @@
           "term": "Term",
           "noTerm": "No term",
           "startsOn": "First class",
-          "startsOnHint": "The first class is the first matching day on or after this date.",
+          "startsOnHint": "Only days the class takes place on can be chosen.",
           "endsOn": "Last class",
-          "endsOnHint": "Optional. The end of the term also ends the class.",
+          "endsOnHint": "Optional. Only days the class takes place on can be chosen. The end of the term also ends the class.",
           "noEndDate": "No last date",
           "endBeforeStartDay": "The last class can’t be before the first.",
+          "repeatOnce": "Once",
+          "repeatMonthlyWeekday": "Every month, on a weekday",
+          "repeatMonthlyDay": "Every month, on a date",
+          "days": "Days",
+          "daysNeeded": "Choose at least one day.",
+          "ordinal": "Which one",
+          "ordinalFirst": "First",
+          "ordinalSecond": "Second",
+          "ordinalThird": "Third",
+          "ordinalFourth": "Fourth",
+          "ordinalLast": "Last",
+          "monthDay": "Day of the month",
+          "monthDayHint": "Months without this day are skipped.",
+          "onDate": "Date",
+          "datesAdjusted": "The dates were adjusted to the days the class takes place on.",
+          "teachersEmpty": "No teacher yet",
+          "teachersAdd": "Add teacher",
+          "teachersTitle": "Choose teachers",
           "save": "Save",
           "saving": "Saving…"
         },
@@ -3975,6 +4027,7 @@
         },
         "errors": {
           "inUse": "This is still used by classes. Remove it from them first.",
+          "outsideTerm": "That date is outside the term. Pick a date inside the term, or choose another term.",
           "missingName": "A name in the main language is required."
         }
       },

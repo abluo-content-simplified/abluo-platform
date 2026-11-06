@@ -52,7 +52,7 @@ export type Series = {
 
 export type EventSchedule = { series: Series; occurrences: Occurrence[] }
 
-export type ScheduleErrorCode = 'conflict' | 'not_found' | 'invalid' | 'unavailable'
+export type ScheduleErrorCode = 'conflict' | 'not_found' | 'invalid' | 'unavailable' | 'outside_term'
 
 export class ScheduleError extends Error {
   constructor(readonly code: ScheduleErrorCode, message: string) {
@@ -79,10 +79,13 @@ export type ClassSeries = {
   /** First session ('YYYY-MM-DDTHH:mm'); also the anchor for "every N weeks". */
   startLocal: LocalDateTime
   endLocal: LocalDateTime | null
-  /** 'FREQ=WEEKLY;INTERVAL=n;BYDAY=XX' (null only for odd legacy rows). */
+  /** The repeat preset as text (see recurrence.ts: 'FREQ=WEEKLY;INTERVAL=n;BYDAY=MO,WE', 'FREQ=MONTHLY;BYDAY=-1SU', 'FREQ=MONTHLY;BYMONTHDAY=15', 'FREQ=DAILY;COUNT=1' = once); null only for odd legacy rows. Parse with parseClassRule. */
   rule: string | null
-  /** 1 = Monday … 7 = Sunday. */
+  /** The FIRST weekday of the class (1 = Monday … 7 = Sunday) = rule_weekday; readers that place a class on one weekday use it. For "once" / "day of the month" it is the weekday of the first date. */
   weekday: number | null
+  /** Every weekday the class meets (weekly: all chosen days). Set by the store; absent only in hand-built fixtures. */
+  weekdays?: number[]
+  /** Every N weeks (1 for anything that is not weekly). */
   interval: number
   /** First / last possible date of the class ('YYYY-MM-DD'). */
   startsOn: string | null

@@ -83,6 +83,8 @@ describe('isDraftPreviewPath', () => {
     ['/preview/gallery/gallery-studio', true],
     [`/it/hoffmann/preview/person/${ID}`, true],
     [`/preview/person/${ID}`, true],
+    [`/it/hoffmann/preview/course/${ID}`, true],
+    [`/preview/course/${ID}`, true],
     ['/it/hoffmann/preview/page/x', false],
     ['/it/hoffmann/preview', false],
     ['/it/hoffmann/blog/preview', false],

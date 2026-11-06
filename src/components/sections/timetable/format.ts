@@ -30,6 +30,17 @@ export function shortDate(locale: string, date: string, withYear = false): strin
   return formatDate(locale, date, withYear ? { day: 'numeric', month: 'numeric', year: 'numeric' } : { day: 'numeric', month: 'numeric' })
 }
 
+/** The time zone of a date as a short name in the page language ("CET", "GMT+1"); null when unknown. */
+export function zoneLabel(locale: string, timeZone: string | null | undefined, date: string): string | null {
+  if (!timeZone) return null
+  try {
+    const part = new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: 'short' }).formatToParts(noon(date)).find((p) => p.type === 'timeZoneName')
+    return part?.value ?? null
+  } catch {
+    return null
+  }
+}
+
 export const dayNumber = (locale: string, date: string) => formatDate(locale, date, { day: 'numeric' })
 
 export const timeRange = (start: string, end: string | null) => (end ? `${start}–${end}` : start)
