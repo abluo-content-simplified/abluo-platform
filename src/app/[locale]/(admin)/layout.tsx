@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers'
-import { dashboardAppMetadata, dashboardViewport } from '@/lib/app-install'
+import { adminAppMetadata, dashboardViewport } from '@/lib/app-install'
 import { redirect } from 'next/navigation'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
 import { NewVersionNotice } from '@/components/system/NewVersionNotice'
@@ -12,7 +12,7 @@ import { countAdminUnread } from '@/lib/support-tickets/service'
 import { APP_TEXT_SIZE_COOKIE, APP_THEME_COOKIE, parseAppTextSize, parseAppTheme } from '@/lib/app-theme'
 
 // Installable dashboard (manifest, icons, theme colour): dashboards only, never the websites.
-export const metadata = dashboardAppMetadata
+export const metadata = adminAppMetadata
 export const viewport = dashboardViewport
 
 /**

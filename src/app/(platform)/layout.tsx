@@ -2,10 +2,13 @@ import type { Metadata } from 'next'
 import '../globals.css'
 import { RootDocument } from '@/components/RootDocument'
 import { routing } from '@/i18n/routing'
+import { clientIcons } from '@/lib/app-install'
 
 export const metadata: Metadata = {
   title: 'Abluo',
   description: 'Content. Simplified.',
+  // Sign-in, password reset and invite are client-facing: the light icon. Studio overrides with the dark one.
+  icons: clientIcons,
 }
 
 /**

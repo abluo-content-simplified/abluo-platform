@@ -1,4 +1,6 @@
-// PLACEHOLDER app icons for the installable dashboards (client + admin).
+// RETIRED 2026-11-06 — the real icons (abluo sigil, light + dark) are built by
+// ~/Abluo/Abluo/company/brand/logo/option-2/favicon/build_favicons.py. Do not run this; it would overwrite them.
+// (Old note:) PLACEHOLDER app icons for the installable dashboards (client + admin).
 // There is no Abluo logo yet (being designed). Replace PLACEHOLDER_SVG below
 // (or point it at the real logo SVG) and re-run:  node scripts/make-app-icons.mjs
 // Output: public/dashboard/icon-192.png, icon-512.png, icon-maskable-512.png, apple-touch-icon.png
