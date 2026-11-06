@@ -700,6 +700,17 @@ export const LAB_REGISTRY: LabEntry[] = [
     rules: ['Icons are path strings, so nav items stay plain data.', 'Decorative only: the label or aria-label carries the meaning.'],
     demo: () => import('./demos/app-icon.demo'),
   },
+  {
+    id: 'abluo-logo',
+    name: 'AbluoLogo',
+    exports: ['AbluoLogo'],
+    source: 'src/components/app/shell/AbluoLogo.tsx',
+    group: 'layout',
+    status: 'canonical',
+    summary: 'The abluo logo: the wordmark "abluo." or the sigil "a.", drawn inline — letters in currentColor, the dot in the primary colour.',
+    rules: ['Never retype the brand as text — use this.', 'Set height (and colour) with className; width follows the artwork.', 'label={null} when visible text already names Abluo.'],
+    demo: () => import('./demos/abluo-logo.demo'),
+  },
   // ── Actions ────────────────────────────────────────────────────────────────
   {
     id: 'link-card',

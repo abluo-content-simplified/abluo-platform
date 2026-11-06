@@ -8,6 +8,7 @@ import { RailItem } from '@/components/app/ui/RailItem'
 import { SidebarCollapseToggle } from '@/components/app/ui/SidebarCollapseToggle'
 import { SidebarGroup } from '@/components/app/ui/SidebarGroup'
 import { SidebarLink } from '@/components/app/ui/SidebarLink'
+import { AbluoLogo } from './AbluoLogo'
 import { AccountMenu, type AccountMenuProps } from './AccountMenu'
 import { AppIcon, APP_ICONS } from './AppIcon'
 import { currentNavLayout, useSidebarState } from './SidebarState'
@@ -259,8 +260,8 @@ export function AppSidebar({
         <div className={`contents ${EXPANDED_ONLY}`}>
           <div className="flex items-start justify-between gap-2 border-b border-border-subtle px-5 py-5">
             <div>
-              <span className="text-sm font-semibold tracking-tight text-foreground">{BRAND}</span>
-              <p className="mt-0.5 text-xs text-muted-foreground">{tagline}</p>
+              <AbluoLogo label={BRAND} className="h-6 text-foreground" />
+              <p className="mt-1.5 text-xs text-muted-foreground">{tagline}</p>
             </div>
             {railEnabled && collapsible ? (
               <span className="hidden md:inline-flex">
@@ -335,7 +336,7 @@ export function AppSidebar({
         {railEnabled && collapsible ? (
           <div className={RAIL_ONLY}>
             <div className="flex flex-col items-center gap-2 border-b border-border-subtle py-3">
-              <span aria-hidden="true" className="text-sm font-semibold text-foreground">{BRAND.charAt(0)}</span>
+              <AbluoLogo variant="sigil" label={null} className="h-5 text-foreground" />
               <SidebarCollapseToggle collapsed label={collapsible.expandLabel} onToggle={toggle} controls={id} />
             </div>
             <nav aria-label={navLabel ?? tagline} className="flex flex-1 flex-col items-center gap-1 px-2 py-3">
