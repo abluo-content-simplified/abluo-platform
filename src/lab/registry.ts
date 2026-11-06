@@ -1253,6 +1253,23 @@ export const LAB_REGISTRY: LabEntry[] = [
     demo: () => import('./demos/date-picker.demo'),
   },
   {
+    id: 'language-picker',
+    name: 'LanguagePicker',
+    exports: ['LanguagePicker'],
+    source: 'src/components/app/ui/LanguagePicker.tsx',
+    group: 'inputs',
+    status: 'canonical',
+    traits: ['sheet', 'selection', 'keyboard'],
+    summary: 'Several languages out of every ISO 639-1 language: chips for the suggested and chosen ones plus a searchable sheet, named in the UI language.',
+    rules: [
+      'Values are two-letter lower-case codes (it), kept in the order chosen; max (default 6) stops further picks.',
+      'Pass the site languages as suggested: they are listed first. Show a stored code with languageDisplayName(code, locale), never the bare code.',
+      'Never a hand-made list of language chips or a native <select> of languages.',
+    ],
+    replaces: ['hand-made language chip lists', '<select> of languages'],
+    demo: () => import('./demos/language-picker.demo'),
+  },
+  {
     id: 'country-picker',
     name: 'CountryPicker',
     exports: ['CountryPicker', 'CountryPickerSheet'],

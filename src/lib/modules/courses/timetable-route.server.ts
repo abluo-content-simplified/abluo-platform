@@ -27,7 +27,7 @@ import { resolveScopeFromProjectSegment } from '@/lib/tenancy/host-scope'
 import { timetableForSection } from '@/lib/scheduling/timetable.server'
 import { COURSES_MODULE_ID } from './model'
 import { TIMETABLE_PAGE_REF_QUERY } from './queries'
-import { sectionCourseIds } from './timetable-section.server'
+import { eventsIncluded, sectionCourseIds } from './timetable-section.server'
 import { addMonths, isMonth, monthOf, monthRange, onlineDetailsAllowed, todayIn } from './timetable'
 
 const NO_STORE = { 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex, nofollow' }
@@ -92,7 +92,7 @@ export async function handleTimetable(request: Request, params: RouteParams): Pr
     const includeOnlineDetails = onlineDetailsAllowed({ showOnlineDetails: section.showOnlineDetails, pageProtected })
     const data = await timetableForSection(
       project.segment,
-      { ...monthRange(query.month), coursePublicIds: sectionCourseIds(section), includeOnlineDetails, locale, defaultLocale },
+      { ...monthRange(query.month), coursePublicIds: sectionCourseIds(section), includeOnlineDetails, includeEvents: eventsIncluded(section, enabled), locale, defaultLocale },
       { fetchForTenant },
     )
     return reply(200, data)

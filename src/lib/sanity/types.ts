@@ -736,6 +736,8 @@ export interface WebsiteSiteConfig {
   footerSubTagline?: string
   /** Optional credit link beside the copyright line (e.g. "Built by Abluo"). */
   footerCredit?: NavLink
+  /** From `project.showAbluoCredit` — "Made with a little help from abluo." in the footer. */
+  abluoCredit?: boolean
   /** 'hidden' = no footer (kept anyway when cookie consent is required). */
   footerDisplay?: 'full' | 'hidden'
   footerCtaHeading?: string
@@ -2362,6 +2364,8 @@ export interface TimetableHydration {
   onlineDetails: boolean
   /** The page this section sits on — lets the browser ask for other months through the timetable route. null = no navigation. */
   pageId: string | null
+  /** The site's public host (canonical-host rules, no www) for the printed title; null when the project has no domain. */
+  siteHost?: string | null
 }
 
 /** Courses module (ADR-045) — the website timetable: week / month view, printable month sheet. */
@@ -2383,6 +2387,12 @@ export interface TimetableSection {
   showPrintButton?: boolean | null
   /** Print: add a second page "About the courses" (title + description of each course shown). Default off. */
   showCourseDescriptions?: boolean | null
+  /** Also show the Events module's events (workshops) in the calendar and the printout. Needs the Events module. Default off. */
+  includeEvents?: boolean | null
+  /** Notes under the timetable and at the bottom of the printout (restricted rich text, resolved to the page language). */
+  notes?: PortableTextContent | null
+  /** Notes for members only: kept ONLY on a protected page the visitor was granted on (hydrateTimetableSection removes them otherwise). */
+  membersNotes?: PortableTextContent | null
   /** Set by hydrateSections; undefined = not hydrated (renders nothing). */
   timetable?: TimetableHydration
 }

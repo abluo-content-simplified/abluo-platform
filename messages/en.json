@@ -3743,6 +3743,8 @@
           "bioPlaceholder": "Tell visitors who this person is and what they do.",
           "languagesTitle": "Languages spoken",
           "languagesHelper": "Visitors can see which languages this person speaks.",
+          "volunteerTitle": "Volunteer",
+          "volunteerHint": "Shown as * with a footnote where this person teaches.",
           "qualificationsTitle": "Qualifications",
           "qualificationsHint": "Degrees, certificates and memberships.",
           "qualificationsNone": "No qualifications yet.",
@@ -4314,6 +4316,16 @@
         "done": "Done",
         "clear": "Clear",
         "pickDay": "Pick a day first."
+      },
+      "languagePicker": {
+        "title": "More languages",
+        "more": "More languages",
+        "search": "Search languages",
+        "groupSite": "Website languages",
+        "groupOther": "All languages",
+        "noMatch": "No language matches “{query}”.",
+        "count": "{count} of {max} chosen",
+        "done": "Done"
       },
       "countryPicker": {
         "placeholder": "Choose a country",

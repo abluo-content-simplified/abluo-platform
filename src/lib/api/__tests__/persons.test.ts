@@ -292,6 +292,7 @@ describe('create, edit, publish', () => {
         contacts: [{ kind: 'phone', value: '+39 333 1234567', label: 'Studio', preferred: true, evil: 'x' }],
         'slug.it': 'Anna Maria!',
         languages: ['IT', 'en'],
+        volunteer: true,
         visibility: 'page',
       },
     }, f.deps)
@@ -300,6 +301,7 @@ describe('create, edit, publish', () => {
     expect(set.contacts).toEqual([{ _key: 'k1', _type: 'personContact', kind: 'phone', value: '+39 333 1234567', label: 'Studio', preferred: true }])
     expect(set['slug.it']).toEqual({ _type: 'slug', current: 'anna-maria' })
     expect(set.languages).toEqual(['it', 'en'])
+    expect(set.volunteer).toBe(true)
     expect(set.photo).toEqual({ _type: 'reference', _ref: 'media-1' })
     expect(f.patchOps).toContainEqual(['unset', ['shortBio.it']])
     // setIfMissing never overwrites the stored object (its translationStatus survives).
@@ -308,6 +310,7 @@ describe('create, edit, publish', () => {
 
     await expect(savePersonDraft(ctx(editor()), PID, { id: 'anna', rev: 'old', set: { firstName: 'X' } }, fake().deps)).rejects.toMatchObject({ code: 'conflict' })
     await expect(savePersonDraft(ctx(editor()), PID, { id: 'anna', rev: 'd1', set: { 'slug.it': 'anna' } }, fake({ slugTaken: true }).deps)).rejects.toMatchObject({ code: 'slug_taken' })
+    await expect(savePersonDraft(ctx(editor()), PID, { id: 'anna', rev: 'd1', set: { volunteer: 'yes' } }, fake().deps)).rejects.toMatchObject({ code: 'invalid_value' })
     await expect(savePersonDraft(ctx(editor()), PID, { id: 'anna', rev: 'd1', set: { 'jobTitle.fr': 'x' } }, fake().deps)).rejects.toMatchObject({ code: 'invalid_field' })
     await expect(savePersonDraft(ctx(editor()), PID, { id: 'anna', rev: 'd1', set: { contacts: [{ kind: 'email', value: 'not an email' }] } }, fake().deps)).rejects.toMatchObject({ code: 'invalid_value' })
     await expect(savePersonDraft(ctx(editor()), PID, { id: 'anna', rev: 'd1', set: { website: 'javascript:alert(1)' } }, fake().deps)).rejects.toMatchObject({ code: 'invalid_value' })

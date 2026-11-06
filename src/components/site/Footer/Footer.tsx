@@ -11,6 +11,7 @@ import { renderWordmark, FOOTER_WORDMARK_ACCENT_STYLE } from '@/lib/wordmark'
 import { Icon } from '@/components/icons'
 import { FooterLanguageSwitcher } from './FooterClient'
 import { CookieSettingsLink } from '@/components/consent/CookieSettingsLink'
+import { AbluoCredit } from './AbluoCredit'
 import { EarlyAccessFooterCta } from '@/components/forms/EarlyAccessFooterCta'
 import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 import { multiline } from '@/lib/multiline-text'
@@ -423,6 +424,16 @@ export async function Footer({
                     config.registrationInfo || config.legalAddress ? 'mt-2' : ''
                   }`}
                   style={{ color: 'var(--color-footer-text-muted)' }}
+                />
+              )}
+
+              {/* Abluo credit — switched on per project by Abluo (project.showAbluoCredit). */}
+              {config.abluoCredit && (
+                <AbluoCredit
+                  locale={locale}
+                  className={
+                    config.registrationInfo || config.legalAddress || !hasAuthoredCookieLink ? 'mt-2' : ''
+                  }
                 />
               )}
             </div>

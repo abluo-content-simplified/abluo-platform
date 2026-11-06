@@ -3743,6 +3743,8 @@
           "bioPlaceholder": "Racconta ai visitatori chi è questa persona e cosa fa.",
           "languagesTitle": "Lingue parlate",
           "languagesHelper": "I visitatori possono vedere quali lingue parla questa persona.",
+          "volunteerTitle": "Volontario/a",
+          "volunteerHint": "Mostrato con * e una nota a piè di pagina dove questa persona insegna.",
           "qualificationsTitle": "Qualifiche",
           "qualificationsHint": "Titoli di studio, certificati e iscrizioni.",
           "qualificationsNone": "Ancora nessuna qualifica.",
@@ -4314,6 +4316,16 @@
         "done": "Fatto",
         "clear": "Cancella",
         "pickDay": "Scegli prima un giorno."
+      },
+      "languagePicker": {
+        "title": "Altre lingue",
+        "more": "Altre lingue",
+        "search": "Cerca lingue",
+        "groupSite": "Lingue del sito",
+        "groupOther": "Tutte le lingue",
+        "noMatch": "Nessuna lingua corrisponde a “{query}”.",
+        "count": "{count} di {max} scelte",
+        "done": "Fatto"
       },
       "countryPicker": {
         "placeholder": "Scegli un paese",

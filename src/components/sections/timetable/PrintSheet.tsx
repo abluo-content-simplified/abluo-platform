@@ -1,14 +1,18 @@
 // The printed month — CYCE sheet style (build spec §5). Rows = places (name,
-// address and room lines), columns = the weekdays that have classes; each cell
-// lists the weekly classes with that month's exceptions; an online-rooms block
-// closes the sheet when online details were allowed for this request.
+// address and room lines), columns = the seven weekdays (weekends shaded); each
+// cell lists the weekly classes with that month's exceptions. Below the places
+// an "Online" block lists the online-only AND hybrid classes by weekday, with
+// the meeting room details in its first column when they were allowed for this
+// request. Title: "<title> · <Month Year> · <host>", then the month's holidays;
+// the month's workshops, the footnote for volunteer teachers and the notes close the sheet.
 //
 // Presentation only: every class, exception and room comes from
 // buildPrintMonth(); every word from the timetable dictionary or Intl.
 
 import type { PrintClass, PrintException, PrintMonth, TimetableData } from '@/lib/modules/courses/timetable'
 import type { TimetableMessages } from '@/lib/i18n/timetable-messages'
-import { languageName, listNames, monthTitle, safeHttps, shortDate, timeRange, weekdayName } from './format'
+import { formatDate, languageName, listNames, monthTitle, safeHttps, shortDate, timeRange, weekdayName } from './format'
+import { TeacherName } from './parts'
 
 export type ProfileLinks = { siteBase: string; segment: string | null } | null
 
@@ -26,9 +30,16 @@ type Props = {
   profile: ProfileLinks
   /** Add the second page "About the courses" (each shown course's title and description). */
   showCourseDescriptions?: boolean
+  /** The site's host for the title line (null = left out). */
+  siteHost?: string | null
+  /** Where event pages live; an event links to `<eventsBase>/<slug>`. */
+  eventsBase?: string
+  /** Notes (everyone) and members' notes (present only when the server allowed them), printed at the bottom. */
+  notes?: React.ReactNode
+  membersNotes?: React.ReactNode
 }
 
-export function PrintSheet({ print, data, title, locale, msg, profile, showCourseDescriptions = false }: Props) {
+export function PrintSheet({ print, data, title, locale, msg, profile, showCourseDescriptions = false, siteHost = null, eventsBase = '', notes = null, membersNotes = null }: Props) {
   const year = print.month.slice(0, 4)
   const fmt = (date: string) => shortDate(locale, date, date.slice(0, 4) !== year)
 
@@ -44,7 +55,13 @@ export function PrintSheet({ print, data, title, locale, msg, profile, showCours
       const href = teacherHref(profile, t)
       return (
         <span key={t.id}>
-          {href ? <a href={href}>{t.name}</a> : t.name}
+          {href ? (
+            <a href={href}>
+              <TeacherName teacher={t} volunteerSr={msg.volunteerSr} />
+            </a>
+          ) : (
+            <TeacherName teacher={t} volunteerSr={msg.volunteerSr} />
+          )}
           {i < list.length - 1 ? ', ' : ''}
         </span>
       )
@@ -59,7 +76,7 @@ export function PrintSheet({ print, data, title, locale, msg, profile, showCours
       case 'closed':
         return `${d} ${msg.noClass}`
       case 'substitute':
-        return `${d} ${msg.substitute(listNames(locale, teachers(e.teacherIds).map((t) => t.name)))}`
+        return `${d} ${msg.substitute(listNames(locale, teachers(e.teacherIds).map((t) => (t.volunteer ? `${t.name}*` : t.name))))}`
       case 'time':
         return `${d} ${msg.atTime(timeRange(e.start, e.end))}`
       case 'mode':
@@ -75,7 +92,6 @@ export function PrintSheet({ print, data, title, locale, msg, profile, showCours
   }
 
   const rowLabel = (row: PrintMonth['rows'][number]) => {
-    if (row.kind === 'online') return { name: msg.online, lines: [] as string[] }
     if (row.kind === 'unplaced') return { name: msg.otherPlace, lines: [] as string[] }
     const place = data.places[row.key]
     return { name: place?.name ?? row.key, lines: place?.lines ?? [] }
@@ -96,19 +112,38 @@ export function PrintSheet({ print, data, title, locale, msg, profile, showCours
             </>
           )}
           {c.mode === 'mixed' && <span className="ab-tt-tag">{msg.hybrid}</span>}
-          {c.mode === 'online' && <span className="ab-tt-tag">{msg.online}</span>}
+          {c.mode === 'online' && <span className="ab-tt-tag ab-tt-tag-online">{msg.online}</span>}
         </div>
         {c.exceptions.length > 0 && <div className="ab-tt-exc">{c.exceptions.map(exceptionText).join(' · ')}</div>}
       </div>
     )
   }
 
+  const longDate = (date: string) => formatDate(locale, date, { day: 'numeric', month: 'long' })
+  const holidayText = print.holidays
+    .map((h) => {
+      const range = h.startsOn === h.endsOn ? longDate(h.startsOn) : `${longDate(h.startsOn)} – ${longDate(h.endsOn)}`
+      return h.label ? `${range} (${h.label})` : range
+    })
+    .join(', ')
+
+  const weekendClass = (d: number) => (d >= 6 ? 'ab-tt-weekend' : undefined)
+  const rooms = print.rooms ?? []
+
   return (
     <div className="ab-tt-sheet">
       <header className="ab-tt-sheet-head">
         <h2>
-          {title} <span className="ab-tt-month">{monthTitle(locale, print.month)}</span>
+          {title}
+          {' · '}
+          <span className="ab-tt-month">{monthTitle(locale, print.month)}</span>
+          {siteHost ? ` · ${siteHost}` : ''}
         </h2>
+        {holidayText && (
+          <p className="ab-tt-holidays" data-holidays>
+            {msg.holidays(holidayText)}
+          </p>
+        )}
         {print.closures.length > 0 && (
           <p className="ab-tt-closures">
             {print.closures.map((c) => (
@@ -123,7 +158,7 @@ export function PrintSheet({ print, data, title, locale, msg, profile, showCours
           <tr>
             <th className="ab-tt-place-col" aria-hidden="true" />
             {print.weekdays.map((d) => (
-              <th key={d} scope="col">
+              <th key={d} scope="col" className={weekendClass(d)}>
                 {weekdayName(locale, d, 'long')}
               </th>
             ))}
@@ -143,31 +178,79 @@ export function PrintSheet({ print, data, title, locale, msg, profile, showCours
                   ))}
                 </th>
                 {print.weekdays.map((d) => (
-                  <td key={d}>{(row.cells[d] ?? []).map(classCell)}</td>
+                  <td key={d} className={weekendClass(d)}>
+                    {(row.cells[d] ?? []).map(classCell)}
+                  </td>
                 ))}
               </tr>
             )
           })}
+          {print.online && (
+            <tr className="ab-tt-online-row" data-online-block>
+              <th scope="row" className="ab-tt-place-col">
+                <strong>{msg.online}</strong>
+                {rooms.map((r) => {
+                  const href = safeHttps(r.joinUrl)
+                  return (
+                    <div key={r.id} className="ab-tt-room">
+                      <div className="ab-tt-place-line">
+                        <strong>{r.label}</strong>
+                      </div>
+                      {r.meetingId && (
+                        <div className="ab-tt-place-line">
+                          {msg.meetingId}: {r.meetingId}
+                        </div>
+                      )}
+                      {r.passcode && (
+                        <div className="ab-tt-place-line">
+                          {msg.passcode}: {r.passcode}
+                        </div>
+                      )}
+                      {href && (
+                        <div className="ab-tt-place-line ab-tt-url">
+                          <a href={href}>{href}</a>
+                        </div>
+                      )}
+                      {r.note && <div className="ab-tt-place-line">{r.note}</div>}
+                    </div>
+                  )
+                })}
+              </th>
+              {print.weekdays.map((d) => (
+                <td key={d} className={weekendClass(d)}>
+                  {(print.online?.[d] ?? []).map(classCell)}
+                </td>
+              ))}
+            </tr>
+          )}
         </tbody>
       </table>
 
-      {print.rooms && print.rooms.length > 0 && (
-        <section className="ab-tt-rooms">
-          <h3>{msg.onlineRooms}</h3>
+      {print.events.length > 0 && (
+        <section className="ab-tt-events" data-print-events>
+          <h3>{msg.workshops}</h3>
           <ul>
-            {print.rooms.map((r) => {
-              const href = safeHttps(r.joinUrl)
-              return (
-                <li key={r.id}>
-                  <strong>{r.label}</strong>
-                  {r.meetingId && <> · {msg.meetingId}: {r.meetingId}</>}
-                  {r.passcode && <> · {msg.passcode}: {r.passcode}</>}
-                  {href && <> · <a href={href}>{href}</a></>}
-                  {r.note && <> · {r.note}</>}
-                </li>
-              )
-            })}
+            {print.events.map((e) => (
+              <li key={e.id}>
+                {fmt(e.date)} <strong>{timeRange(e.start, e.end)}</strong> {e.slug && eventsBase ? <a href={`${eventsBase}/${e.slug}`}>{e.title}</a> : e.title}
+                <span className="ab-tt-tag ab-tt-tag-workshop">{msg.workshop}</span>
+                {e.placeName && <> · {e.placeName}</>}
+              </li>
+            ))}
           </ul>
+        </section>
+      )}
+
+      {print.hasVolunteers && (
+        <p className="ab-tt-foot" data-volunteer-note>
+          {msg.volunteerNote}
+        </p>
+      )}
+
+      {(notes || membersNotes) && (
+        <section className="ab-tt-notes">
+          {notes}
+          {membersNotes}
         </section>
       )}
 
@@ -208,6 +291,7 @@ export const PRINT_CSS = `
   .ab-tt-print-root { display: block !important; color: #000; background: #fff; font-family: var(--font-body, system-ui, sans-serif); font-size: 7.5pt; line-height: 1.25; }
   .ab-tt-sheet-head h2 { font-size: 13pt; margin: 0 0 2mm; font-family: var(--font-heading, inherit); }
   .ab-tt-month { text-transform: capitalize; font-weight: 400; }
+  .ab-tt-holidays { margin: 0 0 1mm; font-size: 8.5pt; font-weight: 600; }
   .ab-tt-closures { margin: 0 0 3mm; font-size: 8pt; }
   .ab-tt-closures span + span::before { content: " · "; }
   .ab-tt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -218,9 +302,17 @@ export const PRINT_CSS = `
   .ab-tt-class + .ab-tt-class { margin-top: 1.5mm; padding-top: 1.5mm; border-top: 0.2mm dotted #000; }
   .ab-tt-exc { font-style: italic; font-size: 6.8pt; }
   .ab-tt-tag { margin-left: 1mm; padding: 0 1mm; border: 0.2mm solid #000; font-size: 6pt; text-transform: uppercase; }
-  .ab-tt-rooms { margin-top: 3mm; break-inside: avoid; }
-  .ab-tt-rooms h3 { font-size: 9pt; margin: 0 0 1mm; }
-  .ab-tt-rooms ul { margin: 0; padding-left: 4mm; }
+  .ab-tt-table .ab-tt-weekend { background: #e6e6e6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .ab-tt-room { margin-top: 1.5mm; }
+  .ab-tt-url { word-break: break-all; }
+  .ab-tt-tag-online { background: #000; color: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .ab-tt-tag-workshop { border-style: dashed; }
+  .ab-tt-events { margin-top: 3mm; break-inside: avoid; }
+  .ab-tt-events h3 { font-size: 9pt; margin: 0 0 1mm; }
+  .ab-tt-events ul { margin: 0; padding-left: 4mm; }
+  .ab-tt-foot { margin: 2mm 0 0; font-size: 7pt; }
+  .ab-tt-notes { margin-top: 3mm; font-size: 7.5pt; break-inside: avoid; }
+  .ab-tt-notes p, .ab-tt-notes ul, .ab-tt-notes ol { margin: 0 0 1.5mm; }
   .ab-tt-about { break-before: page; page-break-before: always; font-size: 9pt; line-height: 1.4; }
   .ab-tt-about h2 { font-size: 13pt; margin: 0 0 4mm; font-family: var(--font-heading, inherit); }
   .ab-tt-about-item { break-inside: avoid; margin: 0 0 4mm; }

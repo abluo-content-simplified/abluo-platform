@@ -25,7 +25,7 @@ const render = (showCourseDescriptions?: boolean) =>
 describe('printed month sheet', () => {
   it('marks online and hybrid classes, and lists holiday dates a class does not happen', () => {
     const out = render()
-    expect(out).toContain('ab-tt-tag">Online')
+    expect(out).toContain('ab-tt-tag ab-tt-tag-online">Online')
     expect(out).toContain('ab-tt-tag">Hybrid')
     expect(out).toMatch(/12\/21 no class/)
     expect(out).toMatch(/12\/28 no class/)

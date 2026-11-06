@@ -201,6 +201,8 @@ export interface PersonSnapshot {
   translations: PersonTranslations
   bio: Record<string, PortableTextBlock[]>
   languages: string[]
+  /** Volunteer: shown as * with a footnote where the person teaches. */
+  volunteer: boolean
   website: string
   /** Public (Sanity) then private (Supabase) contacts. */
   contacts: PersonContactValue[]
@@ -561,6 +563,7 @@ export async function getPersonForEdit(ctx: TenantAuthorizationContext, projectI
     translations: { honorific: translationMetaOf(doc.honorific), jobTitle: translationMetaOf(doc.jobTitle), shortBio: translationMetaOf(doc.shortBio) },
     bio: bioOf(doc),
     languages: strings(doc.languages),
+    volunteer: doc.volunteer === true,
     website: str(doc.website),
     contacts: [...publicContactsOf(doc), ...privateContacts],
     qualifications: qualificationsOf(doc),
@@ -748,6 +751,7 @@ export const PERSON_PATCH_FIELDS = [
   'groups',
   'photo',
   'languages',
+  'volunteer',
   'website',
   'contacts',
   'qualifications',
@@ -756,7 +760,7 @@ export const PERSON_PATCH_FIELDS = [
   'translation.<field>.<loc>',
 ] as const
 
-const PLAIN_PATHS = new Set(['firstName', 'lastName', 'displayName', 'groups', 'photo', 'languages', 'website', 'contacts', 'qualifications', 'visibility'])
+const PLAIN_PATHS = new Set(['firstName', 'lastName', 'displayName', 'groups', 'photo', 'languages', 'volunteer', 'website', 'contacts', 'qualifications', 'visibility'])
 const LOCALIZED_PATHS = new Set(['honorific', 'jobTitle', 'shortBio', 'bio', 'slug'])
 const LOCALIZED_TYPE: Record<string, string> = { honorific: 'localizedString', jobTitle: 'localizedString', shortBio: 'localizedText', bio: 'personBioText', slug: 'localizedSlug' }
 
@@ -864,6 +868,11 @@ export async function savePersonDraft(
         const langs = [...new Set(value.map((l) => (typeof l === 'string' ? l.trim().toLowerCase() : '')))]
         if (langs.some((l) => !ISO_LANG.test(l))) throw new PersonError('invalid_value', 'Use two-letter language codes.')
         set.languages = langs
+        continue
+      }
+      case 'volunteer': {
+        if (typeof value !== 'boolean') throw new PersonError('invalid_value', 'Volunteer is on or off.')
+        set.volunteer = value
         continue
       }
       case 'website': {
@@ -1581,6 +1590,7 @@ export const ANONYMISE_UNSET = [
   'shortBio',
   'bio',
   'languages',
+  'volunteer',
   'website',
   'contacts',
   'qualifications',

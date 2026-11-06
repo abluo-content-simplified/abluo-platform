@@ -1959,7 +1959,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
 
       sectionTypes: ['timetableSection'],
 
-      schemaTypes: ['course', 'timetableSection'],
+      schemaTypes: ['course', 'timetableNotesText', 'timetableSection'],
 
       schemaDefinitions: () => coursesSchemaTypes,
 

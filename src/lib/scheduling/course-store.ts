@@ -378,6 +378,41 @@ export function createCourseScheduleStore(dbOverride?: Db): CourseScheduleStore 
     return new Map((data ?? []).map((r: Row) => [String(r.id), seriesOf(r)]))
   }
 
+  /**
+   * Days of the current month before the sync's start: only sessions that never existed are added. An existing
+   * session of that day (live, edited or removed) is never updated, removed or brought back.
+   */
+  async function fillMissingPast(
+    db: Db,
+    projectId: string,
+    s: ClassSeries,
+    sessions: Array<{ originalStartLocal: string; startLocal: string; endLocal: string | null; startsAt: string; endsAt: string | null }>,
+    fromUtc: string,
+  ): Promise<void> {
+    const past = sessions.filter((x) => x.startsAt < fromUtc)
+    if (!past.length) return
+    const { data, error } = await db.from('event_occurrences').select('original_start_local').eq('project_id', projectId).eq('series_id', s.id).lt('starts_at', fromUtc)
+    if (error) throw mapDbError(error)
+    const have = new Set((data ?? []).map((r: Row) => (r.original_start_local ? local(r.original_start_local) : '')))
+    const rows = past
+      .filter((x) => !have.has(x.originalStartLocal))
+      .map((x) => ({
+        series_id: s.id,
+        project_id: projectId,
+        owner_type: s.ownerType,
+        owner_public_id: s.ownerPublicId,
+        original_start_local: x.originalStartLocal,
+        start_local: x.startLocal,
+        end_local: x.endLocal,
+        time_zone: s.timeZone,
+        starts_at: x.startsAt,
+        ends_at: x.endsAt,
+      }))
+    if (!rows.length) return
+    const { error: insErr } = await db.from('event_occurrences').insert(rows)
+    if (insErr && (insErr as { code?: string }).code !== '23505') throw mapDbError(insErr)
+  }
+
   async function syncSeriesDb(db: Db, projectId: string, seriesId: string, now: Date): Promise<SyncResult> {
     const s = await seriesById(db, projectId, seriesId)
     const rule = parseClassRule(s.rule)
@@ -397,7 +432,12 @@ export function createCourseScheduleStore(dbOverride?: Db): CourseScheduleStore 
 
     const startDate = s.startLocal.slice(0, 10)
     const today = localOf(now.toISOString(), s.timeZone).slice(0, 10) // today in the class's own zone
-    const from = [today, s.startsOn, edition?.startsOn, startDate].filter((d): d is string => !!d).reduce((a, b) => (a > b ? a : b))
+    // Sessions are generated from the first day of the current month so a class created on the 6th also gets the 3rd–5th.
+    // Days before today are only FILLED when missing (below); the sync itself works from today on, as before.
+    const monthStart = `${today.slice(0, 8)}01`
+    const lower = (day: string) => [day, s.startsOn, edition?.startsOn, startDate].filter((d): d is string => !!d).reduce((x, y) => (x > y ? x : y))
+    const from = lower(today)
+    const fillFrom = lower(monthStart)
     const ends = [s.endsOn, edition?.endsOn].filter((d): d is string => !!d)
     const until = ends.length ? ends.reduce((a, b) => (a < b ? a : b)) : addDays(from, OPEN_ENDED_DAYS)
 
@@ -406,7 +446,7 @@ export function createCourseScheduleStore(dbOverride?: Db): CourseScheduleStore 
       startTime: s.startLocal.slice(11, 16),
       endTime: s.endLocal ? s.endLocal.slice(11, 16) : null,
       timeZone: s.timeZone,
-      from,
+      from: fillFrom < from ? fillFrom : from,
       until,
       anchor: startDate,
       closures,
@@ -423,9 +463,10 @@ export function createCourseScheduleStore(dbOverride?: Db): CourseScheduleStore 
         starts_at: x.startsAt,
         ends_at: x.endsAt,
       })),
-      p_closed: expanded.closed,
+      p_closed: expanded.closed.filter((k) => k.slice(0, 10) >= from), // closures of past days are not this sync's business
     })
     if (error) throw mapDbError(error)
+    await fillMissingPast(db, projectId, s, expanded.sessions, fromUtc)
     const counts = (Array.isArray(data) ? data[0] : data) as { inserted?: number; updated?: number; removed?: number } | undefined
     if (!counts) throw new ScheduleError('unavailable', 'Scheduling did not answer.')
 

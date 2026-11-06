@@ -24,6 +24,7 @@ import { Panel } from '@/components/app/ui/Panel'
 import { RadioList } from '@/components/app/ui/RadioList'
 import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
 import { Select } from '@/components/app/ui/Select'
+import { Switch } from '@/components/app/ui/Switch'
 import { TextArea, TextInput } from '@/components/app/ui/TextInput'
 import { ToggleChips } from '@/components/app/ui/ToggleChips'
 import type { FocalPoint } from '@/components/app/ui/FocalPointPicker'
@@ -405,6 +406,16 @@ export function AboutTab({ api }: { api: EditorApi & { setLang: (l: string) => v
           size="compact"
         />
         <p className="text-sm leading-5 text-muted-foreground">{t('languagesHelper')}</p>
+      </Panel>
+
+      <Panel as="section" aria-labelledby="person-volunteer" className="flex items-start justify-between gap-4">
+        <div>
+          <h2 id="person-volunteer" className={H2}>
+            {t('volunteerTitle')}
+          </h2>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">{t('volunteerHint')}</p>
+        </div>
+        <Switch checked={v.volunteer} disabled={!editable} labelledBy="person-volunteer" onChange={(volunteer) => editable && api.change({ volunteer }, { volunteer })} />
       </Panel>
 
       <section aria-labelledby="person-quals" className="space-y-3">

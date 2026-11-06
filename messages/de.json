@@ -3743,6 +3743,8 @@
           "bioPlaceholder": "Erzähle den Besuchern, wer diese Person ist und was sie tut.",
           "languagesTitle": "Gesprochene Sprachen",
           "languagesHelper": "Besucher sehen, welche Sprachen diese Person spricht.",
+          "volunteerTitle": "Ehrenamtlich",
+          "volunteerHint": "Wird mit * und einer Fußnote angezeigt, wo diese Person unterrichtet.",
           "qualificationsTitle": "Qualifikationen",
           "qualificationsHint": "Abschlüsse, Zertifikate und Mitgliedschaften.",
           "qualificationsNone": "Noch keine Qualifikationen.",
@@ -4314,6 +4316,16 @@
         "done": "Fertig",
         "clear": "Löschen",
         "pickDay": "Wähle zuerst einen Tag."
+      },
+      "languagePicker": {
+        "title": "Weitere Sprachen",
+        "more": "Weitere Sprachen",
+        "search": "Sprachen suchen",
+        "groupSite": "Sprachen der Website",
+        "groupOther": "Alle Sprachen",
+        "noMatch": "Keine Sprache passt zu „{query}“.",
+        "count": "{count} von {max} gewählt",
+        "done": "Fertig"
       },
       "countryPicker": {
         "placeholder": "Land wählen",

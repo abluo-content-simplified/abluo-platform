@@ -18,7 +18,8 @@
 // scheduling outage never breaks a public page.
 
 import { tenantClient } from '@/lib/sanity/client'
-import { eventSiteContextQuery } from '@/lib/sanity/queries'
+import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
+import { eventSiteContextQuery, timetableEventsQuery } from '@/lib/sanity/queries'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 import { resolveTimeZone } from '@/lib/time/zones'
 import { COURSES_BY_PUBLIC_IDS_QUERY, COURSES_LISTING_QUERY, TIMETABLE_VENUES_QUERY } from '@/lib/modules/courses/queries'
@@ -33,10 +34,13 @@ import {
   type TimetableSiteLocation,
   type TimetableVenueInput,
 } from '@/lib/modules/courses/timetable'
+import { shapeTimetableEvents, type TimetableEventSource } from '@/lib/modules/courses/timetable-events'
+import { createSupabaseScheduleStore, type ScheduleStore } from './store'
 import { createCourseScheduleStore, type CourseScheduleStore } from './course-store'
 import { addDays } from './recurrence'
 import { projectIdForSlug } from './read.server'
 import type { SchedulePlace } from './types'
+import type { SiteLocation } from '@/lib/sanity/types'
 
 export type TimetableOptions = {
   /** First / last date wanted ('YYYY-MM-DD', inclusive). */
@@ -48,6 +52,11 @@ export type TimetableOptions = {
   includeOnlineDetails: boolean
   locale: string
   defaultLocale: string
+  /**
+   * Also read the Events module's events (workshops) of the window. The CALLER decides, from the section's
+   * setting AND the project's module installation (Events installed and on) — this reader does not check modules.
+   */
+  includeEvents?: boolean
   /**
    * PRIVATE PREVIEW SEAM — set ONLY by the verified-token route
    * `(website)/[tenant]/preview/course/[id]`. This course (draft fields) is shown
@@ -63,6 +72,10 @@ export type TimetableDeps = {
   store?: Pick<CourseScheduleStore, 'occurrencesInWindow' | 'listSeries' | 'listClosures' | 'meetingRoomsById'>
   resolveProject?: (projectSlug: string) => Promise<string | null>
   fetchForTenant?: Fetch
+  /** Events' sessions (the same store the event pages use); one window query. */
+  eventStore?: Pick<ScheduleStore, 'occurrencesInWindow'>
+  /** Which of these events own a schedule at all (one cheap query); default reads event_series. */
+  eventsWithSchedule?: (projectId: string, publicIds: string[]) => Promise<Set<string>>
 }
 
 /** Windows are bounded: a month grid is ~42 days; anything larger is refused (empty). */
@@ -87,14 +100,24 @@ export async function timetableForSection(projectSlug: string, opts: TimetableOp
       : await fetchForTenant<TimetableCourseInput[]>(COURSES_LISTING_QUERY, params)
     const courses = withPreviewCourse(fetched, opts.previewCourse)
     const courseIds = (courses ?? []).map((c) => c.publicId).filter((id): id is string => typeof id === 'string' && id.length > 0)
-    if (!courseIds.length) return empty
+    if (!courseIds.length && !opts.includeEvents) return empty
 
     // Sessions are matched on their local date afterwards; the UTC window is padded by a day each side.
-    const [occurrences, series, closures] = await Promise.all([
-      store.occurrencesInWindow(projectId, { from: `${addDays(opts.from, -1)}T00:00:00Z`, to: `${addDays(opts.to, 2)}T00:00:00Z`, ownerType: 'course', ownerPublicIds: courseIds }),
-      store.listSeries(projectId, { ownerType: 'course', ownerPublicIds: courseIds }),
-      store.listClosures(projectId),
-    ])
+    const utcWindow = { from: `${addDays(opts.from, -1)}T00:00:00Z`, to: `${addDays(opts.to, 2)}T00:00:00Z` }
+    // Events' sessions: ONE window query, started now and awaited with the other reads.
+    const eventSessions = opts.includeEvents
+      ? (deps.eventStore ?? createSupabaseScheduleStore()).occurrencesInWindow(projectId, { ...utcWindow, limit: 400 }).catch((error: Error) => {
+          console.warn(`[timetable] events unavailable for "${projectSlug}":`, error?.message)
+          return []
+        })
+      : Promise.resolve([])
+    const [occurrences, series, closures] = courseIds.length
+      ? await Promise.all([
+          store.occurrencesInWindow(projectId, { ...utcWindow, ownerType: 'course', ownerPublicIds: courseIds }),
+          store.listSeries(projectId, { ownerType: 'course', ownerPublicIds: courseIds }),
+          store.listClosures(projectId),
+        ])
+      : [[], [], await store.listClosures(projectId)]
 
     const teacherIds = [...new Set([...occurrences, ...series].flatMap((x) => x.instructorPublicIds))]
     const venueIds = [...new Set([...occurrences, ...series].map((x) => placeVenue(x.place)).filter((v): v is string => !!v))]
@@ -117,11 +140,30 @@ export async function timetableForSection(projectSlug: string, opts: TimetableOp
       roomIds.length ? soft(store.meetingRoomsById(projectId, roomIds).then((m) => [...m.values()]), []) : Promise.resolve([]),
     ])
 
+    const eventOccurrences = await eventSessions
+    const events = opts.includeEvents
+      ? await soft(
+          fetchForTenant<TimetableEventSource[]>(timetableEventsQuery, {
+            ...params,
+            publicIds: [...new Set(eventOccurrences.map((o) => o.eventPublicId))],
+            fromIso: `${opts.from}T00:00:00Z`,
+            toIso: `${addDays(opts.to, 1)}T00:00:00Z`,
+          }).then((list) => list ?? []),
+          [] as TimetableEventSource[],
+        )
+      : []
+    // Events without a session in the window may fall back to their Sanity dates ONLY when they have no schedule at all.
+    const scheduledNow = new Set(eventOccurrences.map((o) => o.eventPublicId))
+    const candidates = events.map((e) => e.publicId).filter((id): id is string => !!id && !scheduledNow.has(id))
+    const withSchedule = candidates.length ? await soft((deps.eventsWithSchedule ?? defaultEventsWithSchedule)(projectId, candidates), new Set(candidates)) : new Set<string>()
+    const timeZone = resolveTimeZone(site?.timeZone, occurrences[0]?.timeZone, series[0]?.timeZone) ?? null
+
     return shapeTimetable({
       window,
       locale: opts.locale,
       defaultLocale: opts.defaultLocale,
-      timeZone: resolveTimeZone(site?.timeZone, occurrences[0]?.timeZone, series[0]?.timeZone) ?? null,
+      timeZone,
+      events: opts.includeEvents ? shapeTimetableEvents({ window, events, occurrences: eventOccurrences, siteLocations: (site?.locations ?? null) as SiteLocation[] | null, timeZone, withSchedule }) : [],
       courses: courses ?? [],
       occurrences,
       series,
@@ -136,6 +178,15 @@ export async function timetableForSection(projectSlug: string, opts: TimetableOp
     console.warn(`[timetable] unavailable for "${projectSlug}" — showing no classes:`, (error as Error)?.message)
     return empty
   }
+}
+
+const EVENT_SERIES_REASON = 'ADR-045 timetable: which events own a schedule at all (server-only event_series)'
+async function defaultEventsWithSchedule(projectId: string, publicIds: string[]): Promise<Set<string>> {
+  return runAsTrustedSystemOperation(EVENT_SERIES_REASON, async (db) => {
+    const { data, error } = await db.from('event_series').select('event_public_id').eq('project_id', projectId).in('event_public_id', publicIds).is('removed_at', null)
+    if (error) throw new Error(error.message)
+    return new Set((data ?? []).map((r: { event_public_id: string }) => r.event_public_id))
+  })
 }
 
 /** The preview course replaces its published self (same publicId) or joins the list; nothing else changes. */

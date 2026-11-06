@@ -398,6 +398,7 @@ export async function hydrateSections(
             fetchForTenant: ctx.fetchForTenant,
             pageId: ctx.downloads?.pageId ?? null,
             pageProtected: ctx.downloads?.page.restricted === true,
+            enabledModuleIds: ctx.enabledModuleIds ?? null,
           })
         } catch (err) {
           console.error('[timetable] section hydration failed; section omitted', err)

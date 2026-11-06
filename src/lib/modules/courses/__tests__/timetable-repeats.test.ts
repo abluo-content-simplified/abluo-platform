@@ -19,6 +19,8 @@ const base = (over: Partial<ShapeInput>): ShapeInput => ({
   ...over,
 })
 
+/** The weekday columns that hold at least one class (the sheet always has seven). */
+const usedDays = (p: ReturnType<typeof buildPrintMonth>) => [...new Set(p.rows.flatMap((r) => Object.keys(r.cells).map(Number)))].sort((a, b) => a - b)
 const monWed = series({ id: S1, ownerPublicId: COURSE_A, startLocal: '2026-12-02T18:00', endLocal: '2026-12-02T19:00', rule: 'FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE', weekday: 1, weekdays: [1, 3] })
 const lastSun = series({ id: S1, ownerPublicId: COURSE_A, startLocal: '2026-11-29T10:00', endLocal: null, rule: 'FREQ=MONTHLY;BYDAY=-1SU', weekday: 7, weekdays: [7] })
 const once = series({ id: S1, ownerPublicId: COURSE_A, startLocal: '2026-12-12T10:00', endLocal: null, rule: 'FREQ=DAILY;COUNT=1', weekday: 6, weekdays: [6], startsOn: '2026-12-12', endsOn: '2026-12-12' })
@@ -55,7 +57,7 @@ describe('shapeTimetable and the print sheet with other repeats', () => {
     const data = shapeTimetable(base({ series: [monWed], occurrences: o }))
     expect(data.series[0]).toMatchObject({ weekday: 1, weekdays: [1, 3], rule: 'FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE' })
     const print = buildPrintMonth(data, '2026-12')
-    expect(print.weekdays).toEqual([1, 3])
+    expect(usedDays(print)).toEqual([1, 3]); expect(print.weekdays).toHaveLength(7)
     expect(print.rows[0].cells[1]).toHaveLength(1)
     expect(print.rows[0].cells[3]).toHaveLength(1)
   })
@@ -71,12 +73,12 @@ describe('shapeTimetable and the print sheet with other repeats', () => {
     const data = shapeTimetable(base({ series: [lastSun], occurrences: [occ('a', lastSun, '2026-11-29')], closures, window: { from: '2026-11-01', to: '2026-12-31' } }))
     expect(data.closures[0]).toMatchObject({ lastClass: '2026-11-29', firstClass: '2027-01-31' })
     const print = buildPrintMonth(shapeTimetable(base({ series: [lastSun], occurrences: [occ('a', lastSun, '2026-12-27')], closures: [] })), '2026-12')
-    expect(print.weekdays).toEqual([7])
+    expect(usedDays(print)).toEqual([7]); expect(print.weekdays).toHaveLength(7)
   })
   it('a once class appears and is dropped by the window when outside it', () => {
     const inside = shapeTimetable(base({ series: [once], occurrences: [occ('a', once, '2026-12-12')] }))
     expect(inside.series).toHaveLength(1)
-    expect(buildPrintMonth(inside, '2026-12').weekdays).toEqual([6])
+    expect(usedDays(buildPrintMonth(inside, '2026-12'))).toEqual([6]); expect(buildPrintMonth(inside, '2026-12').weekdays).toHaveLength(7)
     expect(patternOccursOn(once, '2026-12-12')).toBe(true)
   })
 })
@@ -87,10 +89,10 @@ describe('print sheet placement', () => {
   it('a monthly-by-date class is in the column of the weekday it falls on THAT month, with its date', () => {
     // day 15: Tuesday in Dec 2026, Thursday in Jul 2026
     const dec = buildPrintMonth(shapeTimetable(base({ series: [day15], occurrences: [occ('a', day15, '2026-12-15')] })), '2026-12')
-    expect(dec.weekdays).toEqual([2])
+    expect(usedDays(dec)).toEqual([2]); expect(dec.weekdays).toHaveLength(7)
     expect(dec.rows[0].cells[2][0]).toMatchObject({ dates: ['2026-12-15'], start: '10:00' })
     const jul = buildPrintMonth(shapeTimetable(base({ series: [day15], occurrences: [occ('a', day15, '2026-07-15')], window: { from: '2026-07-01', to: '2026-07-31' } })), '2026-07')
-    expect(jul.weekdays).toEqual([3]) // Wednesday 15 July 2026
+    expect(usedDays(jul)).toEqual([3]); expect(jul.weekdays).toHaveLength(7) // Wednesday 15 July 2026
     expect(jul.rows[0].cells[3][0].dates).toEqual(['2026-07-15'])
     expect(jul.rows[0].cells[2]).toBeUndefined()
   })

@@ -19,6 +19,7 @@ export type PersonValues = {
   groups: string[]
   photo: { assetId: string; url: string | null } | null
   languages: string[]
+  volunteer: boolean
   website: string
   qualifications: PersonQualificationValue[]
   visibility: 'off' | 'listed' | 'page'

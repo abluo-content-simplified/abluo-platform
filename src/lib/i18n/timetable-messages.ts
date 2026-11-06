@@ -73,6 +73,19 @@ export interface TimetableMessages {
   openInMaps: string
   /** Heading of the optional printed page that describes the courses. */
   aboutCourses: string
+  /** Tag on an event (workshop) shown beside the classes. */
+  workshop: string
+  /** Heading of the printed list of the month's events. */
+  workshops: string
+  /** Footnote under the timetable / sheet when a shown teacher is a volunteer (starts with the asterisk). */
+  volunteerNote: string
+  /** Screen-reader text after a volunteer teacher's name (the asterisk is decorative). */
+  volunteerSr: string
+  /** Printed line under the title: "Holidays: 2 November"; receives the dates already joined. */
+  holidays: (dates: string) => string
+  /** Language filter: its label and the "no filter" choice. */
+  languageFilter: string
+  allLanguages: string
 }
 
 const MESSAGES: Record<string, TimetableMessages> = {
@@ -118,6 +131,13 @@ const MESSAGES: Record<string, TimetableMessages> = {
     languagesLabel: 'Languages',
     openInMaps: 'Open in maps',
     aboutCourses: 'About the courses',
+    workshop: 'Workshop',
+    workshops: 'Workshops',
+    volunteerNote: '* volunteer teacher',
+    volunteerSr: 'volunteer teacher',
+    holidays: (d) => `Holidays: ${d}`,
+    languageFilter: 'Language',
+    allLanguages: 'All languages',
   },
   it: {
     timetable: 'Orario',
@@ -161,6 +181,13 @@ const MESSAGES: Record<string, TimetableMessages> = {
     languagesLabel: 'Lingue',
     openInMaps: 'Apri nelle mappe',
     aboutCourses: 'Informazioni sui corsi',
+    workshop: 'Workshop',
+    workshops: 'Workshop',
+    volunteerNote: '* insegnante volontario',
+    volunteerSr: 'insegnante volontario',
+    holidays: (d) => `Festività: ${d}`,
+    languageFilter: 'Lingua',
+    allLanguages: 'Tutte le lingue',
   },
   de: {
     timetable: 'Stundenplan',
@@ -204,6 +231,13 @@ const MESSAGES: Record<string, TimetableMessages> = {
     languagesLabel: 'Sprachen',
     openInMaps: 'In Karten öffnen',
     aboutCourses: 'Über die Kurse',
+    workshop: 'Workshop',
+    workshops: 'Workshops',
+    volunteerNote: '* ehrenamtliche Lehrkraft',
+    volunteerSr: 'ehrenamtliche Lehrkraft',
+    holidays: (d) => `Feiertage: ${d}`,
+    languageFilter: 'Sprache',
+    allLanguages: 'Alle Sprachen',
   },
   fr: {
     timetable: 'Horaires',
@@ -247,6 +281,13 @@ const MESSAGES: Record<string, TimetableMessages> = {
     languagesLabel: 'Langues',
     openInMaps: 'Ouvrir dans les cartes',
     aboutCourses: 'À propos des cours',
+    workshop: 'Atelier',
+    workshops: 'Ateliers',
+    volunteerNote: '* professeur bénévole',
+    volunteerSr: 'professeur bénévole',
+    holidays: (d) => `Jours fériés : ${d}`,
+    languageFilter: 'Langue',
+    allLanguages: 'Toutes les langues',
   },
   es: {
     timetable: 'Horario',
@@ -290,6 +331,13 @@ const MESSAGES: Record<string, TimetableMessages> = {
     languagesLabel: 'Idiomas',
     openInMaps: 'Abrir en mapas',
     aboutCourses: 'Sobre los cursos',
+    workshop: 'Taller',
+    workshops: 'Talleres',
+    volunteerNote: '* profesor voluntario',
+    volunteerSr: 'profesor voluntario',
+    holidays: (d) => `Festivos: ${d}`,
+    languageFilter: 'Idioma',
+    allLanguages: 'Todos los idiomas',
   },
   pt: {
     timetable: 'Horário',
@@ -333,6 +381,13 @@ const MESSAGES: Record<string, TimetableMessages> = {
     languagesLabel: 'Idiomas',
     openInMaps: 'Abrir nos mapas',
     aboutCourses: 'Sobre os cursos',
+    workshop: 'Workshop',
+    workshops: 'Workshops',
+    volunteerNote: '* professor voluntário',
+    volunteerSr: 'professor voluntário',
+    holidays: (d) => `Feriados: ${d}`,
+    languageFilter: 'Idioma',
+    allLanguages: 'Todos os idiomas',
   },
   nl: {
     timetable: 'Lesrooster',
@@ -376,6 +431,13 @@ const MESSAGES: Record<string, TimetableMessages> = {
     languagesLabel: 'Talen',
     openInMaps: 'Openen in kaarten',
     aboutCourses: 'Over de cursussen',
+    workshop: 'Workshop',
+    workshops: 'Workshops',
+    volunteerNote: '* vrijwillige leraar',
+    volunteerSr: 'vrijwillige leraar',
+    holidays: (d) => `Feestdagen: ${d}`,
+    languageFilter: 'Taal',
+    allLanguages: 'Alle talen',
   },
 }
 

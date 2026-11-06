@@ -184,6 +184,14 @@ const personType = defineType({
       description: 'ISO 639-1 codes, e.g. "it", "en".',
     }),
     defineField({
+      name: 'volunteer',
+      title: 'Volunteer',
+      type: 'boolean',
+      group: 'about',
+      initialValue: false,
+      description: 'Shown as * with a footnote where this person teaches.',
+    }),
+    defineField({
       name: 'qualifications',
       title: 'Qualifications',
       type: 'array',

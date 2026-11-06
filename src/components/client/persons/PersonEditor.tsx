@@ -62,6 +62,7 @@ function valuesOf(s: PersonSnapshot): PersonValues {
     groups: s.groups,
     photo: s.photo,
     languages: s.languages,
+    volunteer: s.volunteer,
     website: s.website,
     qualifications: s.qualifications,
     visibility: s.visibility,

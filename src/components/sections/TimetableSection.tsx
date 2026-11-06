@@ -9,6 +9,7 @@ import { resolveEasing } from '@/lib/motion/easing'
 import { profileSegmentFor } from '@/lib/modules/people/website'
 import type { ProjectModuleConfig } from '@/lib/modules/config'
 import { TimetableView } from '@/components/sections/timetable/TimetableView'
+import { TimetableNotes } from '@/components/sections/timetable/TimetableNotes'
 
 interface Props {
   section: TimetableSectionType
@@ -45,6 +46,12 @@ export function TimetableSection({ section, surface, designSystem, moduleConfig,
   const siteBase = siteBasePath(locale, tenantSlug, hostScoped)
   const profile = moduleConfig ? { siteBase, segment: profileSegmentFor(moduleConfig, locale) } : null
   const hasHeader = !!(eyebrow || title || intro)
+  // Notes are rendered here (server) and handed to the interactive part as elements. Members' notes exist on the
+  // section only when the server kept them for a granted visitor (hydrateTimetableSection) — nothing is decided here.
+  const notes = <TimetableNotes blocks={section.notes} siteBase={siteBase} projectSlug={tenantSlug} className="text-sm leading-relaxed" />
+  const membersNotes = <TimetableNotes blocks={section.membersNotes} siteBase={siteBase} projectSlug={tenantSlug} className="text-sm leading-relaxed" />
+  const hasNotes = Array.isArray(section.notes) && section.notes.length > 0
+  const hasMembersNotes = Array.isArray(section.membersNotes) && section.membersNotes.length > 0
 
   return (
     <SectionContainer id={section.anchorId} style={surfaceStyles}>
@@ -79,6 +86,10 @@ export function TimetableSection({ section, surface, designSystem, moduleConfig,
           pageId={hydrated.pageId}
           sectionKey={section._key}
           profile={profile}
+          siteHost={hydrated.siteHost ?? null}
+          eventsBase={`${siteBase}/events`}
+          notes={hasNotes ? notes : null}
+          membersNotes={hasMembersNotes ? membersNotes : null}
         />
       </SlideUp>
     </SectionContainer>

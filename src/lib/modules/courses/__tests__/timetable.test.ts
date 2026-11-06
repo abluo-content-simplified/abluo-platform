@@ -157,9 +157,10 @@ describe('exceptions and the print month (CYCE style)', () => {
 
   const print = buildPrintMonth(data, '2026-12')
 
-  it('puts places in rows (site order, online last) and weekdays that have classes in columns', () => {
-    expect(print.weekdays).toEqual([1, 4])
-    expect(print.rows.map((r) => `${r.kind}:${r.key}`)).toEqual(['place:brey', 'online:online'])
+  it('puts places in rows (site order), always shows the seven weekdays, and keeps online-only classes in the Online block', () => {
+    expect(print.weekdays).toEqual([1, 2, 3, 4, 5, 6, 7])
+    expect(print.rows.map((r) => `${r.kind}:${r.key}`)).toEqual(['place:brey'])
+    expect(Object.keys(print.online ?? {}).map(Number)).toEqual([1, 4])
   })
 
   it('lists each weekly class once with the month’s exceptions', () => {
@@ -167,7 +168,7 @@ describe('exceptions and the print month (CYCE style)', () => {
     expect(monday).toHaveLength(1)
     expect(monday[0]).toMatchObject({ courseId: COURSE_A, start: '12:30', end: '13:30', mode: 'mixed', languages: ['fr', 'en'], teacherIds: [P1] })
     expect(monday[0].exceptions.map((e) => `${e.date} ${e.kind}`)).toEqual(['2026-12-07 substitute', '2026-12-08 mode', '2026-12-21 closed', '2026-12-28 closed'])
-    const thursday = print.rows[1].cells[4]
+    const thursday = print.online![4]
     expect(thursday[0].courseId).toBe(COURSE_B)
     expect(thursday[0].exceptions.map((e) => `${e.date} ${e.kind}`)).toEqual(['2026-12-10 cancelled', '2026-12-17 time', '2026-12-24 closed', '2026-12-31 closed'])
   })
@@ -181,6 +182,9 @@ describe('exceptions and the print month (CYCE style)', () => {
   it('carries the closure sentence data and the rooms block only when online details are allowed', () => {
     expect(print.closures[0]).toMatchObject({ lastClass: '2026-12-17', firstClass: '2027-01-07' })
     expect(print.rooms?.map((r) => r.id)).toEqual([ROOM])
+    // The hybrid Monday class is in its place's row AND in the Online block; the online-only Thursday class only in the block.
+    expect(print.online![1][0].courseId).toBe(COURSE_A)
+    expect(print.rows[0].cells[4]).toBeUndefined()
     const closed = buildPrintMonth(shapeTimetable(input({ includeOnlineDetails: false })), '2026-12')
     expect(closed.rooms).toBeNull()
   })

@@ -77,6 +77,12 @@ describe('saveSeries — validation and RPC mapping', () => {
     })
   })
 
+  it('accepts any two-letter lesson language, not only the site languages (up to six)', async () => {
+    const f = fakeDb({}, { schedule_series_save: { data: [{ series_id: S1, version: 1 }] } })
+    await createCourseScheduleStore(f.db).saveSeries({ ...classInput, languages: ['ja', 'sw', 'fr', 'zh', 'ar', 'hi'] })
+    expect(f.rpcCalls[0][1].p_languages).toEqual(['ja', 'sw', 'fr', 'zh', 'ar', 'hi'])
+  })
+
   it('an update passes the series id and expected version', async () => {
     const f = fakeDb({}, { schedule_series_save: { data: { series_id: S1, version: 5 } } })
     const out = await createCourseScheduleStore(f.db).saveSeries({ ...classInput, seriesId: S1, expectedVersion: 4, interval: 2 })
@@ -188,6 +194,44 @@ describe('syncSeries — builds the full row set from the expander', () => {
     const cl = f.calls.find((c) => c.table === 'schedule_closures')!
     expect(cl.ops).toContainEqual(['eq', 'project_id', P])
     expect(cl.ops).toContainEqual(['or', `edition_id.is.null,edition_id.eq.${ED}`])
+  })
+
+  describe('the current month before today is only filled, never rewritten', () => {
+    const daily = { ...seriesRow, rule: 'FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,TU,WE,TH,FR,SA,SU', start_local: '2026-11-01T18:00:00', end_local: '2026-11-01T19:00:00', starts_on: '2026-11-01', ends_on: '2026-11-08', edition_id: null }
+    const run = async (row: Record<string, unknown>, now: string, existing: string[] = [], time = '18:00') => {
+      const f = fakeDb(
+        { event_series: [{ data: [row] }], schedule_closures: { data: [] }, event_occurrences: { data: existing.map((d) => ({ original_start_local: `${d}T${time}:00` })) } },
+        { schedule_occurrences_sync: { data: [{ inserted: 0, updated: 0, removed: 0 }] } },
+      )
+      await createCourseScheduleStore(f.db).syncSeries(P, S1, { now: new Date(now) })
+      const insert = f.calls.find((c) => c.table === 'event_occurrences' && c.ops.some((o) => o[0] === 'insert'))
+      const rows = (insert?.ops.find((o) => o[0] === 'insert')?.[1] ?? []) as Array<{ original_start_local: string }>
+      return { from: f.rpcCalls[0][1].p_from, filled: rows.map((r) => r.original_start_local.slice(0, 10)) }
+    }
+    it('a class created on the 6th gets the 1st–5th; the sync itself starts today', async () => {
+      const r = await run(daily, '2026-11-06T10:00:00Z')
+      expect(r.filled).toEqual(['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05'])
+      expect(r.from).toBe('2026-11-05T23:00:00.000Z') // 6 Nov 00:00 Brussels, as before
+    })
+    it('a time change on the 20th leaves the 1st–19th alone: nothing is inserted over existing days and the RPC starts on the 20th', async () => {
+      const days = Array.from({ length: 19 }, (_, i) => `2026-11-${String(i + 1).padStart(2, '0')}`)
+      const r = await run({ ...daily, ends_on: '2026-11-30', start_local: '2026-11-01T19:00:00' }, '2026-11-20T10:00:00Z', days, '19:00')
+      expect(r.filled).toEqual([])
+      expect(r.from).toBe('2026-11-19T23:00:00.000Z')
+    })
+    it('a day that was removed or edited is not brought back; earlier months are untouched', async () => {
+      const r = await run({ ...daily, start_local: '2026-10-20T18:00:00', starts_on: '2026-10-20', ends_on: '2026-11-08' }, '2026-11-06T10:00:00Z', ['2026-11-02'])
+      expect(r.filled).toEqual(['2026-11-01', '2026-11-03', '2026-11-04', '2026-11-05'])
+    })
+    it('a holiday added for a past day does not touch its session (the RPC only sees today onwards)', async () => {
+      const f = fakeDb(
+        { event_series: [{ data: [daily] }], schedule_closures: { data: [{ id: 'c', edition_id: null, starts_on: '2026-11-03', ends_on: '2026-11-03', label: {} }] }, event_occurrences: { data: [{ original_start_local: '2026-11-03T18:00:00' }] } },
+        { schedule_occurrences_sync: { data: [{ inserted: 0, updated: 0, removed: 0 }] } },
+      )
+      await createCourseScheduleStore(f.db).syncSeries(P, S1, { now: new Date('2026-11-06T10:00:00Z') })
+      expect(f.rpcCalls[0][1].p_from).toBe('2026-11-05T23:00:00.000Z')
+      expect(f.rpcCalls[0][1].p_closed).not.toContain('2026-11-03T18:00')
+    })
   })
 
   it('expands several days, and a once class, from their stored rules', async () => {

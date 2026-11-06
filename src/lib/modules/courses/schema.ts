@@ -2,6 +2,9 @@ import { defineArrayMember, defineType, defineField } from 'sanity'
 import { anchorIdField, BACKGROUND_SURFACE_OPTIONS, projectSlugField, scopedRef } from '@/lib/sanity/fields/shared'
 import { validateUniquePublicId } from '@/lib/sanity/fields/public-id'
 import { PUBLISHING_GROUP, archivedFields } from '@/lib/sanity/fields/publishing'
+import { bodyLinkAnnotation } from '@/lib/sanity/fields/body-link'
+import { LocalizedPortableTextInput } from '@/lib/sanity/fields/LocalizedInput'
+import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 import { COURSE_COLORS, DEFAULT_COURSE_COLOR } from './model'
 
 // ── Courses module — Sanity schema types (ADR-045, timetable build spec §3) ──
@@ -77,6 +80,37 @@ const courseType = defineType({
       subtitle: archivedAt ? 'Archived' : undefined,
     }),
   },
+})
+
+// ── timetableNotesText — restricted rich text for the notes under the timetable ──
+// Same restrictions as FAQ answers (ADR-037 D12): paragraphs, bold, italic, two list kinds and the shared
+// body link (stable internal references, plain text when the target is gone). No headings, images or colours.
+// One value per platform language; a language left empty falls back like other localized text.
+const timetableNotesBlock = defineArrayMember({
+  type: 'block',
+  styles: [{ title: 'Paragraph', value: 'normal' }],
+  lists: [
+    { title: 'Bullet list', value: 'bullet' },
+    { title: 'Numbered list', value: 'number' },
+  ],
+  marks: {
+    decorators: [
+      { title: 'Bold', value: 'strong' },
+      { title: 'Italic', value: 'em' },
+    ],
+    annotations: [bodyLinkAnnotation],
+  },
+})
+
+const timetableNotesTextType = defineType({
+  name: 'timetableNotesText',
+  title: 'Notes',
+  type: 'object',
+  components: { input: LocalizedPortableTextInput },
+  fields: [
+    ...LOCALE_CODES.map((code) => defineField({ name: code, title: PLATFORM_LOCALES[code].nativeName, type: 'array', of: [timetableNotesBlock] })),
+    defineField({ name: 'translationStatus', title: 'Translation status', type: 'translationStatus', hidden: true }),
+  ],
 })
 
 // ── timetableSection — the website's week / month timetable (build spec §5) ──
@@ -167,6 +201,27 @@ const timetableSectionType = defineType({
       hidden: ({ parent }) => (parent as { showPrintButton?: boolean } | undefined)?.showPrintButton === false,
     }),
     defineField({
+      name: 'includeEvents',
+      title: 'Also show events (workshops)',
+      type: 'boolean',
+      initialValue: false,
+      description:
+        'Adds the website\'s published events (Events module) that fall in the shown week or month to the calendar and the printout, marked "Workshop", each linking to its event page. Needs the Events module; without it nothing is added.',
+    }),
+    defineField({
+      name: 'notes',
+      title: 'Notes',
+      type: 'timetableNotesText',
+      description: 'Shown to everyone under the timetable and at the bottom of the printout: e.g. "Please bring your own mat", holiday dates, a contact. Bold, italic, lists and links only.',
+    }),
+    defineField({
+      name: 'membersNotes',
+      title: 'Notes for members',
+      type: 'timetableNotesText',
+      description:
+        'Shown ONLY to signed-in members, and only when this page is protected by Access (e.g. door codes, the teachers\' room). On a public page, or for anyone not signed in, these notes are never sent to the browser.',
+    }),
+    defineField({
       name: 'showPrintButton',
       title: 'Show a "Print month" button',
       type: 'boolean',
@@ -183,4 +238,4 @@ const timetableSectionType = defineType({
   },
 })
 
-export const coursesSchemaTypes = [courseType, timetableSectionType]
+export const coursesSchemaTypes = [courseType, timetableNotesTextType, timetableSectionType]

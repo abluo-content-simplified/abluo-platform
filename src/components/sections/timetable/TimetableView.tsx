@@ -11,11 +11,16 @@ import { createPortal } from 'react-dom'
 import { getTimetableMessages, type TimetableMessages } from '@/lib/i18n/timetable-messages'
 import {
   addMonths,
+  anyVolunteer,
   buildPrintMonth,
   closureOn,
   coveredMonths,
   exceptionsOf,
+  filterByLanguage,
+  isWeekend,
+  languagesIn,
   mergeTimetables,
+  occurrenceLanguages,
   monthOf,
   monthRange,
   monthWeeks,
@@ -23,13 +28,14 @@ import {
   weekDates,
   weekStart,
   type TimetableData,
+  type TimetableEvent,
   type TimetableOccurrence,
   type TimetableSeries,
 } from '@/lib/modules/courses/timetable'
 import { addDays } from '@/lib/scheduling/recurrence'
 import { PRINT_CSS, PrintSheet, teacherHref, type ProfileLinks } from './PrintSheet'
 import { ClassPanel } from './ClassPanel'
-import { courseTint, Meeting } from './parts'
+import { courseTint, Meeting, Tag, TeacherName, VolunteerNote, WEEKEND_BG } from './parts'
 import { dayNumber, formatDate, languageName, monthTitle, splitTemplate, timeRange, weekdayName } from './format'
 
 type View = 'week' | 'month'
@@ -48,6 +54,13 @@ export type TimetableViewProps = {
   pageId: string | null
   sectionKey: string
   profile: ProfileLinks
+  /** The site's host for the printed title (no www); null = left out. */
+  siteHost?: string | null
+  /** Where event pages live (`<site base>/events`); an event links to `<eventsBase>/<slug>`. */
+  eventsBase?: string
+  /** Notes under the timetable (server-rendered, shown to everyone) and members-only notes (present only when the server allowed them). */
+  notes?: React.ReactNode
+  membersNotes?: React.ReactNode
 }
 
 const MAX_MONTHS_FROM_TODAY = 24
@@ -56,7 +69,7 @@ const btn = 'inline-flex items-center justify-center px-3 py-1.5 text-sm font-me
 const btnStyle = { border: '1px solid var(--color-border)', borderRadius: 'var(--radius-btn)', color: 'var(--color-text-primary)', backgroundColor: 'transparent' } as const
 const btnActive = { ...btnStyle, backgroundColor: 'var(--color-primary)', borderColor: 'var(--color-primary)', color: 'var(--color-background)' } as const
 
-export function TimetableView({ locale, initial, defaultView, allowViewSwitch, showPrintButton, showCourseDescriptions = false, title, endpoint, pageId, sectionKey, profile }: TimetableViewProps) {
+export function TimetableView({ locale, initial, defaultView, allowViewSwitch, showPrintButton, showCourseDescriptions = false, title, endpoint, pageId, sectionKey, profile, siteHost = null, eventsBase = '', notes = null, membersNotes = null }: TimetableViewProps) {
   const msg = useMemo(() => getTimetableMessages(locale), [locale])
   const [view, setView] = useState<View>(defaultView)
   const [anchor, setAnchor] = useState(initial.today)
@@ -70,7 +83,10 @@ export function TimetableView({ locale, initial, defaultView, allowViewSwitch, s
   /** The session whose details panel is open (id), or null. */
   const [openId, setOpenId] = useState<string | null>(null)
 
-  const data = useMemo(() => mergeTimetables(parts), [parts])
+  const allData = useMemo(() => mergeTimetables(parts), [parts])
+  /** The lesson language chosen in the filter, or null = all. */
+  const [language, setLanguage] = useState<string | null>(null)
+  const data = useMemo(() => filterByLanguage(allData, language), [allData, language])
   const today = initial.today
   const lastMonth = addMonths(monthOf(today), MAX_MONTHS_FROM_TODAY)
   const firstMonth = addMonths(monthOf(today), -MAX_MONTHS_FROM_TODAY)
@@ -117,6 +133,18 @@ export function TimetableView({ locale, initial, defaultView, allowViewSwitch, s
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shownMonths.join('|'), covered, failed])
 
+  // The period on screen, for the language list and the volunteer footnote.
+  const periodFrom = view === 'week' ? monday : monthRange(monthOf(anchor)).from
+  const periodTo = view === 'week' ? addDays(monday, 6) : monthRange(monthOf(anchor)).to
+  const periodSessions = useMemo(() => allData.occurrences.filter((o) => o.date >= periodFrom && o.date <= periodTo), [allData.occurrences, periodFrom, periodTo])
+  const languages = useMemo(() => {
+    const present = languagesIn(allData, periodSessions, false)
+    return language && !present.includes(language) ? [...present, language].sort() : present
+  }, [allData, periodSessions, language])
+  const showLanguageFilter = languages.length >= 2 || !!language
+  const shownSessions = useMemo(() => periodSessions.filter((o) => !language || occurrenceLanguages(o, allData.series).includes(language)), [periodSessions, language, allData.series])
+  const volunteers = anyVolunteer(data, shownSessions)
+
   const loading = shownMonths.some((m) => pending.has(m))
   const loadError = shownMonths.some((m) => failed.has(m))
 
@@ -137,7 +165,8 @@ export function TimetableView({ locale, initial, defaultView, allowViewSwitch, s
 
   // ── Print: make sure the month is loaded, then open the browser's print dialog.
   const printMonth = monthOf(anchor)
-  const print = useMemo(() => buildPrintMonth(data, printMonth), [data, printMonth])
+  // The printed month is always the full month: the on-screen language filter never applies to it.
+  const print = useMemo(() => buildPrintMonth(allData, printMonth), [allData, printMonth])
   const onPrint = async () => {
     await fetchMonth(printMonth)
     // Let React commit the merged data before the dialog freezes the page.
@@ -149,7 +178,7 @@ export function TimetableView({ locale, initial, defaultView, allowViewSwitch, s
       ? `${formatDate(locale, monday, { day: 'numeric', month: 'short' })} – ${formatDate(locale, addDays(monday, 6), { day: 'numeric', month: 'short', year: 'numeric' })}`
       : monthTitle(locale, monthOf(anchor))
 
-  const empty = data.occurrences.length === 0 && data.series.length === 0
+  const empty = allData.occurrences.length === 0 && allData.series.length === 0 && allData.events.length === 0
 
   return (
     <div>
@@ -170,6 +199,24 @@ export function TimetableView({ locale, initial, defaultView, allowViewSwitch, s
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {showLanguageFilter && (
+            <label className="inline-flex items-center gap-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              <span>{msg.languageFilter}</span>
+              <select
+                value={language ?? ''}
+                onChange={(e) => setLanguage(e.target.value || null)}
+                className="px-2 py-1.5 text-sm"
+                style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-btn)', color: 'var(--color-text-primary)', backgroundColor: 'var(--color-surface)' }}
+              >
+                <option value="">{msg.allLanguages}</option>
+                {languages.map((l) => (
+                  <option key={l} value={l}>
+                    {languageName(locale, l)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {allowViewSwitch && (
             <div className="flex gap-1" role="group" aria-label={msg.viewSwitch}>
               {(['week', 'month'] as const).map((v) => (
@@ -203,10 +250,14 @@ export function TimetableView({ locale, initial, defaultView, allowViewSwitch, s
           {msg.emptyTimetable}
         </p>
       ) : view === 'week' ? (
-        <WeekView dates={weekDates(monday)} data={data} seriesById={seriesById} today={today} locale={locale} msg={msg} profile={profile} onOpen={setOpenId} />
+        <WeekView dates={weekDates(monday)} data={data} seriesById={seriesById} today={today} locale={locale} msg={msg} profile={profile} eventsBase={eventsBase} onOpen={setOpenId} />
       ) : (
-        <MonthView month={monthOf(anchor)} data={data} seriesById={seriesById} today={today} locale={locale} msg={msg} profile={profile} onOpen={setOpenId} />
+        <MonthView month={monthOf(anchor)} data={data} seriesById={seriesById} today={today} locale={locale} msg={msg} profile={profile} eventsBase={eventsBase} onOpen={setOpenId} />
       )}
+
+      {!empty && volunteers && <VolunteerNote text={msg.volunteerNote} />}
+      {notes && <div className="mt-6" data-timetable-notes-wrap style={{ color: 'var(--color-text-secondary)' }}>{notes}</div>}
+      {membersNotes && <div className="mt-4" data-members-notes style={{ color: 'var(--color-text-secondary)' }}>{membersNotes}</div>}
 
       <ClassPanel occ={openOcc} data={data} seriesById={seriesById} locale={locale} msg={msg} profile={profile} onClose={() => setOpenId(null)} />
 
@@ -215,7 +266,7 @@ export function TimetableView({ locale, initial, defaultView, allowViewSwitch, s
         createPortal(
           <div className="ab-tt-print-root" aria-hidden="true">
             <style>{PRINT_CSS}</style>
-            <PrintSheet print={print} data={data} title={title || msg.timetable} locale={locale} msg={msg} profile={profile} showCourseDescriptions={showCourseDescriptions} />
+            <PrintSheet print={print} data={allData} title={title || msg.timetable} siteHost={siteHost} eventsBase={eventsBase} notes={notes} membersNotes={membersNotes} locale={locale} msg={msg} profile={profile} showCourseDescriptions={showCourseDescriptions} />
           </div>,
           document.body,
         )}
@@ -232,8 +283,30 @@ type ViewProps = {
   locale: string
   msg: TimetableMessages
   profile: ProfileLinks
+  eventsBase: string
   /** Opens the class details panel for a session id. */
   onOpen: (occurrenceId: string) => void
+}
+
+/** A day's classes and events, in time order. */
+type Entry = { kind: 'class'; start: string; o: TimetableOccurrence } | { kind: 'event'; start: string; e: TimetableEvent }
+function entriesOn(data: TimetableData, date: string): Entry[] {
+  const list: Entry[] = [
+    ...data.occurrences.filter((o) => o.date === date).map((o): Entry => ({ kind: 'class', start: o.start, o })),
+    ...data.events.filter((e) => e.date === date).map((e): Entry => ({ kind: 'event', start: e.start, e })),
+  ]
+  return list.sort((a, b) => a.start.localeCompare(b.start))
+}
+
+/** An event's title, linking to its page when it has one. */
+function EventTitle({ e, eventsBase, className = '' }: { e: TimetableEvent; eventsBase: string; className?: string }) {
+  return e.slug && eventsBase ? (
+    <a href={`${eventsBase}/${e.slug}`} className={`hover:underline underline-offset-2 ${className}`}>
+      {e.title}
+    </a>
+  ) : (
+    <span className={className}>{e.title}</span>
+  )
 }
 
 /** A class title that opens its details: a real button, named "Details: course, date, time". */
@@ -261,10 +334,10 @@ function Teachers({ occ, seriesById, data, locale, msg, profile }: { occ: Timeta
           <span key={t.id}>
             {href ? (
               <a href={href} className="underline underline-offset-2">
-                {t.name}
+                <TeacherName teacher={t} volunteerSr={msg.volunteerSr} />
               </a>
             ) : (
-              t.name
+              <TeacherName teacher={t} volunteerSr={msg.volunteerSr} />
             )}
             {i < list.length - 1 ? ', ' : ''}
           </span>
@@ -280,16 +353,8 @@ function Badges({ occ, locale, msg }: { occ: TimetableOccurrence; locale: string
   const style = { border: '1px solid var(--color-border)', borderRadius: 'var(--radius-btn)', color: 'var(--color-text-muted)' } as const
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
-      {occ.mode === 'mixed' && (
-        <span className={chip} style={style}>
-          {msg.hybrid}
-        </span>
-      )}
-      {occ.mode === 'online' && (
-        <span className={chip} style={style}>
-          {msg.online}
-        </span>
-      )}
+      {occ.mode === 'mixed' && <Tag kind="hybrid">{msg.hybrid}</Tag>}
+      {occ.mode === 'online' && <Tag kind="online">{msg.online}</Tag>}
       {occ.languages.length > 0 && (
         <span className={chip} style={style} title={occ.languages.map((l) => languageName(locale, l)).join(', ')}>
           {occ.languages.map((l) => l.toUpperCase()).join('/')}
@@ -299,21 +364,24 @@ function Badges({ occ, locale, msg }: { occ: TimetableOccurrence; locale: string
   )
 }
 
+const EVENT_TINT = { borderLeft: '3px solid var(--color-secondary)' } as const
+
 // ── Week ─────────────────────────────────────────────────────────────────────
 
-function WeekView({ dates, data, seriesById, today, locale, msg, profile, onOpen }: ViewProps & { dates: string[] }) {
+function WeekView({ dates, data, seriesById, today, locale, msg, profile, eventsBase, onOpen }: ViewProps & { dates: string[] }) {
   return (
     <div className="grid gap-3 md:grid-cols-7">
       {dates.map((date) => {
-        const items = data.occurrences.filter((o) => o.date === date)
+        const items = entriesOn(data, date)
         const closure = closureOn(data.closures, date)
         const isToday = date === today
         return (
           <section
             key={date}
             aria-label={formatDate(locale, date, { weekday: 'long', day: 'numeric', month: 'long' })}
+            data-weekend={isWeekend(date) ? 'true' : undefined}
             className="flex min-w-0 flex-col gap-2 p-3"
-            style={{ border: '1px solid', borderColor: isToday ? 'var(--color-primary)' : 'var(--color-border)', borderRadius: 'var(--radius-lg)', backgroundColor: 'var(--color-surface)' }}
+            style={{ border: '1px solid', borderColor: isToday ? 'var(--color-primary)' : 'var(--color-border)', borderRadius: 'var(--radius-lg)', backgroundColor: isWeekend(date) ? WEEKEND_BG : 'var(--color-surface)' }}
           >
             <h3 className="flex items-baseline justify-between gap-2 text-xs font-semibold uppercase tracking-widest" style={{ color: isToday ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
               <span>{weekdayName(locale, dates.indexOf(date) + 1, 'short')}</span>
@@ -326,7 +394,29 @@ function WeekView({ dates, data, seriesById, today, locale, msg, profile, onOpen
                 {closure ? (closure.label ? `${msg.closed} · ${closure.label}` : msg.closed) : msg.noClasses}
               </p>
             ) : (
-              items.map((o) => {
+              items.map((entry) => {
+                if (entry.kind === 'event') {
+                  const e = entry.e
+                  return (
+                    <article key={e.id} className="flex flex-col gap-1 pl-2" style={EVENT_TINT}>
+                      <p className="text-xs font-semibold tabular-nums" style={{ color: 'var(--color-text-primary)' }}>
+                        {timeRange(e.start, e.end)}
+                      </p>
+                      <p className="text-sm font-medium leading-snug" style={{ color: 'var(--color-text-primary)' }}>
+                        <EventTitle e={e} eventsBase={eventsBase} />
+                      </p>
+                      {e.placeName && (
+                        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                          {e.placeName}
+                        </p>
+                      )}
+                      <span className="inline-flex">
+                        <Tag kind="workshop">{msg.workshop}</Tag>
+                      </span>
+                    </article>
+                  )
+                }
+                const o = entry.o
                 const course = data.courses[o.courseId]
                 const cancelled = o.status === 'cancelled'
                 const place = o.placeKey ? data.places[o.placeKey] : null
@@ -375,15 +465,15 @@ function WeekView({ dates, data, seriesById, today, locale, msg, profile, onOpen
 
 // ── Month ────────────────────────────────────────────────────────────────────
 
-function MonthView({ month, data, seriesById, today, locale, msg, profile, onOpen }: ViewProps & { month: string }) {
+function MonthView({ month, data, seriesById, today, locale, msg, profile, eventsBase, onOpen }: ViewProps & { month: string }) {
   const weeks = monthWeeks(month)
   const range = monthRange(month)
   const days = weeks.flat().filter((d) => d >= range.from && d <= range.to)
-  const withClasses = days.filter((d) => data.occurrences.some((o) => o.date === d))
+  const withClasses = days.filter((d) => entriesOn(data, d).length > 0)
 
   return (
     <>
-      {/* Calendar grid (tablet and up) */}
+      {/* Calendar grid (tablet and up): always seven columns, Monday to Sunday */}
       <div className="hidden md:block" role="table" aria-label={monthTitle(locale, month)}>
         <div className="grid grid-cols-7 gap-px" role="row">
           {Array.from({ length: 7 }, (_, i) => (
@@ -396,14 +486,15 @@ function MonthView({ month, data, seriesById, today, locale, msg, profile, onOpe
           <div key={week[0]} className="grid grid-cols-7 gap-px" role="row">
             {week.map((date) => {
               const inMonth = date >= range.from && date <= range.to
-              const items = inMonth ? data.occurrences.filter((o) => o.date === date) : []
+              const items = inMonth ? entriesOn(data, date) : []
               const closure = inMonth ? closureOn(data.closures, date) : null
               return (
                 <div
                   key={date}
                   role="cell"
+                  data-weekend={isWeekend(date) ? 'true' : undefined}
                   className="min-h-24 min-w-0 p-1.5"
-                  style={{ border: '1px solid var(--color-border)', backgroundColor: inMonth ? 'var(--color-surface)' : 'transparent', outline: date === today ? '2px solid var(--color-primary)' : undefined, outlineOffset: '-2px', opacity: inMonth ? 1 : 0.4 }}
+                  style={{ border: '1px solid var(--color-border)', backgroundColor: inMonth ? (isWeekend(date) ? WEEKEND_BG : 'var(--color-surface)') : isWeekend(date) ? WEEKEND_BG : 'transparent', outline: date === today ? '2px solid var(--color-primary)' : undefined, outlineOffset: '-2px', opacity: inMonth ? 1 : 0.4 }}
                 >
                   <p className="mb-1 text-xs font-semibold" style={{ color: 'var(--color-text-primary)' }}>
                     {dayNumber(locale, date)}
@@ -414,11 +505,26 @@ function MonthView({ month, data, seriesById, today, locale, msg, profile, onOpe
                     </p>
                   )}
                   <ul className="flex flex-col gap-0.5">
-                    {items.map((o) => {
+                    {items.map((entry) => {
+                      if (entry.kind === 'event') {
+                        const e = entry.e
+                        return (
+                          <li key={e.id} className="flex items-center gap-1 text-[11px] leading-snug" style={{ color: 'var(--color-text-secondary)' }} title={`${timeRange(e.start, e.end)} ${e.title} — ${msg.workshop}`}>
+                            <span className="min-w-0 flex-1 truncate">
+                              <span className="tabular-nums" style={{ color: 'var(--color-text-primary)' }}>
+                                {e.start}
+                              </span>{' '}
+                              <EventTitle e={e} eventsBase={eventsBase} />
+                            </span>
+                            <Tag kind="workshop">{msg.workshop}</Tag>
+                          </li>
+                        )
+                      }
+                      const o = entry.o
                       const cancelled = o.status === 'cancelled'
                       return (
-                        <li key={o.id} className="truncate text-[11px] leading-snug" style={{ color: 'var(--color-text-secondary)', textDecoration: cancelled ? 'line-through' : undefined }} title={`${timeRange(o.start, o.end)} ${data.courses[o.courseId]?.title ?? ''}${cancelled ? ` — ${msg.cancelled}` : ''}`}>
-                          <OpenDetails occ={o} data={data} locale={locale} msg={msg} onOpen={onOpen} className="block w-full truncate">
+                        <li key={o.id} className="flex items-center gap-1 text-[11px] leading-snug" style={{ color: 'var(--color-text-secondary)', textDecoration: cancelled ? 'line-through' : undefined }} title={`${timeRange(o.start, o.end)} ${data.courses[o.courseId]?.title ?? ''}${cancelled ? ` — ${msg.cancelled}` : ''}`}>
+                          <OpenDetails occ={o} data={data} locale={locale} msg={msg} onOpen={onOpen} className="block min-w-0 flex-1 truncate">
                             <span className="tabular-nums" style={{ color: 'var(--color-text-primary)' }}>
                               {o.start}
                             </span>{' '}
@@ -426,6 +532,7 @@ function MonthView({ month, data, seriesById, today, locale, msg, profile, onOpe
                             {cancelled && <span className="sr-only"> ({msg.cancelled})</span>}
                             {!cancelled && o.mode === 'mixed' && <span className="sr-only"> ({msg.hybrid})</span>}
                           </OpenDetails>
+                          {!cancelled && o.mode === 'online' && <Tag kind="online">{msg.online}</Tag>}
                         </li>
                       )
                     })}
@@ -437,7 +544,7 @@ function MonthView({ month, data, seriesById, today, locale, msg, profile, onOpe
         ))}
       </div>
 
-      {/* Agenda (phone): only the days that have classes */}
+      {/* Agenda (phone): the days that have something on */}
       <div className="flex flex-col gap-3 md:hidden">
         {withClasses.length === 0 && (
           <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
@@ -445,35 +552,52 @@ function MonthView({ month, data, seriesById, today, locale, msg, profile, onOpe
           </p>
         )}
         {withClasses.map((date) => (
-          <section key={date} aria-label={formatDate(locale, date, { weekday: 'long', day: 'numeric', month: 'long' })} className="p-3" style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', backgroundColor: 'var(--color-surface)' }}>
+          <section key={date} aria-label={formatDate(locale, date, { weekday: 'long', day: 'numeric', month: 'long' })} data-weekend={isWeekend(date) ? 'true' : undefined} className="p-3" style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', backgroundColor: isWeekend(date) ? WEEKEND_BG : 'var(--color-surface)' }}>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-widest" style={{ color: date === today ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
               {formatDate(locale, date, { weekday: 'short', day: 'numeric', month: 'short' })}
             </h3>
             <ul className="flex flex-col gap-2">
-              {data.occurrences
-                .filter((o) => o.date === date)
-                .map((o) => {
-                  const cancelled = o.status === 'cancelled'
+              {entriesOn(data, date).map((entry) => {
+                if (entry.kind === 'event') {
+                  const e = entry.e
                   return (
-                    <li key={o.id} className="flex flex-col gap-0.5 pl-2" style={courseTint(data.courses[o.courseId]?.color ?? 'none')}>
-                      <p className="text-sm" style={{ color: 'var(--color-text-primary)', textDecoration: cancelled ? 'line-through' : undefined }}>
-                        <OpenDetails occ={o} data={data} locale={locale} msg={msg} onOpen={onOpen}>
-                          <span className="tabular-nums font-semibold">{timeRange(o.start, o.end)}</span> {data.courses[o.courseId]?.title}
-                        </OpenDetails>
+                    <li key={e.id} className="flex flex-col gap-0.5 pl-2" style={EVENT_TINT}>
+                      <p className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                        <span className="tabular-nums font-semibold">{timeRange(e.start, e.end)}</span> <EventTitle e={e} eventsBase={eventsBase} />
                       </p>
-                      {cancelled ? (
-                        <p className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
-                          {msg.cancelled}
-                          {o.note ? ` · ${o.note}` : ''}
+                      {e.placeName && (
+                        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                          {e.placeName}
                         </p>
-                      ) : (
-                        <Teachers occ={o} seriesById={seriesById} data={data} locale={locale} msg={msg} profile={profile} />
                       )}
-                      <Badges occ={o} locale={locale} msg={msg} />
-                      <Meeting occ={o} data={data} msg={msg} />
+                      <span className="inline-flex">
+                        <Tag kind="workshop">{msg.workshop}</Tag>
+                      </span>
                     </li>
                   )
-                })}
+                }
+                const o = entry.o
+                const cancelled = o.status === 'cancelled'
+                return (
+                  <li key={o.id} className="flex flex-col gap-0.5 pl-2" style={courseTint(data.courses[o.courseId]?.color ?? 'none')}>
+                    <p className="text-sm" style={{ color: 'var(--color-text-primary)', textDecoration: cancelled ? 'line-through' : undefined }}>
+                      <OpenDetails occ={o} data={data} locale={locale} msg={msg} onOpen={onOpen}>
+                        <span className="tabular-nums font-semibold">{timeRange(o.start, o.end)}</span> {data.courses[o.courseId]?.title}
+                      </OpenDetails>
+                    </p>
+                    {cancelled ? (
+                      <p className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                        {msg.cancelled}
+                        {o.note ? ` · ${o.note}` : ''}
+                      </p>
+                    ) : (
+                      <Teachers occ={o} seriesById={seriesById} data={data} locale={locale} msg={msg} profile={profile} />
+                    )}
+                    <Badges occ={o} locale={locale} msg={msg} />
+                    <Meeting occ={o} data={data} msg={msg} />
+                  </li>
+                )
+              })}
             </ul>
           </section>
         ))}

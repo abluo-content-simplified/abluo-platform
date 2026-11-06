@@ -645,6 +645,11 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       showOnlineDetails,
       showPrintButton,
       showCourseDescriptions,
+      includeEvents,
+      // Notes under the timetable (restricted rich text, internal links resolved). membersNotes is projected
+      // here but removed by hydrateTimetableSection unless the page gate granted this visitor.
+      "notes": ${locBody('notes')},
+      "membersNotes": ${locBody('membersNotes')},
       // ─── Platform sections added with the icon primitive ──────────────────
       // Every key below is NEW to this flat projection and resolves to null on
       // every section type that does not declare it. Fields these sections
@@ -945,6 +950,8 @@ export const websiteSiteConfigQuery = /* groq */ `
     },
     "footerSubTagline": ${loc('footerSubTagline')},
     footerCredit { ${NAV_LINK_FIELDS} },
+    // Abluo's own credit line — set per project by Abluo, never by the tenant.
+    "abluoCredit": *[_type == "project" && projectSlug == $projectSlug][0].showAbluoCredit == true,
     footerDisplay,
     "footerCtaHeading": ${loc('footerCtaHeading')},
     "footerCtaSubtext": ${loc('footerCtaSubtext')},
@@ -1658,6 +1665,30 @@ const EVENT_PLACE_FIELDS = /* groq */ `
   }
 `
 
+// ─── Events shown in the Timetable section (workshops) ────────────────────────
+// Listed (published, not archived, not unlisted) and not cancelled events that have a schedule
+// (publicIds from scheduling's one window query) or, for events not scheduled yet, Sanity dates in the window.
+// One query per window; capped.
+export const timetableEventsQuery = /* groq */ `
+  *[
+    _type == "event" && projectSlug == $projectSlug && ${EVENT_LISTED}
+    && defined(publicId) && coalesce(eventStatus, "scheduled") != "cancelled"
+    && (publicId in $publicIds || (startDate < $toIso && coalesce(endDate, startDate) >= $fromIso))
+  ] | order(startDate asc) [0...200] {
+    _id,
+    publicId,
+    "title": ${loc('title')},
+    "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+    eventStatus,
+    startDate,
+    endDate,
+    attendanceMode,
+    ${EVENT_PLACE_FIELDS},
+    "location": ${loc('location')}
+  }
+`
+
+
 const eventsListingCardFields = /* groq */ `
   _id,
   publicId, // ADR-038 — key of the event's schedule in Supabase
@@ -2115,6 +2146,9 @@ export const homePageQuery = /* groq */ `
       showOnlineDetails,
       showPrintButton,
       showCourseDescriptions,
+      includeEvents,
+      "notes": ${locBody('notes')},
+      "membersNotes": ${locBody('membersNotes')},
       "emptyStateHeading": ${loc('emptyStateHeading')},
       "emptyStateBody": ${loc('emptyStateBody')}
     }

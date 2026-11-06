@@ -13,6 +13,7 @@ import { Field } from '@/components/app/ui/Field'
 import { Notice } from '@/components/app/ui/Notice'
 import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
 import { Select } from '@/components/app/ui/Select'
+import { LanguagePicker } from '@/components/app/ui/LanguagePicker'
 import { ToggleChips } from '@/components/app/ui/ToggleChips'
 import {
   ORDINAL_OPTIONS,
@@ -195,7 +196,7 @@ function ClassForm({
 }) {
   const t = useTranslations('clientDashboard.courses.classes')
   const errorText = useScheduleErrorText()
-  const { weekdayName, languageName, interval } = useScheduleFormat()
+  const { weekdayName, interval } = useScheduleFormat()
   const [start] = useState(() => initialDraft(cls, site, editions, defaultEditionId))
   const [d, setD] = useState<Draft>(start.draft)
   const [adjusted, setAdjusted] = useState(start.adjusted)
@@ -219,9 +220,8 @@ function ClassForm({
   const rule = ruleOfDraft(d)
   const once = d.kind === 'once'
   const disabled = !canEdit || busy
-  const languages = classLanguages(site.languages)
-  // A stored language that is not a site language stays visible, so editing never drops it silently.
-  const languageOptions = [...new Set([...languages, ...d.languages])]
+  // The site's languages come first; any other ISO 639-1 language can be added (lessons are not tied to the website's languages).
+  const siteLanguages = classLanguages(site.languages)
   const ordered = timesOrdered(d.startTime, d.endTime)
   const term = editions.find((e) => e.id === d.editionId)
   const outsideTerm = !!term && !!d.startsOn && (d.startsOn < term.startsOn || d.startsOn > term.endsOn)
@@ -404,20 +404,10 @@ function ClassForm({
         disabled={disabled}
       />
 
-      {languageOptions.length ? (
-        <div className="space-y-2">
-          <p className="text-[0.9375rem] font-medium text-foreground">{t('sheet.languages')}</p>
-          <ToggleChips
-            label={t('sheet.languages')}
-            options={languageOptions.map((l) => ({
-              value: l,
-              label: languageName(l),
-            }))}
-            value={d.languages}
-            onChange={(next) => set({ languages: disabled ? d.languages : next })}
-          />
-        </div>
-      ) : null}
+      <div className="space-y-2">
+        <p className="text-[0.9375rem] font-medium text-foreground">{t('sheet.languages')}</p>
+        <LanguagePicker label={t('sheet.languages')} suggested={siteLanguages} value={d.languages} max={6} disabled={disabled} onChange={(next) => set({ languages: next })} />
+      </div>
 
       <div className="space-y-2">
         <p className="text-[0.9375rem] font-medium text-foreground">{t('sheet.mode')}</p>

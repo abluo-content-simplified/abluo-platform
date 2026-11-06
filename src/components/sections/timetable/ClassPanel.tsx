@@ -15,7 +15,7 @@ import { describeClassRepeat } from '@/lib/scheduling/repeat-label'
 import type { TimetableData, TimetableOccurrence, TimetableSeries } from '@/lib/modules/courses/timetable'
 import type { TimetableMessages } from '@/lib/i18n/timetable-messages'
 import { formatDate, languageName, listNames, timeRange, zoneLabel } from './format'
-import { courseTint, Meeting } from './parts'
+import { courseTint, Meeting, Tag, TeacherName, VolunteerNote } from './parts'
 import { teacherHref, type ProfileLinks } from './PrintSheet'
 
 type Props = {
@@ -79,9 +79,11 @@ function PanelBody({ occ, data, seriesById, locale, msg, profile }: Omit<Props, 
           {timeRange(occ.start, occ.end)}
           {zone && <span style={{ color: 'var(--color-text-muted)' }}> · {zone}</span>}
         </p>
-        {cancelled && (
-          <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-            {msg.cancelled}
+        {(cancelled || occ.mode !== 'inPerson') && (
+          <p className="flex flex-wrap items-center gap-2 text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+            {cancelled && msg.cancelled}
+            {occ.mode === 'online' && <Tag kind="online">{msg.online}</Tag>}
+            {occ.mode === 'mixed' && <Tag kind="hybrid">{msg.hybrid}</Tag>}
           </p>
         )}
         {occ.note && <p className="text-sm">{occ.note}</p>}
@@ -111,17 +113,18 @@ function PanelBody({ occ, data, seriesById, locale, msg, profile }: Omit<Props, 
                   {t.photo && <img src={t.photo.src} alt="" width={40} height={40} loading="lazy" decoding="async" className="h-10 w-10 shrink-0 rounded-full object-cover" style={{ objectPosition: t.photo.position }} />}
                   {href ? (
                     <a href={href} className="text-sm font-medium underline underline-offset-2" style={{ color: 'var(--color-text-primary)' }}>
-                      {t.name}
+                      <TeacherName teacher={t} volunteerSr={msg.volunteerSr} />
                     </a>
                   ) : (
                     <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                      {t.name}
+                      <TeacherName teacher={t} volunteerSr={msg.volunteerSr} />
                     </span>
                   )}
                 </li>
               )
             })}
           </ul>
+          {teachers.some((t) => t.volunteer) && <VolunteerNote text={msg.volunteerNote} />}
         </section>
       )}
 

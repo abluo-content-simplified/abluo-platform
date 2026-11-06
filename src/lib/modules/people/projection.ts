@@ -77,6 +77,7 @@ export const PERSON_PUBLIC_FIELDS = /* groq */ `
     "shortBio": ${loc('shortBio')},
     "bio": ${BIO},
     languages,
+    "volunteer": coalesce(volunteer, false),
     website,
     contacts[] { _key, kind, value, label, preferred },
     qualifications[] { _key, "title": ${loc('title')}, issuer, issuedOn, expiresOn },
@@ -141,6 +142,8 @@ export interface PersonPublic {
   bio?: PortableTextContent | null
   /** ISO 639-1 codes. */
   languages?: string[] | null
+  /** Unpaid role: the website shows an asterisk with a footnote where the person teaches. */
+  volunteer?: boolean | null
   website?: string | null
   /** PUBLIC contact methods only. Emails must be obfuscated by the renderer (D7). */
   contacts?: PersonPublicContact[] | null
@@ -169,6 +172,7 @@ export const PERSON_PUBLIC_KEYS = [
   'shortBio',
   'bio',
   'languages',
+  'volunteer',
   'website',
   'contacts',
   'qualifications',
