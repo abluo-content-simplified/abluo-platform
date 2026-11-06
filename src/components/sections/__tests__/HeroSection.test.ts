@@ -80,8 +80,8 @@ describe('resolveHeroCtaColors', () => {
     })
   })
 
-  it('uses the surface CTA colours without full-bleed media, whatever ctaStyle says', () => {
-    const expected = { ctaBg: 'var(--color-primary)', ctaText: 'var(--color-background)' }
+  it('uses the design-system button tokens without full-bleed media, whatever ctaStyle says', () => {
+    const expected = { ctaBg: 'var(--btn-primary-bg)', ctaText: 'var(--btn-primary-text)' }
     expect(resolveHeroCtaColors(null, false)).toEqual(expected)
     expect(resolveHeroCtaColors(undefined, false)).toEqual(expected)
     expect(resolveHeroCtaColors('onMedia', false)).toEqual(expected)

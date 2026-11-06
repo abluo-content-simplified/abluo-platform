@@ -158,8 +158,11 @@ export function resolveHeroCtaColors(
   ctaStyle: 'onMedia' | 'brand' | null | undefined,
   showFullBleedMedia: boolean
 ): { ctaBg: string; ctaText: string } {
+  // Without full-bleed media the primary CTA is a normal primary button: it
+  // follows the design system's button colours like every other button on the
+  // site (Tom, 2026-11-06 — one place sets button colours, chosen for contrast).
   if (!showFullBleedMedia) {
-    return { ctaBg: 'var(--color-primary)', ctaText: 'var(--color-background)' }
+    return { ctaBg: 'var(--btn-primary-bg)', ctaText: 'var(--btn-primary-text)' }
   }
 
   return (ctaStyle ?? 'onMedia') === 'brand'

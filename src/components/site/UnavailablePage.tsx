@@ -67,7 +67,7 @@ export function UnavailablePage() {
           <a
             href={homeHref}
             className="inline-flex h-12 items-center px-8 text-sm font-semibold tracking-wide transition-opacity hover:opacity-90"
-            style={{ backgroundColor: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-btn)' }}
+            style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', borderRadius: 'var(--radius-btn)' }}
           >
             {m.goHome}
           </a>

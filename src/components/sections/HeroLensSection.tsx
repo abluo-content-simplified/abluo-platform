@@ -377,8 +377,8 @@ export function HeroLensSection({ section, surface, designSystem }: Props) {
                     onFormClick={makeFormHandler(primaryCta)}
                     className="inline-flex h-12 items-center gap-2.5 px-8 text-sm font-semibold tracking-wide transition-all duration-200 hover:opacity-90 hover:shadow-lg"
                     style={{
-                      backgroundColor: 'var(--color-primary)',
-                      color: '#fff',
+                      backgroundColor: 'var(--btn-primary-bg)',
+                      color: 'var(--btn-primary-text)',
                       borderRadius: 'var(--radius-btn)',
                       boxShadow: '0 4px 24px -4px color-mix(in srgb, var(--color-primary) 60%, transparent)',
                     }}
