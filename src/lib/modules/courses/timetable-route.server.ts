@@ -35,8 +35,9 @@ const MAX_ID = 128
 /** How far from today a visitor may page, in months either way. */
 export const MAX_MONTHS_AWAY = 24
 
-type RouteParams = { locale: string; tenant: string }
+export type RouteParams = { locale: string; tenant: string }
 
+export const NO_STORE_HEADERS = NO_STORE
 const reply = (status: number, body: unknown = null) => NextResponse.json(body, { status, headers: NO_STORE })
 
 /** Pure: the three query parameters, or null when any is missing, oversized or out of range. */
@@ -51,45 +52,79 @@ export function parseTimetableQuery(search: URLSearchParams, now: Date = new Dat
   return { pageId, sectionKey, month }
 }
 
-export async function handleTimetable(request: Request, params: RouteParams): Promise<NextResponse> {
+/** What the gate decided for one (page, section) of this request. `status` = the refusal to answer with. */
+export type TimetableSectionAccess =
+  | { status: number }
+  | {
+      status?: undefined
+      project: NonNullable<ReturnType<typeof resolveAccessRouteProject>>
+      locale: string
+      defaultLocale: string
+      fetchForTenant: ReturnType<typeof tenantClient>['fetchForTenant']
+      enabled: string[]
+      section: TimetableSection
+      /** The page's slug in this language (null on the home page). */
+      slug: string | null
+      pageProtected: boolean
+      includeOnlineDetails: boolean
+    }
+
+/**
+ * The shared gate of every timetable route (month data, add-to-calendar): same-origin check, project from the
+ * website address, Courses module installed, the page re-read and re-gated for THIS request, the section
+ * found on it. Throws on infrastructure failures (callers answer 503).
+ */
+export async function resolveTimetableSection(request: Request, params: RouteParams, ids: { pageId: string; sectionKey: string }): Promise<TimetableSectionAccess> {
   const h = request.headers
   const fetchSite = h.get('sec-fetch-site')
+  if (fetchSite !== null && fetchSite !== 'same-origin' && fetchSite !== 'none') return { status: 403 }
+  if (!isSupportedLocale(params.locale)) return { status: 404 }
+  const project = resolveAccessRouteProject(h.get('host'), params.tenant)
+  if (!project) return { status: 404 }
+
+  const locale = params.locale
+  const enabled = await projectEnabledModuleIds(project, locale)
+  // Unreadable installation list = off (this route has no fail-open reason).
+  if (!Array.isArray(enabled) || !enabled.includes(COURSES_MODULE_ID)) return { status: 404 }
+
+  const defaultLocale = resolveScopeFromProjectSegment(project.segment)?.defaultLocale ?? locale
+  const { fetchForTenant } = tenantClient(asUrlProjectSegment(project.segment))
+  const ref = await fetchForTenant<{ pageType?: string; slug?: string } | null>(TIMETABLE_PAGE_REF_QUERY, { pageId: ids.pageId, locale, defaultLocale })
+  if (!ref) return { status: 404 }
+
+  let page: WebsitePage | null
+  let pageProtected = false
+  if (ref.pageType === 'home') {
+    // The home page is always public (no gate, no online details).
+    page = await fetchForTenant<WebsitePage | null>(pageHomeQuery, { locale, defaultLocale })
+  } else {
+    if (!ref.slug) return { status: 404 }
+    const gated = await loadGatedPage(project.segment, locale, defaultLocale, ref.slug, enabled)
+    if (!gated.page || !gated.gate || gated.gate.kind === 'denied') return { status: 404 }
+    page = gated.page
+    pageProtected = gated.gate.kind === 'granted'
+  }
+  if (!page || page._id !== ids.pageId) return { status: 404 }
+
+  const section = (page.sections ?? []).find((s): s is TimetableSection => s._key === ids.sectionKey && s._type === 'timetableSection')
+  if (!section) return { status: 404 }
+
+  const includeOnlineDetails = onlineDetailsAllowed({ showOnlineDetails: section.showOnlineDetails, pageProtected })
+  return { project, locale, defaultLocale, fetchForTenant, enabled, section, slug: ref.pageType === 'home' ? null : (ref.slug ?? null), pageProtected, includeOnlineDetails }
+}
+
+export async function handleTimetable(request: Request, params: RouteParams): Promise<NextResponse> {
+  const fetchSite = request.headers.get('sec-fetch-site')
   if (fetchSite !== null && fetchSite !== 'same-origin' && fetchSite !== 'none') return reply(403)
   if (!isSupportedLocale(params.locale)) return reply(404)
-  const project = resolveAccessRouteProject(h.get('host'), params.tenant)
-  if (!project) return reply(404)
+  if (!resolveAccessRouteProject(request.headers.get('host'), params.tenant)) return reply(404)
   const query = parseTimetableQuery(new URL(request.url).searchParams)
   if (!query) return reply(400)
 
   try {
-    const locale = params.locale
-    const enabled = await projectEnabledModuleIds(project, locale)
-    // Unreadable installation list = off (this route has no fail-open reason).
-    if (!Array.isArray(enabled) || !enabled.includes(COURSES_MODULE_ID)) return reply(404)
-
-    const defaultLocale = resolveScopeFromProjectSegment(project.segment)?.defaultLocale ?? locale
-    const { fetchForTenant } = tenantClient(asUrlProjectSegment(project.segment))
-    const ref = await fetchForTenant<{ pageType?: string; slug?: string } | null>(TIMETABLE_PAGE_REF_QUERY, { pageId: query.pageId, locale, defaultLocale })
-    if (!ref) return reply(404)
-
-    let page: WebsitePage | null
-    let pageProtected = false
-    if (ref.pageType === 'home') {
-      // The home page is always public (no gate, no online details).
-      page = await fetchForTenant<WebsitePage | null>(pageHomeQuery, { locale, defaultLocale })
-    } else {
-      if (!ref.slug) return reply(404)
-      const gated = await loadGatedPage(project.segment, locale, defaultLocale, ref.slug, enabled)
-      if (!gated.page || !gated.gate || gated.gate.kind === 'denied') return reply(404)
-      page = gated.page
-      pageProtected = gated.gate.kind === 'granted'
-    }
-    if (!page || page._id !== query.pageId) return reply(404)
-
-    const section = (page.sections ?? []).find((s): s is TimetableSection => s._key === query.sectionKey && s._type === 'timetableSection')
-    if (!section) return reply(404)
-
-    const includeOnlineDetails = onlineDetailsAllowed({ showOnlineDetails: section.showOnlineDetails, pageProtected })
+    const access = await resolveTimetableSection(request, params, { pageId: query.pageId, sectionKey: query.sectionKey })
+    if (access.status !== undefined) return reply(access.status)
+    const { project, locale, defaultLocale, fetchForTenant, enabled, section, includeOnlineDetails } = access
     const data = await timetableForSection(
       project.segment,
       { ...monthRange(query.month), coursePublicIds: sectionCourseIds(section), includeOnlineDetails, includeEvents: eventsIncluded(section, enabled), locale, defaultLocale },

@@ -48,7 +48,7 @@ export type TimetableCourse = {
 }
 export type TimetableTeacher = { id: string; name: string; /** Volunteer teacher: shown as "name*" with a footnote. */ volunteer: boolean; hasPage: boolean; slug: string | null; /** A small portrait when People has one (decorative: the name is written beside it). */ photo: TimetableImage | null }
 /** `mapsUrl`: an outbound "open in maps" link (never an embed), or null when the place carries nothing to point at. */
-export type TimetablePlace = { key: string; name: string; lines: string[]; mapsUrl: string | null }
+export type TimetablePlace = { key: string; name: string; /** Optional short label (Website Settings → Locations → Short name); the UI falls back to `name`. */ short: string | null; lines: string[]; mapsUrl: string | null }
 export type TimetableRoom = { id: string; label: string; joinUrl: string | null; meetingId: string | null; passcode: string | null; note: string | null }
 
 /**
@@ -82,6 +82,24 @@ export type TimetableOccurrence = {
   note: string | null
   /** null unless online details are allowed. */
   meetingRoomId: string | null
+  /** What differs from the class (weekly pattern); null when nothing does. Computed server-side. */
+  change: TimetableChange | null
+}
+
+/** How one dated session differs from its class. Holidays are not changes (no session exists). */
+export type TimetableChange = {
+  cancelled: boolean
+  /** Effective teachers differ from the class's (a class with no base teachers never counts: rotating classes). */
+  substitute: boolean
+  /** Date or start/end differ from the originally generated time. */
+  timeChanged: boolean
+  /** Effective place differs from the class's place. */
+  moved: boolean
+  originalStart: string | null
+  originalEnd: string | null
+  originalDate: string | null
+  originalTeacherIds: string[]
+  originalPlaceKey: string | null
 }
 
 /** The weekly pattern of one class (the print grid's cells). */
@@ -149,7 +167,7 @@ export type TimetableImageInput = Partial<ResolvedImage> | null
 export type TimetablePersonInput = { publicId: string; displayName?: string | null; firstName?: string | null; lastName?: string | null; hasPage?: boolean | null; slug?: { current?: string | null } | null; photo?: TimetableImageInput; /** People module: volunteer teacher. Absent until the field exists = false. */ volunteer?: boolean | null }
 export type TimetableCourseInput = { publicId: string; title?: string | null; color?: string | null; shortDescription?: string | null; image?: TimetableImageInput }
 export type TimetableVenueInput = { publicId: string; name?: string | null; address?: SiteLocation['address'] | null }
-export type TimetableSiteLocation = Pick<SiteLocation, 'key' | 'name' | 'address' | 'accessNote'> & Partial<Pick<SiteLocation, 'mapsUrl' | 'pin'>>
+export type TimetableSiteLocation = Pick<SiteLocation, 'key' | 'name' | 'address' | 'accessNote'> & Partial<Pick<SiteLocation, 'mapsUrl' | 'pin' | 'shortName'>>
 
 /** Image widths: the panel's course image is shown at most ~34rem wide; a teacher's portrait is a 48px circle. */
 const COURSE_IMAGE_WIDTH = 960
@@ -238,6 +256,7 @@ export function shapeTimetable(input: ShapeInput): TimetableData {
     places[l.key] = {
       key: l.key,
       name: l.name?.trim() || l.key,
+      short: l.shortName?.trim() || null,
       lines: [...formatLocationAddress(l.address), ...(l.accessNote?.trim() ? [l.accessNote.trim()] : [])],
       mapsUrl: getLocationMapsLink({ mapsUrl: l.mapsUrl, pin: l.pin, address: l.address }),
     }
@@ -246,7 +265,7 @@ export function shapeTimetable(input: ShapeInput): TimetableData {
   for (const v of input.venues ?? []) {
     if (!v?.publicId) continue
     const key = `venue:${v.publicId}`
-    places[key] = { key, name: v.name?.trim() || '', lines: formatLocationAddress(v.address ?? undefined), mapsUrl: getLocationMapsLink({ address: v.address ?? undefined }) }
+    places[key] = { key, name: v.name?.trim() || '', short: null, lines: formatLocationAddress(v.address ?? undefined), mapsUrl: getLocationMapsLink({ address: v.address ?? undefined }) }
     placeOrder.push(key)
   }
   const knownPlace = (key: string | null) => (key && places[key] ? key : null)
@@ -275,9 +294,43 @@ export function shapeTimetable(input: ShapeInput): TimetableData {
     }))
     .sort((a, b) => a.weekday - b.weekday || a.start.localeCompare(b.start) || a.courseId.localeCompare(b.courseId))
 
+  const seriesById = new Map(input.series.map((s) => [s.id, s]))
+  const changeOfOccurrence = (o: ClassOccurrence, effectiveTeachers: string[], effectivePlace: string | null): TimetableChange | null => {
+    const s = seriesById.get(o.seriesId)
+    const cancelled = o.status === 'cancelled'
+    const baseTeachers = s ? teacherIdsOf(s.instructorPublicIds) : []
+    const substitute = !cancelled && baseTeachers.length > 0 && !sameSet(effectiveTeachers, baseTeachers)
+    const origin = o.originalStartLocal
+    const originalEnd = s?.endLocal ? s.endLocal.slice(11, 16) : null
+    const date = o.startLocal.slice(0, 10)
+    const start = o.startLocal.slice(11, 16)
+    const end = o.endLocal ? o.endLocal.slice(11, 16) : null
+    const originalDate = origin ? origin.slice(0, 10) : null
+    const originalStart = origin ? origin.slice(11, 16) : null
+    // The original end: the class's end time on the original date (a time-only pattern).
+    const timeChanged = !!origin && (originalDate !== date || originalStart !== start || (originalEnd !== null && end !== null && originalEnd !== end))
+    const basePlace = s ? knownPlace(placeKeyOf(s.place)) : null
+    const moved = !cancelled && !!effectivePlace && !!basePlace && effectivePlace !== basePlace
+    if (!cancelled && !substitute && !timeChanged && !moved) return null
+    return {
+      cancelled,
+      substitute,
+      timeChanged,
+      moved,
+      originalStart: timeChanged ? originalStart : null,
+      originalEnd: timeChanged ? originalEnd : null,
+      originalDate: timeChanged && originalDate !== date ? originalDate : null,
+      originalTeacherIds: substitute ? baseTeachers : [],
+      originalPlaceKey: moved ? basePlace : null,
+    }
+  }
+
   const occurrences: TimetableOccurrence[] = input.occurrences
     .filter((o) => courses[o.ownerPublicId])
-    .map((o) => ({
+    .map((o) => {
+      const teacherIds = teacherIdsOf(o.instructorPublicIds)
+      const placeKey = knownPlace(placeKeyOf(o.place))
+      return {
       id: o.id,
       seriesId: o.seriesId,
       courseId: o.ownerPublicId,
@@ -291,7 +344,8 @@ export function shapeTimetable(input: ShapeInput): TimetableData {
       placeKey: knownPlace(placeKeyOf(o.place)),
       note: pickLocalized(o.note, locale, defaultLocale),
       meetingRoomId: online ? o.meetingRoomId : null,
-    }))
+      change: changeOfOccurrence(o, teacherIds, placeKey),
+    }})
     .filter((o) => o.date >= window.from && o.date <= window.to)
     .sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start) || a.courseId.localeCompare(b.courseId))
 

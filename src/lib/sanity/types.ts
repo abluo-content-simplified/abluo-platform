@@ -799,6 +799,8 @@ export interface SiteLocation {
   pin?: { lat?: number; lng?: number }
   /** Locale-resolved by GROQ — how to get in (door, floor, badge, ...). */
   accessNote?: string
+  /** Optional short label (e.g. "BREY", max 12 chars) for tight spaces such as timetable cards. */
+  shortName?: string
 }
 
 // Locale config subset — fetched first to get $defaultLocale for subsequent queries

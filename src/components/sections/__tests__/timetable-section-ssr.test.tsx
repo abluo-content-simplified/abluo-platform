@@ -43,7 +43,7 @@ describe('timetableSection — through SectionRenderer', () => {
     expect(out).not.toContain('6:00 PM')
     expect(out).toContain('Semaine') // view switch
     expect(out).toContain('Mois')
-    expect(out).toContain('Imprimer le mois')
+    expect(out).toContain('Imprimer la semaine')
     expect(out).toContain('Aujourd’hui')
   })
 
@@ -51,15 +51,19 @@ describe('timetableSection — through SectionRenderer', () => {
     const out = render(section())
     expect(out).toMatch(/line-through[^>]*>18:00–19:00/)
     expect(out).toContain('Annulé')
-    expect(out).toContain('Annulé · Professeure malade')
-    // 10 Dec is the week shown; 7 Dec's sub (Sabrina) is in the same week (Mon 7 – Sun 13)
-    expect(out).toContain('remplacement <span>Sabrina</span>')
+    expect(out).toContain('Professeure malade')
+    // 10 Dec is the week shown; 7 Dec's sub (Sabrina) is in the same week (Mon 7 – Sun 13): the card shows the
+    // actual substitute and a Substitute badge, and the schedule updates name the change.
+    expect(out).toContain('data-status="substitute"')
+    expect(out).toContain('Remplacement')
+    expect(out).toMatch(/data-teachers[^>]*>.*?<span>Sabrina<\/span>/)
+    expect(out).toContain('data-schedule-updates')
   })
 
-  it('links a teacher to the People page only when the person has one', () => {
+  it('cards name the teacher in plain text; only the class panel links to the People page (when the person has a profile)', () => {
     const out = render(section({ timetable: { ...section().timetable!, today: '2026-12-14' } }))
-    expect(out).toContain('href="/fr/cyce/equipe/anna-rossi"')
-    expect(out).not.toContain('href="/fr/cyce/equipe/sabrina"')
+    expect(out).toContain('Anna Rossi')
+    expect(out).not.toContain('href="/fr/cyce/equipe/')
   })
 
   it('shows language codes and hybrid / online badges', () => {
@@ -73,12 +77,13 @@ describe('timetableSection — through SectionRenderer', () => {
     const month = render(section({ defaultView: 'month', allowViewSwitch: false, showPrintButton: false }))
     expect(month).toContain('décembre 2026')
     expect(month).not.toContain('Imprimer le mois')
+    expect(render(section({ defaultView: 'month' }))).toContain('Imprimer le mois')
     expect(month).not.toContain('aria-pressed')
   })
 
   it('the page text comes from the page’s content locale, not a fixed language', () => {
     const out = render(section(), 'en')
-    expect(out).toContain('Print month')
+    expect(out).toContain('Print week')
     expect(out).toContain('Cancelled')
   })
 
@@ -86,9 +91,8 @@ describe('timetableSection — through SectionRenderer', () => {
     const out = render(section())
     for (const secret of ['SECRET-PASS', 'zoom.example', '123 456 789']) expect(out).not.toContain(secret)
     const allowed = render(section({ timetable: { ...section().timetable!, today: '2026-12-14', data: data(true), onlineDetails: true } }))
-    expect(allowed).toContain('SECRET-PASS')
-    expect(allowed).toContain('href="https://zoom.example/j/123"')
-    expect(allowed).toContain('rel="noopener noreferrer"')
+    // Cards never carry join details, even when the server allowed them (they live in the class panel).
+    for (const secret of ['SECRET-PASS', 'zoom.example', '123 456 789']) expect(allowed).not.toContain(secret)
     expect(ROOM).toBeTruthy()
   })
 

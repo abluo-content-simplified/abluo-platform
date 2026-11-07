@@ -17,6 +17,7 @@ import type { ConsentGrants, ConsentPolicy, ConsentPurpose } from '@/lib/consent
 import { CONSENT_PURPOSES, acceptAll, rejectAll } from '@/lib/consent'
 import { getConsentMessages } from '@/lib/i18n/consent-messages'
 import type { MotionTokens } from '@/lib/sanity/types'
+import { resolveEasing } from '@/lib/motion/easing'
 
 interface CookieBannerProps {
   open: null | 'first' | 'settings'
@@ -73,7 +74,7 @@ export function CookieBanner({
   const inUse = CONSENT_PURPOSES.filter((p) => policy.purposes[p])
 
   const duration = motionTokens?.durationBase !== undefined ? motionTokens.durationBase / 1000 : 0.25
-  const ease: string | number[] = motionTokens?.easingDecelerate ?? [0, 0, 0.2, 1]
+  const ease = resolveEasing(motionTokens?.easingDecelerate, [0, 0, 0.2, 1])
 
   return (
     <AnimatePresence>

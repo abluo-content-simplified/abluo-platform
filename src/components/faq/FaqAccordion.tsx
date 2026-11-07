@@ -2,6 +2,7 @@
 
 import { useId, useState, type ReactNode } from 'react'
 import { motion } from 'motion/react'
+import { resolveEasing } from '@/lib/motion/easing'
 
 // ── FaqAccordion (client) ─────────────────────────────────────────────────────
 // The FAQ accordion presentation, unchanged from the FAQ section (ADR-037 D6):
@@ -23,7 +24,8 @@ interface Props {
   ease: string | number[]
 }
 
-function FaqAccordionRow({ question, answer, itemDuration, ease }: Omit<FaqAccordionItem, 'key'> & Omit<Props, 'items'>) {
+function FaqAccordionRow({ question, answer, itemDuration, ease: rawEase }: Omit<FaqAccordionItem, 'key'> & Omit<Props, 'items'>) {
+  const ease = resolveEasing(rawEase, [0, 0, 0.2, 1])
   const [open, setOpen] = useState(false)
   const id = useId()
   const buttonId = `${id}-question`

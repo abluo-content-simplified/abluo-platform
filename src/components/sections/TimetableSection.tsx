@@ -83,6 +83,7 @@ export function TimetableSection({ section, surface, designSystem, moduleConfig,
           showCourseDescriptions={section.showCourseDescriptions === true}
           title={title ?? ''}
           endpoint={hydrated.pageId ? `${siteBase}/site-access/timetable` : null}
+          calendarEndpoint={hydrated.pageId ? `${siteBase}/site-access/timetable-calendar` : null}
           pageId={hydrated.pageId}
           sectionKey={section._key}
           profile={profile}

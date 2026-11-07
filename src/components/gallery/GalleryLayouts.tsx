@@ -159,7 +159,7 @@ function CarouselLayout(p: LayoutProps) {
   const buttonClass =
     'absolute top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full shadow md:flex focus-visible:outline-2 focus-visible:outline-offset-2'
   const buttonStyle: CSSProperties = {
-    backgroundColor: 'color-mix(in oklch, var(--color-background) 88%, transparent)',
+    backgroundColor: 'color-mix(in srgb, var(--color-background) 88%, transparent)',
     color: 'var(--color-text-primary)',
     outlineColor: 'var(--color-primary)',
   }

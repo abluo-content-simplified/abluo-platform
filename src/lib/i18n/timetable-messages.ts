@@ -86,6 +86,76 @@ export interface TimetableMessages {
   /** Language filter: its label and the "no filter" choice. */
   languageFilter: string
   allLanguages: string
+  /** Singular label of the teacher block in the class panel (one teacher). */
+  teacherLabel: string
+  /** Status badges on a class card. */
+  substituteBadge: string
+  timeChangedBadge: string
+  movedBadge: string
+  /** Small line under a substitute: "instead of Anna". */
+  insteadOf: (names: string) => string
+  /** Small line under a changed time: "was 18:00–19:00". */
+  wasTime: (time: string) => string
+  /** Schedule updates (changes to the regular timetable). */
+  scheduleUpdates: string
+  scheduleChangesThisWeek: (n: number) => string
+  /** Phone updates row when the week has no changes. */
+  noScheduleChanges: string
+  changeSubstitute: (names: string) => string
+  changeNewTime: (time: string) => string
+  changeMovedTo: (place: string) => string
+  /** Filters: the phone button / sheet title, the extra filters and their "no filter" choices. */
+  filters: string
+  teacherFilter: string
+  allTeachers: string
+  locationFilter: string
+  allLocations: string
+  courseFilter: string
+  allCourses: string
+  resetFilters: string
+  /** Closes the filters sheet. */
+  done: string
+  /** Phone agenda: the date picker's name, the agenda's and the week strip's accessible names. */
+  jumpToDate: string
+  /** "2 classes" next to a day heading. */
+  classesCount: (n: number) => string
+  /** Status pill for a substitute: "Teacher change". */
+  teacherChange: string
+  /** "Melissa Watkins replaces Sabrina Messal". */
+  replaces: (who: string, whom: string) => string
+  /** "Hatha Yoga at 12:30". */
+  courseAt: (course: string, time: string) => string
+  /** Previous / next week on the phone strip. */
+  previousWeekShort: string
+  showAllChanges: (n: number) => string
+  showFewerChanges: string
+  nextWeekShort: string
+  agendaLabel: string
+  weekStripLabel: string
+  /** Print view: the dialog's name, its print button and hint. */
+  printPreview: string
+  printNow: string
+  printHint: string
+  /** Print view: the active filters line ("Filtered: Language: English · Teacher: Anna"). */
+  filteredBy: (list: string) => string
+  /** One active filter: "Language: English". */
+  filterValue: (label: string, value: string) => string
+  /** Print view footer. */
+  generatedOn: (date: string, time: string) => string
+  printWeek: string
+  /** Print month: days of a next / previous month whose classes are not published yet. */
+  notAvailableYet: (month: string) => string
+  /** Print key: what an underlined teacher, time or place means. */
+  legendChanged: string
+  pageOf: (page: number, total: number) => string
+  /** A session given in other languages than its class. */
+  changeLanguage: (languages: string) => string
+  /** A section continued on the next printed page. */
+  continued: string
+  timeLabel: string
+  courseLabel: string
+  /** No class of the printed month matches the filters. */
+  noClassesThisMonth: string
 }
 
 const MESSAGES: Record<string, TimetableMessages> = {
@@ -138,6 +208,53 @@ const MESSAGES: Record<string, TimetableMessages> = {
     holidays: (d) => `Holidays: ${d}`,
     languageFilter: 'Language',
     allLanguages: 'All languages',
+    teacherLabel: 'Teacher',
+    substituteBadge: 'Substitute',
+    timeChangedBadge: 'Time changed',
+    movedBadge: 'Moved',
+    insteadOf: (n) => `instead of ${n}`,
+    wasTime: (t) => `was ${t}`,
+    scheduleUpdates: 'Schedule updates',
+    scheduleChangesThisWeek: (n) => n === 1 ? '1 schedule change this week' : `${n} schedule changes this week`,
+    noScheduleChanges: 'No changes this week',
+    changeSubstitute: (n) => `Substitute: ${n}`,
+    changeNewTime: (t) => `New time ${t}`,
+    changeMovedTo: (p) => `Moved to ${p}`,
+    filters: 'Filters',
+    teacherFilter: 'Teacher',
+    allTeachers: 'All teachers',
+    locationFilter: 'Location',
+    allLocations: 'All locations',
+    courseFilter: 'Class',
+    allCourses: 'All classes',
+    resetFilters: 'Clear filters',
+    done: 'Done',
+    jumpToDate: 'Go to date',
+    classesCount: (n) => n === 1 ? '1 class' : `${n} classes`,
+    teacherChange: 'Teacher change',
+    replaces: (a, b) => `${a} replaces ${b}`,
+    courseAt: (c, t) => `${c} at ${t}`,
+    previousWeekShort: 'Previous week',
+    showAllChanges: (n) => `Show all ${n} changes`,
+    showFewerChanges: 'Show fewer',
+    nextWeekShort: 'Next week',
+    agendaLabel: 'Timetable agenda',
+    weekStripLabel: 'Days of the week',
+    printPreview: 'Print preview',
+    printNow: 'Print',
+    printHint: 'Choose “Save as PDF” in the print dialog to keep a copy.',
+    filteredBy: (l) => `Filtered: ${l}`,
+    filterValue: (l, v) => `${l}: ${v}`,
+    generatedOn: (d, t) => `Schedule generated on ${d} at ${t}`,
+    printWeek: 'Print week',
+    notAvailableYet: (m) => `The ${m} schedule is not available yet.`,
+    legendChanged: 'changed',
+    pageOf: (p, t) => `Page ${p} of ${t}`,
+    changeLanguage: (l) => `In ${l}`,
+    continued: 'continued',
+    timeLabel: 'Time',
+    courseLabel: 'Class',
+    noClassesThisMonth: 'No classes this month.',
   },
   it: {
     timetable: 'Orario',
@@ -188,6 +305,53 @@ const MESSAGES: Record<string, TimetableMessages> = {
     holidays: (d) => `Festività: ${d}`,
     languageFilter: 'Lingua',
     allLanguages: 'Tutte le lingue',
+    teacherLabel: 'Insegnante',
+    substituteBadge: 'Sostituzione',
+    timeChangedBadge: 'Orario modificato',
+    movedBadge: 'Spostata',
+    insteadOf: (n) => `al posto di ${n}`,
+    wasTime: (t) => `prima ${t}`,
+    scheduleUpdates: 'Variazioni di orario',
+    scheduleChangesThisWeek: (n) => n === 1 ? '1 variazione questa settimana' : `${n} variazioni questa settimana`,
+    noScheduleChanges: 'Nessuna variazione questa settimana',
+    changeSubstitute: (n) => `Sostituzione: ${n}`,
+    changeNewTime: (t) => `Nuovo orario ${t}`,
+    changeMovedTo: (p) => `Spostata in ${p}`,
+    filters: 'Filtri',
+    teacherFilter: 'Insegnante',
+    allTeachers: 'Tutti gli insegnanti',
+    locationFilter: 'Luogo',
+    allLocations: 'Tutti i luoghi',
+    courseFilter: 'Corso',
+    allCourses: 'Tutti i corsi',
+    resetFilters: 'Azzera i filtri',
+    done: 'Fatto',
+    jumpToDate: 'Vai alla data',
+    classesCount: (n) => n === 1 ? '1 lezione' : `${n} lezioni`,
+    teacherChange: 'Cambio insegnante',
+    replaces: (a, b) => `${a} sostituisce ${b}`,
+    courseAt: (c, t) => `${c} alle ${t}`,
+    previousWeekShort: 'Settimana precedente',
+    showAllChanges: (n) => `Mostra tutte le ${n} variazioni`,
+    showFewerChanges: 'Mostra meno',
+    nextWeekShort: 'Settimana successiva',
+    agendaLabel: 'Agenda dell’orario',
+    weekStripLabel: 'Giorni della settimana',
+    printPreview: 'Anteprima di stampa',
+    printNow: 'Stampa',
+    printHint: 'Scegli “Salva come PDF” nella finestra di stampa per conservarne una copia.',
+    filteredBy: (l) => `Filtri: ${l}`,
+    filterValue: (l, v) => `${l}: ${v}`,
+    generatedOn: (d, t) => `Orario generato il ${d} alle ${t}`,
+    printWeek: 'Stampa settimana',
+    notAvailableYet: (m) => `L’orario del mese di ${m} non è ancora disponibile.`,
+    legendChanged: 'modificato',
+    pageOf: (p, t) => `Pagina ${p} di ${t}`,
+    changeLanguage: (l) => `In ${l}`,
+    continued: 'continua',
+    timeLabel: 'Orario',
+    courseLabel: 'Corso',
+    noClassesThisMonth: 'Nessun corso questo mese.',
   },
   de: {
     timetable: 'Stundenplan',
@@ -238,6 +402,53 @@ const MESSAGES: Record<string, TimetableMessages> = {
     holidays: (d) => `Feiertage: ${d}`,
     languageFilter: 'Sprache',
     allLanguages: 'Alle Sprachen',
+    teacherLabel: 'Lehrkraft',
+    substituteBadge: 'Vertretung',
+    timeChangedBadge: 'Zeit geändert',
+    movedBadge: 'Verlegt',
+    insteadOf: (n) => `statt ${n}`,
+    wasTime: (t) => `vorher ${t}`,
+    scheduleUpdates: 'Änderungen im Stundenplan',
+    scheduleChangesThisWeek: (n) => n === 1 ? '1 Änderung diese Woche' : `${n} Änderungen diese Woche`,
+    noScheduleChanges: 'Keine Änderungen diese Woche',
+    changeSubstitute: (n) => `Vertretung: ${n}`,
+    changeNewTime: (t) => `Neue Zeit ${t}`,
+    changeMovedTo: (p) => `Verlegt nach ${p}`,
+    filters: 'Filter',
+    teacherFilter: 'Lehrkraft',
+    allTeachers: 'Alle Lehrenden',
+    locationFilter: 'Ort',
+    allLocations: 'Alle Orte',
+    courseFilter: 'Kurs',
+    allCourses: 'Alle Kurse',
+    resetFilters: 'Filter zurücksetzen',
+    done: 'Fertig',
+    jumpToDate: 'Zum Datum springen',
+    classesCount: (n) => n === 1 ? '1 Kurs' : `${n} Kurse`,
+    teacherChange: 'Lehrerwechsel',
+    replaces: (a, b) => `${a} vertritt ${b}`,
+    courseAt: (c, t) => `${c} um ${t}`,
+    previousWeekShort: 'Vorherige Woche',
+    showAllChanges: (n) => `Alle ${n} Änderungen anzeigen`,
+    showFewerChanges: 'Weniger anzeigen',
+    nextWeekShort: 'Nächste Woche',
+    agendaLabel: 'Agenda des Stundenplans',
+    weekStripLabel: 'Wochentage',
+    printPreview: 'Druckvorschau',
+    printNow: 'Drucken',
+    printHint: 'Wählen Sie im Druckdialog „Als PDF sichern“, um eine Kopie zu behalten.',
+    filteredBy: (l) => `Gefiltert: ${l}`,
+    filterValue: (l, v) => `${l}: ${v}`,
+    generatedOn: (d, t) => `Stundenplan erstellt am ${d} um ${t}`,
+    printWeek: 'Woche drucken',
+    notAvailableYet: (m) => `Der Stundenplan für ${m} ist noch nicht verfügbar.`,
+    legendChanged: 'geändert',
+    pageOf: (p, t) => `Seite ${p} von ${t}`,
+    changeLanguage: (l) => `Auf ${l}`,
+    continued: 'Fortsetzung',
+    timeLabel: 'Zeit',
+    courseLabel: 'Kurs',
+    noClassesThisMonth: 'Keine Kurse in diesem Monat.',
   },
   fr: {
     timetable: 'Horaires',
@@ -288,6 +499,53 @@ const MESSAGES: Record<string, TimetableMessages> = {
     holidays: (d) => `Jours fériés : ${d}`,
     languageFilter: 'Langue',
     allLanguages: 'Toutes les langues',
+    teacherLabel: 'Enseignant',
+    substituteBadge: 'Remplacement',
+    timeChangedBadge: 'Horaire modifié',
+    movedBadge: 'Déplacé',
+    insteadOf: (n) => `à la place de ${n}`,
+    wasTime: (t) => `avant ${t}`,
+    scheduleUpdates: 'Changements d’horaires',
+    scheduleChangesThisWeek: (n) => n === 1 ? '1 changement cette semaine' : `${n} changements cette semaine`,
+    noScheduleChanges: 'Aucun changement cette semaine',
+    changeSubstitute: (n) => `Remplacement : ${n}`,
+    changeNewTime: (t) => `Nouvel horaire ${t}`,
+    changeMovedTo: (p) => `Déplacé en ${p}`,
+    filters: 'Filtres',
+    teacherFilter: 'Enseignant',
+    allTeachers: 'Tous les enseignants',
+    locationFilter: 'Lieu',
+    allLocations: 'Tous les lieux',
+    courseFilter: 'Cours',
+    allCourses: 'Tous les cours',
+    resetFilters: 'Effacer les filtres',
+    done: 'Terminé',
+    jumpToDate: 'Aller à la date',
+    classesCount: (n) => n === 1 ? '1 cours' : `${n} cours`,
+    teacherChange: 'Changement de professeur',
+    replaces: (a, b) => `${a} remplace ${b}`,
+    courseAt: (c, t) => `${c} à ${t}`,
+    previousWeekShort: 'Semaine précédente',
+    showAllChanges: (n) => `Afficher les ${n} changements`,
+    showFewerChanges: 'Afficher moins',
+    nextWeekShort: 'Semaine suivante',
+    agendaLabel: 'Agenda de l’horaire',
+    weekStripLabel: 'Jours de la semaine',
+    printPreview: 'Aperçu avant impression',
+    printNow: 'Imprimer',
+    printHint: 'Choisissez « Enregistrer au format PDF » dans la fenêtre d’impression pour en garder une copie.',
+    filteredBy: (l) => `Filtres : ${l}`,
+    filterValue: (l, v) => `${l} : ${v}`,
+    generatedOn: (d, t) => `Horaire généré le ${d} à ${t}`,
+    printWeek: 'Imprimer la semaine',
+    notAvailableYet: (m) => `L’horaire du mois de ${m} n’est pas encore disponible.`,
+    legendChanged: 'modifié',
+    pageOf: (p, t) => `Page ${p} sur ${t}`,
+    changeLanguage: (l) => `En ${l}`,
+    continued: 'suite',
+    timeLabel: 'Heure',
+    courseLabel: 'Cours',
+    noClassesThisMonth: 'Aucun cours ce mois-ci.',
   },
   es: {
     timetable: 'Horario',
@@ -338,6 +596,53 @@ const MESSAGES: Record<string, TimetableMessages> = {
     holidays: (d) => `Festivos: ${d}`,
     languageFilter: 'Idioma',
     allLanguages: 'Todos los idiomas',
+    teacherLabel: 'Profesor',
+    substituteBadge: 'Sustitución',
+    timeChangedBadge: 'Horario cambiado',
+    movedBadge: 'Trasladada',
+    insteadOf: (n) => `en lugar de ${n}`,
+    wasTime: (t) => `antes ${t}`,
+    scheduleUpdates: 'Cambios de horario',
+    scheduleChangesThisWeek: (n) => n === 1 ? '1 cambio esta semana' : `${n} cambios esta semana`,
+    noScheduleChanges: 'Sin cambios esta semana',
+    changeSubstitute: (n) => `Sustitución: ${n}`,
+    changeNewTime: (t) => `Nuevo horario ${t}`,
+    changeMovedTo: (p) => `Trasladada a ${p}`,
+    filters: 'Filtros',
+    teacherFilter: 'Profesor',
+    allTeachers: 'Todos los profesores',
+    locationFilter: 'Lugar',
+    allLocations: 'Todos los lugares',
+    courseFilter: 'Clase',
+    allCourses: 'Todas las clases',
+    resetFilters: 'Quitar filtros',
+    done: 'Hecho',
+    jumpToDate: 'Ir a la fecha',
+    classesCount: (n) => n === 1 ? '1 clase' : `${n} clases`,
+    teacherChange: 'Cambio de profesor',
+    replaces: (a, b) => `${a} sustituye a ${b}`,
+    courseAt: (c, t) => `${c} a las ${t}`,
+    previousWeekShort: 'Semana anterior',
+    showAllChanges: (n) => `Ver los ${n} cambios`,
+    showFewerChanges: 'Ver menos',
+    nextWeekShort: 'Semana siguiente',
+    agendaLabel: 'Agenda del horario',
+    weekStripLabel: 'Días de la semana',
+    printPreview: 'Vista previa de impresión',
+    printNow: 'Imprimir',
+    printHint: 'Elige «Guardar como PDF» en el cuadro de impresión para conservar una copia.',
+    filteredBy: (l) => `Filtros: ${l}`,
+    filterValue: (l, v) => `${l}: ${v}`,
+    generatedOn: (d, t) => `Horario generado el ${d} a las ${t}`,
+    printWeek: 'Imprimir semana',
+    notAvailableYet: (m) => `El horario de ${m} aún no está disponible.`,
+    legendChanged: 'cambiado',
+    pageOf: (p, t) => `Página ${p} de ${t}`,
+    changeLanguage: (l) => `En ${l}`,
+    continued: 'continuación',
+    timeLabel: 'Hora',
+    courseLabel: 'Clase',
+    noClassesThisMonth: 'No hay clases este mes.',
   },
   pt: {
     timetable: 'Horário',
@@ -388,6 +693,53 @@ const MESSAGES: Record<string, TimetableMessages> = {
     holidays: (d) => `Feriados: ${d}`,
     languageFilter: 'Idioma',
     allLanguages: 'Todos os idiomas',
+    teacherLabel: 'Professor',
+    substituteBadge: 'Substituição',
+    timeChangedBadge: 'Horário alterado',
+    movedBadge: 'Mudada',
+    insteadOf: (n) => `em vez de ${n}`,
+    wasTime: (t) => `antes ${t}`,
+    scheduleUpdates: 'Alterações de horário',
+    scheduleChangesThisWeek: (n) => n === 1 ? '1 alteração esta semana' : `${n} alterações esta semana`,
+    noScheduleChanges: 'Sem alterações esta semana',
+    changeSubstitute: (n) => `Substituição: ${n}`,
+    changeNewTime: (t) => `Novo horário ${t}`,
+    changeMovedTo: (p) => `Mudada para ${p}`,
+    filters: 'Filtros',
+    teacherFilter: 'Professor',
+    allTeachers: 'Todos os professores',
+    locationFilter: 'Local',
+    allLocations: 'Todos os locais',
+    courseFilter: 'Aula',
+    allCourses: 'Todas as aulas',
+    resetFilters: 'Limpar filtros',
+    done: 'Concluído',
+    jumpToDate: 'Ir para a data',
+    classesCount: (n) => n === 1 ? '1 aula' : `${n} aulas`,
+    teacherChange: 'Troca de professor',
+    replaces: (a, b) => `${a} substitui ${b}`,
+    courseAt: (c, t) => `${c} às ${t}`,
+    previousWeekShort: 'Semana anterior',
+    showAllChanges: (n) => `Ver as ${n} alterações`,
+    showFewerChanges: 'Ver menos',
+    nextWeekShort: 'Semana seguinte',
+    agendaLabel: 'Agenda do horário',
+    weekStripLabel: 'Dias da semana',
+    printPreview: 'Pré-visualização de impressão',
+    printNow: 'Imprimir',
+    printHint: 'Escolha “Guardar como PDF” na janela de impressão para guardar uma cópia.',
+    filteredBy: (l) => `Filtros: ${l}`,
+    filterValue: (l, v) => `${l}: ${v}`,
+    generatedOn: (d, t) => `Horário gerado em ${d} às ${t}`,
+    printWeek: 'Imprimir semana',
+    notAvailableYet: (m) => `O horário de ${m} ainda não está disponível.`,
+    legendChanged: 'alterado',
+    pageOf: (p, t) => `Página ${p} de ${t}`,
+    changeLanguage: (l) => `Em ${l}`,
+    continued: 'continuação',
+    timeLabel: 'Hora',
+    courseLabel: 'Aula',
+    noClassesThisMonth: 'Sem aulas este mês.',
   },
   nl: {
     timetable: 'Lesrooster',
@@ -438,6 +790,53 @@ const MESSAGES: Record<string, TimetableMessages> = {
     holidays: (d) => `Feestdagen: ${d}`,
     languageFilter: 'Taal',
     allLanguages: 'Alle talen',
+    teacherLabel: 'Docent',
+    substituteBadge: 'Vervanging',
+    timeChangedBadge: 'Tijd gewijzigd',
+    movedBadge: 'Verplaatst',
+    insteadOf: (n) => `in plaats van ${n}`,
+    wasTime: (t) => `eerder ${t}`,
+    scheduleUpdates: 'Roosterwijzigingen',
+    scheduleChangesThisWeek: (n) => n === 1 ? '1 wijziging deze week' : `${n} wijzigingen deze week`,
+    noScheduleChanges: 'Geen wijzigingen deze week',
+    changeSubstitute: (n) => `Vervanging: ${n}`,
+    changeNewTime: (t) => `Nieuwe tijd ${t}`,
+    changeMovedTo: (p) => `Verplaatst naar ${p}`,
+    filters: 'Filters',
+    teacherFilter: 'Docent',
+    allTeachers: 'Alle docenten',
+    locationFilter: 'Locatie',
+    allLocations: 'Alle locaties',
+    courseFilter: 'Les',
+    allCourses: 'Alle lessen',
+    resetFilters: 'Filters wissen',
+    done: 'Klaar',
+    jumpToDate: 'Ga naar datum',
+    classesCount: (n) => n === 1 ? '1 les' : `${n} lessen`,
+    teacherChange: 'Andere docent',
+    replaces: (a, b) => `${a} vervangt ${b}`,
+    courseAt: (c, t) => `${c} om ${t}`,
+    previousWeekShort: 'Vorige week',
+    showAllChanges: (n) => `Alle ${n} wijzigingen tonen`,
+    showFewerChanges: 'Minder tonen',
+    nextWeekShort: 'Volgende week',
+    agendaLabel: 'Agenda van het rooster',
+    weekStripLabel: 'Dagen van de week',
+    printPreview: 'Afdrukvoorbeeld',
+    printNow: 'Afdrukken',
+    printHint: 'Kies ‘Opslaan als PDF’ in het afdrukvenster om een kopie te bewaren.',
+    filteredBy: (l) => `Filters: ${l}`,
+    filterValue: (l, v) => `${l}: ${v}`,
+    generatedOn: (d, t) => `Rooster gemaakt op ${d} om ${t}`,
+    printWeek: 'Week afdrukken',
+    notAvailableYet: (m) => `Het rooster voor ${m} is nog niet beschikbaar.`,
+    legendChanged: 'gewijzigd',
+    pageOf: (p, t) => `Pagina ${p} van ${t}`,
+    changeLanguage: (l) => `In het ${l}`,
+    continued: 'vervolg',
+    timeLabel: 'Tijd',
+    courseLabel: 'Les',
+    noClassesThisMonth: 'Geen lessen deze maand.',
   },
 }
 

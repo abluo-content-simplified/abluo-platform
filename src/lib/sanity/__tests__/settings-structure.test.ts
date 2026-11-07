@@ -166,3 +166,31 @@ describe('Studio settings structure — one-surface source guard (ADR-014)', () 
     expect(ctaSlice).toContain("'callToActionProjectOwned'")
   })
 })
+
+describe('Studio settings structure — Notifications has its own pane', () => {
+  const region = () => sliceRegion(readConfigSource(), findBanners(readConfigSource()), PROJECT_SETTINGS_MARKER)
+
+  it('General is the only Project Settings item that opens the raw project document form', () => {
+    const r = region()
+    expect((r.match(/schemaType\(\s*['"]project['"]\s*\)/g) ?? []).length).toBe(1)
+    const general = r.indexOf('settings-general')
+    const notif = r.indexOf('settings-notifications')
+    expect(r.slice(general, r.indexOf('S.divider()'))).toMatch(/schemaType\(\s*['"]project['"]\s*\)/)
+    expect(r.slice(notif)).not.toMatch(/schemaType\(/)
+  })
+
+  it('Notifications opens NotificationsPane with projectId and projectSlug', () => {
+    const r = region()
+    const slice = r.slice(r.indexOf('settings-notifications'))
+    expect(slice).toContain('S.component(NotificationsPane)')
+    expect(slice).toContain('projectId: project._id')
+    expect(slice).toContain('projectSlug: slug')
+  })
+
+  it('project.notifications is hidden from the default form, like privacy', () => {
+    const schema = readFileSync(resolve(currentDir, '../schema.ts'), 'utf-8')
+    const at = schema.indexOf("name: 'notifications'")
+    expect(at).toBeGreaterThan(-1)
+    expect(schema.slice(at, at + 300)).toMatch(/hidden:\s*true,\s*\/\/ managed via the Notifications pane/)
+  })
+})

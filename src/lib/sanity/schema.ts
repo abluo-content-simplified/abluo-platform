@@ -3793,12 +3793,13 @@ const projectType = defineType({
     buildIntegrationConfigsField(),
 
     // ── Notification recipients (ADR-019) ───────────────────────────────────
-    // Edited in Project Settings → Notifications. The form-notification consumer
+    // Edited in Project Settings → Notifications (custom pane; hidden here). The form-notification consumer
     // reads these at send time to decide who gets a "new submission" email.
     defineField({
       name: 'notifications',
       title: 'Notifications',
       type: 'object',
+      hidden: true, // managed via the Notifications pane
       description: 'Who gets notified when a form on this project receives a new submission.',
       fields: [
         defineField({
@@ -5288,6 +5289,13 @@ const siteLocationType = defineType({
       type: 'localizedString',
       description: 'What visitors call this place, e.g. "Breydel building".',
       validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'shortName',
+      title: 'Short name',
+      type: 'string',
+      description: 'Optional. A very short label for tight spaces such as timetable cards, e.g. "BREY". Up to 12 characters. Leave empty to use the name.',
+      validation: (Rule) => Rule.max(12),
     }),
     defineField({
       name: 'address',

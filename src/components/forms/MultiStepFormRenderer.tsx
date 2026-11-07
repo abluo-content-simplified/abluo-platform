@@ -579,7 +579,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
       <div
         className={layout === 'overlay' ? 'sticky bottom-0 -mx-6 mt-6 px-6 pt-4 pb-1' : 'mt-6'}
         style={layout === 'overlay' ? {
-          background: 'color-mix(in oklch, var(--color-background, var(--background)) 92%, transparent)',
+          background: 'color-mix(in srgb, var(--color-background, var(--background)) 92%, transparent)',
           backdropFilter: 'blur(12px) saturate(1.4)',
           borderTop: '1px solid color-mix(in oklch, var(--color-border, var(--border)) 45%, transparent)',
         } : undefined}

@@ -81,7 +81,6 @@ const NOT_YET_READ: Record<string, string> = {
  * Same rule: wire them or drop them, and keep this list honest.
  */
 const EMITTED_NOT_YET_USED: Record<string, string> = {
-  '--color-warning': 'No component shows a warning state on the website yet.',
   '--font-size-body': 'Body size reaches text via --text-base (Tailwind); this alias has no reader.',
   '--font-size-body-large': 'Body large is emitted but no component reads it (text-lg is fixed).',
   '--font-size-small': 'Small is emitted but no component reads it (text-sm is fixed).',

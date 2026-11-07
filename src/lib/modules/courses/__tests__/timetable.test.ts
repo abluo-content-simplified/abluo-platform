@@ -14,7 +14,7 @@ import {
   weekStart,
   type ShapeInput,
 } from '../timetable'
-import { CLOSURES, COURSES, COURSE_A, COURSE_B, LOCATIONS, OCCURRENCES, P1, P2, PEOPLE, P_OFF, ROOM, ROOMS, SERIES, S1, S2, WINDOW, series } from './timetable-fixtures'
+import { occ, CLOSURES, COURSES, COURSE_A, COURSE_B, LOCATIONS, OCCURRENCES, P1, P2, PEOPLE, P_OFF, ROOM, ROOMS, SERIES, S1, S2, WINDOW, series } from './timetable-fixtures'
 
 const input = (over: Partial<ShapeInput> = {}): ShapeInput => ({
   window: WINDOW,
@@ -114,6 +114,38 @@ describe('shapeTimetable', () => {
   it('only keeps the closures that overlap the window', () => {
     expect(shapeTimetable(input({ window: { from: '2026-11-01', to: '2026-11-30' } })).closures).toEqual([])
     expect(shapeTimetable(input({ window: { from: '2027-01-01', to: '2027-01-31' } })).closures).toHaveLength(1)
+  })
+})
+
+describe('change flags', () => {
+  const d = shapeTimetable(input())
+  const ch = (id: string) => d.occurrences.find((o) => o.id === id)!.change
+  it('is null when nothing differs', () => {
+    expect(ch('o1')).toBeNull()
+    expect(ch('o4')).toBeNull()
+  })
+  it('flags cancelled, substitute and time change with the originals', () => {
+    expect(ch('o3')).toMatchObject({ cancelled: true, substitute: false })
+    expect(ch('o2')).toMatchObject({ substitute: true, originalTeacherIds: [P1], cancelled: false })
+    expect(ch('o5')).toMatchObject({ timeChanged: true, originalStart: '18:00', originalDate: null, substitute: false })
+  })
+  it('a moved date reports originalDate; a class without base teachers is never a substitute', () => {
+    const s = SERIES[0]
+    const moved = shapeTimetable(input({ occurrences: [occ('m', s, '2026-12-14', { startLocal: '2026-12-15T12:30', originalStartLocal: '2026-12-14T12:30' })] }))
+    expect(moved.occurrences[0].change).toMatchObject({ timeChanged: true, originalDate: '2026-12-14', originalStart: '12:30' })
+    const rot = series({ id: 'r', ownerPublicId: COURSE_A, instructorPublicIds: [] })
+    const r = shapeTimetable(input({ series: [rot], occurrences: [occ('r1', rot, '2026-12-07', { instructorPublicIds: [P2] })] }))
+    expect(r.occurrences[0].change).toBeNull()
+  })
+  it('flags a moved place (effective vs class)', () => {
+    const s = SERIES[0]
+    const m = shapeTimetable(input({ occurrences: [occ('p', s, '2026-12-14', { place: { kind: 'location', key: 'l51' } })] }))
+    expect(m.occurrences[0].change).toMatchObject({ moved: true, originalPlaceKey: 'brey' })
+  })
+  it('exposes the optional short location name', () => {
+    const x = shapeTimetable(input({ siteLocations: [{ ...LOCATIONS[0], shortName: ' BR ' }] }))
+    expect(x.places.brey.short).toBe('BR')
+    expect(d.places.brey.short).toBeNull()
   })
 })
 

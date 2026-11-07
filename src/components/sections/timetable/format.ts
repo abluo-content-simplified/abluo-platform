@@ -16,7 +16,7 @@ export function formatDate(locale: string, date: string, options: Intl.DateTimeF
 }
 
 /** Mon = 1 … Sun = 7, as a short / long name in the page language. */
-export function weekdayName(locale: string, weekday: number, style: 'short' | 'long' = 'short'): string {
+export function weekdayName(locale: string, weekday: number, style: 'narrow' | 'short' | 'long' = 'short'): string {
   // 2024-01-01 was a Monday.
   return formatDate(locale, addDays('2024-01-01', (weekday - 1) % 7), { weekday: style })
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { HeaderAppearance } from '@/lib/sanity/types'
 
 interface HeaderAppearanceWrapperProps {
@@ -52,9 +52,9 @@ function getHeaderStyles(
   let backdropClass = ''
 
   if (style === 'solid') {
-    bgColor = `color-mix(in oklch, var(--color-background) ${opacity * 100}%, transparent)`
+    bgColor = `color-mix(in srgb, var(--color-background) ${opacity * 100}%, transparent)`
   } else if (style === 'glass') {
-    bgColor = `color-mix(in oklch, var(--color-background) ${opacity * 100}%, transparent)`
+    bgColor = `color-mix(in srgb, var(--color-background) ${opacity * 100}%, transparent)`
     // backdrop-blur-sm (4px) is barely perceptible behind scrolling content;
     // xl (24px) is what actually separates a floating header from the page.
     backdropClass = blur ? 'backdrop-blur-xl saturate-150' : ''
@@ -102,6 +102,29 @@ export function HeaderAppearanceWrapper({ config, children }: HeaderAppearanceWr
   const mode = isScrolled ? 'scrolled' : 'initial'
   const { resolvedStyle, className, style } = getHeaderStyles(mode, config)
 
+  // Publish the fixed header's height as --site-header-h so sticky page
+  // elements (e.g. the timetable's date strip) stop right under it instead of
+  // sliding beneath the logo. 0 when the header scrolls away with the page.
+  const headerRef = useRef<HTMLElement | null>(null)
+  const sticky = config?.stickyHeader ?? true
+  useEffect(() => {
+    const root = document.documentElement
+    const el = headerRef.current
+    if (!sticky || !el) {
+      root.style.setProperty('--site-header-h', '0px')
+      return
+    }
+    const sync = () => root.style.setProperty('--site-header-h', `${Math.round(el.getBoundingClientRect().height)}px`)
+    sync()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(sync)
+    ro.observe(el)
+    return () => {
+      ro.disconnect()
+      root.style.removeProperty('--site-header-h')
+    }
+  }, [sticky])
+
   // ── Scrim ──────────────────────────────────────────────────────────────────
   // A transparent header cannot guarantee contrast: the nav is drawn in
   // --color-text-primary, a fixed colour, over whatever photograph the hero
@@ -121,7 +144,7 @@ export function HeaderAppearanceWrapper({ config, children }: HeaderAppearanceWr
   const showScrim = resolvedStyle === 'transparent'
 
   return (
-    <header className={className} style={style}>
+    <header ref={headerRef} className={className} style={style}>
       {showScrim && (
         <div
           aria-hidden="true"
@@ -130,7 +153,7 @@ export function HeaderAppearanceWrapper({ config, children }: HeaderAppearanceWr
             height: '160%',
             zIndex: -1,
             backgroundImage:
-              'linear-gradient(to bottom, color-mix(in oklch, var(--color-background) 72%, transparent) 0%, color-mix(in oklch, var(--color-background) 40%, transparent) 55%, transparent 100%)',
+              'linear-gradient(to bottom, color-mix(in srgb, var(--color-background) 72%, transparent) 0%, color-mix(in srgb, var(--color-background) 40%, transparent) 55%, transparent 100%)',
             transition: 'opacity 300ms ease-in-out',
           }}
         />

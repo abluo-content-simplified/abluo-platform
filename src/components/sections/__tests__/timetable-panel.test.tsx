@@ -39,7 +39,7 @@ afterEach(() => {
   host = null
 })
 
-function mount(view: 'week' | 'month', online = false) {
+function mount(view: 'week' | 'month', online = false, profile: { siteBase: string; segment: string | null } | null = null) {
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)
@@ -55,7 +55,7 @@ function mount(view: 'week' | 'month', online = false) {
         endpoint={null}
         pageId={null}
         sectionKey="s"
-        profile={null}
+        profile={profile}
       />,
     )
   })
@@ -78,9 +78,27 @@ describe('class details panel', () => {
     expect(text).toContain('12:30–13:30')
     expect(text).toContain('BREY')
     expect(text).toContain('Open in maps')
-    expect(text).toContain('French, English')
+    expect([...d.querySelectorAll('span')].map((x) => x.textContent)).toEqual(expect.arrayContaining(['French', 'English']))
     expect(d.querySelector('img')?.getAttribute('src')).toContain('abc123')
     expect(d.querySelector('a[href^="https://maps.google.com"]')).toBeTruthy()
+  })
+
+  it('links a teacher to the People page only when the person has one (links live in the panel, not on the cards)', () => {
+    mount('week', false, { siteBase: '/en/cyce', segment: 'team' })
+    // Cards never link teachers.
+    expect(document.querySelector('[data-card] a')).toBeNull()
+    const links: string[] = []
+    const teacherNames: string[] = []
+    for (const b of openers()) {
+      act(() => b.click())
+      const d = dialog()!
+      for (const a of d.querySelectorAll('a[href^="/en/cyce/team/"]')) links.push(a.getAttribute('href')!)
+      if ((d.textContent ?? '').includes('Sabrina')) teacherNames.push(d.querySelector('a[href^="/en/cyce/team/"]')?.textContent ?? 'no-link')
+    }
+    expect(links).toContain('/en/cyce/team/anna-rossi')
+    expect(links.some((l) => l.includes('sabrina'))).toBe(false)
+    // Sabrina has no profile: shown as plain text, never a link.
+    expect(teacherNames.every((t) => t !== 'Sabrina')).toBe(true)
   })
 
   it('closes with Escape', async () => {

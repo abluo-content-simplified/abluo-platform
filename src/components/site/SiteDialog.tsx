@@ -164,7 +164,7 @@ export function SiteDialog({ isOpen, onClose, closeLabel, title, eyebrow, childr
                 : 'fixed inset-x-4 top-1/2 z-[510] mx-auto flex -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-lg)] shadow-2xl backdrop-blur-[24px] saturate-150 md:inset-x-auto md:left-1/2 md:w-[36rem] md:-translate-x-1/2'
             }
             style={{
-              backgroundColor: 'color-mix(in oklch, var(--color-background, var(--background)) 90%, transparent)',
+              backgroundColor: 'color-mix(in srgb, var(--color-background, var(--background)) 90%, transparent)',
               border: '1px solid var(--color-border, var(--border))',
               maxHeight: sheet ? '88dvh' : '80dvh',
               outline: 'none',

@@ -171,7 +171,7 @@ export function NavClient({
           drawerOpen ? 'translate-x-0' : 'translate-x-full',
         ].join(' ')}
         style={{
-          backgroundColor: 'color-mix(in oklch, var(--color-background) 90%, transparent)',
+          backgroundColor: 'color-mix(in srgb, var(--color-background) 90%, transparent)',
           borderColor: 'var(--color-border)',
         }}
         aria-hidden={!drawerOpen}

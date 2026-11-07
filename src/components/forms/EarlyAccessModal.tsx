@@ -27,7 +27,7 @@
  *
  * GLASS: modal panel uses the same glass recipe as the Livener nav drawer:
  *   backdrop-blur-[24px] saturate-150 shadow-2xl
- *   backgroundColor: color-mix(in oklch, var(--color-background) 90%, transparent)
+ *   backgroundColor: color-mix(in srgb, var(--color-background) 90%, transparent)
  *   borderColor: var(--color-border)
  */
 
@@ -425,7 +425,7 @@ function CustomSelect({
                   overflowY: 'auto',
                   borderRadius: 'var(--radius-md)',
                   border: '1px solid var(--color-border)',
-                  backgroundColor: 'color-mix(in oklch, var(--color-background) 90%, transparent)',
+                  backgroundColor: 'color-mix(in srgb, var(--color-background) 90%, transparent)',
                   backdropFilter: 'blur(24px) saturate(1.5)',
                   boxShadow: '0 8px 32px color-mix(in oklch, var(--color-border) 150%, transparent)',
                   padding: '6px 0',
@@ -911,7 +911,7 @@ export function EarlyAccessModal() {
             transition={{ duration: 0.25, ease: [0, 0, 0.2, 1] }}
             className="fixed inset-x-4 top-[50%] z-[510] mx-auto max-w-lg -translate-y-1/2 rounded-[var(--radius-lg)] shadow-2xl backdrop-blur-[24px] saturate-150 md:inset-x-auto md:left-1/2 md:-translate-x-1/2"
             style={{
-              backgroundColor: 'color-mix(in oklch, var(--color-background) 90%, transparent)',
+              backgroundColor: 'color-mix(in srgb, var(--color-background) 90%, transparent)',
               border: '1px solid var(--color-border)',
               maxHeight: 'calc(100dvh - 2rem)',
               overflowY: 'auto',
@@ -922,7 +922,7 @@ export function EarlyAccessModal() {
             <div
               className="sticky top-0 z-10 flex items-start justify-between px-6 pt-6 pb-5 backdrop-blur-[24px] saturate-150"
               style={{
-                backgroundColor: 'color-mix(in oklch, var(--color-background) 88%, transparent)',
+                backgroundColor: 'color-mix(in srgb, var(--color-background) 88%, transparent)',
                 borderBottom: '1px solid color-mix(in oklch, var(--color-border) 50%, transparent)',
               }}
             >

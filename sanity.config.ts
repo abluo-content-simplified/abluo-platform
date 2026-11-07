@@ -22,6 +22,7 @@ import { StubPane } from './src/lib/sanity/studio/StubPane'
 // ADR-014 Phase B — Integrations & Privacy panes
 import { IntegrationsPane } from './src/lib/sanity/studio/IntegrationsPane'
 import { PrivacyPane } from './src/lib/sanity/studio/PrivacyPane'
+import { NotificationsPane } from './src/lib/sanity/studio/NotificationsPane'
 import { CATALOGUE_TEMPLATE_IDS, catalogueDocumentActions, isCatalogueScopedDocumentId, isCatalogueStudioDoc } from './src/lib/sanity/studio/catalogue-posture'
 import { postureStore } from './src/lib/sanity/studio/catalogue-posture-store'
 import { applyCataloguePosture } from './src/lib/sanity/studio/catalogue-posture-schema'
@@ -688,17 +689,17 @@ export default defineConfig({
                                   .options({ projectId: project._id, projectSlug: slug })
                               ),
 
-                            // Notifications — ADR-019. Recipient management
-                            // (project.notifications.recipients). Opens the
-                            // project doc form; the Notifications field is edited here.
+                            // Notifications — ADR-019. Recipients + internal email
+                            // (project.notifications), edited in its own pane; the
+                            // field is hidden from General.
                             S.listItem()
                               .id(`${slug}-settings-notifications`)
                               .title('Notifications')
                               .child(
-                                S.document()
-                                  .documentId(project._id)
-                                  .schemaType('project')
+                                S.component(NotificationsPane)
+                                  .id(`${slug}-settings-notifications-pane`)
                                   .title('Notifications')
+                                  .options({ projectId: project._id, projectSlug: slug })
                               ),
 
                           ])

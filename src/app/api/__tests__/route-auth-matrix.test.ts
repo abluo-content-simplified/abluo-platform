@@ -1073,6 +1073,9 @@ const WEBSITE_ROUTES: Record<string, 'public-write (site access)' | 'public-read
   // nature; every request re-reads and re-gates the page, and meeting details need a
   // granted visitor on a protected page (timetable-route.server.ts).
   '[tenant]/site-access/timetable': 'public-read (site access)',
+  // ADR-045/038: "Add to calendar" — the .ics of one session; GET only, same page gate as the month route,
+  // never writes meeting details (timetable-calendar-route.server.ts).
+  '[tenant]/site-access/timetable-calendar': 'public-read (site access)',
 }
 
 describe('route handlers outside src/app/api', () => {

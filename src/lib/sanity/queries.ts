@@ -810,7 +810,8 @@ export const eventSiteContextQuery = /* groq */ `
       address { street, postalCode, city, state, country },
       mapsUrl,
       pin { lat, lng },
-      "accessNote": ${loc('accessNote')}
+      "accessNote": ${loc('accessNote')},
+      shortName
     }
   }
 `
@@ -991,7 +992,8 @@ export const websiteSiteConfigQuery = /* groq */ `
       address { street, postalCode, city, state, country },
       mapsUrl,
       pin { lat, lng },
-      "accessNote": ${loc('accessNote')}
+      "accessNote": ${loc('accessNote')},
+      shortName
     },
     openGraphImage { asset },
     logoHeightDesktop,
