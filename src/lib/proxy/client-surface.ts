@@ -61,6 +61,8 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   'agenda',
   // ADR-045: Courses (`/{project}/courses`, `/{project}/courses/{id}`, later `/courses/timetable`).
   'courses',
+  // ADR-044: Bookings (`/{project}/bookings`, `/bookings/rules`).
+  'bookings',
   'media',
   'people',
   'users',

@@ -318,7 +318,7 @@ describe('navigation groups (ADR-042 N1, section 3)', () => {
     const by = (g: string) => ids(buildTenantSurfaces(owner).nav.filter((n) => n.group === g))
     expect(by('content')).toEqual(['blog', 'events', 'courses', 'faq', 'gallery', 'documents'])
     expect(by('catalogue')).toEqual(['catalogueItems', 'catalogueCollections', 'catalogueOptions', 'catalogueSetup'])
-    expect(by('visitors')).toEqual(['forms', 'members'])
+    expect(by('visitors')).toEqual(['forms', 'members', 'reservations'])
     expect(by('library')).toEqual(['people', 'media', 'taxonomy'])
     expect(by('insights')).toEqual(['analytics'])
     expect(by('project')).toEqual(['users', 'connections', 'settings', 'billing'])

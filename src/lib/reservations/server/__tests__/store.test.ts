@@ -198,3 +198,118 @@ describe('sessionAvailability', () => {
     expect(calls).toHaveLength(0)
   })
 })
+
+// ── Notification side: the four ServiceStore methods ─────────────────────────
+describe('ServiceStore additions (every query filtered by project_id)', () => {
+  const A1 = '44444444-4444-4444-8444-444444444441'
+  const A2 = '44444444-4444-4444-8444-444444444442'
+  const B2 = '33333333-3333-4333-8333-333333333334'
+  const future = new Date(Date.now() + 3_600_000).toISOString()
+  const past = new Date(Date.now() - 3_600_000).toISOString()
+
+  it('getBookingById filters by project and id; a bad id never reaches the database', async () => {
+    const { db, calls } = fakeDb({ data: [{ id: B, project_id: P, reference: 'X-1', locale: 'it', total_cents: 500 }] })
+    const s = createSupabaseReservationStore(db)
+    const r = await s.getBookingById(P, B)
+    expect(r.ok && r.value?.reference).toBe('X-1')
+    expect(hasProjectEq(calls[0])).toBe(true)
+    expect(opsOf(calls[0], 'eq').some(([k, v]) => k === 'id' && v === B)).toBe(true)
+    const { db: db2, calls: c2 } = fakeDb()
+    expect(await createSupabaseReservationStore(db2).getBookingById(P, 'nope')).toEqual({ ok: true, value: null })
+    expect(c2).toHaveLength(0)
+  })
+
+  it('enqueueOutbox upserts on dedupe_key, ignores duplicates, counts only new rows, skips empty recipient lists', async () => {
+    const { db, calls } = fakeDb({ data: [{ id: 'new' }] })
+    const intent = (dedupeKey: string, recipients: unknown[], payload: Record<string, unknown> = {}) =>
+      ({ intent: 'booking.confirmed', dedupeKey, recipients, locale: 'it', payload, environment: 'production' as const })
+    const r = await createSupabaseReservationStore(db).enqueueOutbox(P, [
+      { bookingId: B, intent: intent('booking.confirmed:aaa', [{ email: 'a@x.it' }]) },
+      { bookingId: B, intent: intent('booking.confirmed:bbb', [], { skip: 'non_production_no_test_recipient' }) },
+    ])
+    expect(r).toEqual({ ok: true, value: { queued: 1 } })
+    const ops = (calls[0] as Extract<Call, { kind: 'from' }>).ops
+    expect(calls[0]).toMatchObject({ table: 'reservation_outbox' })
+    const [, [rows, opts]] = ops.find(([n]) => n === 'upsert') ? [0, ops.find(([n]) => n === 'upsert')![1]] : [0, []]
+    expect(opts).toEqual({ onConflict: 'dedupe_key', ignoreDuplicates: true })
+    const list = rows as Array<Record<string, unknown>>
+    expect(list.every((x) => x.project_id === P)).toBe(true)
+    expect(list[0].status).toBeUndefined()
+    expect(list[1]).toMatchObject({ status: 'skipped', last_error: 'non_production_no_test_recipient' })
+  })
+
+  it('enqueueOutbox with nothing to do makes no call', async () => {
+    const { db, calls } = fakeDb()
+    expect(await createSupabaseReservationStore(db).enqueueOutbox(P, [])).toEqual({ ok: true, value: { queued: 0 } })
+    expect(calls).toHaveLength(0)
+  })
+
+  it('listAffectedBookings: active allocations only, lapsed holds ignored, pass holder mailed at own address', async () => {
+    const { db, calls } = fakeDb((c) => {
+      if (c.kind !== 'from') return {}
+      if (c.table === 'booking_allocations') {
+        const byBooking = opsOf(c, 'in').some(([k]) => k === 'booking_id')
+        if (byBooking) return { data: [
+          { booking_id: B, kind: 'confirmed', expires_at: null }, { booking_id: B, kind: 'confirmed', expires_at: null },
+          { booking_id: B2, kind: 'pass_attendance', expires_at: null },
+        ] }
+        return { data: [
+          { booking_id: B, attendee_id: A1, pass_id: null, kind: 'confirmed', expires_at: null },
+          { booking_id: B2, attendee_id: A2, pass_id: 'pass-1', kind: 'pass_attendance', expires_at: null },
+          { booking_id: 'lapsed', attendee_id: A1, pass_id: null, kind: 'hold', expires_at: past },
+          { booking_id: 'live-hold', attendee_id: A1, pass_id: null, kind: 'hold', expires_at: future },
+        ] }
+      }
+      if (c.table === 'bookings') return { data: [
+        { id: B, purchaser_name: 'Anna Rossi', purchaser_email: 'anna@x.it', locale: 'it', total_cents: 4000, payment_status: 'paid' },
+        { id: B2, purchaser_name: 'Buyer', purchaser_email: 'buyer@x.it', locale: 'de', total_cents: 0, payment_status: 'unpaid' },
+        { id: 'live-hold', purchaser_name: 'H', purchaser_email: 'h@x.it', locale: 'en', total_cents: 100, payment_status: 'unpaid' },
+      ] }
+      if (c.table === 'booking_attendees') return { data: [{ id: A2, name: 'Pass Holder', email: 'holder@x.it' }] }
+      return {}
+    })
+    const r = await createSupabaseReservationStore(db).listAffectedBookings(P, [O1, O2])
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    const byId = Object.fromEntries(r.value.map((x) => [x.bookingId, x]))
+    expect(byId[B]).toMatchObject({ email: 'anna@x.it', passId: null, sessionCount: 2, paymentStatus: 'paid', totalCents: 4000 })
+    expect(byId[B2]).toMatchObject({ email: 'holder@x.it', name: 'Pass Holder', passId: 'pass-1', locale: 'de' })
+    expect(byId['live-hold']).toBeDefined()
+    expect(byId['lapsed']).toBeUndefined()
+    for (const c of calls.filter((x) => x.kind === 'from')) expect(hasProjectEq(c)).toBe(true)
+  })
+
+  it('listAffectedBookings rejects malformed ids without a query', async () => {
+    const { db, calls } = fakeDb()
+    const r = await createSupabaseReservationStore(db).listAffectedBookings(P, ['x'])
+    expect(r).toEqual({ ok: false, error: { kind: 'refused', code: 'invalid' } })
+    expect(calls).toHaveLength(0)
+  })
+
+  it('listNoticeRecipients (target): open bookings of that target in this project; (session): from allocations', async () => {
+    const T = '11111111-1111-4111-8111-111111111111'
+    const { db, calls } = fakeDb({ data: [{ id: B, purchaser_name: 'Anna', purchaser_email: 'anna@x.it', locale: 'it' }] })
+    const r = await createSupabaseReservationStore(db).listNoticeRecipients(P, { kind: 'target', targetId: T })
+    expect(r).toEqual({ ok: true, value: [{ bookingId: B, name: 'Anna', email: 'anna@x.it', locale: 'it' }] })
+    expect(hasProjectEq(calls[0])).toBe(true)
+    expect(opsOf(calls[0], 'eq').some(([k, v]) => k === 'target_id' && v === T)).toBe(true)
+    expect(opsOf(calls[0], 'in')[0]).toEqual(['status', ['held', 'awaiting_payment', 'confirmed']])
+
+    const f2 = fakeDb((c) => {
+      if (c.kind !== 'from') return {}
+      if (c.table === 'booking_allocations') return { data: [{ booking_id: B, attendee_id: A1, pass_id: null, kind: 'confirmed', expires_at: null }] }
+      if (c.table === 'bookings') return { data: [{ id: B, purchaser_name: 'Anna', purchaser_email: 'anna@x.it', locale: 'it', total_cents: 0, payment_status: 'unpaid' }] }
+      return {}
+    })
+    const s = await createSupabaseReservationStore(f2.db).listNoticeRecipients(P, { kind: 'session', occurrenceIds: [O1] })
+    expect(s).toEqual({ ok: true, value: [{ bookingId: B, name: 'Anna', email: 'anna@x.it', locale: 'it' }] })
+    for (const c of f2.calls) expect(hasProjectEq(c)).toBe(true)
+  })
+
+  it('a missing table (066 not applied) is unavailable, not a throw', async () => {
+    const { db } = fakeDb({ error: { code: '42P01', message: 'relation does not exist' } })
+    const s = createSupabaseReservationStore(db)
+    expect(await s.enqueueOutbox(P, [{ bookingId: B, intent: { intent: 'x.y', dedupeKey: 'abcd', recipients: [{ email: 'a@b.it' }], locale: 'it', environment: 'production' } }]))
+      .toEqual({ ok: false, error: { kind: 'unavailable' } })
+  })
+})

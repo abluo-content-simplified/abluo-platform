@@ -168,6 +168,9 @@ const MODULE_NAV: readonly NavSurface[] = sortByModuleOrder(
     // ADR-040 §15 — Documents (the library).
     moduleNav('documents', 'document-library', 'documents', 'documents.document.read', 'content'),
     moduleNav('forms', 'submissions', 'forms', 'forms.submission.read', 'visitors'),
+    // ADR-044 D16.15: Bookings, one area. Until the bookings list exists `/bookings` lands on Booking rules.
+    // Not placed in order.ts on purpose (it stays out of "More You Can Add" until the website side exists), so it sorts after the placed modules.
+    moduleNav('reservations', 'bookings', 'reservations', 'reservations.booking.read', 'visitors'),
     // ADR-040 B2.5 / §15 — Access (groups, passwords, who can see each page): next to Forms (PLAT-3).
     moduleNav('members', 'access', 'members', 'members.access.read', 'visitors'),
     // ADR-043 — People: one list of the site's people (team, teachers, authors), in the Library group next to Media.
@@ -270,8 +273,6 @@ export const MODULES_WITHOUT_TENANT_SURFACE: Readonly<Record<string, 'notYetBuil
   translate: 'adminOnly',
   // ADR-036 — the guide is written by Abluo in Studio; v1 has no client editing.
   'brand-hub': 'adminOnly',
-  // ADR-044 — foundation only (permissions + Studio capabilities); Bookings screens come later.
-  reservations: 'notYetBuilt',
 }
 
 /** The single visibility check. Pure. */

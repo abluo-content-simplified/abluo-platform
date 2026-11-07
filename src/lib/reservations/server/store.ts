@@ -12,6 +12,7 @@
 // 066-not-applied database answers `unavailable`.
 import { fail, ok, parseReservationError, type DbErrorLike, type Result } from './errors'
 import { buildBookPayload, type BookingRequest } from './payload'
+import type { AffectedBooking, NoticeRecipient, ServiceStore } from '../service/types'
 import type {
   Actor, BookResult, BookingOptionRow, BookingRow, ConfirmResult, ExpiredHold, LinkAttemptResult,
   OptionPriceRow, PassAttendResult, PassRow, PassWithdrawResult, RecordPaymentResult, ReleaseResult,
@@ -65,6 +66,8 @@ const actorJson = (a: Actor | undefined, fallback: Actor['kind']) => ({ kind: a?
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const HASH = /^[0-9a-f]{64}$/
 const CHUNK = 25
+const ID_CHUNK = 50
+const NOTICE_LIMIT = 2000
 
 const refused = (code: string) => fail({ kind: 'refused', code })
 const unavailable = () => fail({ kind: 'unavailable' })
@@ -195,7 +198,7 @@ const PRICE_COLUMNS = 'id, option_id, price_category_id, amount_cents, currency,
 const BOOKING_COLUMNS = 'id, project_id, target_id, option_id, reference, status, payment_status, payment_review, eligibility_review, locale, source, purchaser_name, purchaser_email, purchaser_phone, total_cents, snapshot, hold_expires_at, confirmed_at, cancelled_at, anonymised_at, version, created_at'
 const PASS_COLUMNS = 'id, project_id, booking_id, attendee_id, option_id, target_id, scope, scope_owner_ids, valid_from, valid_to, entries_total, status, anonymised_at, version'
 
-export function createSupabaseReservationStore(db: ReservationDb): ReservationStore {
+export function createSupabaseReservationStore(db: ReservationDb): ServiceStore {
   /** Runs one rpc; never throws. `map` turns the jsonb / rows into the typed value. */
   async function rpc<T>(fn: string, args: Record<string, unknown>, map: (data: any) => T): Promise<Result<T>> { // eslint-disable-line @typescript-eslint/no-explicit-any
     try {
@@ -218,7 +221,7 @@ export function createSupabaseReservationStore(db: ReservationDb): ReservationSt
     }
   }
 
-  return {
+  const store: ServiceStore = {
     async book(projectId, request) {
       // A pre-built payload (already snake_case) is passed through untouched.
       const isRequest = (r: BookingRequest | Record<string, unknown>): r is BookingRequest => 'targetId' in r
@@ -301,6 +304,134 @@ export function createSupabaseReservationStore(db: ReservationDb): ReservationSt
     finishLinkAttempt: (attemptId, succeeded) =>
       rpc('reservations_finish_link_attempt', { p_attempt_id: attemptId, p_succeeded: succeeded }, () => true as const),
 
+    // ── notification side (service layer needs these four) ──────────────────
+    getBookingById: (projectId, bookingId) =>
+      UUID.test(bookingId)
+        ? read(() => db.from('bookings').select(BOOKING_COLUMNS).eq('project_id', projectId).eq('id', bookingId).limit(1),
+          (d) => (Array.isArray(d) && d[0] ? bookingOf(d[0]) : null))
+        : Promise.resolve(ok(null)),
+
+    async enqueueOutbox(projectId, items) {
+      if (!items.length) return ok({ queued: 0 })
+      const rows = items.map((it) => {
+        const empty = !Array.isArray(it.intent.recipients) || it.intent.recipients.length === 0
+        return {
+          project_id: projectId,
+          booking_id: it.bookingId,
+          pass_id: it.passId ?? null,
+          intent: it.intent.intent,
+          dedupe_key: it.intent.dedupeKey,
+          recipients: it.intent.recipients ?? [],
+          locale: it.intent.locale,
+          payload: it.intent.payload ?? {},
+          environment: it.intent.environment,
+          // Nobody to mail (no address, or non-production without a test recipient): never "pending".
+          ...(empty ? { status: 'skipped', last_error: String(it.intent.payload?.skip ?? 'no_recipients').slice(0, 200) } : {}),
+        }
+      })
+      let queued = 0
+      for (let i = 0; i < rows.length; i += ID_CHUNK) {
+        // The dedupe key is unique: a repeated intent is silently ignored (idempotent enqueue).
+        const r = await read(
+          () => db.from('reservation_outbox').upsert(rows.slice(i, i + ID_CHUNK), { onConflict: 'dedupe_key', ignoreDuplicates: true }).select('id'),
+          (d) => (Array.isArray(d) ? d.length : 0),
+        )
+        if (!r.ok) return r
+        queued += r.value
+      }
+      return ok({ queued })
+    },
+
+    async listAffectedBookings(projectId, occurrenceIds) {
+      const ids = [...new Set(occurrenceIds)]
+      if (ids.some((id) => !UUID.test(id))) return refused('invalid')
+      if (!ids.length) return ok([])
+      const now = new Date().toISOString()
+      const hit = new Map<string, { passId: string | null; attendeeId: string }>()
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const r = await read(
+          () => db.from('booking_allocations').select('booking_id, attendee_id, pass_id, kind, expires_at')
+            .eq('project_id', projectId).in('occurrence_id', ids.slice(i, i + CHUNK)).is('released_at', null),
+          (d) => (Array.isArray(d) ? (d as Row[]) : []),
+        )
+        if (!r.ok) return r
+        for (const a of r.value) {
+          if (a.kind === 'hold' && !(typeof a.expires_at === 'string' && new Date(a.expires_at).getTime() > new Date(now).getTime())) continue
+          const key = str(a.booking_id)
+          const prev = hit.get(key)
+          // A booking that holds a pass attendance keeps its pass id.
+          if (!prev || (!prev.passId && strOrNull(a.pass_id))) hit.set(key, { passId: strOrNull(a.pass_id), attendeeId: str(a.attendee_id) })
+        }
+      }
+      const bookingIds = [...hit.keys()]
+      const out: AffectedBooking[] = []
+      for (let i = 0; i < bookingIds.length; i += ID_CHUNK) {
+        const chunk = bookingIds.slice(i, i + ID_CHUNK)
+        const bookings = await read(
+          () => db.from('bookings').select('id, purchaser_name, purchaser_email, locale, total_cents, payment_status')
+            .eq('project_id', projectId).in('id', chunk).is('anonymised_at', null),
+          (d) => (Array.isArray(d) ? (d as Row[]) : []),
+        )
+        if (!bookings.ok) return bookings
+        const totals = await read(
+          () => db.from('booking_allocations').select('booking_id, kind, expires_at')
+            .eq('project_id', projectId).in('booking_id', chunk).is('released_at', null),
+          (d) => (Array.isArray(d) ? (d as Row[]) : []),
+        )
+        if (!totals.ok) return totals
+        const counts = new Map<string, number>()
+        for (const a of totals.value) {
+          if (a.kind === 'hold' && !(typeof a.expires_at === 'string' && new Date(a.expires_at).getTime() > new Date(now).getTime())) continue
+          counts.set(str(a.booking_id), (counts.get(str(a.booking_id)) ?? 0) + 1)
+        }
+        // A pass holder may be mailed at their own address (the attendee), else the purchaser.
+        const attendeeIds = [...new Set(chunk.map((b) => hit.get(b)).filter((h) => h?.passId).map((h) => h!.attendeeId))]
+        const attendeeContact = new Map<string, { name: string | null; email: string | null }>()
+        if (attendeeIds.length) {
+          const at = await read(
+            () => db.from('booking_attendees').select('id, name, email').eq('project_id', projectId).in('id', attendeeIds).is('anonymised_at', null),
+            (d) => (Array.isArray(d) ? (d as Row[]) : []),
+          )
+          if (!at.ok) return at
+          for (const a of at.value) attendeeContact.set(str(a.id), { name: strOrNull(a.name), email: strOrNull(a.email) })
+        }
+        for (const b of bookings.value) {
+          const h = hit.get(str(b.id))
+          if (!h) continue
+          const own = h.passId ? attendeeContact.get(h.attendeeId) : undefined
+          out.push({
+            bookingId: str(b.id),
+            name: own?.email ? own.name : strOrNull(b.purchaser_name),
+            email: own?.email ?? strOrNull(b.purchaser_email),
+            locale: str(b.locale),
+            passId: h.passId,
+            totalCents: Number(b.total_cents) || 0,
+            paymentStatus: b.payment_status as AffectedBooking['paymentStatus'],
+            sessionCount: counts.get(str(b.id)) ?? 0,
+          })
+        }
+      }
+      return ok(out)
+    },
+
+    async listNoticeRecipients(projectId, scope) {
+      const rowsOf = (r: Row[]): NoticeRecipient[] => r.map((b) => ({
+        bookingId: str(b.id), name: strOrNull(b.purchaser_name), email: strOrNull(b.purchaser_email), locale: str(b.locale),
+      }))
+      if (scope.kind === 'target') {
+        if (!UUID.test(scope.targetId)) return refused('invalid')
+        return read(
+          () => db.from('bookings').select('id, purchaser_name, purchaser_email, locale').eq('project_id', projectId)
+            .eq('target_id', scope.targetId).in('status', ['held', 'awaiting_payment', 'confirmed']).is('anonymised_at', null)
+            .order('created_at', { ascending: true }).limit(NOTICE_LIMIT),
+          (d) => rowsOf(Array.isArray(d) ? (d as Row[]) : []),
+        )
+      }
+      const affected = await store.listAffectedBookings(projectId, scope.occurrenceIds)
+      if (!affected.ok) return affected
+      return ok(affected.value.map((a): NoticeRecipient => ({ bookingId: a.bookingId, name: a.name, email: a.email, locale: a.locale })))
+    },
+
     // ── reads ────────────────────────────────────────────────────────────────
     getSettings: (projectId) =>
       read(() => db.from('reservation_settings').select(SETTINGS_COLUMNS).eq('project_id', projectId).limit(1),
@@ -379,4 +510,5 @@ export function createSupabaseReservationStore(db: ReservationDb): ReservationSt
       })))
     },
   }
+  return store
 }

@@ -954,6 +954,7 @@ describe('cron / webhook routes require their shared secret', () => {
     { name: 'GET /api/cron/content-activity', run: async (h = {}) => (await import('@/app/api/cron/content-activity/route')).GET(req('/api/cron/content-activity', { headers: h })) },
     { name: 'GET /api/cron/media-sweep', run: async (h = {}) => (await import('@/app/api/cron/media-sweep/route')).GET(req('/api/cron/media-sweep', { headers: h })) },
     { name: 'GET /api/cron/support-tickets-sweep', run: async (h = {}) => (await import('@/app/api/cron/support-tickets-sweep/route')).GET(req('/api/cron/support-tickets-sweep', { headers: h })) },
+    { name: 'GET /api/cron/reservations-sweep', run: async (h = {}) => (await import('@/app/api/cron/reservations-sweep/route')).GET(req('/api/cron/reservations-sweep', { headers: h })) },
   ]
   for (const c of cases) {
     it(`${c.name}: no / wrong secret → 401, nothing runs; even for an admin session`, async () => {
@@ -1011,6 +1012,7 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   'webhooks/form-events': 'machine',
   'webhooks/stripe': 'machine', // Stripe webhook signature (ADR-041 D11)
   'cron/billing-sync': 'machine', // CRON_SECRET bearer (ADR-041 D11)
+  'cron/reservations-sweep': 'machine', // CRON_SECRET bearer, called by pg_cron (ADR-044 D10)
   // ADR-031: partner apps authenticate with client id + secret (src/lib/connections; own suites).
   'oauth/token': 'machine',
   'oauth/revoke': 'machine',

@@ -82,7 +82,7 @@ describe('both surfaces use the same source', () => {
     expect(nav.map((n) => [n.id, n.group])).toEqual([
       ['blog', 'content'], ['events', 'content'], ['courses', 'content'], ['faq', 'content'], ['gallery', 'content'], ['documents', 'content'],
       ['catalogueItems', 'catalogue'], ['catalogueCollections', 'catalogue'], ['catalogueOptions', 'catalogue'], ['catalogueSetup', 'catalogue'],
-      ['forms', 'visitors'], ['members', 'visitors'],
+      ['forms', 'visitors'], ['members', 'visitors'], ['reservations', 'visitors'],
       ['people', 'library'], ['media', 'library'], ['taxonomy', 'library'],
       ['analytics', 'insights'],
       ['users', 'project'], ['connections', 'project'], ['settings', 'project'],

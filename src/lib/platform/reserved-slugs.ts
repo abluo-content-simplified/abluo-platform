@@ -81,6 +81,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'document-library', // Documents (ADR-040 §15)
   'agenda',
   'apps',
+  'bookings',  // Bookings (ADR-044)
   'catalogue',
   'courses',   // Courses (ADR-045)
   'discover',  // More You Can Add

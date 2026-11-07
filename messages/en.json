@@ -3785,6 +3785,115 @@
         }
       }
     },
+    "bookings": {
+      "rules": {
+        "title": "Booking Rules",
+        "intro": "The rules every booking on your site follows: how people pay, when they can cancel, and how pass holders say they’re coming. Courses and events can use their own rules later; these are the defaults.",
+        "save": "Save",
+        "saving": "Saving…",
+        "undo": "Undo",
+        "retry": "Try again",
+        "loadFailed": "We couldn’t load your booking rules. Please try again.",
+        "unavailableTitle": "Booking rules aren’t available yet",
+        "unavailableBody": "Bookings are still being set up for your site. Nothing is wrong, and nothing has been lost. They’ll appear here as soon as they’re ready.",
+        "readOnly": "You can look at these rules, but only the site owner can change them.",
+        "saveNothingChanged": "Nothing to save yet. Change a rule and Save lights up.",
+        "saveBlockedInvalid": "Some fields need a look before you can save. They’re marked below.",
+        "savedBody": "Booking rules saved. New bookings follow them from now on; bookings already made keep the rules they were made with.",
+        "undoneBody": "Back to how the rules were before.",
+        "conflictTitle": "Someone changed these rules first",
+        "conflictBody": "We’ve loaded their version. Please make your change again.",
+        "failed": {
+          "forbidden": { "title": "You can’t change these rules", "body": "Only the site owner can change booking rules." },
+          "unauthenticated": { "title": "Please sign in again", "body": "Your session has ended. Sign in and try again; nothing was changed." },
+          "invalid": { "title": "Some fields need a look", "body": "Nothing was saved. The fields to fix are marked below." },
+          "unavailable": { "title": "Bookings aren’t available right now", "body": "Nothing was saved. Please try again in a little while." },
+          "failed": { "title": "That didn’t save", "body": "Nothing was changed. Please try again." },
+          "conflict": { "title": "Someone changed these rules first", "body": "Please make your change again." }
+        },
+        "errors": {
+          "invalid": "This doesn’t look right. Please check it.",
+          "out_of_range": "Enter a whole number from {min} to {max}.",
+          "too_long": "This is too long. Keep it under {chars} characters per language.",
+          "bad_language": "This language isn’t one of your site’s languages.",
+          "bad_prefix": "Use only the letters A to Z and numbers, up to 6.",
+          "capability_off": "This isn’t available on your site."
+        },
+        "localized": {
+          "languageOf": "Language of {field}",
+          "notTranslated": "not written yet",
+          "fallbackHint": "Left empty, visitors see the {language} text.",
+          "fallbackHintEmpty": "Left empty, visitors see the {language} text, which isn’t written yet."
+        },
+        "outcomes": {
+          "cancel": {
+            "refund": "Refund (you approve each one)",
+            "credit": "Credit for a later booking",
+            "none": "No refund"
+          },
+          "organiser": {
+            "notify_only": "Just tell the people booked",
+            "credit": "Give a credit",
+            "proportional_refund": "Refund the missed session"
+          }
+        },
+        "payments": {
+          "title": "Bank transfer",
+          "intro": "Let people book now and pay by bank transfer. A place is held for them until you see the payment.",
+          "holdDays": "Days to pay",
+          "holdDaysHint": "How long a place is held after booking. Between 1 and 30.",
+          "cutoffHours": "Last booking before the first session (hours)",
+          "cutoffHoursHint": "Bank transfer closes this many hours before the first session. 0 means never.",
+          "bankDetails": "Bank details",
+          "bankDetailsHint": "Account holder and IBAN, as people should see them.",
+          "instructions": "Payment instructions",
+          "instructionsHint": "Anything else people should know, for example what to write in the transfer. Their booking reference is added for them."
+        },
+        "cancellations": {
+          "title": "Cancellations",
+          "intro": "What happens when someone can’t come, or when you cancel a session.",
+          "outcome": "What they get",
+          "outcomeHint": "Refunds are never automatic: you approve each one.",
+          "selfCancel": {
+            "title": "People can cancel their booking",
+            "intro": "They cancel from their booking link, up to a deadline.",
+            "deadline": "Deadline (hours before the first session)",
+            "deadlineHint": "Between 0 and 720. 48 is two days."
+          },
+          "absence": {
+            "title": "People can tell you they can’t come to one session",
+            "intro": "An absence notice for a single session, without cancelling the whole booking.",
+            "releasePlace": "Free their place for someone else",
+            "releasePlaceHint": "Their place becomes available again."
+          },
+          "organiser": {
+            "title": "You cancel a session",
+            "intro": "What the people booked on that session get.",
+            "outcome": "What they get",
+            "outcomeHint": "You always choose whether to tell them, and what to say, before anything is sent."
+          }
+        },
+        "passes": {
+          "title": "Passes",
+          "intro": "How people with a pass let you know they’re coming. A pass is the right to come, not a place.",
+          "signUp": "Pass holders",
+          "off": "Just come",
+          "offHint": "They don’t tell you in advance. Only for classes with no limit on places.",
+          "optIn": "Say “I’m coming”",
+          "optInHint": "They answer for each session. You see who is coming, and places are counted.",
+          "opens": "Sign-up opens (days before)",
+          "opensHint": "Leave empty to open as soon as the session is on sale. Between 1 and 60.",
+          "changeUntil": "Answers can change until (hours before)",
+          "changeUntilHint": "After this, “I’m coming” stays as it is. Between 0 and 72."
+        },
+        "reference": {
+          "title": "Booking reference",
+          "intro": "Every booking gets a short reference people write in their bank transfer and quote when they write to you.",
+          "prefix": "Start of the reference",
+          "prefixHint": "Up to 6 letters or numbers. For example {example}. Leave empty and we choose one for you."
+        }
+      }
+    },
     "courses": {
       "preview": {
         "button": "Preview",
