@@ -1925,13 +1925,15 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   // The module owns `course` documents (the words: title, short description,
   // colour; Sanity) and, through scheduling (Supabase, migration 064), the
   // classes of each course. A course is keyed by its `publicId`; teachers are
-  // stored on the classes and reference People — never here. Non-routable for
-  // now (no slug, no own page).
+  // stored on the classes and reference People — never here. Routable
+  // (ADR-045 D5): a published course with a slug has its own page at
+  // /{courseSegment}/{slug}, the segment being this module's config.
   //
   // Clients edit in the dashboard (Content → Courses); Studio is read-only.
-  // The website `timetableSection` (week / month, printable) is the module's
-  // section: declared in sectionTypes, so it is gated by the `courses`
-  // installation like every module section.
+  // The website `timetableSection` (week / month, printable) and
+  // `courseListSection` (course cards linking to the course pages) are the
+  // module's sections: declared in sectionTypes, so they are gated by the
+  // `courses` installation like every module section.
   {
     id: 'courses',
     label: 'Courses',
@@ -1957,9 +1959,9 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         },
       ],
 
-      sectionTypes: ['timetableSection'],
+      sectionTypes: ['timetableSection', 'courseListSection'],
 
-      schemaTypes: ['course', 'timetableNotesText', 'timetableSection'],
+      schemaTypes: ['course', 'timetableNotesText', 'timetableSection', 'courseListSection'],
 
       schemaDefinitions: () => coursesSchemaTypes,
 
@@ -1996,11 +1998,23 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         },
       ],
 
-      configSchema: [],
+      configSchema: [
+        {
+          // ADR-045 D5 — the base path of course pages is per site and
+          // localized (/classes, /corsi, /cours …), never hardcoded. Empty =
+          // no course pages on this site yet.
+          id: 'courseSegment',
+          label: 'Course pages URL segment',
+          type: 'localizedString',
+          validator: 'courses.courseSegment',
+          description:
+            'Where each published course gets its own page, per language, e.g. "classes" gives /classes/iyengar-yoga ("corsi", "cours", "kurse" …). Lowercase letters, numbers and single hyphens; it cannot be a word the website already uses (e.g. "courses" is taken by the dashboard). Leave empty for no course pages.',
+        },
+      ],
 
       placement: {
         surfaces: [],
-        note: 'Courses appear on the website through the Timetable section (week or month view, printable). A course has no page of its own yet.',
+        note: 'Courses appear on the website through the Timetable section (week or month view, printable), the Course List section and — when a course URL segment is set — each published course\'s own page.',
       },
     },
 

@@ -3808,7 +3808,8 @@
         "no_timetable_page": "Dieser Kurs kann noch nicht online gehen: Deine Website hat keinen Stundenplan, der ihn zeigt. Bitte die Person, die deine Website betreut, einen hinzuzufügen.",
         "invalid_schedule": "Wähle ein Datum und eine Uhrzeit in der Zukunft, höchstens zwei Jahre voraus.",
         "failed": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
-        "offline": "Du bist offline. Deine Änderungen werden gespeichert, sobald du wieder online bist."
+        "offline": "Du bist offline. Deine Änderungen werden gespeichert, sobald du wieder online bist.",
+        "slug_taken": "Ein anderer Kurs verwendet diese Adresse bereits. Wähle eine andere."
       },
       "list": {
         "title": "Kurse",
@@ -3946,6 +3947,16 @@
           "discard": "Änderungen Verwerfen",
           "deleteTitle": "{name} löschen?",
           "deleteBody": "Dieser Kurs wird endgültig entfernt."
+        },
+        "address": {
+          "title": "Seitenadresse",
+          "label": "Adresse auf {language}",
+          "hint": "Der letzte Teil der Webadresse der Kursseite. Buchstaben, Zahlen und Bindestriche.",
+          "hintPath": "Die Kursseite liegt unter {path}",
+          "useSuggestion": "„{slug}“ verwenden",
+          "autoNote": "Bis du veröffentlichst, folgt die Adresse dem Titel. Lässt du sie leer, wird sie beim Veröffentlichen aus dem Titel erstellt.",
+          "redirectNote": "Wenn du die Adresse später änderst, funktioniert die alte weiter und führt zur neuen.",
+          "pagesOff": "Kursseiten sind für deine Website noch nicht eingeschaltet. Deine Website-Administration kann sie einschalten; die Adresse bleibt bis dahin gespeichert."
         }
       },
       "classes": {
@@ -4079,6 +4090,7 @@
           "restore": "Wiederherstellen",
           "substitute": "Vertretung",
           "changeTime": "Zeit ändern",
+          "changePlace": "Ort ändern",
           "addNote": "Notiz hinzufügen",
           "editNote": "Notiz bearbeiten",
           "showMore": "Mehr anzeigen",
@@ -4088,7 +4100,9 @@
             "cancelled": "Abgesagt",
             "substitute": "Vertretung: {names}",
             "nobody": "niemand",
-            "moved": "Zeit geändert"
+            "moved": "Zeit geändert",
+            "place": "In {place}",
+            "noPlace": "Kein Ort"
           },
           "edit": {
             "substitute": {
@@ -4103,6 +4117,12 @@
               "until": "Ende",
               "noEnd": "Keine Endzeit",
               "endBeforeStart": "Das Ende muss nach dem Beginn liegen."
+            },
+            "place": {
+              "title": "Ort am {date}",
+              "hint": "Normalerweise in: {place}.",
+              "field": "Ort an diesem Datum",
+              "reset": "Zurück zum üblichen Ort"
             },
             "note": {
               "title": "Notiz für den {date}",

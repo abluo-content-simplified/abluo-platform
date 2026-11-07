@@ -75,3 +75,18 @@ describe('normalizePlacementPages', () => {
     expect(normalizePlacementPages(undefined)).toEqual([])
   })
 })
+
+describe('coursePlacement — course pages (ADR-045 D5)', () => {
+  it('the course page wins, in the default language first', () => {
+    const i = info([page()], { courseSegments: { fr: 'cours', en: 'courses' }, courseSlugs: { fr: 'yoga-iyengar', en: 'iyengar-yoga' } })
+    expect(coursePlacement(i, 'c1')).toEqual({ onWebsite: true, url: 'https://www.cyce.info/fr/cours/yoga-iyengar' })
+    const enOnly = info([], { courseSegments: { en: 'courses' }, courseSlugs: { fr: 'yoga-iyengar', en: 'iyengar-yoga' } })
+    expect(coursePlacement(enOnly, 'c1')).toEqual({ onWebsite: true, url: 'https://www.cyce.info/en/courses/iyengar-yoga' })
+  })
+
+  it('a site with a course segment in its main language puts a course online even with no timetable and no address yet', () => {
+    expect(coursePlacement(info([], { courseSegments: { fr: 'cours' } }), 'c1')).toEqual({ onWebsite: true, url: null })
+    // Only a segment in another language: publish could give it no page — the timetable rule decides.
+    expect(coursePlacement(info([], { courseSegments: { en: 'courses' } }), 'c1')).toEqual({ onWebsite: false, url: null })
+  })
+})

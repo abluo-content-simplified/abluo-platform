@@ -45,6 +45,8 @@ export type TimetableCourse = {
   description: string | null
   /** The course's optional image (Media Library). */
   image: TimetableImage | null
+  /** The course page address in the page language (no fallback); null/absent = no course page in this language. */
+  slug?: string | null
 }
 export type TimetableTeacher = { id: string; name: string; /** Volunteer teacher: shown as "name*" with a footnote. */ volunteer: boolean; hasPage: boolean; slug: string | null; /** A small portrait when People has one (decorative: the name is written beside it). */ photo: TimetableImage | null }
 /** `mapsUrl`: an outbound "open in maps" link (never an embed), or null when the place carries nothing to point at. */
@@ -165,7 +167,7 @@ export function emptyTimetable(window: { from: string; to: string }, timeZone: s
 /** The fields of a person the shaping reads (PERSON_PUBLIC_FIELDS subset). */
 export type TimetableImageInput = Partial<ResolvedImage> | null
 export type TimetablePersonInput = { publicId: string; displayName?: string | null; firstName?: string | null; lastName?: string | null; hasPage?: boolean | null; slug?: { current?: string | null } | null; photo?: TimetableImageInput; /** People module: volunteer teacher. Absent until the field exists = false. */ volunteer?: boolean | null }
-export type TimetableCourseInput = { publicId: string; title?: string | null; color?: string | null; shortDescription?: string | null; image?: TimetableImageInput }
+export type TimetableCourseInput = { publicId: string; title?: string | null; color?: string | null; shortDescription?: string | null; image?: TimetableImageInput; /** Course page slug in the page language (COURSE_PUBLIC_FIELDS). */ slug?: string | null }
 export type TimetableVenueInput = { publicId: string; name?: string | null; address?: SiteLocation['address'] | null }
 export type TimetableSiteLocation = Pick<SiteLocation, 'key' | 'name' | 'address' | 'accessNote'> & Partial<Pick<SiteLocation, 'mapsUrl' | 'pin' | 'shortName'>>
 
@@ -235,6 +237,7 @@ export function shapeTimetable(input: ShapeInput): TimetableData {
       color: courseColor(c.color),
       description: c.shortDescription?.trim() || null,
       image: imageOf(c.image, COURSE_IMAGE_WIDTH),
+      slug: typeof c.slug === 'string' && c.slug.trim() ? c.slug.trim() : null,
     }
   }
 

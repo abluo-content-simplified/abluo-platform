@@ -96,6 +96,12 @@ describe('guarded writes: nothing reaches the store unless every check passes', 
     const bad = async () => { throw new ScheduleError('invalid', 'x') }
     expect(await code(updateOccurrenceGuarded('slug-a', upd, { store: store2, assertPeople: bad }))).toBe('invalid')
     expect(store2.updateOccurrence).not.toHaveBeenCalled()
+    // A place for one date must be one of the project's places.
+    const store3 = fakeStore()
+    const keys = clientReturning({ 'locations[].key': ['brey', 'l51'] })
+    expect(await updateOccurrenceGuarded('slug-a', { projectId: P, occurrenceId: 'o', expectedVersion: 1, place: { kind: 'location', key: 'l51' } }, { store: store3, client: keys })).toBe(2)
+    expect(await code(updateOccurrenceGuarded('slug-a', { projectId: P, occurrenceId: 'o', expectedVersion: 1, place: { kind: 'location', key: 'elsewhere' } }, { store: store3, client: keys }))).toBe('invalid')
+    expect(store3.updateOccurrence).toHaveBeenCalledTimes(1)
     expect(await endClassGuarded(P, 's', 3, { store })).toBe(5)
     expect(store.endSeries).toHaveBeenCalledWith(P, 's', 3)
   })

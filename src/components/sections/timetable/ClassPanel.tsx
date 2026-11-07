@@ -15,11 +15,12 @@ import { describeClassRepeat } from '@/lib/scheduling/repeat-label'
 import type { TimetableData, TimetableOccurrence, TimetableSeries } from '@/lib/modules/courses/timetable'
 import type { TimetableMessages } from '@/lib/i18n/timetable-messages'
 import { formatDate, languageName, listNames, timeRange, zoneLabel } from './format'
-import { CalendarDays, Globe, MapPin, MonitorSmartphone, User, ArrowUpRight } from 'lucide-react'
+import { CalendarDays, Globe, MapPin, MonitorSmartphone, User, ArrowRight, ArrowUpRight } from 'lucide-react'
 import { Chip, courseTint, Meeting, StatusBadge, Tag, TeacherName, VolunteerNote } from './parts'
 import { changeOf, placeShort } from './status'
 import { AddToCalendar } from './AddToCalendar'
 import { teacherHref, type ProfileLinks } from './PrintSheet'
+import { courseHref, type CourseLinkContext } from '@/lib/modules/courses/website'
 
 type Props = {
   occ: TimetableOccurrence | null
@@ -28,6 +29,8 @@ type Props = {
   locale: string
   msg: TimetableMessages
   profile: ProfileLinks
+  /** Course pages in this language (module `courseSegment`); a course with a slug gets an "About this course" link. */
+  coursePage?: CourseLinkContext | null
   /** Where the .ics download is served from (the page and section re-gate it); null endpoint = no download, Google link only. */
   calendar?: { endpoint: string | null; pageId: string | null; sectionKey: string }
   onClose: () => void
@@ -56,7 +59,7 @@ function Row({ icon, label: title, children }: { icon: React.ReactNode; label?: 
   )
 }
 
-export function ClassPanel({ occ, data, seriesById, locale, msg, profile, calendar, onClose }: Props) {
+export function ClassPanel({ occ, data, seriesById, locale, msg, profile, coursePage, calendar, onClose }: Props) {
   const course = occ ? data.courses[occ.courseId] : null
   const open = !!occ && !!course
   return (
@@ -74,13 +77,14 @@ export function ClassPanel({ occ, data, seriesById, locale, msg, profile, calend
         ) : null
       }
     >
-      {occ && course ? <PanelBody occ={occ} data={data} seriesById={seriesById} locale={locale} msg={msg} profile={profile} calendar={calendar} /> : null}
+      {occ && course ? <PanelBody occ={occ} data={data} seriesById={seriesById} locale={locale} msg={msg} profile={profile} coursePage={coursePage} calendar={calendar} /> : null}
     </SiteDialog>
   )
 }
 
-function PanelBody({ occ, data, seriesById, locale, msg, profile, calendar }: Omit<Props, 'onClose'> & { occ: TimetableOccurrence }) {
+function PanelBody({ occ, data, seriesById, locale, msg, profile, coursePage, calendar }: Omit<Props, 'onClose'> & { occ: TimetableOccurrence }) {
   const course = data.courses[occ.courseId]
+  const aboutHref = courseHref(course.slug, coursePage)
   const series = seriesById.get(occ.seriesId)
   const change = changeOf(occ, series)
   const cancelled = change.cancelled
@@ -214,7 +218,7 @@ function PanelBody({ occ, data, seriesById, locale, msg, profile, calendar }: Om
 
       {!cancelled && <AddToCalendar occurrence={occ} series={series} data={data} locale={locale} pageUrl={pageUrl} endpoint={calendar?.endpoint ?? null} pageId={calendar?.pageId ?? null} sectionKey={calendar?.sectionKey ?? null} />}
 
-      {(course.image || course.description) && <hr style={{ borderColor: 'var(--color-border)' }} />}
+      {(course.image || course.description || aboutHref) && <hr style={{ borderColor: 'var(--color-border)' }} />}
       {course.image && (
         // The cropping keeps the Media Library focal point.
         <img src={course.image.src} alt={course.image.alt} loading="lazy" decoding="async" className="aspect-[16/9] w-full object-cover" style={{ objectPosition: course.image.position, borderRadius: 'var(--radius-md, var(--radius-lg))' }} />
@@ -223,6 +227,13 @@ function PanelBody({ occ, data, seriesById, locale, msg, profile, calendar }: Om
         <p className="text-sm leading-relaxed" style={{ whiteSpace: 'pre-line' }}>
           {course.description}
         </p>
+      )}
+      {aboutHref && (
+        // The course's own page (ADR-045 D5), only where it exists in this language.
+        <a href={aboutHref} data-course-page className="inline-flex items-center gap-1 self-start text-sm font-semibold underline-offset-2 hover:underline" style={{ color: 'var(--color-text-primary)' }}>
+          {msg.aboutCourse}
+          <ArrowRight aria-hidden="true" width={15} height={15} strokeWidth={1.75} />
+        </a>
       )}
     </div>
   )

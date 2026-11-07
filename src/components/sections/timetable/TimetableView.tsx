@@ -40,6 +40,7 @@ import { MobileScheduleUpdates, ScheduleUpdates } from './ScheduleUpdates'
 import { scheduleChangesIn } from './status'
 import { VolunteerNote, WEEKEND_BG } from './parts'
 import { dayNumber, formatDate, monthTitle, weekdayName } from './format'
+import type { CourseLinkContext } from '@/lib/modules/courses/website'
 
 type View = 'week' | 'month'
 
@@ -59,6 +60,8 @@ export type TimetableViewProps = {
   pageId: string | null
   sectionKey: string
   profile: ProfileLinks
+  /** Course pages (Courses module `courseSegment` in this language): the class panel links a course that has one. null = no links. */
+  coursePage?: CourseLinkContext | null
   /** The site's host for the printed title (no www); null = left out. */
   siteHost?: string | null
   /** Where event pages live (`<site base>/events`); an event links to `<eventsBase>/<slug>`. */
@@ -74,7 +77,7 @@ const btn = 'inline-flex h-10 items-center justify-center gap-2 px-4 text-sm fon
 const iconBtn = btn.replace('gap-2 px-4', 'w-10 px-0')
 const btnStyle = { border: '1px solid var(--color-border)', borderRadius: 'var(--radius-btn)', color: 'var(--color-text-primary)', backgroundColor: 'var(--color-surface)' } as const
 
-export function TimetableView({ locale, initial, defaultView, allowViewSwitch, showPrintButton, showCourseDescriptions = false, title, endpoint, calendarEndpoint = null, pageId, sectionKey, profile, siteHost = null, eventsBase = '', notes = null, membersNotes = null }: TimetableViewProps) {
+export function TimetableView({ locale, initial, defaultView, allowViewSwitch, showPrintButton, showCourseDescriptions = false, title, endpoint, calendarEndpoint = null, pageId, sectionKey, profile, coursePage = null, siteHost = null, eventsBase = '', notes = null, membersNotes = null }: TimetableViewProps) {
   const msg = useMemo(() => getTimetableMessages(locale), [locale])
   const [view, setView] = useState<View>(defaultView)
   const [anchor, setAnchor] = useState(initial.today)
@@ -330,7 +333,7 @@ export function TimetableView({ locale, initial, defaultView, allowViewSwitch, s
       {notes && <div className="mt-6" data-timetable-notes-wrap style={{ color: 'var(--color-text-secondary)' }}>{notes}</div>}
       {membersNotes && <div className="mt-4" data-members-notes style={{ color: 'var(--color-text-secondary)' }}>{membersNotes}</div>}
 
-      <ClassPanel occ={openOcc} data={allData} seriesById={seriesById} locale={locale} msg={msg} profile={profile} calendar={{ endpoint: calendarEndpoint, pageId, sectionKey }} onClose={() => setOpenId(null)} />
+      <ClassPanel occ={openOcc} data={allData} seriesById={seriesById} locale={locale} msg={msg} profile={profile} coursePage={coursePage} calendar={{ endpoint: calendarEndpoint, pageId, sectionKey }} onClose={() => setOpenId(null)} />
 
       {showPrintButton && mounted && printDoc && (
         <PrintView open={!!printOpen} onClose={closePrint} doc={printDoc} msg={msg} notes={notes} membersNotes={membersNotes} showCourseDescriptions={showCourseDescriptions} />

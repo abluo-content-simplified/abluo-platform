@@ -31,7 +31,7 @@ describe('readPlacementInfo / getCoursePlacement', () => {
   it('turns the answer into the origin (www), default language and pages', async () => {
     const fetch = vi.fn(async () => answer)
     const info = await readPlacementInfo({ fetch }, 'cyce')
-    expect(fetch).toHaveBeenCalledWith(COURSE_PLACEMENT_QUERY, { projectSlug: 'cyce' }, { perspective: 'raw' })
+    expect(fetch).toHaveBeenCalledWith(COURSE_PLACEMENT_QUERY, { projectSlug: 'cyce', courseId: '' }, { perspective: 'raw' })
     expect(info).toMatchObject({ origin: 'https://www.cyce.info', defaultLocale: 'fr' })
     expect(info.pages).toHaveLength(1)
   })
@@ -47,7 +47,7 @@ describe('readPlacementInfo / getCoursePlacement', () => {
     expect(fetch).not.toHaveBeenCalled()
     const r = await getCoursePlacement(ctx(grant(['courses.course.read'])), PID, { id: 'c1' }, { client: { fetch } })
     expect(r).toEqual({ onWebsite: true, url: 'https://www.cyce.info/fr/horaires' })
-    expect(fetch).toHaveBeenCalledWith(COURSE_PLACEMENT_QUERY, { projectSlug: 'cyce' }, { perspective: 'raw' })
+    expect(fetch).toHaveBeenCalledWith(COURSE_PLACEMENT_QUERY, { projectSlug: 'cyce', courseId: 'c1' }, { perspective: 'raw' })
     await expect(getCoursePlacement(ctx(grant(['courses.course.read'])), PID, { id: '../x' }, { client: { fetch } })).rejects.toMatchObject({ code: 'not_found' })
   })
 })

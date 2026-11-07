@@ -156,6 +156,8 @@ export interface TimetableMessages {
   courseLabel: string
   /** No class of the printed month matches the filters. */
   noClassesThisMonth: string
+  /** Class panel: link to the course's own page (Courses module, ADR-045 D5). */
+  aboutCourse: string
 }
 
 const MESSAGES: Record<string, TimetableMessages> = {
@@ -255,6 +257,7 @@ const MESSAGES: Record<string, TimetableMessages> = {
     timeLabel: 'Time',
     courseLabel: 'Class',
     noClassesThisMonth: 'No classes this month.',
+    aboutCourse: 'About this course',
   },
   it: {
     timetable: 'Orario',
@@ -352,6 +355,7 @@ const MESSAGES: Record<string, TimetableMessages> = {
     timeLabel: 'Orario',
     courseLabel: 'Corso',
     noClassesThisMonth: 'Nessun corso questo mese.',
+    aboutCourse: 'Scopri il corso',
   },
   de: {
     timetable: 'Stundenplan',
@@ -449,6 +453,7 @@ const MESSAGES: Record<string, TimetableMessages> = {
     timeLabel: 'Zeit',
     courseLabel: 'Kurs',
     noClassesThisMonth: 'Keine Kurse in diesem Monat.',
+    aboutCourse: 'Mehr zum Kurs',
   },
   fr: {
     timetable: 'Horaires',
@@ -546,6 +551,7 @@ const MESSAGES: Record<string, TimetableMessages> = {
     timeLabel: 'Heure',
     courseLabel: 'Cours',
     noClassesThisMonth: 'Aucun cours ce mois-ci.',
+    aboutCourse: 'Découvrir le cours',
   },
   es: {
     timetable: 'Horario',
@@ -643,6 +649,7 @@ const MESSAGES: Record<string, TimetableMessages> = {
     timeLabel: 'Hora',
     courseLabel: 'Clase',
     noClassesThisMonth: 'No hay clases este mes.',
+    aboutCourse: 'Ver el curso',
   },
   pt: {
     timetable: 'Horário',
@@ -740,6 +747,7 @@ const MESSAGES: Record<string, TimetableMessages> = {
     timeLabel: 'Hora',
     courseLabel: 'Aula',
     noClassesThisMonth: 'Sem aulas este mês.',
+    aboutCourse: 'Ver o curso',
   },
   nl: {
     timetable: 'Lesrooster',
@@ -837,6 +845,7 @@ const MESSAGES: Record<string, TimetableMessages> = {
     timeLabel: 'Tijd',
     courseLabel: 'Les',
     noClassesThisMonth: 'Geen lessen deze maand.',
+    aboutCourse: 'Meer over deze cursus',
   },
 }
 

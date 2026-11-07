@@ -2399,6 +2399,33 @@ export interface TimetableSection {
   timetable?: TimetableHydration
 }
 
+/** One course card of a Course List section (COURSE_PUBLIC_FIELDS, resolved to the page language). */
+export interface CourseListCourse {
+  publicId: string
+  title?: string | null
+  shortDescription?: string | null
+  /** Course page slug in the page language (no fallback); null = no page in this language. */
+  slug?: string | null
+  image?: (ResolvedImage & { alt?: string | null }) | null
+}
+
+/** Courses module (ADR-045 D5) — course cards linking to each course's own page. Presentation only. */
+export interface CourseListSection {
+  _type: 'courseListSection'
+  _key: string
+  background?: FAQSection['background']
+  anchorId?: string
+  eyebrow?: string
+  title?: string
+  intro?: string
+  /** publicIds of the picked courses of THIS website, in the editor's order (weak references resolved in GROQ). */
+  courseIds?: (string | null)[] | null
+  /** How many courses are STORED as picked: > 0 = hand-picked (never "all", even when none of them shows). */
+  courseCount?: number | null
+  /** Set by hydrateSections; undefined = not hydrated (renders nothing). */
+  courseList?: CourseListCourse[]
+}
+
 // ─── Price List Section (platform) ───────────────────────────────────────────
 // Prices are numbers; the renderer formats them per locale with the section
 // currency (src/lib/price-list/format.ts). Localized fields arrive resolved.
@@ -2486,6 +2513,7 @@ export type PageSection =
   | CatalogueListingSection
   | DownloadSection
   | TimetableSection
+  | CourseListSection
 
 export interface WebsiteHomePage {
   tenantSlug: string

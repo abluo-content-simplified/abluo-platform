@@ -10,6 +10,8 @@ vi.mock('@/lib/sanity/server-clients', () => ({ sanityWriteClient: {} }))
 
 import {
   COURSE_LIST_QUERY,
+  COURSE_SEGMENT_QUERY,
+  COURSE_SLUGS_QUERY,
   createCourse,
   discardCourseDraft,
   getCourseForEdit,
@@ -64,7 +66,7 @@ const docsWithDraftOnly = (): Docs => {
 const PLACED: PlacementInfo = { origin: 'https://www.cyce.info', defaultLocale: 'fr', pages: [{ id: 'p1', pageType: 'services', slugs: { fr: 'horaires' }, open: true, timetables: [{ courseScope: 'all', courseIds: [] }] }] }
 const NO_PAGE: PlacementInfo = { ...PLACED, pages: [] }
 
-type Opts = { docs?: Docs; deleteRefs?: Array<{ _id: string; _type: string; label?: unknown }>; commitError?: unknown; count?: number; placement?: PlacementInfo }
+type Opts = { docs?: Docs; deleteRefs?: Array<{ _id: string; _type: string; label?: unknown }>; commitError?: unknown; count?: number; placement?: PlacementInfo; segment?: unknown }
 
 function fake(opts: Opts = {}, hasSchedule: (publicId: string, projectId: string) => Promise<boolean> = async () => false) {
   const docs = opts.docs ?? docsWithDraftOnly()
@@ -111,6 +113,8 @@ function fake(opts: Opts = {}, hasSchedule: (publicId: string, projectId: string
     }
     if (q.startsWith('count(*[_type == "course"')) return opts.count ?? 3
     if (q === COURSE_LIST_QUERY) return Object.values(docs).filter((d) => d._type === 'course' && d.projectSlug === p.projectSlug)
+    if (q === COURSE_SLUGS_QUERY) return Object.values(docs).filter((d) => d._type === 'course' && d.projectSlug === p.projectSlug)
+    if (q === COURSE_SEGMENT_QUERY) return p.projectSlug === 'cyce' ? (opts.segment ?? null) : null
     throw new Error(`unexpected query ${q}`)
   })
   const client = {
@@ -608,5 +612,87 @@ describe('archive and delete', () => {
 
   it('an unknown operation is refused', async () => {
     await expect(runCourseLifecycle(ctx(grant()), PID, { id: 'archived', op: 'explode' as never }, fake().deps)).rejects.toMatchObject({ code: 'invalid_value' })
+  })
+})
+
+// ── Page address (ADR-045 D5) ─────────────────────────────────────────────────
+
+describe('page address (slug) — save', () => {
+  it('normalises a typed address per language and stores it as a localizedSlug', async () => {
+    const f = fake()
+    await saveCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', set: { 'slug.fr': '  Yoga Iyengar (Débutants) ', 'slug.en': '' } }, f.deps)
+    expect(f.patchOps).toContainEqual(['setIfMissing', { slug: { _type: 'localizedSlug' } }])
+    expect(f.patchOps).toContainEqual(['set', { 'slug.fr': { _type: 'slug', current: 'yoga-iyengar-debutants' } }])
+    expect(f.patchOps).toContainEqual(['unset', ['slug.en']])
+  })
+
+  it('refuses an address another course of the site uses or used (current or retired), in that language only', async () => {
+    const docs = docsWithDraftOnly()
+    docs['drafts.draftonly'] = { ...docs['drafts.draftonly'], slug: { _type: 'localizedSlug', fr: { _type: 'slug', current: 'brouillon' } } }
+    docs.archived = { ...docs.archived, slug: { fr: { current: 'ancien-nouveau' } }, redirectFrom: { fr: ['ancien'] } }
+    docs.foreign = { ...docs.foreign, slug: { fr: { current: 'pris-ailleurs' } } }
+    const c = ctx(editor())
+    for (const taken of ['brouillon', 'ancien', 'ancien-nouveau']) {
+      const f = fake({ docs })
+      await expect(saveCourseDraft(c, PID, { id: 'iyengar', rev: 'd1', set: { 'slug.fr': taken } }, f.deps)).rejects.toMatchObject({ code: 'slug_taken' })
+      expect(f.writes).toEqual([])
+    }
+    // Another website's course never blocks; the same word in another language is free.
+    await saveCourseDraft(c, PID, { id: 'iyengar', rev: 'd1', set: { 'slug.fr': 'pris-ailleurs' } }, fake({ docs }).deps)
+    await saveCourseDraft(c, PID, { id: 'iyengar', rev: 'd1', set: { 'slug.en': 'brouillon' } }, fake({ docs }).deps)
+    // Its own address is not "taken".
+    const own = baseDocs()
+    own.iyengar = { ...own.iyengar, slug: { fr: { current: 'yoga' } } }
+    await saveCourseDraft(c, PID, { id: 'iyengar', rev: 'd1', set: { 'slug.fr': 'yoga' } }, fake({ docs: own }).deps)
+  })
+
+  it('refuses a language the site does not have and an address that is not text', async () => {
+    const c = ctx(editor())
+    await expect(saveCourseDraft(c, PID, { id: 'iyengar', rev: 'd1', set: { 'slug.ja': 'x' } }, fake().deps)).rejects.toMatchObject({ code: 'invalid_field' })
+    await expect(saveCourseDraft(c, PID, { id: 'iyengar', rev: 'd1', set: { 'slug.fr': 42 } }, fake().deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(saveCourseDraft(c, PID, { id: 'iyengar', rev: 'd1', set: { 'slug.fr.x': 'a' } }, fake().deps)).rejects.toMatchObject({ code: 'invalid_field' })
+    await expect(saveCourseDraft(c, PID, { id: 'iyengar', rev: 'd1', set: { 'slug.fr': '!!!' } }, fake().deps)).rejects.toMatchObject({ code: 'invalid_value' })
+  })
+
+  it('the editor reads the address and the site’s course segments', async () => {
+    const docs = docsWithDraftOnly()
+    docs['drafts.iyengar'] = { ...docs['drafts.iyengar'], slug: { _type: 'localizedSlug', fr: { _type: 'slug', current: 'yoga-iyengar' } } }
+    const s = await getCourseForEdit(ctx(viewer()), PID, 'iyengar', fake({ docs, segment: { _type: 'localizedString', fr: 'cours', en: 'blog' } }).deps)
+    expect(s.slug).toEqual({ fr: 'yoga-iyengar' })
+    // Invalid / platform words are dropped.
+    expect(s.pageSegments).toEqual({ fr: 'cours' })
+    expect((await getCourseForEdit(ctx(viewer()), PID, 'iyengar', fake().deps)).pageSegments).toEqual({})
+  })
+})
+
+describe('page address (slug) — publish', () => {
+  it('fills a missing address from the title of every language that has one, unique among the site’s courses', async () => {
+    const docs = docsWithDraftOnly()
+    docs['drafts.draftonly'] = { ...docs['drafts.draftonly'], title: { _type: 'localizedString', fr: 'Yoga Iyengar', en: 'Iyengar' } }
+    docs.archived = { ...docs.archived, slug: { fr: { current: 'yoga-iyengar' } } }
+    const f = fake({ docs })
+    await publishCourseDraft(ctx(editor()), PID, { id: 'draftonly', rev: 'o1' }, f.deps)
+    expect(replacedDoc(f).slug).toEqual({ _type: 'localizedSlug', fr: { _type: 'slug', current: 'yoga-iyengar-2' }, en: { _type: 'slug', current: 'iyengar' } })
+    expect(replacedDoc(f).redirectFrom).toBeUndefined()
+  })
+
+  it('keeps a typed address, and a changed published address becomes a redirect', async () => {
+    const docs = baseDocs()
+    docs.iyengar = { ...docs.iyengar, slug: { _type: 'localizedSlug', fr: { _type: 'slug', current: 'iyengar' }, en: { _type: 'slug', current: 'iyengar-yoga' } } }
+    docs['drafts.iyengar'] = { ...docs['drafts.iyengar'], slug: { _type: 'localizedSlug', fr: { _type: 'slug', current: 'yoga-iyengar' }, en: { _type: 'slug', current: 'iyengar-yoga' } } }
+    const f = fake({ docs })
+    await publishCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1' }, f.deps)
+    const doc = replacedDoc(f)
+    expect((doc.slug as Record<string, { current: string }>).fr.current).toBe('yoga-iyengar')
+    expect(doc.redirectFrom).toEqual({ _type: 'redirectFrom', fr: ['iyengar'] })
+  })
+
+  it('taking back a retired address stops its redirect', async () => {
+    const docs = baseDocs()
+    docs.iyengar = { ...docs.iyengar, slug: { fr: { current: 'yoga-iyengar' } }, redirectFrom: { _type: 'redirectFrom', fr: ['iyengar'] } }
+    docs['drafts.iyengar'] = { ...docs['drafts.iyengar'], slug: { fr: { current: 'iyengar' } }, redirectFrom: { _type: 'redirectFrom', fr: ['iyengar'] } }
+    const f = fake({ docs })
+    await publishCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1' }, f.deps)
+    expect(replacedDoc(f).redirectFrom).toEqual({ _type: 'redirectFrom', fr: ['yoga-iyengar'] })
   })
 })

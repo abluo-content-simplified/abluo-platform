@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { listOccurrencesAction, updateOccurrenceAction } from '@/app/[locale]/(client)/[tenant]/courses/schedule-actions'
-import type { ClassView, OccurrenceView, PersonRef, ScheduleSite, UpdateOccurrenceRequest } from '@/lib/api/course-schedule'
+import type { ClassView, OccurrenceView, PersonRef, PlaceOption, ScheduleSite, UpdateOccurrenceRequest } from '@/lib/api/course-schedule'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { Button } from '@/components/app/ui/Button'
 import { EmptyState } from '@/components/app/ui/EmptyState'
@@ -14,7 +14,7 @@ import { Pill } from '@/components/app/ui/list/cells'
 import { SidePanel } from '@/components/app/ui/SidePanel'
 import { Select } from '@/components/app/ui/Select'
 import { Skeleton } from '@/components/app/ui/Skeleton'
-import { LanguageTextFields, TeacherField, useRepeatText, useScheduleErrorText, useScheduleFormat } from './schedule-bits'
+import { LanguageTextFields, placeName, TeacherField, useRepeatText, useScheduleErrorText, useScheduleFormat } from './schedule-bits'
 import { textOf, timeOptions, timesOrdered } from './schedule-model'
 
 const PAGE = 8
@@ -22,17 +22,18 @@ const PAGE = 8
 /** What one action changes on a date. */
 type Patch = Partial<Omit<UpdateOccurrenceRequest, 'seriesId' | 'occurrenceId' | 'expectedVersion'>>
 
-type Edit = { kind: 'substitute' | 'time' | 'note'; key: number; occurrence: OccurrenceView }
+type Edit = { kind: 'substitute' | 'time' | 'place' | 'note'; key: number; occurrence: OccurrenceView }
 
 /**
  * One class's upcoming dates (8 at a time, "Show more"), each with Cancel /
- * Restore, Substitute, Change time and Note. Every action saves at once and
+ * Restore, Substitute, Change time, Change place and Note. Every action saves at once and
  * changes only that date — the class itself stays as it is.
  */
 export function TimetableClassSheet({
   cls,
   title,
   placeLine,
+  places,
   projectSlug,
   site,
   canWrite,
@@ -42,6 +43,8 @@ export function TimetableClassSheet({
   cls: ClassView | null
   title: string
   placeLine: string
+  /** The site's places (Website Settings → Locations, then venues), for "Change place". */
+  places: PlaceOption[]
   projectSlug: string
   site: ScheduleSite
   canWrite: boolean
@@ -133,11 +136,12 @@ export function TimetableClassSheet({
                     <span className="text-[0.9375rem] leading-6 font-semibold text-foreground">{dayLabel(o.date)}</span>
                     <span className="text-[0.9375rem] leading-6 text-foreground">{timeRange(o.startTime, o.endTime)}</span>
                   </div>
-                  {o.cancelled || o.substituted || o.isModified || o.note ? (
+                  {o.cancelled || o.substituted || o.timeChanged || o.moved || o.note ? (
                     <div className="flex flex-wrap items-start gap-1.5">
                       {o.cancelled ? <Pill tone="muted">{t('status.cancelled')}</Pill> : null}
                       {o.substituted ? <Pill tone="highlight">{t('status.substitute', { names: o.instructors.map((p) => p.name).join(', ') || t('status.nobody') })}</Pill> : null}
-                      {o.isModified && !o.cancelled ? <Pill tone="highlight">{t('status.moved')}</Pill> : null}
+                      {o.timeChanged && !o.cancelled ? <Pill tone="highlight">{t('status.moved')}</Pill> : null}
+                      {o.moved && !o.cancelled ? <Pill tone="highlight">{t('status.place', { place: placeName(places, o.placeToken) || t('status.noPlace') })}</Pill> : null}
                     </div>
                   ) : null}
                   {o.note && textOf(o.note, site.defaultLocale) ? <p className="text-sm leading-5 text-muted-foreground">{textOf(o.note, site.defaultLocale)}</p> : null}
@@ -152,6 +156,11 @@ export function TimetableClassSheet({
                       <Button variant="quiet" onClick={() => open('time', o)}>
                         {t('changeTime')}
                       </Button>
+                      {places.length > 0 ? (
+                        <Button variant="quiet" onClick={() => open('place', o)}>
+                          {t('changePlace')}
+                        </Button>
+                      ) : null}
                       <Button variant="quiet" onClick={() => open('note', o)}>
                         {o.note ? t('editNote') : t('addNote')}
                       </Button>
@@ -179,6 +188,8 @@ export function TimetableClassSheet({
             key={edit.key}
             edit={edit}
             cls={cls}
+            places={places}
+            placeLine={placeLine}
             projectSlug={projectSlug}
             site={site}
             onSave={async (patch) => {
@@ -196,12 +207,16 @@ export function TimetableClassSheet({
 function DateEditor({
   edit,
   cls,
+  places,
+  placeLine,
   projectSlug,
   site,
   onSave,
 }: {
   edit: Edit
   cls: ClassView | null
+  places: PlaceOption[]
+  placeLine: string
   projectSlug: string
   site: ScheduleSite
   onSave: (patch: Patch) => Promise<string | null>
@@ -212,6 +227,7 @@ function DateEditor({
   const [start, setStart] = useState(o.startTime)
   const [end, setEnd] = useState(o.endTime ?? '')
   const [note, setNote] = useState<Record<string, string>>(o.note ?? {})
+  const [place, setPlace] = useState(o.placeToken)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -230,6 +246,7 @@ function DateEditor({
         e.preventDefault()
         if (edit.kind === 'substitute') void submit({ instructorPublicIds: teachers.map((p) => p.publicId) })
         else if (edit.kind === 'time') void submit({ time: { date: o.date, startTime: start, endTime: end || null } })
+        else if (edit.kind === 'place') void submit(place === (cls?.placeToken ?? '') ? { clearPlace: true } : { placeToken: place })
         else void submit({ note })
       }}
     >
@@ -266,6 +283,23 @@ function DateEditor({
           </Field>
         </div>
       ) : null}
+      {edit.kind === 'place' ? (
+        <>
+          <p className="text-sm leading-5 text-muted-foreground">{t('edit.place.hint', { place: placeLine || t('status.noPlace') })}</p>
+          <Field label={t('edit.place.field')}>
+            {(p) => (
+              <Select {...p} value={place} disabled={busy} onChange={(e) => setPlace(e.target.value)}>
+                {place === '' ? <option value="">{t('status.noPlace')}</option> : null}
+                {places.map((x) => (
+                  <option key={x.token} value={x.token}>
+                    {x.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        </>
+      ) : null}
       {edit.kind === 'note' ? (
         <>
           <p className="text-sm leading-5 text-muted-foreground">{t('edit.note.hint')}</p>
@@ -276,12 +310,17 @@ function DateEditor({
       {error ? <Notice tone="error">{error}</Notice> : null}
 
       <div className="flex flex-col gap-2 sm:flex-row-reverse">
-        <Button type="submit" variant="primary" size="lg" disabled={busy || (edit.kind === 'time' && !timesOrdered(start, end))}>
+        <Button type="submit" variant="primary" size="lg" disabled={busy || (edit.kind === 'time' && !timesOrdered(start, end)) || (edit.kind === 'place' && (place === '' || place === o.placeToken))}>
           {busy ? t('saving') : t('save')}
         </Button>
         {edit.kind === 'substitute' && o.substituted ? (
           <Button variant="secondary" size="lg" disabled={busy} onClick={() => void submit({ clearInstructors: true })}>
             {t('edit.substitute.reset')}
+          </Button>
+        ) : null}
+        {edit.kind === 'place' && o.moved ? (
+          <Button variant="secondary" size="lg" disabled={busy} onClick={() => void submit({ clearPlace: true })}>
+            {t('edit.place.reset')}
           </Button>
         ) : null}
         {edit.kind === 'note' && o.note ? (

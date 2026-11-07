@@ -642,6 +642,10 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       allowViewSwitch,
       courseScope,
       "courseIds": (courses[]->)[_type == "course" && projectSlug == $projectSlug].publicId,
+      // courseListSection (Courses module, ADR-045 D5) shares courseIds above (its picked
+      // courses, in order); courseCount = how many are STORED, so a section with picked
+      // courses never falls back to "all" while those are drafts or archived.
+      "courseCount": count(courses),
       showOnlineDetails,
       showPrintButton,
       showCourseDescriptions,
@@ -2145,6 +2149,8 @@ export const homePageQuery = /* groq */ `
       allowViewSwitch,
       courseScope,
       "courseIds": (courses[]->)[_type == "course" && projectSlug == $projectSlug].publicId,
+      // courseListSection — see PAGE_SECTIONS_PROJECTION.
+      "courseCount": count(courses),
       showOnlineDetails,
       showPrintButton,
       showCourseDescriptions,

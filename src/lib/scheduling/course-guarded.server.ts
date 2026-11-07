@@ -82,9 +82,10 @@ export async function saveClassGuarded(
   return { ...saved, sync }
 }
 
-/** Edits one date of a class (cancel / restore, substitute, time, note). Substitute hosts are checked first. */
+/** Edits one date of a class (cancel / restore, substitute, time, place, note). Substitute hosts and the place are checked first. */
 export async function updateOccurrenceGuarded(projectSlug: string, input: UpdateOccurrenceInput, deps: WriteDeps = {}): Promise<number> {
   await guardInstructors(projectSlug, input.instructorPublicIds, deps)
+  if (input.place !== undefined) await guardPlace(projectSlug, input.place, deps)
   return (deps.store ?? createCourseScheduleStore()).updateOccurrence(input)
 }
 

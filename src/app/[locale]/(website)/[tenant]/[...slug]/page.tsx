@@ -38,6 +38,9 @@ import {
   profileSegmentFor,
 } from '@/lib/modules/people/website'
 import { loadPersonRoute } from '@/lib/modules/people/route'
+import { CourseRoute, courseRouteMetadata, type CourseRouteRecord } from '@/components/courses/CourseRoute'
+import { courseSegmentFor, isCoursesModuleOn, planCourseRoute } from '@/lib/modules/courses/website'
+import { loadCourseRoute } from '@/lib/modules/courses/route'
 
 export const dynamic = 'force-dynamic'
 
@@ -117,6 +120,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const outcome = await loadPersonRoute<PersonRouteRecord>(fetchForTenant, { slug: peopleDispatch.slug, locale, defaultLocale })
     if (outcome.kind === 'found') {
       return personRouteMetadata({ person: outcome.person, moduleConfig, siteConfig: config, tenantId, locale, defaultLocale })
+    }
+  }
+
+  // ── Course page dispatch (ADR-045 D5) — the same decision the page makes ────
+  const courseDispatch = planCourseRoute(
+    slugSegments,
+    isCoursesModuleOn(getEnabledModuleIds(moduleConfig)) ? courseSegmentFor(moduleConfig, locale) : null,
+  )
+  if (courseDispatch) {
+    const outcome = await loadCourseRoute<CourseRouteRecord>(fetchForTenant, { slug: courseDispatch.slug, locale, defaultLocale })
+    if (outcome.kind === 'found') {
+      return courseRouteMetadata({ course: outcome.course, moduleConfig, siteConfig: config, tenantId, locale, defaultLocale })
     }
   }
 
@@ -274,6 +289,33 @@ export default async function WebsitePageRoute({ params, searchParams }: PagePro
       const pageAtSegmentExists = await fetchForTenant<boolean>(PEOPLE_PAGE_EXISTS_QUERY, { locale, segment: peopleSegment })
       permanentRedirect(archivedTarget({ siteBase, segment: peopleSegment, pageAtSegmentExists: !!pageAtSegmentExists }))
     }
+  }
+
+  // ── Course page dispatch (ADR-045 D5) ───────────────────────────────────────
+  // After People, before the page lookup: /{courseSegment}/{slug} in this
+  // language. Found → the course page; a retired slug → 308 to the current one.
+  // Publish = online: the lookups only see published, non-archived courses whose
+  // go-live date has passed, so anything else falls through to the page lookup
+  // (and 404s unless a real page sits at that path).
+  const courseSegment = isCoursesModuleOn(getEnabledModuleIds(moduleConfig)) ? courseSegmentFor(moduleConfig, locale) : null
+  const courseDispatch = planCourseRoute(slugSegments, courseSegment)
+  if (courseDispatch && courseSegment) {
+    const outcome = await loadCourseRoute<CourseRouteRecord>(fetchForTenant, { slug: courseDispatch.slug, locale, defaultLocale })
+    if (outcome.kind === 'found') {
+      return (
+        <CourseRoute
+          course={outcome.course}
+          moduleConfig={moduleConfig}
+          siteConfig={siteConfig}
+          fetchForTenant={fetchForTenant}
+          tenantId={String(tenantId)}
+          locale={locale}
+          defaultLocale={defaultLocale}
+          siteBase={siteBase}
+        />
+      )
+    }
+    if (outcome.kind === 'redirect') permanentRedirect(`${siteBase}/${courseSegment}/${outcome.slug}`)
   }
 
   // ── Read the page through the access gate (ADR-040 §9) ─────────────────────

@@ -1,11 +1,12 @@
 // ── Courses module — where a course shows on the website (pure, browser-safe) ──
 //
-// Courses have no page of their own: the website shows a course only through a
-// `timetableSection` on a PUBLISHED page. So "is this course online?" is a
-// question about the site's pages, answered here from plain data read by
-// `src/lib/api/course-placement.ts` (the thin fetch). Same rule as the website
-// (`sectionCourseIds`): a section with "Pick courses" shows exactly the picked
-// ones, any other section shows every visible course.
+// The website shows a course through a `timetableSection` on a PUBLISHED page
+// and — when the site has course pages (Courses module `courseSegment`,
+// ADR-045 D5) — on the course's own page. So "is this course online?" is a
+// question about the site's pages and settings, answered here from plain data
+// read by `src/lib/api/course-placement.ts` (the thin fetch). Same rule as the
+// website (`sectionCourseIds`): a section with "Pick courses" shows exactly the
+// picked ones, any other section shows every visible course.
 
 import { canonicalUrl } from '@/lib/seo/canonical'
 
@@ -32,6 +33,10 @@ export interface PlacementInfo {
   origin: string | null
   defaultLocale: string
   pages: PlacementPage[]
+  /** Course page segments per language (cleaned module config); absent/{} = no course pages on this site. */
+  courseSegments?: Record<string, string>
+  /** The PUBLISHED course's page address per language, when known. */
+  courseSlugs?: Record<string, string>
 }
 
 /** Does this section show the course (by document id)? */
@@ -52,8 +57,22 @@ export interface CoursePlacement {
   url: string | null
 }
 
-/** Where a course appears: `onWebsite`, and the address to open. */
+/**
+ * Where a course appears: `onWebsite`, and the address to open. The course's own
+ * page wins (default language, else any language with a segment and an
+ * address). A site with a course segment in its default language always gives
+ * a published course a page there (publish fills the address from the required
+ * main-language title), so such a course is on the website even before it has
+ * an address.
+ */
 export function coursePlacement(info: PlacementInfo, courseDocId: string): CoursePlacement {
+  const segments = info.courseSegments ?? {}
+  const slugs = info.courseSlugs ?? {}
+  const pageLocales = [info.defaultLocale, ...Object.keys(segments).filter((l) => l !== info.defaultLocale)]
+  for (const loc of pageLocales) {
+    if (segments[loc] && slugs[loc]) return { onWebsite: true, url: canonicalUrl(info.origin, loc, segments[loc], slugs[loc]) ?? null }
+  }
+  const pagesOn = !!segments[info.defaultLocale]
   for (const page of pagesShowingCourse(info.pages, courseDocId)) {
     const home = page.pageType === 'home'
     const locale = (page.slugs[info.defaultLocale] || home) ? info.defaultLocale : Object.keys(page.slugs)[0]
@@ -61,7 +80,19 @@ export function coursePlacement(info: PlacementInfo, courseDocId: string): Cours
     if (!home && !locale) continue
     return { onWebsite: true, url: canonicalUrl(info.origin, locale!, home ? null : page.slugs[locale!]) ?? null }
   }
-  return { onWebsite: false, url: null }
+  return { onWebsite: pagesOn, url: null }
+}
+
+/** `{ en: { current: 'yoga' } }` (a stored localizedSlug) → `{ en: 'yoga' }`; anything malformed is skipped. */
+export function normalizeSlugMap(raw: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out
+  for (const [loc, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (loc.startsWith('_')) continue
+    const cur = (v as { current?: unknown } | null)?.current
+    if (typeof cur === 'string' && cur) out[loc] = cur
+  }
+  return out
 }
 
 /** Reads the raw query rows into PlacementPage[] (anything malformed is skipped). */

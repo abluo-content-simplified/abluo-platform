@@ -124,9 +124,9 @@ describe('people.profileSegment', () => {
       data: { pageSlugs: o.pages ?? pages, catalogueSegment: o.catalogueSegment ?? [] },
     })
 
-  it('is wired in the manifest and needs pages + the catalogue segment', () => {
+  it('is wired in the manifest and needs pages + the catalogue and course segments', () => {
     expect(pf.validator).toBe('people.profileSegment')
-    expect(configDataNeeds(people.platformContract.configSchema, { guards: false }).sort()).toEqual(['catalogueSegment', 'pageSlugs'])
+    expect(configDataNeeds(people.platformContract.configSchema, { guards: false }).sort()).toEqual(['catalogueSegment', 'courseSegment', 'pageSlugs'])
   })
 
   it('accepts free segments, one per language, and empty values', () => {
@@ -174,5 +174,57 @@ describe('people.profileSegment', () => {
     const client = { fetch: async <T,>(_q: string, p: Record<string, unknown>) => (calls.push(p), ['menu'] as unknown as T) }
     expect(await loadConfigData(client, ['catalogueSegment'], 'proj')).toEqual({ catalogueSegment: ['menu'] })
     expect(calls).toEqual([{ projectSlug: 'proj' }])
+  })
+})
+
+describe('courses.courseSegment', () => {
+  const courses = MODULE_REGISTRY.find((m) => m.id === 'courses')!
+  const cf = courses.platformContract.configSchema.find((f) => f.id === 'courseSegment') as ModuleConfigFieldDef
+  const v = resolveFieldValidator('courses.courseSegment')!
+  const pages = [{ slug: { en: { current: 'about' }, fr: { current: 'horaires' } } }]
+  const run = (value: Record<string, string>, o: { stored?: Record<string, unknown>; catalogueSegment?: string[]; peopleSegment?: unknown[] } = {}) =>
+    v.validate({ field: cf, value, values: {}, stored: o.stored, data: { pageSlugs: pages, catalogueSegment: o.catalogueSegment ?? [], peopleSegment: o.peopleSegment ?? [] } })
+
+  it('is a localized field wired to its validator, needing pages + the catalogue and people segments', () => {
+    expect(cf).toMatchObject({ type: 'localizedString', validator: 'courses.courseSegment' })
+    expect(configDataNeeds(courses.platformContract.configSchema, { guards: false }).sort()).toEqual(['catalogueSegment', 'pageSlugs', 'peopleSegment'])
+  })
+
+  it('accepts free segments per language and empty values', () => {
+    expect(run({ en: 'classes', fr: 'cours', de: '' })).toEqual({ error: null, notice: null })
+    // The dashboard's own route word.
+    expect(run({ en: 'courses' }).error).toMatch(/"courses" is already used by the website/)
+  })
+
+  it('refuses bad syntax, platform words, a page of that language and the catalogue', () => {
+    expect(run({ en: 'Our Courses' }).error).toMatch(/English \(en\): ".*" is not a valid address/)
+    expect(run({ en: 'blog' }).error).toMatch(/"blog" is already used by the website/)
+    expect(run({ fr: 'horaires' }).error).toMatch(/French \(fr\): "horaires" is already the start of one of your French pages/)
+    expect(run({ en: 'horaires' }).error).toBeNull()
+    expect(run({ en: 'menu' }, { catalogueSegment: ['menu'] }).error).toMatch(/address of your catalogue/)
+  })
+
+  it('refuses the People profile segment of the same language only', () => {
+    const peopleSegment = [{ _type: 'localizedString', en: 'team', fr: 'equipe' }]
+    expect(run({ en: 'team' }, { peopleSegment }).error).toMatch(/English \(en\): "team" is already the address of your people pages/)
+    expect(run({ fr: 'team' }, { peopleSegment }).error).toBeNull()
+    expect(run({ en: 'team' }, { peopleSegment, stored: { courseSegment: { en: 'team' } } }).error).toBeNull()
+  })
+
+  it('and the People rule refuses the course segment back', () => {
+    const people = MODULE_REGISTRY.find((m) => m.id === 'people')!
+    const pf = people.platformContract.configSchema.find((f) => f.id === 'profileSegment') as ModuleConfigFieldDef
+    const pv = resolveFieldValidator('people.profileSegment')!
+    const r = pv.validate({ field: pf, value: { fr: 'cours' }, values: {}, stored: undefined, data: { pageSlugs: [], catalogueSegment: [], courseSegment: [{ fr: 'cours' }] } })
+    expect(r.error).toMatch(/French \(fr\): "cours" is already the address of your course pages/)
+  })
+
+  it('loads both module segments scoped by projectSlug', async () => {
+    const calls: Array<[string, unknown]> = []
+    const client = { fetch: async <T,>(q: string, p: Record<string, unknown>) => (calls.push([q, p]), [{ en: 'x' }] as unknown as T) }
+    await loadConfigData(client, ['peopleSegment', 'courseSegment'], 'proj')
+    expect(calls.map(([, p]) => p)).toEqual([{ projectSlug: 'proj' }, { projectSlug: 'proj' }])
+    expect(calls[0][0]).toContain('moduleId == "people"')
+    expect(calls[1][0]).toContain('moduleId == "courses"')
   })
 })

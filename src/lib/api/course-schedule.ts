@@ -133,6 +133,12 @@ export type OccurrenceView = {
   instructors: PersonRef[]
   /** The date has teachers different from the class's. */
   substituted: boolean
+  /** The date's place: `location:<key>` / `venue:<id>`, '' = none. */
+  placeToken: string
+  /** The date is somewhere else than the class. */
+  moved: boolean
+  /** The date's day or time differs from what the class generated. */
+  timeChanged: boolean
   note: Record<string, string> | null
   version: number
 }
@@ -504,6 +510,10 @@ function occurrenceView(o: ClassOccurrence, series: ClassSeries, names: Map<stri
     isModified: o.isModified,
     instructors: refsOf(o.instructorPublicIds, names),
     substituted: !same(o.instructorPublicIds, series.instructorPublicIds),
+    placeToken: placeTokenOf(o.place),
+    moved: placeTokenOf(o.place) !== placeTokenOf(series.place),
+    timeChanged:
+      (o.originalStartLocal !== null && o.startLocal !== o.originalStartLocal) || (o.endLocal ? o.endLocal.slice(11, 16) : null) !== (series.endLocal ? series.endLocal.slice(11, 16) : null),
     note: o.note,
     version: o.version,
   }
@@ -656,9 +666,13 @@ export type UpdateOccurrenceRequest = {
   /** A short note per site language. */
   note?: Record<string, string>
   clearNote?: boolean
+  /** A different place for this date only: `location:<key>` or `venue:<publicId>`. */
+  placeToken?: string
+  /** Back to the class's own place. */
+  clearPlace?: boolean
 }
 
-/** Cancel / restore, substitute, change the time or add a note to ONE date. courses.schedule.write. Returns the new version. */
+/** Cancel / restore, substitute, change the time, the place or add a note to ONE date. courses.schedule.write. Returns the new version. */
 export async function updateOccurrence(ctx: TenantAuthorizationContext, projectId: string, input: UpdateOccurrenceRequest, deps: CourseScheduleDeps = {}): Promise<{ version: number }> {
   const grant = grantFor(ctx, projectId, SCHEDULE_WRITE_PERMISSION)
   assertUuid(input?.occurrenceId, 'date')
@@ -671,6 +685,13 @@ export async function updateOccurrence(ctx: TenantAuthorizationContext, projectI
     assertTime(input.time.startTime, 'start time')
     if (input.time.endTime != null) assertTime(input.time.endTime, 'end time')
     times = { timeZone: series.timeZone, startLocal: `${input.time.date}T${input.time.startTime}`, endLocal: input.time.endTime ? `${input.time.date}T${input.time.endTime}` : null }
+  }
+  let place: SchedulePlace | undefined
+  if (input.placeToken !== undefined) {
+    if (input.clearPlace) throw invalid('Choose either a place or the class place.')
+    const p = placeOf(input.placeToken)
+    if (!p) throw invalid('Choose a place.')
+    place = p
   }
   let note: Record<string, string> | undefined
   if (input.note !== undefined) note = cleanTexts(input.note, await readSite(deps, grant.projectSlug), SCHEDULE_LIMITS.noteLength, 'note')
@@ -687,6 +708,8 @@ export async function updateOccurrence(ctx: TenantAuthorizationContext, projectI
         ...(times && { times }),
         ...(note !== undefined && { note }),
         ...(input.clearNote && { clearNote: true }),
+        ...(place && { place }),
+        ...(input.clearPlace && { clearPlace: true }),
       },
       guardDeps(deps)
     )

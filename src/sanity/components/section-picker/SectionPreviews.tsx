@@ -368,6 +368,21 @@ export const SECTION_PREVIEWS: Record<string, () => ReactNode> = {
       )}
     </>
   ),
+  courseListSection: () => (
+    <>
+      <Title />
+      {[10, 44, 78].map((x) => (
+        <g key={x}>
+          <rect x={x} y={26} width={32} height={46} rx={2} fill="none" stroke="currentColor" strokeWidth={1} opacity={0.75} />
+          <Img x={x + 2} y={28} w={28} h={18} />
+          <rect x={x + 3} y={50} width={20} height={3} rx={1} fill="currentColor" opacity={HEAD} />
+          <rect x={x + 3} y={56} width={25} height={1.5} rx={0.75} fill="currentColor" opacity={BODY} />
+          <rect x={x + 3} y={60} width={18} height={1.5} rx={0.75} fill="currentColor" opacity={BODY} />
+          <rect x={x + 3} y={66} width={12} height={2} rx={1} fill="currentColor" opacity={HEAD} />
+        </g>
+      ))}
+    </>
+  ),
   catalogueListingSection: () => (
     <>
       <Title />

@@ -32,6 +32,10 @@ export type ConfigData = {
   pageSlugs?: PageSlugRow[]
   /** The Catalogue's current public segment (0 or 1 string; used by the People profile-segment rule). */
   catalogueSegment?: string[]
+  /** The People module's profile segment (0 or 1 localizedString object; used by the Courses course-segment rule). */
+  peopleSegment?: unknown[]
+  /** The Courses module's course segment (0 or 1 localizedString object; used by the People profile-segment rule). */
+  courseSegment?: unknown[]
   itemPrices?: ItemPriceRow[]
   optionDeltas?: OptionListRow[]
 }
@@ -42,6 +46,12 @@ export const CONFIG_DATA_SOURCES: Readonly<Record<ConfigDataKey, { query: string
   pageSlugs: { query: `*[_type == "page" && projectSlug == $projectSlug]{ _id, slug }` },
   catalogueSegment: {
     query: `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))].moduleInstallations[moduleId == "catalogue" && enabled != false].config.publicSegment`,
+  },
+  peopleSegment: {
+    query: `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))].moduleInstallations[moduleId == "people" && enabled != false].config.profileSegment`,
+  },
+  courseSegment: {
+    query: `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))].moduleInstallations[moduleId == "courses" && enabled != false].config.courseSegment`,
   },
   itemPrices: { query: CURRENCY_ITEM_PRICES_QUERY },
   optionDeltas: { query: CURRENCY_OPTION_DELTAS_QUERY },
@@ -213,29 +223,68 @@ export function profileSegmentError(
   return null
 }
 
-const peopleProfileSegmentValidator: FieldValidator = {
-  needs: ['pageSlugs', 'catalogueSegment'],
-  validate({ field, value, stored, data }) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return OK
-    const storedMap = stored?.[field.id]
-    const prev = storedMap && typeof storedMap === 'object' ? (storedMap as Record<string, unknown>) : {}
-    const byLocale = pageFirstSegmentsByLocale(data.pageSlugs)
-    const catalogue = data.catalogueSegment?.find((x) => typeof x === 'string' && x) ?? null
-    const errors: string[] = []
-    for (const [loc, v] of Object.entries(value as Record<string, unknown>)) {
-      if (loc.startsWith('_') || typeof v !== 'string' || !v.trim()) continue
-      // An unchanged saved value is not re-litigated (see publicSegmentValidator).
-      if (typeof prev[loc] === 'string' && normalise(prev[loc] as string) === normalise(v)) continue
-      const e = profileSegmentError(loc, v, { pageFirstSegments: byLocale[loc], catalogueSegment: catalogue })
-      if (e) errors.push(e)
-    }
-    return errors.length ? { error: errors.join(' '), notice: null } : OK
-  },
+/** The other module's localized segment in one language (the first installation's), normalised, or null. */
+function otherSegmentIn(rows: readonly unknown[] | undefined, loc: string): string | null {
+  for (const row of rows ?? []) {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) continue
+    const v = (row as Record<string, unknown>)[loc]
+    if (typeof v === 'string' && v.trim()) return normalise(v)
+  }
+  return null
 }
+
+/**
+ * A per-language segment rule (People profile pages, Courses course pages):
+ * every changed language goes through `profileSegmentError` (syntax, platform
+ * words, that language's pages, the catalogue), then must not be the OTHER
+ * module's segment in the same language (`clash` names it).
+ */
+function localizedSegmentValidator(
+  other: 'peopleSegment' | 'courseSegment',
+  clash: (where: string, segment: string) => string,
+): FieldValidator {
+  return {
+    needs: ['pageSlugs', 'catalogueSegment', other],
+    validate({ field, value, stored, data }) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return OK
+      const storedMap = stored?.[field.id]
+      const prev = storedMap && typeof storedMap === 'object' ? (storedMap as Record<string, unknown>) : {}
+      const byLocale = pageFirstSegmentsByLocale(data.pageSlugs)
+      const catalogue = data.catalogueSegment?.find((x) => typeof x === 'string' && x) ?? null
+      const errors: string[] = []
+      for (const [loc, v] of Object.entries(value as Record<string, unknown>)) {
+        if (loc.startsWith('_') || typeof v !== 'string' || !v.trim()) continue
+        // An unchanged saved value is not re-litigated (see publicSegmentValidator).
+        if (typeof prev[loc] === 'string' && normalise(prev[loc] as string) === normalise(v)) continue
+        const e = profileSegmentError(loc, v, { pageFirstSegments: byLocale[loc], catalogueSegment: catalogue })
+        if (e) {
+          errors.push(e)
+          continue
+        }
+        if (otherSegmentIn(data[other], loc) === normalise(v)) errors.push(clash(`${languageName(loc)} (${loc})`, normalise(v)))
+      }
+      return errors.length ? { error: errors.join(' '), notice: null } : OK
+    },
+  }
+}
+
+const peopleProfileSegmentValidator = localizedSegmentValidator(
+  'courseSegment',
+  (where, segment) => `${where}: "${segment}" is already the address of your course pages. Choose another word.`,
+)
+
+// ── Courses: the course-page base path, one per language (ADR-045 D5) ────────
+// Same rules as the People profile segment, plus: not the People segment of the
+// same language (both are dispatched by the same catch-all route).
+const coursesCourseSegmentValidator = localizedSegmentValidator(
+  'peopleSegment',
+  (where, segment) => `${where}: "${segment}" is already the address of your people pages. Choose another word.`,
+)
 
 export const FIELD_VALIDATORS: Readonly<Record<string, FieldValidator>> = {
   'catalogue.publicSegment': publicSegmentValidator,
   'people.profileSegment': peopleProfileSegmentValidator,
+  'courses.courseSegment': coursesCourseSegmentValidator,
 }
 
 export function resolveFieldValidator(id: string | undefined): FieldValidator | null {

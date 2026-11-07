@@ -14,6 +14,7 @@
 import { withSchedule, withSchedules } from '@/lib/scheduling/read.server'
 import { hydrateDownloadSections, type DownloadHydration } from '@/lib/access/download-section.server'
 import { hydrateTimetableSection } from '@/lib/modules/courses/timetable-section.server'
+import { hydrateCourseListSection } from '@/lib/modules/courses/course-list-section'
 import type { tenantClient } from '@/lib/sanity/client'
 import { HeroSection } from '@/components/sections/HeroSection'
 import { HeroLiveCaptureSection } from '@/components/sections/HeroLiveCaptureSection'
@@ -51,6 +52,7 @@ import type {
   EventsListingSection as EventsListingSectionType,
   LiveLatestSection as LiveLatestSectionType,
   TimetableSection as TimetableSectionType,
+  CourseListSection as CourseListSectionType,
   FormSection as FormSectionType,
   FormOverlayButtonSection as FormOverlayButtonSectionType,
   HeroLiveCaptureSection as HeroLiveCaptureSectionType,
@@ -402,6 +404,20 @@ export async function hydrateSections(
           })
         } catch (err) {
           console.error('[timetable] section hydration failed; section omitted', err)
+        }
+        return
+      }
+      if (section._type === 'courseListSection') {
+        // ADR-045 D5 — the site's published courses (picked, else all by title).
+        // A failure leaves `courseList` unset and the section renders nothing.
+        try {
+          await hydrateCourseListSection(section as CourseListSectionType, {
+            locale: ctx.locale,
+            defaultLocale: ctx.defaultLocale,
+            fetchForTenant: ctx.fetchForTenant,
+          })
+        } catch (err) {
+          console.error('[courses] course list section hydration failed; section omitted', err)
         }
         return
       }

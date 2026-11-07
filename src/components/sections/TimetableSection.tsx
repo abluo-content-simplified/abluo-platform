@@ -7,6 +7,7 @@ import { SectionContainer } from '@/components/layout/SectionContainer'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { resolveEasing } from '@/lib/motion/easing'
 import { profileSegmentFor } from '@/lib/modules/people/website'
+import { courseSegmentFor } from '@/lib/modules/courses/website'
 import type { ProjectModuleConfig } from '@/lib/modules/config'
 import { TimetableView } from '@/components/sections/timetable/TimetableView'
 import { TimetableNotes } from '@/components/sections/timetable/TimetableNotes'
@@ -45,6 +46,8 @@ export function TimetableSection({ section, surface, designSystem, moduleConfig,
 
   const siteBase = siteBasePath(locale, tenantSlug, hostScoped)
   const profile = moduleConfig ? { siteBase, segment: profileSegmentFor(moduleConfig, locale) } : null
+  // Course pages (ADR-045 D5): the class panel links a course that has a page in this language.
+  const coursePage = moduleConfig ? { siteBase, segment: courseSegmentFor(moduleConfig, locale) } : null
   const hasHeader = !!(eyebrow || title || intro)
   // Notes are rendered here (server) and handed to the interactive part as elements. Members' notes exist on the
   // section only when the server kept them for a granted visitor (hydrateTimetableSection) — nothing is decided here.
@@ -87,6 +90,7 @@ export function TimetableSection({ section, surface, designSystem, moduleConfig,
           pageId={hydrated.pageId}
           sectionKey={section._key}
           profile={profile}
+          coursePage={coursePage}
           siteHost={hydrated.siteHost ?? null}
           eventsBase={`${siteBase}/events`}
           notes={hasNotes ? notes : null}

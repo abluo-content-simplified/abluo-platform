@@ -148,6 +148,7 @@ export function Timetable({ projectSlug, initial, canWrite }: { projectSlug: str
         cls={openClass}
         title={openClass ? courses[openClass.courseId] || t('untitledCourse') : ''}
         placeLine={openClass ? placeName(places, openClass.placeToken) : ''}
+        places={places}
         projectSlug={projectSlug}
         site={site}
         canWrite={canWrite}

@@ -12,8 +12,13 @@
  *   2. Ids must be safe document ids; documents are re-read before every
  *      mutation and must be `course`s of the grant's project — anything else
  *      is "not_found", so ids cannot be probed.
- *   3. Patch allow-list (`title.<loc>`, `shortDescription.<loc>`, `color`, `image`);
- *      languages must be the site's (or already stored in the draft).
+ *   3. Patch allow-list (`title.<loc>`, `shortDescription.<loc>`, `slug.<loc>`,
+ *      `color`, `image`); languages must be the site's (or already stored in
+ *      the draft). A page address (slug) is normalised and must be free among
+ *      the site's courses (current AND retired addresses) — `slug_taken`.
+ *   3b. Publish fills a missing address from the title for every language that
+ *      has one (the event / post convention) and keeps a changed published
+ *      address as a redirect (Publicly Routable Content Pattern).
  *   4. `assertSingleSanityProject` right before every mutation; revision
  *      guards → "conflict".
  *   5. Opaque error codes (CourseErrorCode).
@@ -34,6 +39,8 @@ import { deriveStatus } from '@/lib/lifecycle/status'
 import { readPlacementInfo } from '@/lib/api/course-placement'
 import { coursePlacement, type PlacementInfo } from '@/lib/modules/courses/placement'
 import { DEFAULT_COURSE_COLOR, isCourseColor, type CourseColor } from '@/lib/modules/courses/model'
+import { COURSE_SLUG_PATTERN, courseSlugFrom, uniqueCourseSlug } from '@/lib/modules/courses/slug'
+import { cleanCourseSegments } from '@/lib/modules/courses/website'
 import {
   COURSE_DELETE_PERMISSION,
   COURSE_READ_PERMISSION,
@@ -120,6 +127,10 @@ export interface CourseSnapshot {
   color: CourseColor
   /** The optional course image — a Media Library asset of this website (picked in the editor). */
   image: CourseImage | null
+  /** The course page address per language (the last part of the URL); a missing one is made from the title on publish. */
+  slug: Record<string, string>
+  /** The Courses module's page segment per language (`courses` → /courses/<slug>); {} = no course pages on this site yet. */
+  pageSegments: Record<string, string>
   site: CourseSite
 }
 
@@ -195,6 +206,18 @@ const archivedAtOf = (doc: Doc | undefined): string | null => (typeof doc?.archi
 const colorOf = (v: unknown): CourseColor => (isCourseColor(v) ? v : DEFAULT_COURSE_COLOR)
 /** Media Library asset ids (document ids): letters, digits, dashes, underscores. */
 const ASSET_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
+
+/** `{ en: { current: 'yoga' } }` → `{ en: 'yoga' }`. */
+function slugsOf(doc: Doc | undefined): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [loc, v] of Object.entries(objectOf(doc?.slug) ?? {})) {
+    const cur = objectOf(v)?.current
+    if (!loc.startsWith('_') && typeof cur === 'string' && cur) out[loc] = cur
+  }
+  return out
+}
+
+const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
 
 function localized(value: unknown): Record<string, string> {
   const o = objectOf(value)
@@ -320,8 +343,39 @@ export async function getCourseForEdit(ctx: TenantAuthorizationContext, projectI
     shortDescription: localized(doc.shortDescription),
     color: colorOf(doc.color),
     image: await readImage(client, objectOf(doc.image)?._ref, grant.projectSlug),
+    slug: slugsOf(doc),
+    pageSegments: await readPageSegments(client, grant.projectSlug),
     site,
   }
+}
+
+/** Exported so tests assert exactly what runs: the Courses installation's `courseSegment` (raw localizedString). */
+export const COURSE_SEGMENT_QUERY = /* groq */ `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "courses" && enabled != false][0].config.courseSegment`
+
+/** The site's course page segments per language; {} when none is set (or it cannot be read — only the hint depends on it). */
+async function readPageSegments(client: Client, projectSlug: string): Promise<Record<string, string>> {
+  try {
+    return cleanCourseSegments(await client.fetch<unknown>(COURSE_SEGMENT_QUERY, { projectSlug }))
+  } catch {
+    return {}
+  }
+}
+
+/** Exported so tests assert exactly what runs: every course's page addresses (drafts and published) of this project. */
+export const COURSE_SLUGS_QUERY = /* groq */ `*[_type == "course" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{ _id, slug, redirectFrom }`
+
+type SlugRow = { _id?: string; slug?: unknown; redirectFrom?: unknown }
+
+/** Addresses other courses use or used in `locale` (current + retired): reusing a retired one would hijack its redirect. */
+function takenSlugs(rows: readonly SlugRow[] | null | undefined, id: string, locale: string): Set<string> {
+  const taken = new Set<string>()
+  for (const row of rows ?? []) {
+    if (row._id === id || row._id === `drafts.${id}`) continue
+    const cur = slugsOf(row as Doc)[locale]
+    if (cur) taken.add(cur)
+    for (const old of strings(objectOf(row.redirectFrom)?.[locale])) taken.add(old)
+  }
+  return taken
 }
 
 /** The image behind a course's reference: this website's asset only, else null (a dangling or foreign reference shows nothing). */
@@ -424,7 +478,7 @@ export async function openCourseForEdit(
 // ── Save draft ────────────────────────────────────────────────────────────────
 
 /** Paths `saveCourseDraft` accepts. `<loc>` = a language of the site. */
-export const COURSE_PATCH_FIELDS = ['title.<loc>', 'shortDescription.<loc>', 'color', 'image'] as const
+export const COURSE_PATCH_FIELDS = ['title.<loc>', 'shortDescription.<loc>', 'slug.<loc>', 'color', 'image'] as const
 
 /**
  * Applies the typed changes to the draft. Incomplete drafts always save (a
@@ -446,7 +500,7 @@ export async function saveCourseDraft(
   // Field allow-list before any read.
   for (const path of Object.keys(input.set)) {
     const [field, locale, ...rest] = path.split('.')
-    const ok = path === 'color' || path === 'image' || ((LOCALIZED_FIELDS as readonly string[]).includes(field) && !!locale && LOCALE_KEY.test(locale) && rest.length === 0)
+    const ok = path === 'color' || path === 'image' || ((field === 'slug' || (LOCALIZED_FIELDS as readonly string[]).includes(field)) && !!locale && LOCALE_KEY.test(locale) && rest.length === 0)
     if (!ok) throw new CourseError('invalid_field', `Field "${path}" cannot be changed here.`)
   }
 
@@ -462,7 +516,9 @@ export async function saveCourseDraft(
   if (archivedAtOf(published ?? draft)) throw new CourseError('archived', 'Restore this course to edit it.')
 
   const allowed = allowedLocales(site, draft)
+  for (const k of Object.keys(objectOf(draft?.slug) ?? {})) if (LOCALE_KEY.test(k)) allowed.add(k)
   let imageId: string | null = null
+  const slugChecks: Array<{ locale: string; slug: string }> = []
   const set: Record<string, unknown> = {}
   const unset: string[] = []
   const ensure: Record<string, unknown> = {}
@@ -483,6 +539,20 @@ export async function saveCourseDraft(
       set.image = { _type: 'reference', _ref: value }
       continue
     }
+    if (path.startsWith('slug.')) {
+      const locale = path.slice('slug.'.length)
+      if (!allowed.has(locale)) throw new CourseError('invalid_field', `Language "${locale}" is not on this site.`)
+      if (value !== null && typeof value !== 'string') throw new CourseError('invalid_value', 'A page address must be text.')
+      const raw = typeof value === 'string' ? value : ''
+      const slug = courseSlugFrom(raw)
+      if (raw.trim() && !COURSE_SLUG_PATTERN.test(slug)) throw new CourseError('invalid_value', 'Not a valid web address part.')
+      ensure.slug = { _type: 'localizedSlug' }
+      if (slug) {
+        set[path] = { _type: 'slug', current: slug }
+        slugChecks.push({ locale, slug })
+      } else unset.push(path)
+      continue
+    }
     const [field, locale] = path.split('.') as [(typeof LOCALIZED_FIELDS)[number], string]
     if (!allowed.has(locale)) throw new CourseError('invalid_field', `Language "${locale}" is not on this site.`)
     ensure[field] = { _type: LOCALIZED_TYPE[field] }
@@ -494,6 +564,12 @@ export async function saveCourseDraft(
   if (imageId) {
     const ok = await client.fetch<string | null>(`*[_id == $id && _type == "mediaAsset" && projectSlug == $projectSlug && defined(image.asset)][0]._id`, { id: imageId, projectSlug: grant.projectSlug })
     if (ok !== imageId) throw new CourseError('invalid_value', 'That image is not in this website’s Media Library.')
+  }
+  if (slugChecks.length) {
+    const rows = await client.fetch<SlugRow[] | null>(COURSE_SLUGS_QUERY, { projectSlug: grant.projectSlug }, RAW)
+    for (const { locale, slug } of slugChecks) {
+      if (takenSlugs(rows, input.id, locale).has(slug)) throw new CourseError('slug_taken', 'Another course already uses this web address.')
+    }
   }
 
   const result = (await commit(
@@ -529,11 +605,11 @@ export function parseCoursePublishAt(value: unknown, now: Date): Date {
   return at
 }
 
-/** Publish = online: refuses when no published page has a timetable that shows the course (`no_timetable_page`). */
+/** Publish = online: refuses when neither a timetable on a published page nor a course page would show the course (`no_timetable_page`). */
 async function assertWillAppear(client: Client, projectSlug: string, courseId: string, deps: CourseDeps) {
   let info: PlacementInfo
   try {
-    info = await (deps.placement ?? ((slug: string) => readPlacementInfo(client, slug)))(projectSlug)
+    info = await (deps.placement ?? ((slug: string) => readPlacementInfo(client, slug, courseId)))(projectSlug)
   } catch {
     throw new CourseError('failed', 'Could not check the website.')
   }
@@ -592,6 +668,40 @@ export async function publishCourseDraft(
       // The publicId never changes once published (class schedules key on it).
       if (published && typeof published.publicId === 'string' && published.publicId) doc.publicId = published.publicId
       if (typeof doc.publicId !== 'string' || !UUID_RE.test(doc.publicId)) doc.publicId = (deps.publicUuid ?? randomUUID)()
+
+      // Page addresses (ADR-045 D5): every language with a title and no address gets one from its title.
+      const slugs = slugsOf(draft)
+      const titles = localized(draft.title)
+      const missing = Object.keys(titles).filter((l) => !slugs[l] && courseSlugFrom(titles[l]))
+      if (missing.length) {
+        const rows = await client.fetch<SlugRow[] | null>(COURSE_SLUGS_QUERY, { projectSlug: grant.projectSlug }, RAW)
+        for (const locale of missing) slugs[locale] = uniqueCourseSlug(courseSlugFrom(titles[locale]), takenSlugs(rows, input.id, locale))
+      }
+      if (Object.keys(slugs).length) {
+        doc.slug = { _type: 'localizedSlug', ...Object.fromEntries(Object.entries(slugs).map(([l, cur]) => [l, { _type: 'slug', current: cur }])) }
+      }
+      // Publicly Routable Content Pattern: a published address that changes keeps working as a redirect.
+      if (published) {
+        const before = slugsOf(published)
+        const redirects: Record<string, unknown> = { _type: 'redirectFrom', ...(objectOf(draft.redirectFrom) ?? objectOf(published.redirectFrom) ?? {}) }
+        let changed = false
+        for (const [loc, old] of Object.entries(before)) {
+          if (slugs[loc] === old) continue
+          const list = strings(redirects[loc]).filter((x) => x !== slugs[loc])
+          if (!list.includes(old)) list.push(old)
+          redirects[loc] = list
+          changed = true
+        }
+        // An address taken back from the retired list no longer redirects.
+        for (const [loc, cur] of Object.entries(slugs)) {
+          const list = strings(redirects[loc])
+          if (list.includes(cur)) {
+            redirects[loc] = list.filter((x) => x !== cur)
+            changed = true
+          }
+        }
+        if (changed) doc.redirectFrom = redirects
+      }
 
       await commit(client, grant.projectSlug, () => {
         let tx = client.transaction().patch(`drafts.${input.id}`, { ifRevisionID: input.rev, unset: ['_publishGuard'] })

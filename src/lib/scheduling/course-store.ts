@@ -93,6 +93,10 @@ export type UpdateOccurrenceInput = {
   /** Short note per language. Omit to leave. */
   note?: Record<string, string>
   clearNote?: boolean
+  /** A different place for this date only (migration 065). Omit to leave. */
+  place?: SchedulePlace
+  /** Back to the class's own place. */
+  clearPlace?: boolean
 }
 
 export type SyncResult = {
@@ -632,6 +636,11 @@ export function createCourseScheduleStore(dbOverride?: Db): CourseScheduleStore 
           if (input.clearInstructors) throw new ScheduleError('invalid', 'Choose either new hosts or the class default.')
         }
         if (input.note !== undefined && input.clearNote) throw new ScheduleError('invalid', 'Choose either a note or none.')
+        if (input.place !== undefined && input.clearPlace) throw new ScheduleError('invalid', 'Choose either a place or the class place.')
+        if (input.place !== undefined) {
+          if (input.place === null) throw new ScheduleError('invalid', 'Choose a place.')
+          checkPlace(input.place)
+        }
         const note = input.note === undefined ? null : checkLabel(input.note, 'note', 4000)
         let t: SessionTimes | null = null
         if (input.times) {
@@ -650,6 +659,9 @@ export function createCourseScheduleStore(dbOverride?: Db): CourseScheduleStore 
           p_ends_at: t?.endsAt ?? null,
           p_note: note,
           p_clear_note: input.clearNote === true,
+          // Sent only when used, so the call stays the 12-argument one otherwise (065 gives both a default).
+          ...(input.place !== undefined && { p_place: input.place }),
+          ...(input.clearPlace && { p_clear_place: true }),
         })
         if (error) throw mapDbError(error)
         return Number(data)

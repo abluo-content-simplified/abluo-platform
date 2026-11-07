@@ -17,8 +17,14 @@ import { COURSE_COLORS, DEFAULT_COURSE_COLOR } from './model'
 // scheduling and is keyed by this document's `publicId`; teachers are stored on
 // the classes, never here.
 //
-// Non-routable for now: no slug, no own page (ADR-045 D5 comes later). When it
-// gets one, it must satisfy the five-requirement checklist in CLAUDE.md.
+// Routable (ADR-045 D5): a published course with a slug in a language has its
+// own page at /{courseSegment}/{slug} — the segment is the Courses module config
+// `courseSegment`, never hardcoded. Five-requirement checklist (CLAUDE.md):
+// localizedSlug + redirectFrom here; lookups in queries.ts (COURSE_BY_SLUG_QUERY,
+// COURSE_BY_OLD_SLUG_QUERY, SITEMAP_COURSES_QUERY); the dispatch in the tenant
+// catch-all; src/lib/seo/sitemap-courses.ts. No migration: courses never had a
+// flat slug. The dashboard writes both fields (old slugs go to redirectFrom on
+// publish).
 //
 // Clients edit courses in the dashboard only; Studio shows them READ-ONLY
 // (same stance as People, ADR-043 D8).
@@ -53,6 +59,14 @@ const courseType = defineType({
     publicIdField,
     defineField({ name: 'title', title: 'Title', type: 'localizedString', group: 'content', validation: (Rule) => Rule.required() }),
     defineField({ name: 'shortDescription', title: 'Short description', type: 'localizedText', group: 'content' }),
+    defineField({
+      name: 'slug',
+      title: 'Slug',
+      type: 'localizedSlug',
+      group: 'meta',
+      description: 'The last part of the course page address, per language. Set in the dashboard; filled from the title on publish when empty.',
+    }),
+    defineField({ name: 'redirectFrom', title: 'Redirect From', type: 'redirectFrom', group: 'meta' }),
     defineField({
       name: 'color',
       title: 'Colour',
@@ -238,4 +252,49 @@ const timetableSectionType = defineType({
   },
 })
 
-export const coursesSchemaTypes = [courseType, timetableNotesTextType, timetableSectionType]
+// ── courseListSection — course cards that lead to the course pages (ADR-045 D5) ──
+//
+// Presentation only (Sections vs Modules): it owns no courses. It shows the
+// site's published courses — hand-picked here, else all of them in title order —
+// as cards (image, title, short description) linking to each course's own page.
+// A card links only where the course has a page in that language (a slug and the
+// module's course segment); otherwise it shows without a link. Module-gated by
+// `courses`.
+
+const courseListSectionType = defineType({
+  name: 'courseListSection',
+  title: 'Course List Section',
+  type: 'object',
+  fields: [
+    anchorIdField(),
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    defineField({ name: 'intro', title: 'Intro', type: 'localizedText', description: 'Optional. A short line above the courses.' }),
+    defineField({
+      name: 'courses',
+      title: 'Courses',
+      type: 'array',
+      // Weak: a course removed later never makes a published page invalid; the website shows only
+      // published, non-archived courses of THIS website whatever the reference says.
+      of: [defineArrayMember({ type: 'reference', to: [{ type: 'course' }], weak: true, options: { filter: scopedRef } })],
+      description: 'Optional. Pick courses to show them in this order. Leave empty to show every published course, by title. Courses are managed in the dashboard (Courses).',
+      validation: (Rule) => Rule.unique(),
+    }),
+  ],
+  preview: {
+    select: { title_en: 'title.en', title_it: 'title.it', title_fr: 'title.fr', title_de: 'title.de', courses: 'courses' },
+    prepare: ({ title_en, title_it, title_fr, title_de, courses }: { title_en?: string; title_it?: string; title_fr?: string; title_de?: string; courses?: unknown[] }) => ({
+      title: title_en ?? title_fr ?? title_it ?? title_de ?? 'Courses',
+      subtitle: `Course List Section — ${courses?.length ? `${courses.length} picked courses` : 'all published courses'}`,
+    }),
+  },
+})
+
+export const coursesSchemaTypes = [courseType, timetableNotesTextType, timetableSectionType, courseListSectionType]

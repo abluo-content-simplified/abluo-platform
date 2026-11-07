@@ -17,6 +17,7 @@ import {
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
 import type { PendingSet } from '@/lib/client/autosave/journal'
 import { COURSE_COLORS, type CourseColor } from '@/lib/modules/courses/model'
+import { COURSE_SLUG_MAX, courseSlugFrom, slugFollowingTitle } from '@/lib/modules/courses/slug'
 import type { CoursePlacement } from '@/lib/modules/courses/placement'
 import { useDateLocale } from '@/lib/i18n/date-locale-context'
 import { PublicationDates } from '@/components/app/lifecycle/PublicationDates'
@@ -45,9 +46,9 @@ import { CourseActivitySheet } from './CourseActivitySheet'
 import { CoursePreviewButton } from './CoursePreviewButton'
 import { COURSE_UI_LIMITS, CourseStateBadge } from './course-bits'
 
-type Values = { title: Record<string, string>; shortDescription: Record<string, string>; color: CourseColor; image: CourseImage | null }
+type Values = { title: Record<string, string>; shortDescription: Record<string, string>; slug: Record<string, string>; color: CourseColor; image: CourseImage | null }
 
-const valuesOf = (s: CourseSnapshot): Values => ({ title: s.title, shortDescription: s.shortDescription, color: s.color, image: s.image })
+const valuesOf = (s: CourseSnapshot): Values => ({ title: s.title, shortDescription: s.shortDescription, slug: s.slug ?? {}, color: s.color, image: s.image })
 
 type Confirm = 'discard' | 'delete' | 'deletePermanently' | null
 
@@ -58,6 +59,10 @@ const H2 = 'text-[1.0625rem] leading-7 font-semibold text-foreground'
  * rule: incomplete drafts always save; there is no Save button).
  *
  *   Words      title and short description per language of the site · colour
+ *   Address    the course page address per language (ADR-045 D5): follows the
+ *              title until the course is first published or the address is
+ *              typed; a language left empty gets one from its title on publish;
+ *              a changed published address keeps redirecting (server)
  *   Classes    the course's weekly classes (scheduling wave): the `classes`
  *              prop, else an empty `data-slot="course-classes"` region
  *
@@ -208,7 +213,17 @@ export function CourseEditor({
   }
   const setText = (field: 'title' | 'shortDescription', value: string) => {
     const cur = valuesRef.current
+    // Before the first publish the page address follows the title, unless it was typed by hand.
+    const slug = field === 'title' ? slugFollowingTitle({ published: status.isPublished, slug: cur.slug[lang], oldTitle: cur.title[lang], newTitle: value }) : null
+    if (slug !== null) {
+      change({ title: { ...cur.title, [lang]: value }, slug: { ...cur.slug, [lang]: slug } }, { [`title.${lang}`]: value, [`slug.${lang}`]: slug })
+      return
+    }
     change({ [field]: { ...cur[field], [lang]: value } }, { [`${field}.${lang}`]: value })
+  }
+  const setSlug = (value: string) => {
+    const cur = valuesRef.current
+    change({ slug: { ...cur.slug, [lang]: value } }, { [`slug.${lang}`]: value })
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -431,6 +446,9 @@ export function CourseEditor({
   }
 
   const colorLabel = (c: CourseColor) => t(`color.${c}`)
+  const slugSuggestion = courseSlugFrom(values.title[lang])
+  const pageSegment = initial.pageSegments?.[lang] ?? null
+  const pagesOn = Object.keys(initial.pageSegments ?? {}).length > 0
 
   /** The image is a Media Library asset: picked here, saved to the draft as its id (null removes it). */
   const chooseImage = (photo: { assetId: string; url: string; alt: Record<string, string> } | null) => {
@@ -558,6 +576,43 @@ export function CourseEditor({
           />
           <p className="text-sm leading-5 text-muted-foreground">{t('colorHint')}</p>
         </div>
+      </Panel>
+
+      <Panel as="section" aria-labelledby="course-address" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="course-address" className={H2}>
+            {t('address.title')}
+          </h2>
+          {languages.length > 1 ? (
+            <SegmentedControl label={t('language')} appearance="soft" value={lang} onChange={setLang} options={languages.map((l) => ({ value: l, label: l.toUpperCase() }))} />
+          ) : null}
+        </div>
+        <Field
+          label={t('address.label', { language: languageName(lang) })}
+          hint={pageSegment ? t('address.hintPath', { path: `/${pageSegment}/${courseSlugFrom(values.slug[lang]) || slugSuggestion || '…'}` }) : t('address.hint')}
+        >
+          {(p) => (
+            <TextInput
+              {...p}
+              id="course-slug"
+              value={values.slug[lang] ?? ''}
+              readOnly={!editable}
+              maxLength={COURSE_SLUG_MAX}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder={slugSuggestion || undefined}
+              onChange={(e) => setSlug(e.target.value)}
+            />
+          )}
+        </Field>
+        {editable && slugSuggestion && !values.slug[lang]?.trim() ? (
+          <div>
+            <Button onClick={() => setSlug(slugSuggestion)}>{t('address.useSuggestion', { slug: slugSuggestion })}</Button>
+          </div>
+        ) : null}
+        <p className="text-sm leading-5 text-muted-foreground">{status.isPublished ? t('address.redirectNote') : t('address.autoNote')}</p>
+        {!pagesOn ? <Notice tone="info">{t('address.pagesOff')}</Notice> : null}
       </Panel>
 
       {!archived ? (

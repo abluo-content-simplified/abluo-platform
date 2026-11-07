@@ -38,6 +38,8 @@ export type CourseErrorCode =
   | 'no_timetable_page'
   /** The "Publish on" date is missing, in the past or more than two years away. */
   | 'invalid_schedule'
+  /** Another course of the site already uses (or used) this page address in that language. */
+  | 'slug_taken'
   | 'failed'
 
 /** Where a course is still used: other documents, or its classes. */

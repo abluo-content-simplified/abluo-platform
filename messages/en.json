@@ -3808,7 +3808,8 @@
         "no_timetable_page": "This course can’t go online yet: your website has no timetable showing it. Ask your website administrator to add one.",
         "invalid_schedule": "Pick a date and time in the future, within two years.",
         "failed": "Something went wrong. Please try again.",
-        "offline": "You’re offline. Your changes will save when you’re back online."
+        "offline": "You’re offline. Your changes will save when you’re back online.",
+        "slug_taken": "Another course already uses this address. Choose a different one."
       },
       "list": {
         "title": "Courses",
@@ -3946,6 +3947,16 @@
           "discard": "Discard Changes",
           "deleteTitle": "Delete {name}?",
           "deleteBody": "This course is removed for good."
+        },
+        "address": {
+          "title": "Page address",
+          "label": "Address in {language}",
+          "hint": "The last part of the web address of the course page. Letters, numbers and dashes.",
+          "hintPath": "The course page will be at {path}",
+          "useSuggestion": "Use “{slug}”",
+          "autoNote": "Until you publish, the address follows the title. Leave it empty and it is made from the title when you publish.",
+          "redirectNote": "If you change the address later, the old one keeps working and leads to the new one.",
+          "pagesOff": "Course pages aren’t switched on for your website yet. Your website administrator can turn them on; the address is kept until then."
         }
       },
       "classes": {
@@ -4079,6 +4090,7 @@
           "restore": "Restore",
           "substitute": "Substitute",
           "changeTime": "Change time",
+          "changePlace": "Change place",
           "addNote": "Add note",
           "editNote": "Edit note",
           "showMore": "Show more",
@@ -4088,7 +4100,9 @@
             "cancelled": "Cancelled",
             "substitute": "Substitute: {names}",
             "nobody": "nobody",
-            "moved": "Time changed"
+            "moved": "Time changed",
+            "place": "At {place}",
+            "noPlace": "No place"
           },
           "edit": {
             "substitute": {
@@ -4103,6 +4117,12 @@
               "until": "Ends",
               "noEnd": "No end time",
               "endBeforeStart": "The end must be after the start."
+            },
+            "place": {
+              "title": "Place on {date}",
+              "hint": "Usually at: {place}.",
+              "field": "Place on this date",
+              "reset": "Back to the usual place"
             },
             "note": {
               "title": "Note for {date}",
