@@ -29,7 +29,7 @@ Every table carries `project_id`; child tables use composite keys `(id, project_
 | `bookings` | Reference (human-readable), status, flags (`payment_review`, `eligibility_review`), locale, source (`website` / `dashboard`), purchaser contact (name, email, optional phone, channel consent with wording version + timestamp), totals, **snapshot** jsonb (option, prices, terms text, rules, titles, sessions), hold_expires_at, management token hash, idempotency key |
 | `booking_attendees` | Name, optional email, guardian (for children), price category, declared eligibility, verification result + rule applied |
 | `booking_allocations` | One per attendee × session: kind `hold` / `confirmed` (later `invitation_hold`, `gift_pending`), expires_at, released_at + reason |
-| `booking_passes` | Pass entitlement per attendee × edition (valid_from / valid_to). Takes no session places in v1 |
+| `booking_passes` | Pass entitlement per attendee (valid_from / valid_to, scope, own management token hash). Gives the right to attend; places are taken only by pass attendances (D9) |
 | `booking_lines` | Finalized price lines; **adjustments** (e.g. price difference after eligibility check) are new lines, never edits |
 | `booking_payments` | Method `free` / `bank_transfer` / `cash` / `other` / `stripe` (later), amount, status, paid_on, reference, recorded_by, provider ids |
 | `booking_refunds` | Kind `refund` / `manual_return` / `credit`, amount, reason, status, approved_by, provider ids |
@@ -71,15 +71,33 @@ Every table carries `project_id`; child tables use composite keys `(id, project_
 - Tenant-defined categories per project. *Requires membership* → self-declared, `eligibility_review` flag, tenant marks verified or adds an adjustment line.
 - The rule applied and its result are stored on the attendee (brief D12). The Memberships module later replaces self-declaration without changing these tables.
 
-### D9 — Pass
-- A `pass` option creates `booking_passes` rows, not allocations. An optional `max_passes` on the target caps sales (locked like capacity).
-- Spot reservation for pass holders in limited classes is a later phase. It will create allocations against an existing pass.
+### D9 — Pass and pass attendance (revised 2026-11-07, Tom)
+Generic, not CYCE-specific: the same model serves a yoga club with no limits, a gym, a golf club and a rowing club with 10 boats.
+- **The pass is the right to attend, never a place.** A `pass` option creates a `booking_passes` row. The number of passes sold is independent of class sizes (200 passes across 10 weekly classes is normal). `max_passes` stays as an optional sales cap only.
+- **Scope:** a pass covers chosen courses or all courses of the project.
+- **Validity:** fixed end date (e.g. 31 Dec, price by joining date via `booking_option_prices.valid_from`) or a duration from the start date (1 / 6 / 12 months …).
+- **Entries:** optional number of entries (10-class card), in v1. An entry is used by "I'm coming" and given back when the answer is withdrawn before the change deadline. Once attendance tracking exists (D9a), the entry is used by the check-in instead.
+- **Requires membership:** an option can require membership; self-declared + `eligibility_review` until the Memberships module replaces it (same as D8). Membership + pass are separate purchases.
+- **Each class decides how pass holders attend** — project default in Booking rules → override per target → per session:
+  1. **Places:** unlimited (`session_capacity.places` null) or a number.
+  2. **Pass sign-up:** `off` (just come; not allowed with limited places) · `opt_in` ("I'm coming tonight").
+  Plus: sign-up opens N days before, answers can change until M hours before.
+- **Standing sign-up (later):** the holder chooses the classes they come to regularly ("Monday 18:30") and is counted for those until they say "I'm not coming". The holder chooses — never all holders on all classes.
+- **One mechanism.** "I'm coming" creates a `booking_allocations` row of kind `pass_attendance` referencing the pass, through `reservations_book` (same lock and capacity count as any booking). Unlimited places = a headcount; limited places = the next one sees "Full". "I'm not coming" releases it.
+- **How holders sign up:** v1 a secure **My pass** link (D11 pattern), emailed to the attendee (or the purchaser): upcoming sessions with Coming / Not coming. Later, a project setting chooses link or participant accounts; with accounts the same page sits behind a login.
+- **Organiser cancels a session:** outcome for pass holders is a tenant setting (default: notify only, no refund; entries given back).
+- **Configuration split (ADR-014):** Abluo admin switches on which pass capabilities a project has (entries, fixed-end vs duration, sign-up modes, membership requirement, accounts later). The tenant fills the values (which courses, dates, prices, places, sign-up per class).
+
+### D9a — Attendance tracking (later)
+Teacher marks present / absent on the roster, or the participant checks in (e.g. QR code at the venue). Feeds no-show tracking and entry use. Out of scope for v1; `booking_allocations` gets `attended_at` / `no_show` columns when it lands.
 
 ### D10 — Notifications
 - `reservation_outbox`: intent type, booking id, recipients snapshot, locale, `dedupe_key` (unique, e.g. `reminder:<allocation>:<starts_at>`), status `pending / delivering / delivered / failed / dead / skipped`, attempts, `last_error`, `environment` (production-only gate on the row, as `form_events`), `provider_message_id` (Resend id is stored, unlike today).
 - Delivery: Supabase Database Webhook for near-instant sends + cron sweep, same claim pattern as `deliverEvent()`. Fix the known gap: add `claimed_at` so a crashed `delivering` row is retried.
 - Templates follow the support-ticket pattern (`BY_LOCALE`, `chooseEmailLocale`), never the English-only Forms template.
-- Reminders and last-minute alerts need a sweep at least **hourly** → Vercel Pro (today Hobby: daily crons only). Until then reminders are off by design.
+- Reminders and last-minute alerts need a sweep at least **hourly**: a Supabase `pg_cron` job calls the sweep route (decided, Tom 2026-11-07; no Vercel Pro needed).
+- **Sender (v1):** `From: <Site name> <no-reply@mail.abluo.app>` with `Reply-To` = the tenant's contact address (exists today in `src/lib/notifications/resend.ts`). Later: optional own sending domain per project (tenant adds DNS records, Resend domain verified).
+- **Change emails:** never automatic. After a change the dashboard asks "Notify the N booked people?", shows an editable, prefilled message with a preview, and sends one email per person with their first name ("Hi Anna"). Same flow for every change type.
 - Channel fields (phone, consent) are stored now; WhatsApp Business / SMS adapters come later.
 
 ### D11 — Secure management link
@@ -101,7 +119,7 @@ Every table carries `project_id`; child tables use composite keys `(id, project_
 | `reservations.export.use` | owner | Support never |
 | `reservations.settings.manage` | owner | Booking rules page. Support never |
 
-Payment, refund, export and settings go into `SUPPORT_NEVER_WRITES`. Bookings hold personal data, so like `forms.submission.*` they are hidden in support mode until revealed.
+Payment, refund, export and settings go into `SUPPORT_NEVER_WRITES`. Bookings hold personal data, so like `forms.submission.*` they are hidden in support mode until the tenant grants access (D16.16).
 
 ### D13 — Configuration surfaces (ADR-014: one surface each)
 - **Super admin (Studio → Modules → Reservations):** capabilities — offline payments, price categories, passes, absence notice, minimum participants, reminders (locked off until Pro), Stripe (locked off).
@@ -110,7 +128,7 @@ Payment, refund, export and settings go into `SUPPORT_NEVER_WRITES`. Bookings ho
 
 ### D14 — Privacy and retention
 - Purchaser ≠ attendee. Guardian fields for children. No special-category questions by default.
-- Retention proposal: bookings and attendees anonymised 24 months after the last session, payments and refunds kept per accounting law (10 years in Italy, configurable per issuer country), outbox 12 months.
+- Retention (decided, Tom 2026-11-07): bookings, attendees and passes anonymised 24 months after the last session, payments and refunds kept per accounting law (10 years in Italy, configurable per issuer country), outbox 12 months.
 - Erasure = anonymise attendee/purchaser fields, keep amounts and references.
 - `contact_id` column (nullable) reserved for the Contacts module.
 
@@ -133,13 +151,14 @@ Negative tests for every route, function, sweep and link: wrong project id, subs
 13. **Languages.** Generated terms and email texts are platform dictionaries covering every **content** locale in `routing.ts` (not the en/it/de interface bundles), with fallback to the site's default locale, then English. Tenant-written extras (payment instructions, extra note, price category labels) are localized per `siteConfig.supportedLocales`.
 14. **One surface per concept.** Availability = super-admin capabilities (Studio). Values = the tenant's **Booking rules** page, which also manages **price categories**. A target shows "Use site defaults / Custom" for the few overridable rules — the same concept edited in one component, no second form. The ADR-014 structure test gets a case for it.
 15. **Navigation.** One **Bookings** area (all bookings, filters by course / edition / event / status; Booking rules as a tab). The edition dashboard opens the same list pre-filtered — one screen, not two.
-16. **Support mode (deviation from brief, flagged).** The brief says "read by default". This ADR hides bookings until support reveals them, the same as contact requests, because they are personal data. Tom to confirm.
-17. **Reminders without Vercel Pro.** Fallback: a Supabase `pg_cron` job calling the hourly sweep route, if Tom prefers to stay on Hobby. Must be decided together with P0-3.
+16. **Support mode (decided, Tom 2026-11-07).** Bookings are hidden from Abluo support until the **tenant** grants access with a button in the dashboard (not "support reveals"). Access is logged and revocable.
+17. **Reminders (decided, Tom 2026-11-07):** Supabase `pg_cron` calling the hourly sweep route.
+18. **Payments per booking and reference (Tom 2026-11-07).** Every booking has a short reference shown in the payment instructions. A booking can have several payments with different methods (part card, part transfer); the club's admin records each one with method, date and the bank's own reference, and finds the booking by searching its reference. Automatic statement matching later.
 
 ## Consequences
 - One engine for every bookable thing. Courses and Events stay thin.
 - New Supabase tables (one migration series, rehearsed on Abluo Sandbox, applied only with Tom's approval).
-- Reminders depend on the Vercel Pro decision.
+- Reminders run on Supabase pg_cron.
 
 ## Out of scope (v1)
-Stripe, waitlists, gifts, spot reservation for pass holders, discounts, instalments, attendance tracking, participant transfers/rescheduling, SMS/WhatsApp sending.
+Stripe, waitlists, gifts, standing sign-up, attendance tracking / check-in / no-shows (D9a), participant accounts, receipts, own sending domain, discounts, instalments, participant transfers/rescheduling, SMS/WhatsApp sending.
