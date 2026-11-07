@@ -1,6 +1,6 @@
 # ADR-044 — Reservations: one booking engine for courses, events and later appointments
 
-**Status:** Proposed (Phase 0, 2026-11-03) — awaiting Tom's approval
+**Status:** Accepted (Tom, 2026-11-07). Proposed 2026-11-03 (Phase 0); open points settled 2026-11-07 (D9, D9a, D10, D14, D16.16–18)
 **Authority:** Courses brief v1.2 (`docs/engineering/courses-module/courses-module-brief-v1.2.md`), Tom's decisions 2026-10-19 (Reservations independent of Events) and 2026-11-03 (Booking rules, transfer holds, price categories, pilot CYCE)
 **Relates to:** ADR-038 (scheduling) + Amendment A, ADR-045 (Courses), ADR-028 (permissions), ADR-032 (lifecycle), ADR-040 (secure tokens, rate limits), ADR-041 (Stripe patterns), ADR-018/019 (Forms, outbox)
 
