@@ -2,8 +2,8 @@
  * Bookings → Booking rules route (ADR-044 D13): signed out → sign in; no grant,
  * no Reservations module or no `reservations.booking.read` → 404 with nothing
  * read; an allowed person gets the screen; a database without migration 066 gets
- * the calm "not available yet" state (initial = null), never an error. `/bookings`
- * redirects to the rules.
+ * the calm "not available yet" state (initial = null), never an error. The page carries the
+ * Bookings tabs (D16.15); `/bookings` is the list (see bookings-page.test.tsx).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -30,9 +30,9 @@ vi.mock('@/lib/reservations/server/settings-service', () => ({
     return h.load
   },
 }))
+vi.mock('@/components/client/reservations/BookingsTabs', () => ({ BookingsTabs: (p: unknown) => ({ type: 'BookingsTabs', props: p }) }))
 vi.mock('@/components/client/reservations/BookingRules', () => ({ BookingRules: (p: unknown) => ({ type: 'BookingRules', props: p }) }))
 
-import BookingsIndexPage from '../../page'
 import BookingRulesPage from '../page'
 
 const PID = '11111111-1111-4111-8111-111111111111'
@@ -64,16 +64,14 @@ describe('Booking rules route', () => {
     expect(h.reads).toEqual([])
   })
   it('opens the screen with the loaded view', async () => {
-    const page = (await open()) as { props: { children: { props: { projectSlug: string; initial: unknown } } } }
+    const page = (await open()) as { props: { children: Array<{ props: { projectSlug: string; initial: unknown } }> } }
     expect(h.reads).toEqual(['rules'])
-    expect(page.props.children.props).toEqual({ projectSlug: 'cyce', initial: { version: 1 } })
+    expect(page.props.children[0].props).toEqual({ projectSlug: 'cyce', current: 'rules' })
+    expect(page.props.children[1].props).toEqual({ projectSlug: 'cyce', initial: { version: 1 } })
   })
   it('migration 066 missing → the screen with no data (calm state), not an error', async () => {
     h.load = { ok: false, error: 'unavailable' }
-    const page = (await open()) as { props: { children: { props: { initial: unknown } } } }
-    expect(page.props.children.props.initial).toBeNull()
-  })
-  it('/bookings redirects to the rules', async () => {
-    await expect(BookingsIndexPage({ params: Promise.resolve({ tenant: 'cyce' }) })).rejects.toThrow('REDIRECT /cyce/bookings/rules')
+    const page = (await open()) as { props: { children: Array<{ props: { initial: unknown } }> } }
+    expect(page.props.children[1].props.initial).toBeNull()
   })
 })

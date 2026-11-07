@@ -140,7 +140,7 @@ function optionOf(r: Row, prices: OptionPriceRow[]): BookingOptionRow {
   }
 }
 
-function bookingOf(r: Row): BookingRow {
+export function bookingOf(r: Row): BookingRow {
   return {
     id: str(r.id),
     projectId: str(r.project_id),
@@ -195,7 +195,7 @@ const TARGET_COLUMNS = 'id, project_id, owner_type, owner_public_id, edition_id,
 const OPTION_COLUMNS = 'id, project_id, target_id, kind, label, description, status, session_ids, pass_scope, pass_scope_owner_ids, pass_validity, pass_valid_to, pass_duration_months, pass_entries, requires_membership, min_age, max_age, sort'
 const PRICE_COLUMNS = 'id, option_id, price_category_id, amount_cents, currency, valid_from'
 // Contact details of the purchaser are included: this adapter is server-only.
-const BOOKING_COLUMNS = 'id, project_id, target_id, option_id, reference, status, payment_status, payment_review, eligibility_review, locale, source, purchaser_name, purchaser_email, purchaser_phone, total_cents, snapshot, hold_expires_at, confirmed_at, cancelled_at, anonymised_at, version, created_at'
+export const BOOKING_COLUMNS = 'id, project_id, target_id, option_id, reference, status, payment_status, payment_review, eligibility_review, locale, source, purchaser_name, purchaser_email, purchaser_phone, total_cents, snapshot, hold_expires_at, confirmed_at, cancelled_at, anonymised_at, version, created_at'
 const PASS_COLUMNS = 'id, project_id, booking_id, attendee_id, option_id, target_id, scope, scope_owner_ids, valid_from, valid_to, entries_total, status, anonymised_at, version'
 
 export function createSupabaseReservationStore(db: ReservationDb): ServiceStore {

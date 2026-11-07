@@ -15,7 +15,7 @@ import {
   isPlatformHost,
 } from '@/lib/tenancy/host-scope'
 import { unbrand } from '@/lib/tenancy/ids'
-import { DRAFT_PREVIEW_HEADER, isDraftPreviewPath } from '@/lib/proxy/draft-preview'
+import { DRAFT_PREVIEW_HEADER, isDraftPreviewPath, isPrivateLinkPath } from '@/lib/proxy/draft-preview'
 
 const intlMiddleware = createMiddleware(routing)
 
@@ -568,7 +568,7 @@ async function routeRequest(request: NextRequest) {
 // tracking, records no first touch and shows no consent banner.
 export async function proxy(request: NextRequest) {
   const response = await routeRequest(request)
-  if (!isDraftPreviewPath(request.nextUrl.pathname)) return response
+  if (!isDraftPreviewPath(request.nextUrl.pathname) && !isPrivateLinkPath(request.nextUrl.pathname)) return response
   response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive')
   response.headers.set('Cache-Control', 'private, no-store, max-age=0')
   response.headers.set('Referrer-Policy', 'no-referrer')

@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { PageShell } from '@/components/app/ui/PageShell'
+import { BookingsTabs } from '@/components/client/reservations/BookingsTabs'
 import { BookingRules } from '@/components/client/reservations/BookingRules'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
@@ -32,5 +33,10 @@ export default async function BookingRulesPage({ params }: { params: Promise<{ t
     throw error
   }
 
-  return <PageShell>{result.ok ? <BookingRules projectSlug={projectSlug} initial={result.view} /> : <BookingRules projectSlug={projectSlug} initial={null} />}</PageShell>
+  return (
+    <PageShell>
+      <BookingsTabs projectSlug={projectSlug} current="rules" />
+      {result.ok ? <BookingRules projectSlug={projectSlug} initial={result.view} /> : <BookingRules projectSlug={projectSlug} initial={null} />}
+    </PageShell>
+  )
 }

@@ -95,10 +95,12 @@ export const RESERVED_SLUGS: readonly string[] = [
 
   // ── Public website — tenant level (/<tenant>/…) ───────────────────────────
   'blog',
+  'booking',   // booking management link /<tenant>/booking/<token> (Reservations, ADR-044 D11)
   'brand',     // Brand Hub (ADR-036)
   'category',
   'events',
   'live',
+  'my-pass',   // My pass link /<tenant>/my-pass/<token> (Reservations, ADR-044 D11)
   'news',
   'preview',
   'site-access', // Site Access unlock / sign-out routes (ADR-040 B2.3)

@@ -168,7 +168,7 @@ const MODULE_NAV: readonly NavSurface[] = sortByModuleOrder(
     // ADR-040 §15 — Documents (the library).
     moduleNav('documents', 'document-library', 'documents', 'documents.document.read', 'content'),
     moduleNav('forms', 'submissions', 'forms', 'forms.submission.read', 'visitors'),
-    // ADR-044 D16.15: Bookings, one area. Until the bookings list exists `/bookings` lands on Booking rules.
+    // ADR-044 D16.15: Bookings, one area. `/bookings` is the list; Booking rules is a tab of it.
     // Not placed in order.ts on purpose (it stays out of "More You Can Add" until the website side exists), so it sorts after the placed modules.
     moduleNav('reservations', 'bookings', 'reservations', 'reservations.booking.read', 'visitors'),
     // ADR-040 B2.5 / §15 — Access (groups, passwords, who can see each page): next to Forms (PLAT-3).

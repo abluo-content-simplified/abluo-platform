@@ -32,7 +32,7 @@ export interface SitePageSlug {
  * A path starting with one of these is a module route, never a page, so it is
  * left alone even if a page happens to use the same word as a slug.
  */
-const PLATFORM_ROUTE_SEGMENTS = new Set(['blog', 'news', 'events', 'live', 'category', 'brand', 'preview', 'site-access'])
+const PLATFORM_ROUTE_SEGMENTS = new Set(['blog', 'news', 'events', 'live', 'category', 'brand', 'preview', 'site-access', 'booking', 'my-pass'])
 
 const trimSlashes = (s: string) => s.replace(/^\/+|\/+$/g, '')
 
