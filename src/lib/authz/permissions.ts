@@ -196,6 +196,10 @@ export const GRANTABLE_MODULE_PERMISSIONS: Readonly<Record<string, { requires?: 
   // the Documents module is enabled.
   'documents.document.read': {},
   'documents.document.manage': { requires: 'documents.document.read' },
+  // ADR-044 D12 — bookings and recording payments (e.g. a treasurer). Mirrors
+  // migration 066. Honoured only while the Reservations module is enabled.
+  'reservations.booking.read': {},
+  'reservations.payment.update': { requires: 'reservations.booking.read' },
 }
 
 const BY_ID = new Map(PLATFORM_PERMISSIONS.map((p) => [p.id, p]))

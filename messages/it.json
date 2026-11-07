@@ -61,6 +61,7 @@
   "clientDashboard": {
     "nav": {
       "blog": "Articoli",
+      "reservations": "Prenotazioni",
       "events": "Eventi",
       "courses": "Corsi",
       "live": "Live",
@@ -2038,7 +2039,9 @@
         "membersAccessRead": "Vede le impostazioni di Accesso",
         "membersAccessManage": "Gestisce Accesso: gruppi e password",
         "documentsDocumentRead": "Vede i documenti",
-        "documentsDocumentManage": "Gestisce i documenti"
+        "documentsDocumentManage": "Gestisce i documenti",
+        "reservationsBookingRead": "Vede le prenotazioni",
+        "reservationsPaymentUpdate": "Registra i pagamenti"
       },
       "includedByRole": "Le richieste di contatto sono incluse in questo ruolo.",
       "send": "Invia invito",
@@ -6649,7 +6652,9 @@
       "membersAccessRead": "impostazioni di Accesso",
       "membersAccessManage": "gestione di Accesso (gruppi e password)",
       "documentsDocumentRead": "documenti",
-      "documentsDocumentManage": "gestione dei documenti"
+      "documentsDocumentManage": "gestione dei documenti",
+      "reservationsBookingRead": "prenotazioni",
+      "reservationsPaymentUpdate": "registrazione dei pagamenti"
     },
     "accept": {
       "title": "Invito",

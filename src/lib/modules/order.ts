@@ -15,6 +15,9 @@
  *
  * Placed by judgement (not in Tom's table): Documents → Show, after Catalogue
  * (as instructed); Live → end of Publish (it publishes a live feed of posts).
+ * Reservations (ADR-044) is deliberately NOT placed yet: it has no dashboard or
+ * website surface, so it must not appear in "More You Can Add" or the sidebar.
+ * Place it (probably Visitors) when its Bookings screens ship.
  * A module missing here falls into "Other", after Tools, ordered by id — the
  * test `__tests__/order.test.ts` fails until it is placed on purpose.
  *

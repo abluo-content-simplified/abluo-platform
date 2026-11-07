@@ -2034,6 +2034,193 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     changelog: 'V1.0.0 — ADR-045 foundation. course documents (words, colour, archive), courses.* permissions, Courses list and editor in the dashboard. Timetable section (week / month, print sheet).',
   },
 
+  // ── Reservations ───────────────────────────────────────────────────────────
+  // ADR-044. Bookings, passes, holds and offline payments for events and
+  // courses. FOUNDATION ONLY: no sections, no Sanity schema types, no
+  // navigation yet. All data is operational (Supabase, migration 066); the
+  // dashboard (Bookings) is built later.
+  //
+  // Not gated by and not coupled to Courses or Events: those CONSUME this
+  // module later (reservations target sessions by id, ADR-038 D9), so it is
+  // installable on its own and `requires` stays empty.
+  //
+  // Configuration split (ADR-014, D13): this pane holds only the CAPABILITIES
+  // (what the site can use), read through resolveReservationCapabilities()
+  // (reservations/capabilities.ts). The tenant's values live in
+  // `reservation_settings`, edited in dashboard → Bookings → Booking rules.
+  // Stripe and reminders are locked off in code, not config fields.
+  {
+    id: 'reservations',
+    label: 'Reservations',
+    version: '1.0.0',
+    status: 'released',
+    category: 'commerce',
+
+    platformContract: {
+      collections: [],
+      sectionTypes: [],
+      schemaTypes: [],
+      schemaDefinitions: () => [],
+
+      // ADR-044 D12. Payment, refund, export and settings are in
+      // SUPPORT_NEVER_WRITES; `reservations.booking.*` is hidden in support
+      // mode (support/state.ts). booking.read and payment.update are
+      // grantable extras (authz/permissions.ts, migration 066).
+      permissions: [
+        {
+          id: 'reservations.booking.read',
+          label: 'See bookings',
+          description: 'See the website\'s bookings, passes and rosters.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'reservations.booking.write',
+          label: 'Manage bookings',
+          description: 'Add manual bookings, cancel bookings, record absences, and extend or release holds.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'reservations.booking.delete',
+          label: 'Delete bookings',
+          description: 'Anonymise or delete bookings according to the retention rules.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'reservations.payment.update',
+          label: 'Record payments',
+          description: 'Record payments and confirm bookings that were paid (for example by bank transfer).',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'reservations.refund.manage',
+          label: 'Manage refunds',
+          description: 'Record and change refunds.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'reservations.capacity.manage',
+          label: 'Override capacity',
+          description: 'Book people beyond the number of places.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'reservations.export.use',
+          label: 'Export bookings',
+          description: 'Download bookings and rosters as a file.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'reservations.settings.manage',
+          label: 'Manage booking rules',
+          description: 'Change the Booking rules: deadlines, price categories, pass rules and notifications.',
+          defaultRoles: ['owner'],
+        },
+      ],
+
+      configSchema: [
+        // ── Capabilities (ADR-044 D13) — read only through resolveReservationCapabilities().
+        {
+          id: 'capOfflinePayments',
+          label: 'Offline payments',
+          type: 'boolean',
+          initialValue: true,
+          description: 'People can book and pay later, for example by bank transfer; the organiser confirms the payment by hand. Switching a capability off never deletes or changes existing bookings.',
+        },
+        {
+          id: 'capPriceCategories',
+          label: 'Price categories',
+          type: 'boolean',
+          initialValue: false,
+          description: 'The client can offer different prices for different people, for example member and non-member. The categories are managed in Booking rules.',
+        },
+        {
+          id: 'capPasses',
+          label: 'Passes',
+          type: 'boolean',
+          initialValue: false,
+          description: 'The client can sell passes: the right to attend chosen courses, never a reserved place. The pass options below only apply when this is on.',
+        },
+        {
+          id: 'capPassEntries',
+          label: 'Pass entries',
+          type: 'boolean',
+          initialValue: false,
+          showWhen: { field: 'capPasses', equals: true },
+          description: 'A pass can have a number of entries (for example a 10-class card).',
+        },
+        {
+          id: 'capPassFixedEnd',
+          label: 'Pass valid until a fixed date',
+          type: 'boolean',
+          initialValue: false,
+          showWhen: { field: 'capPasses', equals: true },
+          description: 'A pass can be valid until a fixed date (for example 31 December), with the price depending on the joining date.',
+        },
+        {
+          id: 'capPassDuration',
+          label: 'Pass valid for a duration',
+          type: 'boolean',
+          initialValue: false,
+          showWhen: { field: 'capPasses', equals: true },
+          description: 'A pass can be valid for a period from its start date (for example 1, 6 or 12 months).',
+        },
+        {
+          id: 'capPassSignUp',
+          label: 'Pass holder sign-up',
+          type: 'select',
+          initialValue: 'off',
+          showWhen: { field: 'capPasses', equals: true },
+          options: [
+            { value: 'off', label: 'Off', description: 'Pass holders just come to class. No sign-up.' },
+            { value: 'opt_in', label: 'Opt-in', description: 'Pass holders can answer "I\'m coming" for a class. The client chooses per class whether to use it.' },
+          ],
+          description: 'How pass holders can tell the organiser they attend a class.',
+        },
+        {
+          id: 'capMembershipRequirement',
+          label: 'Membership requirement',
+          type: 'boolean',
+          initialValue: false,
+          description: 'A booking option can require membership. Until the Memberships module exists, people declare it themselves and the organiser reviews it.',
+        },
+        {
+          id: 'capAbsenceNotice',
+          label: 'Absence notice',
+          type: 'boolean',
+          initialValue: false,
+          description: 'People can tell the organiser they cannot come, and the client can record absences.',
+        },
+        {
+          id: 'capMinimumParticipants',
+          label: 'Minimum participants',
+          type: 'boolean',
+          initialValue: false,
+          description: 'The client can set a minimum number of participants for a course or event.',
+        },
+      ],
+
+      placement: {
+        surfaces: [],
+        note: 'Lets people book and pay for events and courses, and hold passes. Bookings are managed in the dashboard, under Bookings (coming soon). The website shows booking sections only once they are built. Online payment (Stripe) and reminder emails are not available yet.',
+      },
+    },
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [],
+      // Consumers: events and courses target sessions by id (ADR-038 D9, ADR-044).
+      integratesWith: ['events', 'courses', 'people'],
+    },
+
+    dataStore: {
+      // Bookings, attendees, passes, payments, outbox: Supabase only (migration 066).
+      primary: 'operational',
+    },
+
+    changelog: 'V1.0.0 — ADR-044 foundation. reservations.* permissions and Studio capabilities. No sections, schema types or navigation yet.',
+  },
+
 ]
 
 // ── Build-time validation ─────────────────────────────────────────────────────

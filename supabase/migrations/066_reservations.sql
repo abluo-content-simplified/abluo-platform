@@ -837,7 +837,7 @@ begin
     v_vf := (v_pass ->> 'valid_from')::date;
     v_vt := case when v_opt.pass_validity = 'fixed_end' then v_opt.pass_valid_to else (v_pass ->> 'valid_to')::date end;
     if v_vf is null or v_vt is null or v_vt < v_vf
-       or (v_opt.pass_validity = 'duration' and v_vt >= (v_vf + make_interval(months => v_opt.pass_duration_months))::date) then
+       or (v_opt.pass_validity = 'duration' and v_vt > (v_vf + make_interval(months => v_opt.pass_duration_months))::date) then
       raise exception 'reservations: pass_dates_invalid' using errcode = 'AB422';
     end if;
     insert into public.booking_passes (project_id, booking_id, attendee_id, option_id, target_id, scope, scope_owner_ids,

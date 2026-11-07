@@ -36,7 +36,8 @@ describe('the approved table', () => {
     ])
   })
   it('every registered module is placed on purpose (none falls into "Other")', () => {
-    expect(MODULE_REGISTRY.filter((m) => moduleGroupOf(m.id) === 'other').map((m) => m.id)).toEqual([])
+    // Reservations (ADR-044) has no surface yet: it stays in "Other" (never offered to tenants) until its Bookings screens ship.
+    expect(MODULE_REGISTRY.filter((m) => moduleGroupOf(m.id) === 'other').map((m) => m.id)).toEqual(['reservations'])
     const placed = MODULE_GROUPS.flatMap((g) => g.modules)
     expect(new Set(placed).size).toBe(placed.length)
     for (const id of placed) expect(MODULE_REGISTRY.some((m) => m.id === id), `${id} is not a registered module`).toBe(true)
@@ -51,7 +52,7 @@ describe('the approved table', () => {
 describe('deterministic regardless of registry or install order', () => {
   it('the Studio list order is the same for any registry order', () => {
     const expected = groupModules(MODULE_REGISTRY, []).flatMap((g) => g.modules.map((m) => m.module.id))
-    expect(expected).toEqual(['blog', 'news', 'events', 'courses', 'faq', 'live', 'gallery', 'catalogue', 'documents', 'people', 'forms', 'whatsapp', 'members', 'translate', 'brand-hub'])
+    expect(expected).toEqual(['blog', 'news', 'events', 'courses', 'faq', 'live', 'gallery', 'catalogue', 'documents', 'people', 'forms', 'whatsapp', 'members', 'translate', 'brand-hub', 'reservations'])
     for (const seed of [1, 7, 42, 1234]) {
       expect(groupModules(shuffled(MODULE_REGISTRY, seed), shuffled(MODULE_REGISTRY, seed + 1).map((m) => m.id)).flatMap((g) => g.modules.map((m) => m.module.id))).toEqual(expected)
     }

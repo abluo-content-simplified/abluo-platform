@@ -415,8 +415,11 @@ describe('066 — review fixes (2026-11-07)', () => {
     const r = await book(P, payload(pt, { passes: [{ option_id: o, scope: 'courses', scope_owner_ids: [uid()], valid_from: '2026-12-01', valid_to: '2026-12-31', entries_total: 99 }] }))
     expect((await q(`select scope, scope_owner_ids, entries_total from public.booking_passes where booking_id = $1`, [r.booking_id]))[0])
       .toEqual({ scope: 'all_courses', scope_owner_ids: null, entries_total: 3 })
-    const tooLong = await errOf(() => book(P, payload(pt, { passes: [{ option_id: o, valid_from: '2026-12-01', valid_to: '2027-01-01' }] })))
+    const tooLong = await errOf(() => book(P, payload(pt, { passes: [{ option_id: o, valid_from: '2026-12-01', valid_to: '2027-01-02' }] })))
     expect(tooLong?.message).toMatch('pass_dates_invalid')
+    // Month-end start: 31 Jan + 1 month ends on 28 Feb (domain passValidity), accepted.
+    const me = await book(P, payload(pt, { passes: [{ option_id: o, valid_from: '2027-01-31', valid_to: '2027-02-28' }] }))
+    expect(me.booking_id).toBeTruthy()
   })
 })
 

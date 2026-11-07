@@ -61,6 +61,7 @@
   "clientDashboard": {
     "nav": {
       "blog": "Posts",
+      "reservations": "Bookings",
       "events": "Events",
       "courses": "Courses",
       "live": "Live",
@@ -2038,7 +2039,9 @@
         "membersAccessRead": "Sees Access settings",
         "membersAccessManage": "Manages Access: groups and passwords",
         "documentsDocumentRead": "Sees documents",
-        "documentsDocumentManage": "Manages documents"
+        "documentsDocumentManage": "Manages documents",
+        "reservationsBookingRead": "Sees bookings",
+        "reservationsPaymentUpdate": "Records payments"
       },
       "includedByRole": "Contact requests are included in this role.",
       "send": "Send invitation",
@@ -6649,7 +6652,9 @@
       "membersAccessRead": "Access settings",
       "membersAccessManage": "managing Access (groups and passwords)",
       "documentsDocumentRead": "documents",
-      "documentsDocumentManage": "managing documents"
+      "documentsDocumentManage": "managing documents",
+      "reservationsBookingRead": "bookings",
+      "reservationsPaymentUpdate": "recording payments"
     },
     "accept": {
       "title": "Invitation",

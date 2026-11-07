@@ -80,21 +80,30 @@ describe('buildBookPayload', () => {
     expect(code(buildBookPayload(base({ allowOverCapacity: true }), NOW))).toBe('over_capacity_dashboard_only')
     expect(code(buildBookPayload(base({ allowOverCapacity: true, source: 'dashboard' }), NOW))).toBe('ok')
   })
-  it('maps passes (scopes) and works with passes only', () => {
+  it('sends only option, window and token hash for passes (the database copies scope / entries)', () => {
     const r = buildBookPayload(base({
       sessions: [],
       passes: [
-        { attendeeKey: 'a0', optionId: O1, scope: { kind: 'courses', ownerPublicIds: [O2] }, validFrom: '2026-11-01', validTo: '2027-06-30', entriesTotal: 10, tokenHash: 'a'.repeat(64) },
-        { attendeeKey: 'a0', optionId: O1, scope: { kind: 'all_courses' }, validFrom: '2026-11-01', validTo: '2027-06-30' },
-        { attendeeKey: 'a0', optionId: O1, scope: { kind: 'target' }, validFrom: '2026-11-01', validTo: '2027-06-30' },
+        { attendeeKey: 'a0', optionId: O1, validFrom: '2026-11-01', validTo: '2027-06-30', tokenHash: 'a'.repeat(64) },
+        { attendeeKey: 'a0', optionId: O1, validFrom: '2026-11-01', validTo: '2027-06-30' },
       ],
     }), NOW)
     if (!r.ok) throw new Error('expected ok')
     const passes = r.value.passes as Array<Record<string, unknown>>
-    expect(passes.map((p) => p.scope)).toEqual(['courses', 'all_courses', 'target'])
-    expect(passes[0]).toMatchObject({ scope_owner_ids: [O2], entries_total: 10, management_token_hash: 'a'.repeat(64) })
-    expect(passes[1].scope_owner_ids).toBeNull()
-    expect(code(buildBookPayload(base({ sessions: [], passes: [{ attendeeKey: 'a0', optionId: O1, scope: { kind: 'courses', ownerPublicIds: [] }, validFrom: '2026-11-01', validTo: '2027-01-01' }] }), NOW))).toBe('invalid_pass_scope')
-    expect(code(buildBookPayload(base({ sessions: [], passes: [{ attendeeKey: 'a0', optionId: O1, scope: { kind: 'all_courses' }, validFrom: '2027-02-01', validTo: '2027-01-01' }] }), NOW))).toBe('invalid_pass_window')
+    expect(passes[0]).toEqual({ attendee_key: 'a0', option_id: O1, valid_from: '2026-11-01', valid_to: '2027-06-30', management_token_hash: 'a'.repeat(64) })
+    expect(passes[1].management_token_hash).toBeNull()
+    expect(Object.keys(passes[0])).not.toContain('scope')
+    expect(Object.keys(passes[0])).not.toContain('entries_total')
+    expect(code(buildBookPayload(base({ sessions: [], passes: [{ attendeeKey: 'a0', optionId: O1, validFrom: '2027-02-01', validTo: '2027-01-01' }] }), NOW))).toBe('invalid_pass_window')
+    expect(code(buildBookPayload(base({ sessions: [], passes: [{ attendeeKey: 'zz', optionId: O1, validFrom: '2027-01-01', validTo: '2027-02-01' }] }), NOW))).toBe('attendee_key_invalid')
+  })
+  it("refuses a 'pending' status and never sends contact_id", () => {
+    expect(code(buildBookPayload(base({ status: 'pending' as never }), NOW))).toBe('invalid_status')
+    const r = buildBookPayload(base(), NOW)
+    expect(r.ok && 'contact_id' in r.value).toBe(false)
+  })
+  it('enforces amount = quantity x unit for every item line', () => {
+    expect(code(buildBookPayload(base({ lines: [{ kind: 'item', label: {}, quantity: 3, unitCents: 1000, amountCents: 3000 }], totalCents: 3000 }), NOW))).toBe('ok')
+    expect(code(buildBookPayload(base({ lines: [{ kind: 'item', label: {}, unitCents: 1000, amountCents: 3000 }], totalCents: 3000 }), NOW))).toBe('line_mismatch')
   })
 })

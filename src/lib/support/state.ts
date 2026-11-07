@@ -165,6 +165,11 @@ export const SUPPORT_NEVER_WRITES: readonly string[] = [
   'catalogue.export.use',
   // Timetable build spec §3: online meeting rooms (links, meeting numbers, passcodes) are credentials; support may never change them.
   'courses.meeting.manage',
+  // ADR-044 D12: support never records payments, changes refunds, exports bookings or edits the booking rules.
+  'reservations.payment.update',
+  'reservations.refund.manage',
+  'reservations.export.use',
+  'reservations.settings.manage',
 ]
 
 /** A permission that changes data. Only `*.read` permissions are reads (ADR-028 §2 vocabulary). */
@@ -177,6 +182,18 @@ export function isContactRequestPermission(id: string): boolean {
   return id.startsWith('forms.submission.')
 }
 
+/**
+ * Bookings hold personal data (ADR-044 D14/D16.16). Like contact requests they
+ * are hidden in support mode, but the "reveal" is NOT the admin's button: the
+ * TENANT must grant access (a dashboard button, logged and revocable).
+ * TODO(ADR-044 D16.16): that tenant grant does not exist yet. Until it does,
+ * `reservations.booking.*` is ALWAYS hidden from support (fail closed) — add the
+ * grant flag to `supportPermissions` and drop the unconditional filter then.
+ */
+export function isBookingPermission(id: string): boolean {
+  return id.startsWith('reservations.booking.')
+}
+
 export function supportPermissions(params: {
   rolePermissions: readonly string[]
   purpose: SupportPurpose
@@ -185,6 +202,7 @@ export function supportPermissions(params: {
 }): string[] {
   let perms = [...params.rolePermissions]
   if (!params.contactRequestsShown) perms = perms.filter((id) => !isContactRequestPermission(id))
+  perms = perms.filter((id) => !isBookingPermission(id)) // TODO(ADR-044 D16.16): tenant-granted access
   if (params.purpose === 'render') return perms
   return perms.filter((id) => !isWritePermission(id) || (params.writesAllowed && !SUPPORT_NEVER_WRITES.includes(id)))
 }

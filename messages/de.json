@@ -61,6 +61,7 @@
   "clientDashboard": {
     "nav": {
       "blog": "Beiträge",
+      "reservations": "Buchungen",
       "events": "Veranstaltungen",
       "courses": "Kurse",
       "live": "Live",
@@ -2038,7 +2039,9 @@
         "membersAccessRead": "Sieht die Zugangseinstellungen",
         "membersAccessManage": "Verwaltet den Zugang: Gruppen und Passwörter",
         "documentsDocumentRead": "Sieht die Dokumente",
-        "documentsDocumentManage": "Verwaltet die Dokumente"
+        "documentsDocumentManage": "Verwaltet die Dokumente",
+        "reservationsBookingRead": "Sieht die Buchungen",
+        "reservationsPaymentUpdate": "Erfasst Zahlungen"
       },
       "includedByRole": "Kontaktanfragen sind in dieser Rolle enthalten.",
       "send": "Einladung senden",
@@ -6649,7 +6652,9 @@
       "membersAccessRead": "Zugangseinstellungen",
       "membersAccessManage": "Verwaltung des Zugangs (Gruppen und Passwörter)",
       "documentsDocumentRead": "Dokumente",
-      "documentsDocumentManage": "Verwaltung der Dokumente"
+      "documentsDocumentManage": "Verwaltung der Dokumente",
+      "reservationsBookingRead": "Buchungen",
+      "reservationsPaymentUpdate": "Erfassung von Zahlungen"
     },
     "accept": {
       "title": "Einladung",

@@ -7,11 +7,12 @@
 // same `refused` codes the database would raise, so callers handle one shape.
 import { assertCents } from '../money'
 import { isValidReferenceFormat } from '../reference'
-import { ReservationError as DomainError, type BookingSource, type PassScope } from '../types'
+import { ReservationError as DomainError, type BookingSource } from '../types'
 import { fail, ok, type Result } from './errors'
 import type { Actor, LocalizedText } from './types'
 
-export type BookableStatus = 'pending' | 'held' | 'awaiting_payment' | 'confirmed'
+/** reservations_book accepts exactly these three (there is no 'pending' booking). */
+export type BookableStatus = 'held' | 'awaiting_payment' | 'confirmed'
 
 export type BookingAttendeeInput = {
   /** Local key, referenced by sessions / passes / lines. Unique in the request. */
@@ -28,15 +29,19 @@ export type BookingAttendeeInput = {
   formSubmissionId?: string | null
 }
 
+/**
+ * A pass to create. The DATABASE copies scope, scope owners and entries from the
+ * option (migration 066), and ends a fixed_end pass on the option's date, so none
+ * of those are sent. Only the window start, the requested end (duration passes
+ * must end before valid_from + months) and the token hash are ours.
+ */
 export type BookingPassInput = {
   attendeeKey: string
   optionId: string
-  /** The domain scopes plus 'target' (the pass covers the target it was sold on). */
-  scope: PassScope | { kind: 'target' }
   /** 'YYYY-MM-DD', inclusive, project time zone. */
   validFrom: string
   validTo: string
-  entriesTotal?: number | null
+  /** sha256 hex of the pass's own My-pass token. */
   tokenHash?: string | null
 }
 
@@ -82,7 +87,6 @@ export type BookingRequest = {
   /** Dashboard only. */
   allowOverCapacity?: boolean
   actor?: Actor
-  contactId?: string | null
   formSubmissionId?: string | null
   outbox?: OutboxInput[]
 }
@@ -111,7 +115,7 @@ export function buildBookPayload(req: BookingRequest, now: Date = new Date()): R
   if (!isValidReferenceFormat(req.reference)) return refuse('invalid_reference')
   if (!LOCALE.test(req.locale)) return refuse('invalid_locale')
   if (req.source !== 'website' && req.source !== 'dashboard') return refuse('invalid_source')
-  if (!['pending', 'held', 'awaiting_payment', 'confirmed'].includes(req.status)) return refuse('invalid_status')
+  if (!['held', 'awaiting_payment', 'confirmed'].includes(req.status)) return refuse('invalid_status')
   if (req.allowOverCapacity && req.source !== 'dashboard') return refuse('over_capacity_dashboard_only')
   if (req.managementTokenHash && !HASH.test(req.managementTokenHash)) return refuse('invalid_token_hash')
 
@@ -139,8 +143,6 @@ export function buildBookPayload(req: BookingRequest, now: Date = new Date()): R
   for (const p of passes) {
     if (!keys.has(p.attendeeKey)) return refuse('attendee_key_invalid')
     if (p.validTo < p.validFrom) return refuse('invalid_pass_window')
-    if (p.scope.kind === 'courses' && !p.scope.ownerPublicIds.length) return refuse('invalid_pass_scope')
-    if (p.entriesTotal != null && (!Number.isInteger(p.entriesTotal) || p.entriesTotal < 1)) return refuse('invalid_pass_entries')
     if (p.tokenHash && !HASH.test(p.tokenHash)) return refuse('invalid_token_hash')
   }
 
@@ -189,7 +191,6 @@ export function buildBookPayload(req: BookingRequest, now: Date = new Date()): R
     },
     allow_over_capacity: req.allowOverCapacity ?? false,
     actor: { kind: req.actor?.kind ?? 'participant', id: req.actor?.id ?? null },
-    contact_id: req.contactId ?? null,
     form_submission_id: req.formSubmissionId ?? null,
     attendees: req.attendees.map((a) => ({
       key: a.key,
@@ -207,11 +208,8 @@ export function buildBookPayload(req: BookingRequest, now: Date = new Date()): R
     passes: passes.map((p) => ({
       attendee_key: p.attendeeKey,
       option_id: p.optionId,
-      scope: p.scope.kind === 'courses' ? 'courses' : p.scope.kind === 'all_courses' ? 'all_courses' : 'target',
-      scope_owner_ids: p.scope.kind === 'courses' ? p.scope.ownerPublicIds : null,
       valid_from: p.validFrom,
       valid_to: p.validTo,
-      entries_total: p.entriesTotal ?? null,
       management_token_hash: p.tokenHash ?? null,
     })),
     lines: req.lines.map((l) => ({
