@@ -1,5 +1,5 @@
 -- ============================================================
--- 065 — Per-date location change for course sessions (ADR-045)   [DRAFT — NOT APPLIED]
+-- 065 — Per-date location change for course sessions (ADR-045)   [APPLIED 2026-11-07, Sandbox + production]
 --
 -- event_occurrences.place_override has existed since 043 and is already read
 -- everywhere, but schedule_occurrence_update (064) cannot set it. This recreates
