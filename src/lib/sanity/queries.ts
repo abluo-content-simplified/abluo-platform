@@ -779,6 +779,51 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         price,
         "description": ${loc('description')},
       },
+      // pricingCardsSection + comparisonTableSection (src/lib/sanity/schema-pricing.ts).
+      // Header keys, currency, priceDecimals and footnote are the shared keys
+      // above. Prices are numbers; yearly figures are computed by the renderer.
+      yearlyPaidMonths,
+      titleIsPageHeading,
+      cardLayout,
+      showBillingSwitch,
+      yearlyDisplay,
+      "periodNoteMonthly": ${loc('periodNoteMonthly')},
+      "periodNoteYearly": ${loc('periodNoteYearly')},
+      pricingCards[] {
+        _type, _key,
+        "name": ${loc('name')},
+        highlighted,
+        "badge": ${loc('badge')},
+        "tagline": ${loc('tagline')},
+        "pricePrefix": ${loc('pricePrefix')},
+        priceMonthly,
+        priceYearly,
+        "priceNote": ${loc('priceNote')},
+        "details": details[] { _key, "label": ${loc('label')}, "value": ${loc('value')} },
+        "features": features[]{ "v": ${loc('@')} }.v,
+        "audience": ${loc('audience')},
+        "cta": cta { ${CTA_FIELDS} },
+      },
+      "includedTitle": ${loc('includedTitle')},
+      "included": included[]{ "v": ${loc('@')} }.v,
+      "firstColumnLabel": ${loc('firstColumnLabel')},
+      compareColumns[] {
+        _key,
+        "label": ${loc('label')},
+        priceMonthly,
+        priceYearly,
+        highlighted,
+      },
+      compareGroups[] {
+        _key,
+        "title": ${loc('title')},
+        compareRows[] {
+          _key,
+          "label": ${loc('label')},
+          "note": ${loc('note')},
+          cells[] { _key, kind, "text": ${loc('text')} },
+        },
+      },
       // heroSection extension — optional stat row. "ctas[]" is already
       // projected above (heroLiveCapture / heroLens) and is reused verbatim.
       stats[] {

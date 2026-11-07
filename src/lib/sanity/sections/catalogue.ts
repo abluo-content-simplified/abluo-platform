@@ -60,6 +60,8 @@ export const SECTION_CATALOGUE: Record<string, SectionCatalogueEntry> = {
   featureGridSection: { group: 'offer', description: 'A grid of cards — features, benefits or reasons to choose you.' },
   stepsSection: { group: 'offer', description: 'How it works, as numbered steps, with a closing line and button.' },
   categoryListSection: { group: 'offer', description: 'A list of categories with links, and an optional callout bar.' },
+  pricingCardsSection: { group: 'offer', description: 'Plans or packages as cards, with an optional monthly / yearly switch.' },
+  comparisonTableSection: { group: 'offer', description: 'Compare plans side by side: ticks, dashes or short text per feature.' },
   priceListSection: { group: 'offer', description: 'Prices in a clear list, with optional per-month amounts, rate cards and small print.' },
 
   // People & proof

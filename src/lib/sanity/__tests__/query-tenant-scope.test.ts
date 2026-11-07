@@ -277,6 +277,9 @@ describe('every reference-keyed form subquery is tenant-scoped', () => {
       // A card CTA can open a form, so it goes through CTA_FIELDS like every
       // other CTA and inherits the same tenant scoping.
       'formRef',
+      // pricingCard.cta — a pricing card's button (pricingCardsSection), same
+      // CTA_FIELDS fragment, same scoping.
+      'formRef',
     ],
     // homePageQuery carries its own inline copy of those two sections, each
     // with its pair of CTA_FIELDS.
@@ -307,16 +310,17 @@ describe('every reference-keyed form subquery is tenant-scoped', () => {
     ),
   )
 
-  it('finds all twenty reference-keyed form subqueries', () => {
-    // Nine full-definition dereferences (scopedFormDefinition) plus the eleven
+  it('finds all twenty-one reference-keyed form subqueries', () => {
+    // Nine full-definition dereferences (scopedFormDefinition) plus the twelve
     // formId lookups CTA_FIELDS contributes — one in the fragment itself and
     // one per interpolation of it into the queries listed in EXPECTED.
     //
-    // Was nineteen until featureCard gained a per-card `cta`. This count is the
+    // Was nineteen until featureCard gained a per-card `cta`, twenty until
+    // pricingCard did (2026-11-07, pricingCardsSection). This count is the
     // point of the test: adding a CTA anywhere MUST move this number, so that a
     // new form reference cannot be introduced without someone confirming it is
     // tenant-scoped.
-    expect(scoped.length).toBe(20)
+    expect(scoped.length).toBe(21)
   })
 
   it.each(scoped.map(([label]) => label))(

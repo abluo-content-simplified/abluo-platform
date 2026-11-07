@@ -2451,6 +2451,106 @@ export interface PriceListSection {
   footnote?: string
 }
 
+// ─── Pricing sections (platform) ─────────────────────────────────────────────
+// Inline content; prices are numbers formatted per locale with the section
+// currency. Yearly figures are computed (src/lib/pricing/billing.ts).
+// Localized fields arrive resolved by GROQ.
+
+type SectionBackground = 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
+
+export interface PricingCardDetail {
+  _key: string
+  label?: string
+  value?: string
+}
+
+export interface PricingCard {
+  _type?: 'pricingCard'
+  _key: string
+  name?: string
+  highlighted?: boolean | null
+  badge?: string
+  tagline?: string
+  pricePrefix?: string
+  priceMonthly?: number | null
+  priceYearly?: number | null
+  priceNote?: string
+  details?: PricingCardDetail[] | null
+  features?: (string | null)[] | null
+  audience?: string
+  cta?: Cta | null
+}
+
+export interface PricingCardsSection {
+  _type: 'pricingCardsSection'
+  _key: string
+  background?: SectionBackground
+  anchorId?: string
+  eyebrow?: string
+  title?: string
+  /** The title is the page's h1 (a page with no hero). */
+  titleIsPageHeading?: boolean | null
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
+  intro?: string
+  cardLayout?: 'plans' | 'compact' | null
+  currency?: string | null
+  priceDecimals?: 'auto' | 'none' | 'always' | null
+  yearlyPaidMonths?: number | null
+  showBillingSwitch?: boolean | null
+  yearlyDisplay?: 'monthlyEquivalent' | 'yearlyTotal' | null
+  periodNoteMonthly?: string
+  periodNoteYearly?: string
+  pricingCards?: PricingCard[] | null
+  includedTitle?: string
+  included?: (string | null)[] | null
+  footnote?: string
+}
+
+export interface ComparisonColumn {
+  _key: string
+  label?: string
+  priceMonthly?: number | null
+  priceYearly?: number | null
+  highlighted?: boolean | null
+}
+
+export interface ComparisonCell {
+  _key?: string
+  kind?: 'included' | 'notIncluded' | 'text' | null
+  text?: string
+}
+
+export interface ComparisonRow {
+  _key: string
+  label?: string
+  note?: string
+  cells?: ComparisonCell[] | null
+}
+
+export interface ComparisonGroup {
+  _key: string
+  title?: string
+  compareRows?: ComparisonRow[] | null
+}
+
+export interface ComparisonTableSection {
+  _type: 'comparisonTableSection'
+  _key: string
+  background?: SectionBackground
+  anchorId?: string
+  eyebrow?: string
+  title?: string
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
+  intro?: string
+  firstColumnLabel?: string
+  compareColumns?: ComparisonColumn[] | null
+  compareGroups?: ComparisonGroup[] | null
+  currency?: string | null
+  priceDecimals?: 'auto' | 'none' | 'always' | null
+  yearlyPaidMonths?: number | null
+  footnote?: string
+}
+
 export type PageSection =
   | HeroSection
   | HeroLiveCaptureSection
@@ -2481,6 +2581,8 @@ export type PageSection =
   | CtaBannerSection
   | LocationsSection
   | PriceListSection
+  | PricingCardsSection
+  | ComparisonTableSection
   | CatalogueListingSection
   | DownloadSection
   | TimetableSection

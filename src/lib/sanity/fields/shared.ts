@@ -139,6 +139,8 @@ export const PAGE_SECTIONS_OF = [
   defineArrayMember({ type: 'categoryListSection' }),
   defineArrayMember({ type: 'ctaBannerSection' }),
   defineArrayMember({ type: 'priceListSection' }),
+  defineArrayMember({ type: 'pricingCardsSection' }),
+  defineArrayMember({ type: 'comparisonTableSection' }),
   defineArrayMember({ type: 'locationsSection' }),
   // ADR-033 — Catalogue module section (module-gated at render time).
   defineArrayMember({ type: 'catalogueListingSection' }),

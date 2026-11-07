@@ -242,6 +242,42 @@ export const SECTION_PREVIEWS: Record<string, () => ReactNode> = {
       ))}
     </>
   ),
+  pricingCardsSection: () => (
+    <>
+      <Title center />
+      <rect x={48} y={20} width={24} height={5} rx={2.5} fill="none" stroke="currentColor" strokeWidth={0.8} opacity={HEAD} />
+      {[10, 44, 78].map((x, i) => (
+        <g key={x}>
+          <Box x={x} y={30} w={32} h={42} />
+          {i === 1 && <rect x={x} y={30} width={32} height={42} rx={2} fill="none" stroke="currentColor" strokeWidth={1.2} opacity={0.7} />}
+          <rect x={x + 4} y={34} width={12} height={2.5} rx={1} fill="currentColor" opacity={HEAD} />
+          <rect x={x + 4} y={40} width={14} height={5} rx={1} fill="currentColor" opacity={0.75} />
+          <Btn x={x + 4} y={49} w={24} outline={i !== 1} />
+          {[58, 62, 66].map((y) => (
+            <rect key={y} x={x + 4} y={y} width={20} height={2} rx={1} fill="currentColor" opacity={BODY} />
+          ))}
+        </g>
+      ))}
+    </>
+  ),
+  comparisonTableSection: () => (
+    <>
+      <Title />
+      <Box x={10} y={22} w={100} h={50} />
+      <Rule x1={11} x2={109} y={31} />
+      {[60, 76, 92].map((x) => (
+        <rect key={x} x={x - 6} y={25} width={12} height={3} rx={1} fill="currentColor" opacity={HEAD} />
+      ))}
+      {[37, 46, 55, 64].map((y) => (
+        <g key={y}>
+          <rect x={15} y={y - 1} width={26} height={2} rx={1} fill="currentColor" opacity={BODY} />
+          {[60, 76, 92].map((x) => (
+            <rect key={x} x={x - 1.5} y={y - 1.5} width={3} height={3} rx={0.5} fill="currentColor" opacity={0.7} />
+          ))}
+        </g>
+      ))}
+    </>
+  ),
   priceListSection: () => (
     <>
       <Title />
