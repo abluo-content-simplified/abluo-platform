@@ -10,8 +10,10 @@
 -- overwrites it. Everything else is the 064 body unchanged.
 --
 -- Additive in effect: the old 12-arg function is dropped and replaced in one
--- transaction; the only caller is the app (service role). Deploy order: apply
--- this BEFORE the app code that passes p_place/p_clear_place.
+-- transaction; the only caller is the app (service role). The two new
+-- parameters have defaults (no change), so the app's existing 12-argument call
+-- keeps working: this can be applied at any time, before or after the app code
+-- that passes p_place/p_clear_place (which must still not ship before it).
 -- Needs 064. Rollback: supabase/verify/rollback-065.sql.
 -- ============================================================
 
@@ -39,8 +41,8 @@ create function public.schedule_occurrence_update(
   p_ends_at              timestamptz,
   p_note                 jsonb,
   p_clear_note           boolean,
-  p_place                jsonb,
-  p_clear_place          boolean
+  p_place                jsonb   default null,
+  p_clear_place          boolean default false
 )
 returns integer
 language plpgsql
