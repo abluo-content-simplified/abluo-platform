@@ -30,7 +30,7 @@ const GROUPS: SearchPaletteGroup[] = [
     heading: 'Posts',
     items: [
       { id: '1', title: 'Spring offers at the clinic', subtitle: 'What to expect when you book in March', badge: { label: 'Draft', tone: 'outline' }, icon: ICON_DOC, onSelect: noop },
-      { id: '2', title: 'Our new opening hours', subtitle: 'From March we open on Saturdays', badge: { label: 'Archived' }, icon: ICON_DOC, onSelect: noop },
+      { id: '2', title: 'Our new opening hours', subtitle: 'From March we open on Saturdays', snippet: { before: '…from next month we ', match: 'open', after: ' on Saturdays too, 9:00–13:00…' }, badge: { label: 'Archived' }, icon: ICON_DOC, onSelect: noop },
     ],
     seeAll: { label: 'See all in Posts', onSelect: noop },
   },

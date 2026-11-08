@@ -23,16 +23,53 @@ export const SEARCH_MAX_WORDS = 4
 /** Key under which the site's default content locale travels in the same response. */
 export const SITE_KEY = '_site'
 
-/** Splits the query into bound-parameter terms: lowercase words, prefix-matched. */
-export function searchTerms(q: string): string[] {
-  const words = q
+/** Max alternative patterns per search word (typed, accent-folded, stem). */
+export const SEARCH_MAX_ALTERNATIVES = 3
+
+const VOWELS = /[aeiouàáâäèéêëìíîïòóôöùúûü]$/u
+const foldAccents = (w: string) => w.normalize('NFD').replace(/\p{M}/gu, '')
+
+/** The lowercase words of the query (wildcards and quotes stripped, capped). */
+export function searchWords(q: string): string[] {
+  return q
     .toLowerCase()
     .replace(/[*"\\]/g, ' ')
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, SEARCH_MAX_WORDS)
-  return words.map((w) => `${w}*`)
 }
+
+/**
+ * One word → its alternative prefix patterns, OR-ed in the query (GROQ `match`
+ * is case-insensitive but accent-SENSITIVE and stored text cannot be folded,
+ * so the folding happens on the query side):
+ *  1. the word as typed (`perché*`);
+ *  2. the accent-folded form, when the user typed accents (`perche*`);
+ *  3. the folded word without its final vowel (`perch*`), which finds the
+ *     final accents of Italian/French (perché, caffè, città) when typed
+ *     without them. Only for purely alphabetic words of ≥ 3 letters whose stem
+ *     keeps ≥ 3 letters, so `ca*` can never appear.
+ */
+export function wordAlternatives(word: string): string[] {
+  const folded = foldAccents(word)
+  const out = [word]
+  if (folded !== word) out.push(folded)
+  if (/^\p{L}+$/u.test(folded) && folded.length >= 3 && VOWELS.test(folded) && folded.length - 1 >= 3) out.push(folded.slice(0, -1))
+  return [...new Set(out)].slice(0, SEARCH_MAX_ALTERNATIVES).map((w) => `${w}*`)
+}
+
+/** Query → per word, its alternative patterns (`[['perche*', 'perch*'], …]`). */
+export function searchTermGroups(q: string): string[][] {
+  return searchWords(q).map(wordAlternatives)
+}
+
+/** Splits the query into the as-typed prefix pattern per word (the first alternative of each). */
+export function searchTerms(q: string): string[] {
+  return searchWords(q).map((w) => `${w}*`)
+}
+
+/** Bound parameter name of word `i`, alternative `j` (`t0`, `t0b`, `t0c`). */
+export const termParam = (i: number, j: number) => `t${i}${'abcdefgh'[j - 1] ?? ''}`
 
 function scalarExprs(f: SearchField): string[] {
   const wrap = (e: string) => (f.when ? `select(${f.when} => ${e})` : e)
@@ -45,26 +82,50 @@ function scalarExprs(f: SearchField): string[] {
     case 'string':
       return [wrap(f.name)]
     case 'stringArray':
+    case 'termKeys':
+    case 'termKey':
       return []
   }
 }
+
+const isTermField = (f: SearchField) => f.kind === 'termKeys' || f.kind === 'termKey'
 
 /**
  * score() accepts only plain attribute paths (and pt::text of one) on the left
  * of `match`: no `select()`, no `->` dereference, no `[]` traversal — Sanity
  * rejects the whole query with "score() function received unexpected
  * expression" (live failure on dev, 2026-11-08). Those fields still FILTER;
- * they just don't add to the ranking.
+ * they just don't add to the ranking. Term-label sub-queries are filter-only too.
  */
-export const scoreable = (f: SearchField): boolean => !f.when && !f.name.includes('->')
+export const scoreable = (f: SearchField): boolean => !f.when && !f.name.includes('->') && !isTermField(f)
 
-/** `match` expression for the fields of one weight tier against one term param. */
-function tierMatch(fields: SearchField[], term: string, forScore = false): string | null {
+/**
+ * The label sub-query for a term field: the document matches when any of its
+ * term keys is the key of a (live, same-project) `taxonomyTerm` whose label in
+ * ANY language matches one of the word's alternatives. `module`/`kind` come
+ * from the static declaration; the words are bound params.
+ */
+function termLabelMatch(f: SearchField, terms: string[]): string {
+  const t = f.terms
+  if (!t || !/^[a-z][a-z0-9-]*$/.test(t.module) || (t.kind !== 'category' && t.kind !== 'tag')) {
+    throw new Error(`search field "${f.name}": invalid terms declaration`)
+  }
+  const labels = `[${LOCALE_CODES.map((c) => `label.${c}`).join(', ')}]`
+  const keyIn = f.kind === 'termKey' ? `key == ^.${f.name}` : `key in ^.${f.name}`
+  const labelMatch = terms.map((term) => `${labels} match ${term}`).join(' || ')
+  return `count(*[_type == "taxonomyTerm" && projectSlug == $projectSlug && module == "${t.module}" && kind == "${t.kind}" && !(_id in path("drafts.**")) && ${keyIn} && (${labelMatch})]) > 0`
+}
+
+/** `match` expression for the fields of one weight tier against one word's alternative params (OR-ed). */
+function tierMatch(fields: SearchField[], terms: string[], forScore = false): string | null {
   const used = forScore ? fields.filter(scoreable) : fields
   const scalars = used.flatMap(scalarExprs)
   const parts: string[] = []
-  if (scalars.length) parts.push(`[${scalars.join(', ')}] match ${term}`)
-  for (const f of used) if (f.kind === 'stringArray') parts.push(forScore ? `${f.name} match ${term}` : `${f.name}[] match ${term}`)
+  if (scalars.length) for (const term of terms) parts.push(`[${scalars.join(', ')}] match ${term}`)
+  for (const f of used) {
+    if (f.kind === 'stringArray') for (const term of terms) parts.push(forScore ? `${f.name} match ${term}` : `${f.name}[] match ${term}`)
+    else if (isTermField(f)) parts.push(termLabelMatch(f, terms))
+  }
   return parts.length ? `(${parts.join(' || ')})` : null
 }
 
@@ -79,12 +140,18 @@ const tiers = (fields: SearchField[]) =>
 const PUBLISHED_TWIN =
   '"_pub": select(_id in path("drafts.**") => *[projectSlug == $projectSlug && _id == string::split(^._id, "drafts.")[1]][0]{ _id, archivedAt })'
 
-/** The sub-query for one declaration. `nTerms` search words are bound as `$t0…`. */
-export function buildSubQuery(def: SanitySearchDef, nTerms: number): string {
+/**
+ * The sub-query for one declaration. Each search word is bound as `$t0…` with
+ * optional alternatives `$t0b`, `$t0c` (see wordAlternatives). `alts` is the
+ * number of alternatives per word (a plain number = that many words with one each).
+ */
+export function buildSubQuery(def: SanitySearchDef, alts: number | number[]): string {
   const s = def.source
   const ts = tiers(s.fields)
-  const words = Array.from({ length: nTerms }, (_, i) => `$t${i}`)
-  const anyField = (term: string) => `(${ts.map((t) => tierMatch(t.fields, term)).filter(Boolean).join(' || ')})`
+  const counts = typeof alts === 'number' ? Array.from({ length: alts }, () => 1) : alts
+  const words = counts.map((n, i) => Array.from({ length: n }, (_, j) => `$${termParam(i, j)}`))
+  // A word matches when ANY of its alternatives matches in ANY field; all words must match.
+  const anyField = (terms: string[]) => `(${ts.map((t) => tierMatch(t.fields, terms)).filter(Boolean).join(' || ')})`
   const filter = [
     `_type == "${s.docType}"`,
     'projectSlug == $projectSlug',
@@ -94,21 +161,23 @@ export function buildSubQuery(def: SanitySearchDef, nTerms: number): string {
     ...words.map(anyField),
   ].join(' && ')
   const scoreArgs = words
-    .flatMap((term) => ts.map((t) => ({ expr: tierMatch(t.fields, term, true), weight: t.weight })))
+    .flatMap((terms) => ts.map((t) => ({ expr: tierMatch(t.fields, terms, true), weight: t.weight })))
     .filter((a): a is { expr: string; weight: 1 | 2 | 3 } => Boolean(a.expr))
     .map((a) => (a.weight === 1 ? a.expr : `boost(${a.expr}, ${a.weight})`))
   const ranked = scoreArgs.length ? ` | score(${scoreArgs.join(', ')})` : ''
   return `*[${filter}]${ranked} | order(_score desc, _updatedAt desc)[0...${SEARCH_ROW_CAP}]{ _id, archivedAt, _score, ${PUBLISHED_TWIN}, ${s.projection} }`
 }
 
-export type SanitySearchQuery = { query: string; params: Record<string, string>; kinds: SearchKind[] }
+export type SearchParams = Record<string, string | string[]>
+export type SanitySearchQuery = { query: string; params: SearchParams; kinds: SearchKind[] }
 
 /** One GROQ object query for all the given Sanity declarations (+ the site's default locale). */
-export function buildSearchQuery(defs: SanitySearchDef[], projectSlug: string, terms: string[]): SanitySearchQuery {
-  const entries = defs.map((d) => `"${d.kind}": ${buildSubQuery(d, terms.length)}`)
+export function buildSearchQuery(defs: SanitySearchDef[], projectSlug: string, terms: (string | string[])[]): SanitySearchQuery {
+  const groups = terms.map((t) => (Array.isArray(t) ? t : [t]).slice(0, SEARCH_MAX_ALTERNATIVES))
+  const entries = defs.map((d) => `"${d.kind}": ${buildSubQuery(d, groups.map((g) => g.length))}`)
   entries.push(`"${SITE_KEY}": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].defaultLocale`)
   const params: Record<string, string> = { projectSlug }
-  terms.forEach((t, i) => (params[`t${i}`] = t))
+  groups.forEach((g, i) => g.forEach((t, j) => (params[termParam(i, j)] = t)))
   return { query: `{ ${entries.join(', ')} }`, params, kinds: defs.map((d) => d.kind) }
 }
 

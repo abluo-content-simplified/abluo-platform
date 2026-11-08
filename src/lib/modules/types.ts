@@ -446,6 +446,14 @@ export type SearchFieldKind =
   | 'string'
   /** An array of plain strings (category / tag keys). */
   | 'stringArray'
+  /**
+   * An array of taxonomy-term KEYS (needs `terms`): matches when the label of
+   * any referenced `taxonomyTerm` — in any language — matches the word. Filter
+   * only (a sub-query, so it does not add to the ranking).
+   */
+  | 'termKeys'
+  /** Like `termKeys`, for a field holding ONE term key (e.g. a primary category). */
+  | 'termKey'
 
 export type SearchField = {
   /** GROQ path of the field on the document (e.g. `title`, `place.venue->name`). Static, never user text. */
@@ -453,6 +461,8 @@ export type SearchField = {
   kind: SearchFieldKind
   /** Ranking weight: title ×3, short text ×2, body ×1. */
   weight: 1 | 2 | 3
+  /** For `termKeys` / `termKey`: which term vocabulary the keys belong to (module id + kind). Static, never user text. */
+  terms?: { module: string; kind: 'category' | 'tag' }
   /** Optional static GROQ clause that must hold for the field to count (e.g. a dereferenced doc is of this project). */
   when?: string
 }

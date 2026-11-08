@@ -72,12 +72,15 @@ List screens accept `?q=` and pre-fill `ListToolbar`'s search. No new search pag
 - Every new content module carries one more manifest block; the guard test makes it impossible to forget.
 - Sanity load grows with typing; the D5 limits keep it to roughly one query per pause.
 
+## v1.1 (2026-11-08)
+- **Accents:** GROQ `match` is case-insensitive but accent-sensitive. Each word is OR-ed with its accent-folded form and, for words of 4+ letters ending in a vowel, its stem (`perche` → `perch*` finds "perché"). Mid-word accents are not covered.
+- **Snippets:** when the title doesn't show the match, a second request for the shown ids only returns the matching text; the row shows "…around the **match**…" instead of the subtitle.
+
 ## Known gaps (accepted for v1)
-- **No snippet highlighting** — Sanity returns the document, not the matching excerpt. Cutting a "…matching text…" snippet server-side is the first follow-up.
 - **No typo tolerance or meaning-based search** ("teeth cleaning" won't find "dental hygiene"). Revisit with Sanity embeddings if real use shows misses.
 
 ## As built (v1) — where it differs from the table
-- **Category / tag matching is on the stored keys**, not their display labels (labels live in taxonomy terms). Usually the same word; not always.
+- **Categories and tags** match on their names (taxonomy term labels, any language) as well as the stored keys (v1.1, 2026-11-08).
 - **Course teacher names are not searched** — they live in the Supabase schedule, not the course document. v1.1.
 - **Media**: also matches animations (no thumbnail for them).
 - A draft carries its published twin's state (`_pub`), so a draft whose text matched is not mislabelled "draft only".

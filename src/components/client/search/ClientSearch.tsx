@@ -177,6 +177,7 @@ export function useClientSearch({ projectSlug, destinations, createMenu, iconFor
             id: h.id,
             title: h.title,
             subtitle: h.subtitle,
+            snippet: h.snippet,
             thumbUrl: h.thumbUrl,
             icon: h.thumbUrl ? undefined : iconFor(h.kind),
             badge: h.archived ? { label: t('archived'), tone: 'muted' as const } : h.draft ? { label: t('draft'), tone: 'outline' as const } : undefined,

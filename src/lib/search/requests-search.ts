@@ -6,6 +6,7 @@
  * across the sender's name, email and every string value of the submission.
  */
 import type { DashboardSubmission } from '@/lib/api/client-dashboard'
+import { firstSnippet, needlesOf, textHasNeedle, type Snippet } from './snippet'
 
 export const REQUESTS_SEARCH_SCAN = 500
 
@@ -30,4 +31,18 @@ export function filterRequests(rows: readonly DashboardSubmission[], q: string, 
     const hay = strings.join('\n').toLowerCase()
     return words.every((w) => hay.includes(w))
   })
+}
+
+/**
+ * Where a request matched, when the sender's name/email do not show it: a
+ * window of the first submission value containing a search word (substring
+ * match, like the filter above).
+ */
+export function requestSnippet(r: DashboardSubmission, q: string): Snippet | undefined {
+  const needles = needlesOf(requestWords(q))
+  if (!needles.length) return undefined
+  if (textHasNeedle(r.name ?? '', needles, true) || textHasNeedle(r.email ?? '', needles, true)) return undefined
+  const strings: string[] = []
+  collectStrings(r.data, strings)
+  return firstSnippet(strings, needles, true)
 }

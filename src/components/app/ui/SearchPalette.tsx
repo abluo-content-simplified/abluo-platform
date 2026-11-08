@@ -38,6 +38,11 @@ export type SearchPaletteItem = {
   id: string;
   title: string;
   subtitle?: string;
+  /**
+   * Why it matched (text around the match, the match emphasised). Shown
+   * instead of `subtitle`, up to two lines.
+   */
+  snippet?: { before: string; match: string; after: string };
   /** A small square thumbnail. */
   thumbUrl?: string;
   /** An `AppIcon` path, shown when there is no thumbnail. */
@@ -294,7 +299,15 @@ function PaletteBody({
                         </Pill>
                       ) : null}
                     </span>
-                    {it.subtitle ? (
+                    {it.snippet ? (
+                      <span className="line-clamp-2 text-sm leading-5 text-muted-foreground">
+                        {it.snippet.before}
+                        <mark className="bg-transparent font-medium text-foreground">
+                          {it.snippet.match}
+                        </mark>
+                        {it.snippet.after}
+                      </span>
+                    ) : it.subtitle ? (
                       <span className="block truncate text-sm leading-5 text-muted-foreground">
                         {it.subtitle}
                       </span>

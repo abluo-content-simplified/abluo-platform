@@ -5,8 +5,9 @@
  */
 import type { DashboardSubmission } from '@/lib/api/client-dashboard'
 import { resolveLocalized } from '@/lib/api/client-dashboard'
-import { filterRequests } from './requests-search'
-import { buildSearchQuery, isSanitySearchDef, mergeRows, searchTerms, SITE_KEY, type RawSearchRow, type SanitySearchDef } from './sanity-search'
+import { filterRequests, requestSnippet } from './requests-search'
+import { buildSearchQuery, isSanitySearchDef, mergeRows, searchTermGroups, SITE_KEY, type MergedRow, type RawSearchRow, type SanitySearchDef, type SearchParams } from './sanity-search'
+import { buildSnippetQuery, firstSnippet, needlesOf, rowTexts, textHasNeedle } from './snippet'
 import { allSearchSources, type SearchSource } from './sources'
 import {
   SEARCH_GROUP_LIMIT,
@@ -33,7 +34,7 @@ export type SearchAccess = {
 
 export type SearchDeps = {
   /** Runs the one GROQ query (raw perspective, token client) and returns its object result. */
-  fetchSanity: (query: string, params: Record<string, string>) => Promise<Record<string, unknown> | null>
+  fetchSanity: (query: string, params: SearchParams) => Promise<Record<string, unknown> | null>
   /** The Requests screen's loader, already scoped to the project (limit 500). */
   loadRequests: () => Promise<DashboardSubmission[]>
   sources?: SearchSource[]
@@ -81,10 +82,13 @@ export async function runSearch(input: SearchInput, deps: SearchDeps): Promise<S
   const sanityDefs = sources.map((s) => s.def).filter(isSanitySearchDef) as SanitySearchDef[]
   const requestsDef = sources.find((s) => s.def.source.type === 'contact-requests')?.def
 
+  const termGroups = searchTermGroups(q)
+  const needles = needlesOf(termGroups.flat())
+
   const [sanity, submissions] = await Promise.all([
     sanityDefs.length
       ? (() => {
-          const built = buildSearchQuery(sanityDefs, slug, searchTerms(q))
+          const built = buildSearchQuery(sanityDefs, slug, termGroups)
           return deps.fetchSanity(built.query, built.params)
         })()
       : Promise.resolve(null),
@@ -97,23 +101,30 @@ export async function runSearch(input: SearchInput, deps: SearchDeps): Promise<S
   const groups = new Map<SearchKind, SearchGroup>()
   const seeAll = (def: SearchSource['def']) => `${def.listHref(slug)}?q=${encodeURIComponent(q)}`
 
+  // Hits whose title does not show the match: they get a snippet from ONE second request.
+  const needSnippet: { def: SanitySearchDef; hit: SearchHit; m: MergedRow }[] = []
+
   for (const def of sanityDefs) {
     const raw = sanity?.[def.kind]
     const merged = mergeRows(Array.isArray(raw) ? (raw as RawSearchRow[]) : [], includeArchived)
     if (!merged.length) continue
-    const hits: SearchHit[] = merged.slice(0, SEARCH_GROUP_LIMIT).map((m) => {
+    const shown = merged.slice(0, SEARCH_GROUP_LIMIT)
+    const hits: SearchHit[] = shown.map((m) => {
       const subtitle = def.source.subtitleOf ? clip(def.source.subtitleOf(m.row, r)) : ''
       const th = thumb(m.row.thumb)
-      return {
+      const title = def.source.titleOf(m.row, r) || m.id
+      const hit: SearchHit = {
         id: m.id,
         kind: def.kind,
-        title: def.source.titleOf(m.row, r) || m.id,
+        title,
         ...(subtitle && { subtitle }),
         ...(th && { thumbUrl: th }),
         href: def.href(slug, m.id),
         ...(m.draft && { draft: true }),
         ...(m.archived && { archived: true }),
       }
+      if (!textHasNeedle(title, needles)) needSnippet.push({ def, hit, m })
+      return hit
     })
     groups.set(def.kind, { kind: def.kind, hits, more: merged.length > SEARCH_GROUP_LIMIT, seeAllHref: seeAll(def) })
   }
@@ -121,15 +132,36 @@ export async function runSearch(input: SearchInput, deps: SearchDeps): Promise<S
   if (requestsDef) {
     const matched = filterRequests(submissions, q, includeArchived)
     if (matched.length) {
-      const hits: SearchHit[] = matched.slice(0, SEARCH_GROUP_LIMIT).map((s) => ({
+      const hits: SearchHit[] = matched.slice(0, SEARCH_GROUP_LIMIT).map((s) => {
+        const snippet = requestSnippet(s, q)
+        return {
         id: s.id,
         kind: requestsDef.kind,
         title: s.name || s.email || s.formId || s.id,
         ...(clip(s.name ? (s.email ?? '') : s.createdAt.slice(0, 10)) && { subtitle: clip(s.name ? (s.email ?? '') : s.createdAt.slice(0, 10)) }),
         href: requestsDef.href(slug, s.id),
         ...(s.status === 'archived' && { archived: true }),
-      }))
+        ...(snippet && { snippet }),
+        }
+      })
       groups.set(requestsDef.kind, { kind: requestsDef.kind, hits, more: matched.length > SEARCH_GROUP_LIMIT, seeAllHref: seeAll(requestsDef) })
+    }
+  }
+
+  if (needSnippet.length) {
+    const byDef = new Map<SanitySearchDef, string[]>()
+    for (const n of needSnippet) byDef.set(n.def, [...(byDef.get(n.def) ?? []), n.m.row._id])
+    const built = buildSnippetQuery([...byDef].map(([def, ids]) => ({ def, ids })), slug)
+    if (built) {
+      // Snippets are a nicety: a failure here must never fail the search.
+      const fetched = await deps.fetchSanity(built.query, built.params).catch(() => null)
+      for (const { def, hit, m } of needSnippet) {
+        const rows = fetched?.[def.kind]
+        const row = Array.isArray(rows) ? (rows as RawSearchRow[]).find((x) => x._id === m.row._id) : undefined
+        if (!row) continue
+        const snippet = firstSnippet(rowTexts(def, row, input.locale, siteDefault), needles)
+        if (snippet) hit.snippet = snippet
+      }
     }
   }
 

@@ -18,6 +18,12 @@ export type SearchHit = {
   title: string
   /** Optional second line (e.g. excerpt, role, sender email, date) — plain text, already resolved. */
   subtitle?: string
+  /**
+   * Why it matched, when the match is NOT in the title: a short window of the
+   * matching text (~120 chars), split so the client can emphasise the match.
+   * `before`/`after` carry their own "…" when cut. Plain text only.
+   */
+  snippet?: { before: string; match: string; after: string }
   /** Small square thumbnail URL, when the item has an image. */
   thumbUrl?: string
   /** Locale-agnostic dashboard href: `/{projectSlug}/…` (the client prefixes the locale like every other link). */
