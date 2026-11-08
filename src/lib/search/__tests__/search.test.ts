@@ -184,3 +184,13 @@ describe('draft rows whose published twin did not match', () => {
     expect(buildSubQuery(def, 1)).toContain('"_pub": select(_id in path("drafts.**") => *[projectSlug == $projectSlug')
   })
 })
+
+describe('score() only sees expressions Sanity accepts there', () => {
+  it('no select(), dereference or [] traversal inside score()', () => {
+    for (const def of allSearchSources().map((s) => s.def).filter(isSanitySearchDef)) {
+      const q = buildSubQuery(def, 2)
+      const score = q.slice(q.indexOf('| score('), q.indexOf('| order('))
+      expect(score, def.kind).not.toMatch(/select\(|->|\[\] match/)
+    }
+  })
+})

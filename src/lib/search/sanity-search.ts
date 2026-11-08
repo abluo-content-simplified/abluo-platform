@@ -49,12 +49,22 @@ function scalarExprs(f: SearchField): string[] {
   }
 }
 
+/**
+ * score() accepts only plain attribute paths (and pt::text of one) on the left
+ * of `match`: no `select()`, no `->` dereference, no `[]` traversal — Sanity
+ * rejects the whole query with "score() function received unexpected
+ * expression" (live failure on dev, 2026-11-08). Those fields still FILTER;
+ * they just don't add to the ranking.
+ */
+export const scoreable = (f: SearchField): boolean => !f.when && !f.name.includes('->')
+
 /** `match` expression for the fields of one weight tier against one term param. */
-function tierMatch(fields: SearchField[], term: string): string | null {
-  const scalars = fields.flatMap(scalarExprs)
+function tierMatch(fields: SearchField[], term: string, forScore = false): string | null {
+  const used = forScore ? fields.filter(scoreable) : fields
+  const scalars = used.flatMap(scalarExprs)
   const parts: string[] = []
   if (scalars.length) parts.push(`[${scalars.join(', ')}] match ${term}`)
-  for (const f of fields) if (f.kind === 'stringArray') parts.push(`${f.name}[] match ${term}`)
+  for (const f of used) if (f.kind === 'stringArray') parts.push(forScore ? `${f.name} match ${term}` : `${f.name}[] match ${term}`)
   return parts.length ? `(${parts.join(' || ')})` : null
 }
 
@@ -84,10 +94,11 @@ export function buildSubQuery(def: SanitySearchDef, nTerms: number): string {
     ...words.map(anyField),
   ].join(' && ')
   const scoreArgs = words
-    .flatMap((term) => ts.map((t) => ({ expr: tierMatch(t.fields, term), weight: t.weight })))
+    .flatMap((term) => ts.map((t) => ({ expr: tierMatch(t.fields, term, true), weight: t.weight })))
     .filter((a): a is { expr: string; weight: 1 | 2 | 3 } => Boolean(a.expr))
     .map((a) => (a.weight === 1 ? a.expr : `boost(${a.expr}, ${a.weight})`))
-  return `*[${filter}] | score(${scoreArgs.join(', ')}) | order(_score desc, _updatedAt desc)[0...${SEARCH_ROW_CAP}]{ _id, archivedAt, _score, ${PUBLISHED_TWIN}, ${s.projection} }`
+  const ranked = scoreArgs.length ? ` | score(${scoreArgs.join(', ')})` : ''
+  return `*[${filter}]${ranked} | order(_score desc, _updatedAt desc)[0...${SEARCH_ROW_CAP}]{ _id, archivedAt, _score, ${PUBLISHED_TWIN}, ${s.projection} }`
 }
 
 export type SanitySearchQuery = { query: string; params: Record<string, string>; kinds: SearchKind[] }
