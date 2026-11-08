@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { removeEditionAction, timetableAction } from '@/app/[locale]/(client)/[tenant]/courses/schedule-actions'
 import type { ClassView, EditionView, TimetableScreen } from '@/lib/api/course-schedule'
@@ -14,12 +15,23 @@ import { PageHeader } from '@/components/app/ui/PageHeader'
 import { Select } from '@/components/app/ui/Select'
 import { Toast } from '@/components/app/ui/Toast'
 import { TimetableClassSheet } from './TimetableClassSheet'
+import { TimetableFilters } from './TimetableFilters'
 import { TimetableGrid } from './TimetableGrid'
 import { TimetableHolidays } from './TimetableHolidays'
 import { TimetableRooms } from './TimetableRooms'
 import { TimetableTermSheet, type TermSheetState } from './TimetableTermSheet'
 import { placeName, useScheduleErrorText, useScheduleFormat } from './schedule-bits'
 import { currentEditionId, textOf, todayIn } from './schedule-model'
+import {
+  ANY,
+  DEFAULT_TIMETABLE_FILTERS,
+  filterClasses,
+  filterOptions,
+  parseTimetableFilters,
+  sanitizeFilters,
+  timetableFiltersToParams,
+  type TimetableFilters as Filters,
+} from './timetable-filter'
 
 /** Every class, whatever its term / classes that belong to no term. */
 const ALL = 'all'
@@ -69,6 +81,21 @@ export function Timetable({ projectSlug, initial, canWrite }: { projectSlug: str
     if (term === NONE) return classes.filter((c) => c.editionId === null)
     return classes.filter((c) => c.editionId === term)
   }, [classes, term])
+  // Search + filters (kept in the URL, like the other lists); options come from the term's own classes.
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [rawFilters, setFilters] = useState<Filters>(() => parseTimetableFilters(new URLSearchParams(searchParams.toString())))
+  const options = useMemo(() => filterOptions(shown, places), [shown, places])
+  const hasUnplaced = useMemo(() => shown.some((c) => !c.placeToken), [shown])
+  const filters = useMemo(() => sanitizeFilters(rawFilters, options, hasUnplaced), [rawFilters, options, hasUnplaced])
+  const matching = useMemo(() => filterClasses(shown, courses, filters), [shown, courses, filters])
+  const updateFilters = (patch: Partial<Filters>) => {
+    const next = { ...filters, ...patch }
+    setFilters(next)
+    const qs = timetableFiltersToParams(next).toString()
+    window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
+  }
+  const resetFilters = () => updateFilters({ ...DEFAULT_TIMETABLE_FILTERS })
   const editionName = (e: EditionView) => textOf(e.label, site.defaultLocale) || shortDay(e.startsOn)
 
   const newTerm = () => {
@@ -138,7 +165,14 @@ export function Timetable({ projectSlug, initial, canWrite }: { projectSlug: str
       {shown.length === 0 ? (
         <EmptyState titleAs="h2" title={t('empty.title')} body={classes.length === 0 ? t('empty.body') : t('empty.termBody')} />
       ) : (
-        <TimetableGrid classes={shown} places={places} courses={courses} exceptions={exceptions} onOpen={setOpenClass} />
+        <>
+          <TimetableFilters filters={filters} update={updateFilters} reset={resetFilters} options={options} hasUnplaced={hasUnplaced} resultCount={matching.length} total={shown.length} />
+          {matching.length === 0 ? (
+            <EmptyState titleAs="h2" title={t('filters.noMatch')} action={<Button onClick={resetFilters}>{t('filters.clear')}</Button>} />
+          ) : (
+            <TimetableGrid classes={matching} places={places} courses={courses} exceptions={exceptions} onlyDay={filters.day === ANY ? undefined : Number(filters.day)} onOpen={setOpenClass} />
+          )}
+        </>
       )}
 
       <TimetableHolidays projectSlug={projectSlug} site={site} closures={closures} canWrite={canWrite} onChanged={refresh} flash={flash} />

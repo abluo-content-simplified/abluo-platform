@@ -16,6 +16,8 @@ type Shared = {
   /** Class id → changed dates in the next weeks. */
   exceptions: Record<string, number>
   onOpen: (c: ClassView) => void
+  /** When a day filter is set, only that weekday's column / list. */
+  onlyDay?: number
 }
 
 /** One class as a row: time and course, teachers and languages, badges. Shared by the grid cells and the phone list. */
@@ -50,8 +52,8 @@ function ClassItem({ c, courses, exceptions, onOpen, placeLine }: Pick<Shared, '
 export function TimetableGrid(props: Shared) {
   const t = useTranslations('clientDashboard.courses.timetable')
   const { weekdayName } = useScheduleFormat()
-  const { classes, places, courses, exceptions, onOpen } = props
-  const days = weekdaysWithClasses(classes)
+  const { classes, places, courses, exceptions, onOpen, onlyDay } = props
+  const days = onlyDay ? [onlyDay] : weekdaysWithClasses(classes)
   const rows = groupByPlace(classes, places)
   const byTime = (a: ClassView, b: ClassView) => a.startTime.localeCompare(b.startTime)
 

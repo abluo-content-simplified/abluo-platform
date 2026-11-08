@@ -4420,6 +4420,23 @@
         "title": "Timetable",
         "back": "Back to courses",
         "untitledCourse": "Untitled course",
+        "filters": {
+          "label": "Filter classes",
+          "search": "Search classes",
+          "searchPlaceholder": "Search by course or teacher",
+          "place": "Place",
+          "placeAll": "All places",
+          "noPlace": "No place",
+          "teacher": "Teacher",
+          "teacherAll": "All teachers",
+          "day": "Day",
+          "dayAll": "All days",
+          "language": "Language",
+          "languageAll": "All languages",
+          "showing": "{shown} of {total} classes",
+          "clear": "Clear filters",
+          "noMatch": "No class matches these filters."
+        },
         "openClass": "Open {name}, {time}",
         "changes": "{count, plural, one {# change} other {# changes}}",
         "term": {
