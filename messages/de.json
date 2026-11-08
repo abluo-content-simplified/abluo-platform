@@ -905,7 +905,7 @@
           "faq": "Ein Fragen- und Antwortkatalog.",
           "courses": "Ein Kurs, an dem jeder teilnehmen kann.",
           "people": "Ein Lehrer, ein Teammitglied oder ein Redner.",
-          "documents": "Eine Datei für Ihre Website, zum Beispiel eine PDF-Datei."
+          "documents": "Eine Datei für deine Website, zum Beispiel eine PDF-Datei."
         },
         "soon": "Bald verfügbar",
         "more": "Mehr für deine Website",
@@ -3827,11 +3827,11 @@
         "clear": "Filter löschen",
         "noMatch": "Keine Buchung entspricht diesen Filtern.",
         "emptyTitle": "Noch keine Buchungen",
-        "emptyBody": "Wenn jemand über Ihre Website bucht, erscheint die Buchung hier mit Referenznummer, Zahlungsinformationen und den gebuchten Plätzen.",
+        "emptyBody": "Wenn jemand über deine Website bucht, erscheint die Buchung hier mit Referenznummer, Zahlungsinformationen und den gebuchten Plätzen.",
         "unavailableTitle": "Buchungen sind noch nicht möglich.",
-        "unavailableBody": "Die Buchungen für Ihre Website werden noch eingerichtet. Es ist alles in Ordnung und es ist nichts verloren gegangen. Sie werden hier angezeigt, sobald sie fertig sind.",
-        "loadFailed": "Ihre Buchungen konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
-        "retry": "Versuchen Sie es erneut",
+        "unavailableBody": "Die Buchungen für deine Website werden noch eingerichtet. Es ist alles in Ordnung und nichts ist verloren gegangen. Die Buchungen erscheinen hier, sobald alles fertig ist.",
+        "loadFailed": "Deine Buchungen konnten nicht geladen werden. Bitte versuche es erneut.",
+        "retry": "Versuche es erneut",
         "previous": "Vorherige",
         "next": "Nächste",
         "pageLabel": "Buchungsseiten",
@@ -3881,8 +3881,8 @@
         "back": "Buchungen",
         "title": "{reference}",
         "unavailableTitle": "Diese Buchung kann momentan nicht angezeigt werden.",
-        "unavailableBody": "Es ist alles in Ordnung und nichts ist verloren gegangen. Bitte versuchen Sie es in Kürze noch einmal.",
-        "loadFailed": "Diese Buchung konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
+        "unavailableBody": "Es ist alles in Ordnung und nichts ist verloren gegangen. Bitte versuche es in Kürze noch einmal.",
+        "loadFailed": "Diese Buchung konnte nicht geladen werden. Bitte versuche es erneut.",
         "summary": "Zusammenfassung",
         "who": "Wer hat gebucht?",
         "name": "Name",
@@ -3891,8 +3891,8 @@
         "reference": "Referenz",
         "madeOn": "Erstellt am",
         "source": "Gemacht",
-        "sourceWebsite": "Auf Ihrer Website",
-        "sourceDashboard": "Von Ihnen hinzugefügt",
+        "sourceWebsite": "Auf deiner Website",
+        "sourceDashboard": "Von dir hinzugefügt",
         "what": "Gebucht",
         "option": "Auswahl",
         "status": "Status",
@@ -3950,7 +3950,7 @@
         "activity": "Geschichte",
         "activityNone": "Es ist noch nichts passiert.",
         "by": {
-          "user": "Sie oder ein Kollege",
+          "user": "Du oder ein Kollege",
           "participant": "Der Teilnehmer",
           "system": "Abluo",
           "support": "Abluo-Unterstützung"
@@ -3962,17 +3962,17 @@
         "cancel": "Buchung stornieren",
         "verifyEligibility": "Mitgliedschaft als bestätigt markieren",
         "why": {
-          "needWrite": "Sie können diese Buchung einsehen, aber nur der Website-Inhaber oder ein Redakteur kann sie ändern.",
+          "needWrite": "Du kannst diese Buchung einsehen, aber nur der Website-Inhaber oder ein Redakteur kann sie ändern.",
           "needPay": "Das können nur Personen, die Zahlungen erfassen können.",
           "closed": "Diese Buchung hat {status} , es gibt also nichts weiter zu tun.",
           "notConfirmable": "Nur eine Buchung, die noch auf die Zahlung wartet, kann bestätigt werden.",
           "notExtendable": "Nur bei Buchungen, die reserviert sind oder auf die Zahlung warten, kann die Reservierung verlängert werden.",
           "noEligibility": "Für diese Buchung ist keine Mitgliedschaftsprüfung erforderlich.",
-          "fullyPaid": "Diese Buchung ist bereits vollständig bezahlt. Sie können dennoch eine weitere Zahlung erfassen."
+          "fullyPaid": "Diese Buchung ist bereits vollständig bezahlt. Du kannst dennoch eine weitere Zahlung erfassen."
         },
         "payment": {
           "title": "Zahlung erfassen",
-          "intro": "Notieren Sie erhaltenes Geld, beispielsweise eine Banküberweisung. Sie können mehrere Zahlungen erfassen.",
+          "intro": "Notiere erhaltenes Geld, beispielsweise eine Banküberweisung. Du kannst mehrere Zahlungen erfassen.",
           "method": "Wie es bezahlt wurde",
           "amount": "Betrag (Euro)",
           "amountHint": "Zum Beispiel 25,00",
@@ -3983,30 +3983,30 @@
           "save": "Zahlungserhebung",
           "saving": "Aufnahme…",
           "cancel": "Stornieren",
-          "amountInvalid": "Geben Sie einen Betrag größer als Null ein, zum Beispiel 25,00.",
-          "dateInvalid": "Wählen Sie den Tag, an dem das Geld angekommen ist."
+          "amountInvalid": "Gib einen Betrag größer als Null ein, zum Beispiel 25,00.",
+          "dateInvalid": "Wähle den Tag, an dem das Geld angekommen ist."
         },
         "confirmDialog": {
           "title": "Diese Buchung bestätigen?",
-          "body": "{name} erhält die Orte und eine Bestätigungs-E-Mail. Verwenden Sie dies, wenn die Zahlung außerhalb von Abluo abgewickelt wurde.",
+          "body": "{name} erhält die Plätze und eine Bestätigungs-E-Mail. Verwende dies, wenn die Zahlung außerhalb von Abluo abgewickelt wurde.",
           "confirm": "Buchung bestätigen"
         },
         "extendDialog": {
           "title": "Halten verlängern",
-          "body": "Halten Sie die Plätze für {name} noch etwas länger frei. Wählen Sie den letzten Tag.",
-          "date": "Halten Sie die Zeit so lange fest, bis",
+          "body": "Halte die Plätze für {name} noch etwas länger frei. Wähle den letzten Tag.",
+          "date": "Halte die Plätze so lange frei, bis",
           "confirm": "Halten verlängern"
         },
         "cancelDialog": {
           "title": "Diese Buchung stornieren?",
           "body": "Die Orte werden den Sitzungen zugeordnet. {name} wird nicht automatisch mitgeteilt.",
-          "bodyPaid": "Die Plätze werden den Sitzungen wieder zugeordnet. Für diese Buchung wurde eine Zahlung erfasst; die Rückerstattung liegt in Ihrer Verantwortung. {name} wird nicht automatisch benachrichtigt.",
+          "bodyPaid": "Die Plätze werden den Sitzungen wieder zugeordnet. Für diese Buchung wurde eine Zahlung erfasst; die Rückerstattung liegt in deiner Verantwortung. {name} wird nicht automatisch benachrichtigt.",
           "confirm": "Buchung stornieren",
           "keep": "Immer weiter buchen"
         },
         "verifyDialog": {
           "title": "Mitgliedschaft als verifiziert markieren?",
-          "body": "Sie haben den Beleg geprüft und der Mitgliederpreis stimmt.",
+          "body": "Du hast den Beleg geprüft und der Mitgliederpreis stimmt.",
           "confirm": "Als bestätigt markieren"
         },
         "someone": "der Teilnehmer",
@@ -4020,31 +4020,31 @@
           "verified": "Mitgliedschaft als verifiziert gekennzeichnet."
         },
         "reviewNotice": {
-          "payment": "Die Zahlung ging ein, nachdem die Reservierungsfrist abgelaufen war und die Plätze bereits vergeben waren. Klären Sie mit dem Teilnehmer das weitere Vorgehen (weitere Sitzung oder Rückerstattung des Geldes).",
-          "eligibility": "Jemand hat einen Mitgliedspreis gewählt. Überprüfen Sie den Beleg und markieren Sie ihn dann als verifiziert."
+          "payment": "Die Zahlung ging ein, nachdem die Reservierungsfrist abgelaufen war und die Plätze bereits vergeben waren. Kläre mit dem Teilnehmer das weitere Vorgehen (weitere Sitzung oder Rückerstattung des Geldes).",
+          "eligibility": "Jemand hat einen Mitgliedspreis gewählt. Überprüfe den Beleg und markiere ihn dann als verifiziert."
         }
       },
       "errors": {
-        "unauthenticated": "Bitte melden Sie sich erneut an. Es hat sich nichts geändert.",
-        "forbidden": "Sie haben keine Erlaubnis dazu. Es wurde nichts geändert.",
-        "unavailable": "Buchungen sind momentan nicht möglich. Es hat sich nichts geändert; bitte versuchen Sie es später noch einmal.",
-        "failed": "Das hat nicht funktioniert. Es hat sich nichts geändert; bitte versuchen Sie es erneut.",
+        "unauthenticated": "Bitte melde dich erneut an. Es hat sich nichts geändert.",
+        "forbidden": "Du hast keine Erlaubnis dazu. Es wurde nichts geändert.",
+        "unavailable": "Buchungen sind momentan nicht möglich. Es hat sich nichts geändert; bitte versuche es später noch einmal.",
+        "failed": "Das hat nicht funktioniert. Es hat sich nichts geändert; bitte versuche es erneut.",
         "full": "Es sind keine Plätze mehr auf {sessions} verfügbar. Es wurden keine Änderungen vorgenommen.",
         "fullUnknown": "eine der Sitzungen",
         "not_found": "Diese Buchung konnte nicht gefunden werden.",
         "booking_not_found": "Diese Buchung konnte nicht gefunden werden.",
         "cannot_confirm": "Diese Buchung kann im jetzigen Zustand nicht bestätigt werden.",
-        "cannot_extend": "Die Reservierung kann nicht verlängert werden: Auch wenn Sie einen späteren Tag wählen, bleibt die Buchung bestehen.",
-        "changed": "Die Buchung wurde von jemand anderem geändert. Wir haben sie neu geladen; bitte schauen Sie noch einmal nach.",
-        "invalid_amount": "Geben Sie einen Betrag größer als Null ein.",
-        "invalid_method": "Wählen Sie die Zahlungsart.",
-        "invalid_date": "Wählen Sie einen gültigen Tag.",
+        "cannot_extend": "Die Reservierung kann nicht verlängert werden: Auch wenn du einen späteren Tag wählst, bleibt die Buchung bestehen.",
+        "changed": "Die Buchung wurde von jemand anderem geändert. Wir haben sie neu geladen; bitte schau noch einmal nach.",
+        "invalid_amount": "Gib einen Betrag größer als Null ein.",
+        "invalid_method": "Wähle die Zahlungsart.",
+        "invalid_date": "Wähle einen gültigen Tag.",
         "invalid_reference": "Der Bankreferenztext ist zu lang.",
         "invalid_note": "Die Notiz ist zu lang.",
-        "invalid": "Einige Ihrer Eingaben können nicht verwendet werden.",
+        "invalid": "Einige deiner Eingaben können nicht verwendet werden.",
         "invalid_booking": "Diese Buchung konnte nicht gefunden werden.",
-        "payment_method_not_available": "Die Banküberweisung ist in Ihren Buchungsregeln nicht aktiviert.",
-        "settings_missing": "Richten Sie zuerst Ihre Buchungsregeln ein.",
+        "payment_method_not_available": "Die Banküberweisung ist in deinen Buchungsregeln nicht aktiviert.",
+        "settings_missing": "Richte zuerst deine Buchungsregeln ein.",
         "target_not_found": "Der Kurs oder die Veranstaltung dieser Buchung konnte nicht gefunden werden.",
         "already_closed": "Diese Buchung wurde storniert oder ist abgelaufen, daher kann keine Zahlung hinzugefügt werden."
       },
@@ -4065,29 +4065,29 @@
       },
       "rules": {
         "title": "Buchungsregeln",
-        "intro": "Die Regeln, die für jede Buchung auf Ihrer Website gelten: Zahlungsmodalitäten, Stornierungsbedingungen und die Anmeldeformalitäten für Passinhaber. Kurse und Veranstaltungen können später eigene Regeln festlegen; dies sind die Standardeinstellungen.",
+        "intro": "Die Regeln, die für jede Buchung auf deiner Website gelten: Zahlungsmodalitäten, Stornierungsbedingungen und die Anmeldeformalitäten für Passinhaber. Kurse und Veranstaltungen können später eigene Regeln festlegen; dies sind die Standardeinstellungen.",
         "save": "Speichern",
         "saving": "Speichern…",
         "undo": "Rückgängig machen",
-        "retry": "Versuchen Sie es erneut",
-        "loadFailed": "Ihre Buchungsregeln konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+        "retry": "Versuche es erneut",
+        "loadFailed": "Deine Buchungsregeln konnten nicht geladen werden. Bitte versuche es erneut.",
         "unavailableTitle": "Die Buchungsregeln sind noch nicht verfügbar.",
-        "unavailableBody": "Die Buchungen für Ihre Website werden noch eingerichtet. Es ist alles in Ordnung und es ist nichts verloren gegangen. Sie werden hier angezeigt, sobald sie fertig sind.",
-        "readOnly": "Sie können sich diese Regeln ansehen, aber nur der Website-Inhaber kann sie ändern.",
+        "unavailableBody": "Die Buchungen für deine Website werden noch eingerichtet. Es ist alles in Ordnung und nichts ist verloren gegangen. Die Regeln erscheinen hier, sobald alles fertig ist.",
+        "readOnly": "Du kannst dir diese Regeln ansehen, aber nur der Website-Inhaber kann sie ändern.",
         "saveNothingChanged": "Noch nichts zu speichern. Ändere eine Regel, und die „Speichern“-Anzeige leuchtet auf.",
-        "saveBlockedInvalid": "Einige Felder müssen vor dem Speichern überprüft werden. Sie sind unten gekennzeichnet.",
+        "saveBlockedInvalid": "Einige Felder müssen vor dem Speichern überprüft werden. Die betroffenen Felder sind unten gekennzeichnet.",
         "savedBody": "Buchungsregeln gespeichert. Neue Buchungen folgen ab sofort diesen Regeln; bereits getätigte Buchungen behalten die ursprünglichen Regeln.",
         "undoneBody": "Zurück zu den vorherigen Regeln.",
         "conflictTitle": "Jemand hat diese Regeln zuerst geändert",
-        "conflictBody": "Wir haben deren Version geladen. Bitte nehmen Sie Ihre Änderung erneut vor.",
+        "conflictBody": "Wir haben deren Version geladen. Bitte nimm deine Änderung erneut vor.",
         "failed": {
           "forbidden": {
             "title": "Diese Regeln können nicht geändert werden.",
             "body": "Nur der Inhaber der Website kann die Buchungsregeln ändern."
           },
           "unauthenticated": {
-            "title": "Bitte melden Sie sich erneut an.",
-            "body": "Ihre Sitzung ist beendet. Melden Sie sich an und versuchen Sie es erneut; es wurden keine Änderungen vorgenommen."
+            "title": "Bitte melde dich erneut an.",
+            "body": "Deine Sitzung ist beendet. Melde dich an und versuche es erneut; es wurden keine Änderungen vorgenommen."
           },
           "invalid": {
             "title": "Einige Bereiche müssen überprüft werden",
@@ -4095,24 +4095,24 @@
           },
           "unavailable": {
             "title": "Buchungen sind momentan nicht möglich.",
-            "body": "Es wurden keine Daten gespeichert. Bitte versuchen Sie es in Kürze erneut."
+            "body": "Es wurden keine Daten gespeichert. Bitte versuche es in Kürze erneut."
           },
           "failed": {
             "title": "Das hat nichts gerettet.",
-            "body": "Es wurden keine Änderungen vorgenommen. Bitte versuchen Sie es erneut."
+            "body": "Es wurden keine Änderungen vorgenommen. Bitte versuche es erneut."
           },
           "conflict": {
             "title": "Jemand hat diese Regeln zuerst geändert",
-            "body": "Bitte geben Sie Ihr Wechselgeld erneut ein."
+            "body": "Bitte nimm deine Änderung erneut vor."
           }
         },
         "errors": {
-          "invalid": "Das sieht nicht richtig aus. Bitte überprüfen Sie das.",
-          "out_of_range": "Geben Sie eine ganze Zahl zwischen {min} und {max} ein.",
-          "too_long": "Das ist zu lang. Halten Sie es unter {chars} Zeichen pro Sprache.",
-          "bad_language": "Diese Sprache gehört nicht zu den Sprachen Ihrer Website.",
-          "bad_prefix": "Verwenden Sie nur die Buchstaben A bis Z und Zahlen bis 6.",
-          "capability_off": "Dies ist auf Ihrer Website nicht verfügbar."
+          "invalid": "Das sieht nicht richtig aus. Bitte überprüfe es.",
+          "out_of_range": "Gib eine ganze Zahl zwischen {min} und {max} ein.",
+          "too_long": "Das ist zu lang. Halte es unter {chars} Zeichen pro Sprache.",
+          "bad_language": "Diese Sprache gehört nicht zu den Sprachen deiner Website.",
+          "bad_prefix": "Verwende nur die Buchstaben A bis Z und Zahlen, bis zu 6.",
+          "capability_off": "Dies ist auf deiner Website nicht verfügbar."
         },
         "localized": {
           "languageOf": "Sprache des {field}",
@@ -4122,7 +4122,7 @@
         },
         "outcomes": {
           "cancel": {
-            "refund": "Rückerstattung (Sie genehmigen jede einzelne)",
+            "refund": "Rückerstattung (du genehmigst jede einzelne)",
             "credit": "Gutschrift für eine spätere Buchung",
             "none": "Keine Rückerstattung"
           },
@@ -4134,7 +4134,7 @@
         },
         "payments": {
           "title": "Banküberweisung",
-          "intro": "Die Leute können jetzt buchen und per Banküberweisung bezahlen. Ihr Platz wird reserviert, bis die Zahlung bei Ihnen eingegangen ist.",
+          "intro": "Teilnehmende können jetzt buchen und per Banküberweisung bezahlen. Der Platz wird reserviert, bis die Zahlung bei dir eingegangen ist.",
           "holdDays": "Tage bis zur Zahlung",
           "holdDaysHint": "Wie lange ein Platz nach der Buchung reserviert wird. Zwischen 1 und 30.",
           "cutoffHours": "Letzte Buchung vor der ersten Sitzung (Stunden)",
@@ -4146,26 +4146,26 @@
         },
         "cancellations": {
           "title": "Stornierungen",
-          "intro": "Was passiert, wenn jemand nicht kommen kann oder wenn Sie eine Sitzung absagen?",
+          "intro": "Was passiert, wenn jemand nicht kommen kann oder wenn du eine Sitzung absagst?",
           "outcome": "Was sie bekommen",
-          "outcomeHint": "Rückerstattungen erfolgen niemals automatisch: Sie müssen jede einzelne genehmigen.",
+          "outcomeHint": "Rückerstattungen erfolgen niemals automatisch: Du musst jede einzelne genehmigen.",
           "selfCancel": {
             "title": "Die Buchung kann storniert werden.",
-            "intro": "Sie stornieren ihre Buchung über den Buchungslink bis zu einem bestimmten Stichtag.",
+            "intro": "Teilnehmende stornieren ihre Buchung über den Buchungslink bis zu einem bestimmten Stichtag.",
             "deadline": "Anmeldeschluss (Stunden vor der ersten Sitzung)",
             "deadlineHint": "Zwischen 0 und 720. 48 entspricht zwei Tagen."
           },
           "absence": {
             "title": "Manche Leute sagen, sie könnten zu einer einzigen Sitzung nicht kommen.",
             "intro": "Eine Abwesenheitsbenachrichtigung für eine einzelne Sitzung, ohne die gesamte Buchung zu stornieren.",
-            "releasePlace": "Machen Sie ihren Platz für jemand anderen frei",
-            "releasePlaceHint": "Ihr Platz wird wieder frei."
+            "releasePlace": "Mache ihren Platz für jemand anderen frei",
+            "releasePlaceHint": "Der Platz wird wieder frei."
           },
           "organiser": {
-            "title": "Sie stornieren eine Sitzung",
+            "title": "Du stornierst eine Sitzung",
             "intro": "Was die Teilnehmer dieser Session erhalten.",
             "outcome": "Was sie bekommen",
-            "outcomeHint": "Sie entscheiden immer selbst, ob und was Sie ihnen sagen, bevor irgendetwas verschickt wird."
+            "outcomeHint": "Du entscheidest immer selbst, ob und was du ihnen sagst, bevor irgendetwas verschickt wird."
           }
         },
         "passes": {
@@ -4175,17 +4175,17 @@
           "off": "Komm einfach",
           "offHint": "Das wird einem nicht im Voraus mitgeteilt. Nur bei Kursen ohne Teilnehmerbegrenzung.",
           "optIn": "Sag: „Ich komme.“",
-          "optInHint": "Sie beantworten die Anmeldungen für jede Sitzung. Man sieht, wer kommt, und die Plätze werden gezählt.",
+          "optInHint": "Die Leute antworten für jede Sitzung selbst. Du siehst, wer kommt, und die Plätze werden gezählt.",
           "opens": "Die Anmeldung ist (Tage vorher) möglich.",
-          "opensHint": "Lassen Sie das Feld leer, um es zu öffnen, sobald die Session im Verkauf ist. Zwischen 1 und 60.",
+          "opensHint": "Lass das Feld leer, um es zu öffnen, sobald die Session im Verkauf ist. Zwischen 1 und 60.",
           "changeUntil": "Die Antworten können sich bis (Stunden vorher) ändern.",
           "changeUntilHint": "Danach bleibt „Ich komme“ unverändert. Zwischen 0 und 72."
         },
         "reference": {
           "title": "Buchungsreferenz",
-          "intro": "Zu jeder Buchung gibt es eine kurze Referenz, die die Leute bei ihrer Banküberweisung angeben und die sie auch in ihrer schriftlichen Anfrage an Sie nennen.",
+          "intro": "Zu jeder Buchung gibt es eine kurze Referenz, die die Leute bei ihrer Banküberweisung angeben und die sie auch in ihrer schriftlichen Anfrage an dich nennen.",
           "prefix": "Beginn der Referenz",
-          "prefixHint": "Bis zu 6 Buchstaben oder Zahlen. Zum Beispiel {example} . Lassen Sie das Feld leer, wir wählen einen Wert für Sie aus."
+          "prefixHint": "Bis zu 6 Buchstaben oder Zahlen. Zum Beispiel {example} . Lass das Feld leer, wir wählen einen Wert für dich aus."
         }
       }
     },
@@ -4269,9 +4269,9 @@
         "timetable": "Stundenplan",
         "bulk": {
           "toolbar": "Ausgewählte Kurse",
-          "checkbox": "Wählen Sie {name} aus",
+          "checkbox": "Wähle {name} aus",
           "all": "Alle auswählen",
-          "allLabel": "Wählen Sie alle Kurse in dieser Liste aus",
+          "allLabel": "Wähle alle Kurse in dieser Liste aus",
           "bar": {
             "publish": "Veröffentlichen",
             "archive": "Archiv",
@@ -4302,8 +4302,8 @@
           "lastDate": {
             "intro": "Alle aktiven Kurse der ausgewählten Lehrveranstaltungen erhalten dieses letzte Datum. Kurse, die sich wiederholen, enden an ihrem letzten Kurstag oder davor. Kurse, die sich nicht wiederholen, und Kurse, die später beginnen, bleiben unverändert.",
             "field": "Neues letzte Datum",
-            "placeholder": "Wählen Sie ein Datum",
-            "needed": "Wählen Sie zuerst ein Datum.",
+            "placeholder": "Wähle ein Datum",
+            "needed": "Wähle zuerst ein Datum.",
             "cancel": "Stornieren",
             "confirm": "Letztes Datum ändern",
             "changing": "Ändern…",
