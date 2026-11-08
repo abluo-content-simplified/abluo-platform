@@ -8,11 +8,14 @@ import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { FORM_NOTIFICATIONS_READ, loadFormNotifications } from '@/lib/notifications/form-recipients-service'
 import { SettingsForm } from '@/components/client/settings/SettingsForm'
 import { PageShell } from '@/components/app/ui/PageShell'
+import { loadTranslationUsage } from '@/lib/translate/usage-summary'
+import type { TranslationUsageView } from '@/lib/translate/usage-view'
 
 /**
  * Client dashboard — Settings (Tom, 2026-10-18; 2026-10-28). The client's own
  * settings for their website. Today: Form notifications — who receives the
- * emails of the website's forms. (The affiliate programs that were here live
+ * emails of the website's forms — and, read-only, this month's translations
+ * (Tom, 2026-11-08). (The affiliate programs that were here live
  * only in Connected Apps since 2026-10-26.)
  *
  * Needs `site.details.read` (Owner, Site admin, Editor); only Owner and Site
@@ -29,6 +32,14 @@ async function SettingsPageInner({ params }: { params: Promise<{ tenant: string 
   if (!grant || !grant.permissions.includes(FORM_NOTIFICATIONS_READ)) notFound()
 
   const locale = await getLocale()
+  // Translations this month — optional, read-only information: a failing read
+  // shows "unavailable" in its block and never breaks the page.
+  const usagePromise: Promise<TranslationUsageView | 'unavailable' | null> = span('loadTranslationUsage', () =>
+    loadTranslationUsage(projectSlug, grant.projectId),
+  ).catch((error) => {
+    console.error('[settings] translation usage failed', error)
+    return 'unavailable' as const
+  })
   let notifications
   try {
     notifications = await span('loadFormNotifications', () => loadFormNotifications(ctx, grant.projectId, { locale }))
@@ -36,12 +47,14 @@ async function SettingsPageInner({ params }: { params: Promise<{ tenant: string 
     if (error instanceof TenantAuthorizationError) notFound()
     throw error
   }
+  const translationUsage = await usagePromise
 
   return (
     <PageShell>
       <SettingsForm
         projectSlug={projectSlug}
         notifications={notifications}
+        translationUsage={translationUsage}
         supportVisit={Boolean(ctx.support)}
         readOnly={ctx.support ? !ctx.support.writesAllowed : false}
       />

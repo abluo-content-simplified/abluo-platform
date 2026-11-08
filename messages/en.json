@@ -2433,6 +2433,19 @@
         "amazonNote": "Uses your Amazon IDs above. Drag to choose where Amazon appears.",
         "drag": "Move {shop}, position {position} of {total}. Drag, or use the up and down arrow keys."
       },
+      "translations": {
+        "title": "Translations",
+        "intro": "Characters translated with the Translate button this month.",
+        "usedOfLimit": "{used} of {limit} characters used this month",
+        "usedNoLimit": "{used} characters translated this month",
+        "noLimit": "No monthly limit.",
+        "resets": "The count starts again on {date}.",
+        "near": "You’ve used {percent}% of this month’s translations.",
+        "reached": "This month’s translations are used up. The Translate button works again on {date}. Need more before then? Write to us from Support.",
+        "unavailable": "Usage can’t be shown right now. Try again in a moment.",
+        "barLabel": "Translations used this month",
+        "support": "Write to Support"
+      },
       "formNotifications": {
         "title": "Form notifications",
         "intro": "When someone sends a form on your website, we email the message to the addresses below. Add or remove addresses for each form; the change applies to the next message.",
@@ -5402,7 +5415,16 @@
         "owners": "Owners",
         "created": "Created",
         "actions": "Actions",
-        "billing": "Billing"
+        "billing": "Billing",
+        "translations": "Translations"
+      },
+      "translationUsage": {
+        "noLimit": "No limit",
+        "off": "Off",
+        "unavailable": "Unavailable",
+        "reached": "Limit reached",
+        "percent": "{percent}% used",
+        "cell": "{used} / {limit}"
       },
       "noOwner": "No owner yet",
       "ownersUnknown": "Couldn’t load owners",

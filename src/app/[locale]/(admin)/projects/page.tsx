@@ -8,6 +8,7 @@ import { PageShell } from '@/components/app/ui/PageShell'
 import { ProjectsBrowser } from '@/components/admin/projects/ProjectsBrowser'
 import { listAdminProjects } from '@/lib/api/admin-dashboard/projects'
 import { loadBillingSummaries } from '@/lib/admin/billing/queries'
+import { loadTranslationUsageSummaries } from '@/lib/translate/usage-summary'
 import { DEFAULT_PROJECT_FILTERS, isProjectBillingFilter, isProjectStatusFilter } from '@/lib/admin/projects-filter'
 
 export const dynamic = 'force-dynamic'
@@ -32,7 +33,10 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   } catch (e) {
     console.error('[admin.projects] billing summaries failed', e)
   }
-  const rows = projects.map((p) => ({ ...p, billing: summaries?.get(p.id) ?? null }))
+  // Translations this month (Tom, 2026-11-08) — per project, never fails the page:
+  // a project whose count cannot be read shows "Unavailable" in its cell.
+  const usage = projects.length ? await loadTranslationUsageSummaries(projects) : new Map()
+  const rows = projects.map((p) => ({ ...p, billing: summaries?.get(p.id) ?? null, translations: usage.get(p.id) ?? null }))
 
   return (
     <PageShell>
