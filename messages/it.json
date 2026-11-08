@@ -2426,6 +2426,19 @@
         "amazonNote": "Usa i tuoi ID Amazon qui sopra. Trascina per scegliere dove compare Amazon.",
         "drag": "Sposta {shop}, posizione {position} di {total}. Trascina, oppure usa le frecce su e giù."
       },
+      "translations": {
+        "title": "Traduzioni",
+        "intro": "Caratteri tradotti con il pulsante Traduci questo mese.",
+        "usedOfLimit": "{used} di {limit} caratteri usati questo mese",
+        "usedNoLimit": "{used} caratteri tradotti questo mese",
+        "noLimit": "Nessun limite mensile.",
+        "resets": "Il conteggio riparte il {date}.",
+        "near": "Hai usato il {percent}% delle traduzioni di questo mese.",
+        "reached": "Le traduzioni di questo mese sono esaurite. Il pulsante Traduci funziona di nuovo dal {date}. Ti serve di più prima? Scrivici dal Supporto.",
+        "unavailable": "Al momento non è possibile mostrare l’utilizzo. Riprova tra poco.",
+        "barLabel": "Traduzioni usate questo mese",
+        "support": "Scrivi al Supporto"
+      },
       "formNotifications": {
         "title": "Notifiche dei moduli",
         "intro": "Quando qualcuno invia un modulo dal tuo sito, inviamo il messaggio per email agli indirizzi qui sotto. Puoi aggiungere o togliere indirizzi per ogni modulo; la modifica vale dal messaggio successivo.",
@@ -4967,7 +4980,16 @@
         "owners": "Proprietari",
         "created": "Creato",
         "actions": "Azioni",
-        "billing": "Fatturazione"
+        "billing": "Fatturazione",
+        "translations": "Traduzioni"
+      },
+      "translationUsage": {
+        "noLimit": "Nessun limite",
+        "off": "Spento",
+        "unavailable": "Non disponibile",
+        "reached": "Limite raggiunto",
+        "percent": "{percent}% usato",
+        "cell": "{used} / {limit}"
       },
       "noOwner": "Ancora nessun proprietario",
       "ownersUnknown": "Impossibile caricare i proprietari",

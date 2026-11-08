@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { Button } from '@/components/app/ui/Button'
@@ -10,7 +10,7 @@ import type { FilterChip } from '@/components/app/ui/FilterSheet'
 import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
 import { ListRow } from '@/components/app/ui/list/ListRow'
-import { CellDate, CellPill, CellText } from '@/components/app/ui/list/cells'
+import { CellDate, CellPill, CellText, Pill } from '@/components/app/ui/list/cells'
 import { BillingStatusPill } from '@/components/app/ui/BillingStatusPill'
 import { ProjectStatusPill } from '@/components/admin/projects/ProjectStatusPill'
 import {
@@ -30,8 +30,14 @@ import {
 } from '@/lib/admin/projects-filter'
 import { adminProjectHref } from '@/lib/admin/attention'
 import type { BillingStatusView } from '@/lib/admin/billing/types'
+import type { TranslationUsageSummary } from '@/lib/translate/usage-view'
 
-export type ProjectsBrowserRow = ProjectListRow & { id: string; owners: { userId: string; name: string; email: string }[] }
+export type ProjectsBrowserRow = ProjectListRow & {
+  id: string
+  owners: { userId: string; name: string; email: string }[]
+  /** Translations this month; null = not loaded. */
+  translations?: TranslationUsageSummary | null
+}
 
 /** The pill's status from a list summary (no clock or days-left on the list). */
 const billingView = (b: NonNullable<ProjectsBrowserRow['billing']>): BillingStatusView => ({ state: b.state, reason: b.reason, day: b.day, daysLeft: null, clockStartedAt: null })
@@ -41,6 +47,25 @@ const billingView = (b: NonNullable<ProjectsBrowserRow['billing']>): BillingStat
  * flush with the column header (a faint pill read as indented — Tom, 2026-11-02).
  * Every real billing state keeps its pill.
  */
+/**
+ * Translations this month (Tom, 2026-11-08): "12,400 / 50,000" with the share
+ * under it, a highlight pill from 80 % of the limit on, "No limit" when the
+ * site has none, "Off" when the Translate module is not on.
+ */
+function TranslationsCell({ p }: { p: ProjectsBrowserRow }) {
+  const t = useTranslations('admin.projects.translationUsage')
+  const locale = useLocale()
+  const u = p.translations
+  const n = (v: number) => new Intl.NumberFormat(locale).format(v)
+  if (!u || u.kind === 'off') return <span className="text-sm text-muted-foreground">{t('off')}</span>
+  if (u.kind === 'unavailable') return <span className="text-sm text-muted-foreground">{t('unavailable')}</span>
+  if (u.limit === null) return <CellText clamp={1} primary={n(u.used)} secondary={t('noLimit')} />
+  const percent = Math.round((u.share ?? 0) * 100)
+  const secondary =
+    u.state === 'reached' ? <Pill tone="highlight">{t('reached')}</Pill> : u.state === 'near' ? <Pill tone="highlight">{t('percent', { percent })}</Pill> : t('percent', { percent })
+  return <CellText clamp={1} primary={t('cell', { used: n(u.used), limit: n(u.limit) })} secondary={secondary} />
+}
+
 function BillingCell({ p }: { p: ProjectsBrowserRow }) {
   const t = useTranslations('app.billingStatus')
   if (!p.billing) return <span className="text-sm text-muted-foreground">{t('notBilled')}</span>
@@ -157,6 +182,7 @@ export function ProjectsBrowser({
       ),
     },
     ...(billingKnown ? [{ key: 'billing', header: t('columns.billing'), width: 'w-36', render: (p: ProjectsBrowserRow) => <BillingCell p={p} /> }] : []),
+    { key: 'translations', header: t('columns.translations'), width: 'w-40', render: (p: ProjectsBrowserRow) => <TranslationsCell p={p} /> },
     {
       key: 'domain',
       header: t('columns.domain'),

@@ -2426,6 +2426,19 @@
         "amazonNote": "Nutzt deine Amazon-IDs oben. Ziehe, um festzulegen, wo Amazon erscheint.",
         "drag": "{shop} verschieben, Position {position} von {total}. Ziehen oder mit den Pfeiltasten nach oben und unten."
       },
+      "translations": {
+        "title": "Übersetzungen",
+        "intro": "Zeichen, die diesen Monat mit dem Übersetzen-Button übersetzt wurden.",
+        "usedOfLimit": "{used} von {limit} Zeichen diesen Monat genutzt",
+        "usedNoLimit": "{used} Zeichen diesen Monat übersetzt",
+        "noLimit": "Kein monatliches Limit.",
+        "resets": "Die Zählung beginnt am {date} neu.",
+        "near": "Du hast {percent} % der Übersetzungen dieses Monats genutzt.",
+        "reached": "Die Übersetzungen für diesen Monat sind aufgebraucht. Der Übersetzen-Button funktioniert wieder ab dem {date}. Du brauchst vorher mehr? Schreib uns über den Support.",
+        "unavailable": "Die Nutzung kann gerade nicht angezeigt werden. Versuch es gleich noch einmal.",
+        "barLabel": "Diesen Monat genutzte Übersetzungen",
+        "support": "An den Support schreiben"
+      },
       "formNotifications": {
         "title": "Formular-Benachrichtigungen",
         "intro": "Wenn jemand ein Formular auf deiner Website absendet, schicken wir die Nachricht per E-Mail an die Adressen unten. Du kannst für jedes Formular Adressen hinzufügen oder entfernen; die Änderung gilt ab der nächsten Nachricht.",
@@ -4967,7 +4980,16 @@
         "owners": "Inhaber",
         "created": "Erstellt",
         "actions": "Aktionen",
-        "billing": "Abrechnung"
+        "billing": "Abrechnung",
+        "translations": "Übersetzungen"
+      },
+      "translationUsage": {
+        "noLimit": "Kein Limit",
+        "off": "Aus",
+        "unavailable": "Nicht verfügbar",
+        "reached": "Limit erreicht",
+        "percent": "{percent} % genutzt",
+        "cell": "{used} / {limit}"
       },
       "noOwner": "Noch kein Inhaber",
       "ownersUnknown": "Inhaber konnten nicht geladen werden",
