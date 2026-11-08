@@ -4213,8 +4213,7 @@
         },
         "done": {
           "archived": "{name} is archived. It’s no longer on your website.",
-          "restored": "{name} is restored.",
-          "deleted": "{name} is deleted."
+          "restored": "{name} is restored."
         },
         "filters": {
           "label": "Filter courses",
@@ -4231,7 +4230,75 @@
           "clear": "Clear filters",
           "noMatch": "No course matches these filters."
         },
-        "timetable": "Timetable"
+        "timetable": "Timetable",
+        "bulk": {
+          "toolbar": "Selected courses",
+          "count": "{count, plural, one {# course selected} other {# courses selected}}",
+          "checkbox": "Select {name}",
+          "all": "Select all",
+          "allLabel": "Select all courses in this list",
+          "bar": {
+            "publish": "Publish",
+            "archive": "Archive",
+            "restore": "Restore",
+            "lastDate": "Last date",
+            "lastDateLong": "Change last date of classes",
+            "delete": "Delete",
+            "more": "More",
+            "clear": "Clear"
+          },
+          "moreTitle": "More for {count, plural, one {# course} other {# courses}}",
+          "done": {
+            "publish": "{count, plural, one {# course is} other {# courses are}} published.",
+            "archive": "{count, plural, one {# course is} other {# courses are}} archived. They’re no longer on your website.",
+            "restore": "{count, plural, one {# course is} other {# courses are}} restored.",
+            "delete": "{count, plural, one {# course is} other {# courses are}} deleted.",
+            "deleteClasses": "{count, plural, one {# class} other {# classes}} ended with them."
+          },
+          "detail": "{name} ({reason})",
+          "skipped": "{count, plural, one {# left as it was: {details}.} other {# left as they were: {details}.}}",
+          "nothing": "Nothing to change: {details}.",
+          "attention": "{count} couldn’t be changed: {details}.",
+          "classesLeft": "{count, plural, one {# class couldn’t be ended and still needs attention in the timetable.} other {# classes couldn’t be ended and still need attention in the timetable.}}",
+          "reason": {
+            "archived": "archived",
+            "scheduled": "scheduled",
+            "published": "already published",
+            "missing_text": "texts missing",
+            "not_published": "not published",
+            "not_archived": "not archived",
+            "has_been_published": "published, archive it first"
+          },
+          "delete": {
+            "title": "{count, plural, one {Delete “{name}”?} other {Delete # courses?}}",
+            "classes": "{count, plural, one {Its # class goes too.} other {Its # classes go too.}}",
+            "classesMany": "{count, plural, one {Their # class goes too.} other {Their # classes go too.}}",
+            "body": "This can’t be undone.",
+            "skipped": "{count, plural, one {# selected course isn’t deleted: it’s published, so archive it first.} other {# selected courses aren’t deleted: they’re published, so archive them first.}}",
+            "classCount": "{count, plural, one {# class} other {# classes}}",
+            "list": "Courses to delete",
+            "confirm": "Delete"
+          },
+          "lastDate": {
+            "title": "Change last date of classes for {count, plural, one {# course} other {# courses}}",
+            "intro": "Every active class of the selected courses gets this last date. A class that repeats ends on its last class day on or before it. Classes that don’t repeat and classes that start later stay as they are.",
+            "field": "New last date",
+            "placeholder": "Choose a date",
+            "needed": "Choose a date first.",
+            "cancel": "Cancel",
+            "confirm": "Change last date",
+            "changing": "Changing…",
+            "done": "{count, plural, one {# class has} other {# classes have}} a new last date.",
+            "nothing": "No class was changed.",
+            "reason": {
+              "archived": "{count, plural, one {# archived course skipped} other {# archived courses skipped}}",
+              "no_classes": "{count, plural, one {# course has} other {# courses have}} no classes",
+              "once": "{count, plural, one {# class doesn’t} other {# classes don’t}} repeat",
+              "unchanged": "{count, plural, one {# class already ends} other {# classes already end}} then",
+              "before_first": "{count, plural, one {# class starts} other {# classes start}} after that day"
+            }
+          }
+        }
       },
       "newCourse": {
         "title": "New course",
@@ -4369,12 +4436,10 @@
           "room": "Online room",
           "noRoom": "No room",
           "noRooms": "Add online rooms on the Timetable page first.",
-          "term": "Term",
-          "noTerm": "No term",
-          "startsOn": "First class",
+          "startsOn": "First date",
           "startsOnHint": "Only days the class takes place on can be chosen.",
-          "endsOn": "Last class",
-          "endsOnHint": "Optional. Only days the class takes place on can be chosen. The end of the term also ends the class.",
+          "endsOn": "Last date (optional)",
+          "endsOnHint": "Leave empty if the class continues until further notice. Only days the class takes place on can be chosen.",
           "noEndDate": "No last date",
           "endBeforeStartDay": "The last class can’t be before the first.",
           "repeatOnce": "Once",
@@ -4439,32 +4504,9 @@
         },
         "openClass": "Open {name}, {time}",
         "changes": "{count, plural, one {# change} other {# changes}}",
-        "term": {
-          "select": "Term",
-          "all": "All classes",
-          "none": "Without a term",
-          "new": "New term",
-          "edit": "Edit term",
-          "range": "{from} to {to}",
-          "newTitle": "New term",
-          "editTitle": "Edit term",
-          "name": "Name",
-          "startsOn": "First day",
-          "endsOn": "Last day",
-          "endBeforeStart": "The last day can’t be before the first.",
-          "datesHint": "Changing the dates moves or ends the classes of this term.",
-          "save": "Save",
-          "saving": "Saving…",
-          "saved": "Term saved.",
-          "delete": "Delete term",
-          "deleteTitle": "Delete {name}?",
-          "deleteBody": "Only a term without classes can be deleted.",
-          "deleted": "Term deleted."
-        },
         "empty": {
           "title": "No classes yet",
-          "body": "Add classes from a course’s page. They appear here.",
-          "termBody": "This term has no classes yet."
+          "body": "Add classes from a course’s page. They appear here."
         },
         "grid": {
           "label": "Weekly timetable",
@@ -4523,7 +4565,7 @@
         },
         "holidays": {
           "title": "Holidays",
-          "hint": "Days with no class. Every class skips them, in every term.",
+          "hint": "Days with no class. Every class skips them.",
           "add": "Add holiday",
           "empty": "No holidays yet.",
           "untitled": "Holiday",

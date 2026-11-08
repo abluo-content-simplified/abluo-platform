@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { COURSE_DELETE_PERMISSION, COURSE_READ_PERMISSION, COURSE_WRITE_PERMISSION, listCourses, type CourseListItem, type CourseSite } from '@/lib/api/course-drafts'
-import { courseScheduleDeps } from '@/lib/api/course-schedule'
+import { courseScheduleDeps, SCHEDULE_WRITE_PERMISSION } from '@/lib/api/course-schedule'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { CoursesBrowser } from '@/components/client/courses/CoursesBrowser'
 import { PageShell } from '@/components/app/ui/PageShell'
@@ -54,6 +54,7 @@ export default async function CoursesPage({
         timeZone={site.timeZone}
         canWrite={grant.permissions.includes(COURSE_WRITE_PERMISSION)}
         canDelete={grant.permissions.includes(COURSE_DELETE_PERMISSION)}
+        canScheduleWrite={grant.permissions.includes(SCHEDULE_WRITE_PERMISSION)}
         initialQuery={query.toString()}
       />
     </PageShell>

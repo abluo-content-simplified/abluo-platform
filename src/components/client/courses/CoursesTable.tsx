@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
-import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
+import { DataTable, type DataTableColumn, type DataTableSelection } from '@/components/app/ui/list/DataTable'
 import { CellDate, CellPill, CellText, LocalDate } from '@/components/app/ui/list/cells'
 import type { CourseSort, CourseSortColumn } from '@/lib/client/courses-filter'
 import { CourseStateBadge, MissingPills, useClassesText, type CourseRow } from './course-bits'
@@ -20,12 +20,15 @@ export function CoursesTable({
   onSort,
   onOpen,
   menuFor,
+  selection,
 }: {
   rows: CourseRow[]
   sort: CourseSort
   onSort: (column: CourseSortColumn) => void
   onOpen: (row: CourseRow, newTab: boolean) => void
   menuFor: (row: CourseRow) => CardMenuItem[]
+  /** Square checkboxes + select all (bulk bar); absent when the person can't change anything. */
+  selection?: DataTableSelection<CourseRow>
 }) {
   const t = useTranslations('clientDashboard.courses.list')
   const classesText = useClassesText()
@@ -85,6 +88,7 @@ export function CoursesTable({
       label={t('title')}
       sort={{ column: sort.column, dir: sort.dir, onSort: (key) => onSort(key as CourseSortColumn) }}
       rowHref={(c) => c.href}
+      selection={selection}
       onRowClick={onOpen}
     />
   )

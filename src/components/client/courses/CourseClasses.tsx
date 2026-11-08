@@ -4,7 +4,6 @@ import { useCallback, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { endClassAction, listClassesAction } from '@/app/[locale]/(client)/[tenant]/courses/schedule-actions'
 import type { ClassView, ClassesScreen, SaveClassResult } from '@/lib/api/course-schedule'
-import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import { Button } from '@/components/app/ui/Button'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { EmptyState } from '@/components/app/ui/EmptyState'
@@ -14,12 +13,11 @@ import { Notice } from '@/components/app/ui/Notice'
 import { Toast } from '@/components/app/ui/Toast'
 import { CourseClassSheet, type ClassSheetState } from './CourseClassSheet'
 import { ModePill, placeName, useClassTitle, useScheduleErrorText, useScheduleFormat } from './schedule-bits'
-import { currentEditionId, textOf, todayIn } from './schedule-model'
 
 /**
  * The Classes panel of the course editor (ADR-045): this course's weekly
  * classes — day and time, place, teachers, languages, in person / online /
- * hybrid, online room and term — one row each; add and edit in a sheet; "End
+ * hybrid, online room — one row each; add and edit in a sheet; "End
  * this class" asks first. Mounted through the editor's `classes` prop. Without
  * `canEdit` (courses.schedule.write) the panel only shows the classes.
  */
@@ -50,7 +48,7 @@ export function CourseClasses({
   const [endError, setEndError] = useState<string | null>(null)
   const [toast, setToast] = useState<{ message: string; tone: 'status' | 'error' } | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const { site, classes, editions, places, rooms } = screen
+  const { site, classes, places, rooms } = screen
 
   const flash = useCallback((message: string, tone: 'status' | 'error' = 'status') => {
     setToast({ message, tone })
@@ -94,12 +92,6 @@ export function CourseClasses({
     flash(t('end.done'))
   }
 
-  const defaultEditionId = currentEditionId(editions, todayIn(editingZone(site.timeZone)))
-  const editionName = (id: string | null) => {
-    const e = id ? editions.find((x) => x.id === id) : null
-    return e ? textOf(e.label, site.defaultLocale) : ''
-  }
-
   return (
     <div className="space-y-3">
       {loadError ? <Notice tone="error">{loadError}</Notice> : null}
@@ -123,7 +115,6 @@ export function CourseClasses({
           <ul className="flex flex-col gap-3">
             {classes.map((c) => {
               const place = placeName(places, c.placeToken)
-              const term = editionName(c.editionId)
               return (
                 <ListRow
                   key={c.id}
@@ -148,7 +139,6 @@ export function CourseClasses({
                   <span className="flex flex-wrap items-start gap-1.5">
                     <ModePill mode={c.attendanceMode} />
                     {c.attendanceMode !== 'inPerson' && c.meetingRoomLabel ? <Pill tone="outline">{c.meetingRoomLabel}</Pill> : null}
-                    {term ? <Pill tone="outline">{term}</Pill> : null}
                   </span>
                 </ListRow>
               )
@@ -168,10 +158,8 @@ export function CourseClasses({
         projectSlug={projectSlug}
         courseId={courseId}
         site={site}
-        editions={editions}
         places={places}
         rooms={rooms}
-        defaultEditionId={defaultEditionId}
         canEdit={canEdit}
         onSaved={(r) => void onSaved(r)}
         onEnd={(c) => {

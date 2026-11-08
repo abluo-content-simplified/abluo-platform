@@ -105,5 +105,10 @@ export const COURSE_ICONS = {
   plus: svg('M12 5v14M5 12h14', 18, 2.2),
   list: svg('M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01', 20, 2.2),
   grid: svg('M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z', 20, 1.8),
+  more: svg('M5 12h.01M12 12h.01M19 12h.01', 20, 2.6),
+  publish: svg('M12 19V5M5 12l7-7 7 7', 20, 1.8),
+  restore: svg('M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5', 20, 1.8),
+  trash: svg('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3', 20, 1.8),
+  dates: svg('M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z', 20, 1.8),
   calendar: svg('M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z', 28, 1.5),
 }

@@ -37,6 +37,8 @@ import {
   type CourseUsage,
 } from '@/lib/api/course-drafts'
 import { courseScheduleDeps } from '@/lib/api/course-schedule'
+import { bulkUpdateCourses, setClassesLastDate, type ClassLastDateResult, type CourseBulkResult } from '@/lib/api/course-bulk'
+import type { CourseBulkOp } from '@/lib/client/courses-bulk'
 import type { ActivityItem } from '@/lib/lifecycle/activity'
 
 export type CourseActionError = 'unauthenticated' | CourseErrorCode
@@ -109,6 +111,21 @@ export async function discardCourseDraftAction(input: { projectSlug: string; id:
 /** Archive / restore (write), delete a never-published draft or an archived course for good (owner; refused while the course is used or has classes). */
 export async function courseLifecycleAction(input: { projectSlug: string; id: string; op: CourseLifecycleOp }): Promise<Result<{ rev: string | null }>> {
   return run(input?.projectSlug, (ctx, pid) => runCourseLifecycle(ctx, pid, { id: input.id, op: input.op }, scheduleDeps(ctx, pid)))
+}
+
+/**
+ * Publish / archive / restore / delete several courses (the list's selection bar).
+ * Applied one by one with the single-course rules and permissions; the result says
+ * per course what changed, what was left as it was and what failed. Deleting also
+ * ends the courses' classes (the list asks first, naming them).
+ */
+export async function bulkUpdateCoursesAction(input: { projectSlug: string; ids: string[]; op: CourseBulkOp }): Promise<Result<CourseBulkResult>> {
+  return run(input?.projectSlug, (ctx, pid) => bulkUpdateCourses(ctx, pid, { ids: input.ids, op: input.op }, scheduleDeps(ctx, pid)))
+}
+
+/** "Change last date of classes": every active repeating class of the chosen courses ends on the last class day on or before `endsOn` (YYYY-MM-DD). */
+export async function setClassesLastDateAction(input: { projectSlug: string; ids: string[]; endsOn: string }): Promise<Result<ClassLastDateResult>> {
+  return run(input?.projectSlug, (ctx, pid) => setClassesLastDate(ctx, pid, { ids: input.ids, endsOn: input.endsOn }, scheduleDeps(ctx, pid)))
 }
 
 export async function getCourseActivityAction(input: { projectSlug: string; id: string }): Promise<Result<{ items: ActivityItem[] }>> {

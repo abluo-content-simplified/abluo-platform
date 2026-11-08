@@ -5,10 +5,14 @@ import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { CardGrid, CardGridItem, ContentCard } from '@/components/app/ui/list/ContentCard'
 import { LocalDate } from '@/components/app/ui/list/cells'
 import { ListRow } from '@/components/app/ui/list/ListRow'
+import { isShiftChange } from '@/components/app/ui/Checkbox'
+import type { DataTableSelection } from '@/components/app/ui/list/DataTable'
 import { colorClass, COURSE_ICONS, CourseStateBadge, MissingPills, useClassesText, type CourseRow } from './course-bits'
 
 type CardProps = {
   rows: CourseRow[]
+  /** Square checkboxes (bulk bar); absent when the person can't change anything. */
+  selection?: DataTableSelection<CourseRow>
   onOpen: (row: CourseRow, newTab: boolean) => void
   menuFor: (row: CourseRow) => CardMenuItem[]
 }
@@ -27,7 +31,7 @@ function ColourMedia({ row }: { row: CourseRow }) {
  * courses — the media area carries the course's colour, then title, short
  * description, status, weekly classes, teachers and the last update. ⋯ top-right.
  */
-export function CoursesCardsGrid({ rows, onOpen, menuFor }: CardProps) {
+export function CoursesCardsGrid({ rows, selection, onOpen, menuFor }: CardProps) {
   const t = useTranslations('clientDashboard.courses.list')
   const classesText = useClassesText()
   return (
@@ -40,6 +44,7 @@ export function CoursesCardsGrid({ rows, onOpen, menuFor }: CardProps) {
             title={c.title || t('untitled')}
             subtitle={c.shortDescription || undefined}
             href={c.href}
+            selection={selection ? { checked: selection.selected.has(c.id), onChange: (checked, shift) => selection.onToggle(c.id, checked, shift), label: selection.rowLabel(c) } : undefined}
             onOpen={(newTab) => onOpen(c, newTab)}
             overlay={<CardMenu variant="chip" label={t('menu', { name: c.title })} items={menuFor(c)} />}
           >
@@ -63,13 +68,18 @@ export function CoursesCardsGrid({ rows, onOpen, menuFor }: CardProps) {
 }
 
 /** Phones: one row per course (ListRow) — title, short description, status, classes — tapping opens the editor; ⋯ for the rest. */
-export function CoursesPhoneList({ rows, menuFor }: Pick<CardProps, 'rows' | 'menuFor'>) {
+export function CoursesPhoneList({ rows, selection, menuFor }: Pick<CardProps, 'rows' | 'selection' | 'menuFor'>) {
   const t = useTranslations('clientDashboard.courses.list')
   const classesText = useClassesText()
   return (
     <ul className="flex flex-col gap-3" aria-label={t('title')}>
       {rows.map((c) => (
-        <ListRow key={c.id} href={c.href} menu={{ label: t('menu', { name: c.title }), items: menuFor(c) }}>
+        <ListRow
+          key={c.id}
+          href={c.href}
+          select={selection ? { checked: selection.selected.has(c.id), label: selection.rowLabel(c), onChange: (checked, e) => selection.onToggle(c.id, checked, isShiftChange(e)) } : undefined}
+          menu={{ label: t('menu', { name: c.title }), items: menuFor(c) }}
+        >
           <span className="line-clamp-2 text-[0.9375rem] leading-[1.375rem] font-semibold text-foreground">{c.title || t('untitled')}</span>
           {c.shortDescription ? <span className="line-clamp-2 text-sm leading-5 text-foreground">{c.shortDescription}</span> : null}
           <span className="flex flex-wrap items-start gap-1.5">

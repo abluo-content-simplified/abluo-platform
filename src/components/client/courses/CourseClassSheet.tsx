@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { saveClassAction } from '@/app/[locale]/(client)/[tenant]/courses/schedule-actions'
-import type { ClassView, PersonRef, PlaceOption, RoomView, EditionView, SaveClassResult, ScheduleSite } from '@/lib/api/course-schedule'
+import type { ClassView, PersonRef, PlaceOption, RoomView, SaveClassResult, ScheduleSite } from '@/lib/api/course-schedule'
 import type { AttendanceMode } from '@/lib/scheduling/types'
 import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
@@ -21,13 +21,11 @@ import {
   canEndOn,
   canStartOn,
   classLanguages,
-  defaultStartsOn,
   repeatDraftOf,
   repeatKeyOf,
   repeatKeys,
   ruleOfDraft,
   snapDates,
-  textOf,
   timeOptions,
   timesOrdered,
   todayIn,
@@ -43,7 +41,6 @@ type Draft = RepeatDraft & {
   languages: string[]
   mode: AttendanceMode
   meetingRoomId: string
-  editionId: string
   startsOn: string
   endsOn: string
 }
@@ -59,7 +56,7 @@ const ORDINAL_KEYS = {
 } as const
 
 /** The form's starting values; `adjusted` when a stored date did not fit the class days and moved. */
-function initialDraft(cls: ClassView | null, site: ScheduleSite, editions: EditionView[], defaultEditionId: string): { draft: Draft; adjusted: boolean } {
+function initialDraft(cls: ClassView | null, site: ScheduleSite): { draft: Draft; adjusted: boolean } {
   if (cls) {
     const repeat = repeatDraftOf(cls.repeat, cls.startsOn ?? '')
     const rule = ruleOfDraft(repeat)
@@ -81,15 +78,13 @@ function initialDraft(cls: ClassView | null, site: ScheduleSite, editions: Editi
         languages: cls.languages,
         mode: cls.attendanceMode,
         meetingRoomId: cls.meetingRoomId ?? '',
-        editionId: cls.editionId ?? '',
         startsOn: snap.startsOn,
         endsOn: snap.endsOn,
       },
     }
   }
   const today = todayIn(editingZone(site.timeZone))
-  const edition = editions.find((e) => e.id === defaultEditionId)
-  const startsOn = defaultStartsOn(edition, today)
+  const startsOn = today
   return {
     adjusted: false,
     draft: {
@@ -101,7 +96,6 @@ function initialDraft(cls: ClassView | null, site: ScheduleSite, editions: Editi
       languages: classLanguages([site.defaultLocale]),
       mode: 'inPerson',
       meetingRoomId: '',
-      editionId: defaultEditionId,
       startsOn,
       endsOn: '',
     },
@@ -124,10 +118,8 @@ export function CourseClassSheet({
   projectSlug,
   courseId,
   site,
-  editions,
   places,
   rooms,
-  defaultEditionId,
   canEdit,
   onSaved,
   onEnd,
@@ -137,10 +129,8 @@ export function CourseClassSheet({
   projectSlug: string
   courseId: string
   site: ScheduleSite
-  editions: EditionView[]
   places: PlaceOption[]
   rooms: RoomView[]
-  defaultEditionId: string
   canEdit: boolean
   onSaved: (result: SaveClassResult) => void
   /** "End this class" for an existing class. */
@@ -156,10 +146,8 @@ export function CourseClassSheet({
           projectSlug={projectSlug}
           courseId={courseId}
           site={site}
-          editions={editions}
           places={places}
           rooms={rooms}
-          defaultEditionId={defaultEditionId}
           canEdit={canEdit}
           onSaved={onSaved}
           onEnd={onEnd}
@@ -174,10 +162,8 @@ function ClassForm({
   projectSlug,
   courseId,
   site,
-  editions,
   places,
   rooms,
-  defaultEditionId,
   canEdit,
   onSaved,
   onEnd,
@@ -186,10 +172,8 @@ function ClassForm({
   projectSlug: string
   courseId: string
   site: ScheduleSite
-  editions: EditionView[]
   places: PlaceOption[]
   rooms: RoomView[]
-  defaultEditionId: string
   canEdit: boolean
   onSaved: (result: SaveClassResult) => void
   onEnd: (cls: ClassView) => void
@@ -197,7 +181,7 @@ function ClassForm({
   const t = useTranslations('clientDashboard.courses.classes')
   const errorText = useScheduleErrorText()
   const { weekdayName, interval } = useScheduleFormat()
-  const [start] = useState(() => initialDraft(cls, site, editions, defaultEditionId))
+  const [start] = useState(() => initialDraft(cls, site))
   const [d, setD] = useState<Draft>(start.draft)
   const [adjusted, setAdjusted] = useState(start.adjusted)
   const [busy, setBusy] = useState(false)
@@ -205,12 +189,9 @@ function ClassForm({
   /** Applies a change; when the days of the class changed, the dates move to the days that still fit (and the form says so). */
   const set = (patch: Partial<Draft>) => {
     const next = { ...d, ...patch }
-    // A newly chosen term: a first date outside it moves to the term's start (then to the next class day).
-    const newTerm = 'editionId' in patch ? editions.find((e) => e.id === next.editionId) : undefined
-    if (newTerm && next.startsOn && (next.startsOn < newTerm.startsOn || next.startsOn > newTerm.endsOn)) next.startsOn = newTerm.startsOn
     const rule = ruleOfDraft(next)
     if (rule) {
-      const snap = snapDates(rule, next.startsOn, next.endsOn, 'startsOn' in patch && !newTerm)
+      const snap = snapDates(rule, next.startsOn, next.endsOn, 'startsOn' in patch)
       next.startsOn = snap.startsOn
       next.endsOn = snap.endsOn
       if (snap.adjusted) setAdjusted(true)
@@ -223,12 +204,9 @@ function ClassForm({
   // The site's languages come first; any other ISO 639-1 language can be added (lessons are not tied to the website's languages).
   const siteLanguages = classLanguages(site.languages)
   const ordered = timesOrdered(d.startTime, d.endTime)
-  const term = editions.find((e) => e.id === d.editionId)
-  const outsideTerm = !!term && !!d.startsOn && (d.startsOn < term.startsOn || d.startsOn > term.endsOn)
-  const datesOk = !outsideTerm && !!rule && !!d.startsOn && canStartOn(rule, d.startsOn) && (once || !d.endsOn || canEndOn(rule, d.endsOn, d.startsOn))
+  const datesOk = !!rule && !!d.startsOn && canStartOn(rule, d.startsOn) && (once || !d.endsOn || canEndOn(rule, d.endsOn, d.startsOn))
   const needsRoom = d.mode !== 'inPerson'
   const placeKnown = !d.placeToken || places.some((p) => p.token === d.placeToken)
-  const editionLabel = (e: EditionView) => textOf(e.label, site.defaultLocale) || e.startsOn
 
   async function save() {
     if (!canEdit || busy || !rule) return
@@ -239,7 +217,7 @@ function ClassForm({
       class: {
         seriesId: cls?.id ?? null,
         courseId,
-        editionId: d.editionId || null,
+        editionId: null, // classes carry their own first and last date; terms are no longer chosen here
         repeat: rule ?? undefined,
         startTime: d.startTime,
         endTime: d.endTime || null,
@@ -439,27 +417,12 @@ function ClassForm({
         </Field>
       ) : null}
 
-      <Field label={t('sheet.term')}>
-        {(p) => (
-          <Select {...p} value={d.editionId} disabled={disabled} onChange={(e) => set({ editionId: e.target.value })}>
-            <option value="">{t('sheet.noTerm')}</option>
-            {editions.map((e) => (
-              <option key={e.id} value={e.id}>
-                {editionLabel(e)}
-              </option>
-            ))}
-          </Select>
-        )}
-      </Field>
-
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={once ? t('sheet.onDate') : t('sheet.startsOn')} hint={once ? undefined : t('sheet.startsOnHint')} hintBelow error={outsideTerm ? t('errors.outsideTerm') : undefined}>
+        <Field label={once ? t('sheet.onDate') : t('sheet.startsOn')} hint={once ? undefined : t('sheet.startsOnHint')} hintBelow>
           {(p) => (
             <DatePicker
               {...p}
               value={d.startsOn}
-              min={term?.startsOn}
-              max={term?.endsOn}
               disabled={disabled}
               isDisabled={rule ? (day) => !canStartOn(rule, day) : undefined}
               onChange={(startsOn) => set({ startsOn })}
