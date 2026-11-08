@@ -7,7 +7,7 @@ import type { DashboardSubmission } from '@/lib/api/client-dashboard'
 import { resolveLocalized } from '@/lib/api/client-dashboard'
 import { siteContext, siteUrlFor, PROJECT_KEY } from './site-url'
 import { filterRequests, requestSnippet } from './requests-search'
-import { buildSearchQuery, isSanitySearchDef, mergeRows, searchTermGroups, SITE_KEY, type MergedRow, type RawSearchRow, type SanitySearchDef, type SearchParams } from './sanity-search'
+import { buildRelatedQuery, buildSearchQuery, isSanitySearchDef, mergeRows, RELATED_MAX, searchTermGroups, SITE_KEY, type MergedRow, type RawSearchRow, type SanitySearchDef, type SearchParams } from './sanity-search'
 import { buildSnippetQuery, firstSnippet, needlesOf, rowTexts, textHasNeedle } from './snippet'
 import { allSearchSources, type SearchSource } from './sources'
 import {
@@ -18,6 +18,7 @@ import {
   type SearchGroup,
   type SearchHit,
   type SearchKind,
+  type SearchReason,
   type SearchResponse,
 } from './types'
 
@@ -39,7 +40,20 @@ export type SearchDeps = {
   /** The Requests screen's loader, already scoped to the project (limit 500). */
   loadRequests: () => Promise<DashboardSubmission[]>
   sources?: SearchSource[]
+  /**
+   * Resolvers for `alsoMatchVia` relations, keyed by the DEPENDENT kind (e.g.
+   * `courses`). Given the matched related items (e.g. teachers: their
+   * `publicId` + name), return the ids of this kind's documents they lead to
+   * (value of the declared `idField`) and the related name that explains each.
+   * Called only when the kind is permitted and at least one related item
+   * matched by name; scoped by the caller (project + read permission).
+   */
+  relatedLoaders?: Partial<Record<SearchKind, RelatedLoader>>
 }
+
+export type RelatedMatch = { publicId: string; name: string }
+export type RelatedLink = { id: string; name: string }
+export type RelatedLoader = (matches: RelatedMatch[]) => Promise<RelatedLink[]>
 
 export type SearchInput = {
   projectSlug: string
@@ -100,6 +114,44 @@ export async function runSearch(input: SearchInput, deps: SearchDeps): Promise<S
   const r = { text: (v: unknown) => resolveLocalized(v as never, input.locale, siteDefault) ?? '' }
 
   const siteCtx = siteContext(sanity?.[PROJECT_KEY], siteDefault)
+
+  // Kinds reached through a related kind (a course through its teacher): rank below direct matches.
+  const related = new Map<SearchKind, Map<string, SearchReason>>()
+  const relatedRows = new Map<SearchKind, RawSearchRow[]>()
+  for (const def of sanityDefs) {
+    const rel = def.alsoMatchVia
+    const loader = deps.relatedLoaders?.[def.kind]
+    const viaDef = rel && sanityDefs.find((d) => d.kind === rel.via)
+    if (!rel || !loader || !viaDef) continue
+    const viaRows = sanity?.[viaDef.kind]
+    const matches: RelatedMatch[] = []
+    for (const m of mergeRows(Array.isArray(viaRows) ? (viaRows as RawSearchRow[]) : [], includeArchived)) {
+      const publicId = typeof m.row.publicId === 'string' ? m.row.publicId : ''
+      const name = viaDef.source.titleOf(m.row, r)
+      // The NAME must carry the match (a person found only through a bio does not make their courses hits).
+      if (publicId && name && termGroups.every((g) => textHasNeedle(name, needlesOf(g)))) matches.push({ publicId, name })
+      if (matches.length >= RELATED_MAX) break
+    }
+    if (!matches.length) continue
+    // Related lookups are a nicety: a failure must never fail the search.
+    const links = await loader(matches).catch(() => [] as RelatedLink[])
+    const names = new Map<string, string>()
+    for (const l of links) if (l.id && l.name && !names.has(l.id.toLowerCase())) names.set(l.id.toLowerCase(), l.name)
+    const built = buildRelatedQuery(def, rel.idField, [...names.keys()], slug)
+    if (!built) continue
+    const fetched = await deps.fetchSanity(built.query, built.params).catch(() => null)
+    const rows = fetched?.[def.kind]
+    if (!Array.isArray(rows)) continue
+    relatedRows.set(def.kind, rows as RawSearchRow[])
+    related.set(
+      def.kind,
+      new Map((rows as RawSearchRow[]).flatMap((row) => {
+        const id = typeof row._relId === 'string' ? row._relId.toLowerCase() : ''
+        const name = names.get(id)
+        return name ? [[row._id.replace(/^drafts\./, ''), { kind: rel.reason, name }] as const] : []
+      }))
+    )
+  }
   const groups = new Map<SearchKind, SearchGroup>()
   const seeAll = (def: SearchSource['def']) => `${def.listHref(slug)}?q=${encodeURIComponent(q)}`
 
@@ -108,7 +160,12 @@ export async function runSearch(input: SearchInput, deps: SearchDeps): Promise<S
 
   for (const def of sanityDefs) {
     const raw = sanity?.[def.kind]
-    const merged = mergeRows(Array.isArray(raw) ? (raw as RawSearchRow[]) : [], includeArchived)
+    const direct = mergeRows(Array.isArray(raw) ? (raw as RawSearchRow[]) : [], includeArchived)
+    // Documents reached through a related item come AFTER every direct match, once each.
+    const seen = new Set(direct.map((m) => m.id))
+    const reasons = related.get(def.kind)
+    const viaRelated = mergeRows(relatedRows.get(def.kind), includeArchived).filter((m) => !seen.has(m.id) && reasons?.has(m.id))
+    const merged = [...direct, ...viaRelated]
     if (!merged.length) continue
     const shown = merged.slice(0, SEARCH_GROUP_LIMIT)
     const hits: SearchHit[] = shown.map((m) => {
@@ -128,7 +185,9 @@ export async function runSearch(input: SearchInput, deps: SearchDeps): Promise<S
         ...(m.draft && { draft: true }),
         ...(m.archived && { archived: true }),
       }
-      if (!textHasNeedle(title, needles)) needSnippet.push({ def, hit, m })
+      const reason = reasons?.get(m.id)
+      if (reason && !seen.has(m.id)) hit.reason = reason
+      else if (!textHasNeedle(title, needles)) needSnippet.push({ def, hit, m })
       return hit
     })
     groups.set(def.kind, { kind: def.kind, hits, more: merged.length > SEARCH_GROUP_LIMIT, seeAllHref: seeAll(def) })

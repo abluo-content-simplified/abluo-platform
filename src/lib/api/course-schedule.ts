@@ -873,3 +873,28 @@ export function courseScheduleDeps(projectSlug: string, deps: CourseScheduleDeps
     },
   }
 }
+
+/**
+ * Dashboard search (ADR-047): the courses taught by the given people. ONE read
+ * of the project's live classes (the store has no instructor filter), matched
+ * in memory on the classes' regular teachers. The caller (the search action)
+ * has already checked `courses.course.read` and passes the grant's project.
+ * Returns each course's publicId with the first matching teacher's name.
+ */
+export async function coursesTaughtBy(
+  projectId: string,
+  people: ReadonlyArray<{ publicId: string; name: string }>,
+  deps: CourseScheduleDeps = {}
+): Promise<Array<{ id: string; name: string }>> {
+  const wanted = new Map(people.filter((p) => UUID_RE.test(p.publicId)).map((p) => [p.publicId.toLowerCase(), p.name]))
+  if (!wanted.size) return []
+  const series = await storeOf(deps).listSeries(projectId, { ownerType: 'course' })
+  const out = new Map<string, string>()
+  for (const s of series) {
+    const owner = s.ownerPublicId.toLowerCase()
+    if (out.has(owner)) continue
+    const teacher = s.instructorPublicIds.map((i) => wanted.get(i.toLowerCase())).find((n): n is string => Boolean(n))
+    if (teacher) out.set(owner, teacher)
+  }
+  return [...out].map(([id, name]) => ({ id, name }))
+}

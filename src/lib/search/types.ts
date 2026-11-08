@@ -10,6 +10,9 @@
 /** One content kind that can appear in results. Module ids, plus the platform Media Library. */
 export type SearchKind = 'blog' | 'events' | 'courses' | 'catalogue' | 'people' | 'media' | 'forms'
 
+/** A hit found through a related item. `name` is the related item's title (the part that matched). */
+export type SearchReason = { kind: 'teacher'; name: string }
+
 export type SearchHit = {
   /** Bare document / row id (never `drafts.`-prefixed). */
   id: string
@@ -24,6 +27,12 @@ export type SearchHit = {
    * `before`/`after` carry their own "…" when cut. Plain text only.
    */
   snippet?: { before: string; match: string; after: string }
+  /**
+   * Why it matched when the match is in a RELATED item rather than the text
+   * (e.g. a course found through its teacher). Structured, not a sentence, so
+   * the client renders it from translations (`app.search.reason.<kind>`).
+   */
+  reason?: SearchReason
   /** Small square thumbnail URL, when the item has an image. */
   thumbUrl?: string
   /** Locale-agnostic dashboard href: `/{projectSlug}/…` (the client prefixes the locale like every other link). */

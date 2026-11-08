@@ -86,12 +86,18 @@ List screens accept `?q=` and pre-fill `ListToolbar`'s search. No new search pag
 - **Footer:** `/ Go To` `+ Create` chips (under the input on phones), a rotating tip, Show archived always visible. Paste searches at once; reopening within 60 s restores the last query.
 - **No search logging** (Tom, 2026-11-08). If usage is ever measured: counts only, never the typed text.
 
+## v1.3 — courses found through their teachers (2026-11-08)
+- A search block may declare `alsoMatchVia: { via, reason, idField }` (courses: `via: 'people'`, `reason: 'teacher'`, `idField: 'publicId'`). The engine stays module-agnostic; the owning module supplies a server-side resolver through `SearchDeps.relatedLoaders` (wired in `search-actions.ts`: `coursesTaughtBy`, `src/lib/api/course-schedule.ts`).
+- Runs only when the kind is permitted (installed + `courses.course.read`), People is searched too, and at least one matched person's NAME carries the query (a bio-only match does not count); max 20 people. People not installed or not readable: skipped.
+- Cost: one read of the project's live classes (matched in memory on regular teachers) plus one Sanity request for the course documents (`publicId in $relatedIds`, project-scoped, draft over published, archived only with the toggle). Failures never fail the search.
+- Teacher hits come after direct matches, once per course, with `SearchHit.reason = { kind: 'teacher', name }`; the row shows it as the snippet from `app.search.reason.teacher` ("With {name}"). Substitute teachers of single dates are not followed.
+""
 ## Known gaps (accepted for v1)
 - **No typo tolerance or meaning-based search** ("teeth cleaning" won't find "dental hygiene"). Revisit with Sanity embeddings if real use shows misses.
 
 ## As built (v1) — where it differs from the table
 - **Categories and tags** match on their names (taxonomy term labels, any language) as well as the stored keys (v1.1, 2026-11-08).
-- **Course teacher names are not searched** — they live in the Supabase schedule, not the course document. v1.1.
+- **Course teacher names** live in the Supabase schedule, not the course document; searched through the People match (v1.3 below).
 - **Media**: also matches animations (no thumbnail for them).
 - A draft carries its published twin's state (`_pub`), so a draft whose text matched is not mislabelled "draft only".
 - `?q=` on a list screen starts with the other filters at their defaults (a remembered "last 7 days" could hide the match) and does not overwrite the remembered filters; `?open=` opens one item on Media and Contact Requests.

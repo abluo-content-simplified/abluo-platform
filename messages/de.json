@@ -4693,6 +4693,9 @@
       "abluo_admin": "Super-Admin"
     },
     "search": {
+      "reason": {
+        "teacher": "Mit {name}"
+      },
       "destinations": {
         "settings-form-notifications": {
           "label": "Formular-Benachrichtigungen",

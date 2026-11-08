@@ -8,6 +8,7 @@
  */
 import { getLocale } from 'next-intl/server'
 import { getDashboardSubmissions } from '@/lib/api/client-dashboard'
+import { coursesTaughtBy } from '@/lib/api/course-schedule'
 import { canModuleAction } from '@/lib/api/module-action-guard'
 import { grantCanManageMedia, MEDIA_MANAGE_PERMISSION } from '@/lib/api/media-permission'
 import { resolveProjectAction } from '@/lib/api/project-action'
@@ -45,6 +46,8 @@ export async function searchDashboardAction(req: SearchRequest): Promise<SearchR
         fetchSanity: (query, params) =>
           sanityWriteClient.fetch<Record<string, unknown> | null>(query, params, { perspective: 'raw' }),
         loadRequests: () => getDashboardSubmissions(ctx, grant.projectId, { limit: REQUESTS_SEARCH_SCAN }),
+        // The engine only calls this when courses are installed + readable (permittedSources) and a teacher matched by name.
+        relatedLoaders: { courses: (people) => coursesTaughtBy(grant.projectId, people) },
       }
     )
   } catch (error) {

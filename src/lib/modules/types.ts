@@ -506,9 +506,27 @@ export type SanitySearchSource = {
 /** Contact requests live in Supabase (form_submissions), not Sanity. */
 export type ContactRequestSearchSource = { type: 'contact-requests' }
 
+/**
+ * "This kind also matches when a related item of another kind matches"
+ * (e.g. a course also matches when one of its teachers' names matches). The
+ * relation itself is resolved by a server-side function the owning module
+ * provides to the engine (`SearchDeps.relatedLoaders`); the engine never
+ * names a module.
+ */
+export type SearchRelation = {
+  /** The kind whose matches lead here (its group must be searched too). */
+  via: SearchKind
+  /** Why the hit is shown; becomes `SearchHit.reason.kind`. */
+  reason: 'teacher'
+  /** Field on this kind's documents that the loader's ids refer to (static, never user text). */
+  idField: string
+}
+
 export type ModuleSearchDef = {
   /** Result group id. */
   kind: SearchKind
+  /** Also match through a related kind (see SearchRelation). */
+  alsoMatchVia?: SearchRelation
   /** Read permission the viewer must hold (module permission, or the platform media permission). */
   permission: string
   source: SanitySearchSource | ContactRequestSearchSource

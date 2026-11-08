@@ -1912,7 +1912,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         docType: 'person',
         site: { visible: PERSON_HAS_PAGE, segment: { moduleId: 'people', configKey: 'profileSegment' } },
         extraFilter: '!defined(anonymisedAt)',
-        projection: 'firstName, lastName, displayName, jobTitle, "thumb": select(photo->projectSlug == $projectSlug => photo->image.asset->url)',
+        projection: 'publicId, firstName, lastName, displayName, jobTitle, "thumb": select(photo->projectSlug == $projectSlug => photo->image.asset->url)',
         fields: [
         { name: 'displayName', kind: 'string', weight: 3 },
         { name: 'firstName', kind: 'string', weight: 3 },
@@ -2055,9 +2055,11 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   {
     id: 'courses',
     createAction: { createOrder: 70, permission: 'courses.course.write', ready: true, href: (slug) => `/${slug}/courses?new=1`, },
-    // v1: teacher names live in Supabase (course_teachers), not on the Sanity course document — not searched yet (ADR-047 D3 follow-up).
+    // Teacher names live in the Supabase schedule, not on the course document: a course also matches
+    // through its teachers (People matches -> courses taught by them, ADR-047 v1.3).
     search: {
       kind: 'courses',
+      alsoMatchVia: { via: 'people', reason: 'teacher', idField: 'publicId' },
       permission: 'courses.course.read',
       href: (slug, id) => `/${slug}/courses/${id}`,
       listHref: (slug) => `/${slug}/courses`,

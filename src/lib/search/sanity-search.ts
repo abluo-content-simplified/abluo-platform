@@ -180,6 +180,32 @@ export function buildSubQuery(def: SanitySearchDef, alts: number | number[]): st
 }
 
 export type SearchParams = Record<string, string | string[]>
+
+/** Max related items (e.g. teachers) followed from one search. */
+export const RELATED_MAX = 20
+
+/**
+ * The request for documents reached THROUGH a related kind (a course taught by
+ * a matched teacher): same row shape as the main sub-query (so mergeRows and
+ * the hit builder apply unchanged), selected by `idField in $relatedIds`
+ * instead of by text. Project-scoped and version-free like every sub-query;
+ * the ids are a bound array, `idField` comes from the static declaration.
+ */
+export function buildRelatedQuery(def: SanitySearchDef, idField: string, ids: string[], projectSlug: string): { query: string; params: SearchParams } | null {
+  if (!/^[A-Za-z][A-Za-z0-9]*$/.test(idField)) throw new Error(`search relation of "${def.kind}": invalid idField`)
+  if (!ids.length) return null
+  const s = def.source
+  const filter = [
+    `_type == "${s.docType}"`,
+    'projectSlug == $projectSlug',
+    '!(_id in path("versions.**"))',
+    ...(s.drafts === false ? ['!(_id in path("drafts.**"))'] : []),
+    ...(s.extraFilter ? [`(${s.extraFilter})`] : []),
+    `${idField} in $relatedIds`,
+  ].join(' && ')
+  const query = `{ "${def.kind}": *[${filter}][0...${SEARCH_ROW_CAP}]{ _id, _updatedAt, archivedAt, "_relId": ${idField}${siteProjection(def)}, ${publishedTwin(siteProjection(def))}, ${s.projection} } }`
+  return { query, params: { projectSlug, relatedIds: ids } }
+}
 export type SanitySearchQuery = { query: string; params: SearchParams; kinds: SearchKind[] }
 
 /**

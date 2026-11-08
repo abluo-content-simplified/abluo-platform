@@ -101,6 +101,15 @@ const splitList = (s: string) =>
 
 export function useClientSearch({ projectSlug, destinations, createMenu, iconFor, moduleLabel, permissions = [], newRequestsCount = 0 }: Config): { triggers: { field: ReactNode; rail: ReactNode; icon: ReactNode }; dialog: ReactNode } {
   const t = useTranslations('app.search')
+  /** "With {name}" rendered from the translation, so word order follows the language; the name is the emphasised part. */
+  const reasonSnippet = useCallback(
+    (reason: SearchHit['reason']) => {
+      if (!reason) return undefined
+      const [before = '', after = ''] = t(`reason.${reason.kind}`, { name: '\u0000' }).split('\u0000')
+      return { before, match: reason.name, after }
+    },
+    [t]
+  )
   const tCreate = useTranslations('clientDashboard.create.type')
   const locale = useLocale()
   const router = useRouter()
@@ -332,7 +341,7 @@ export function useClientSearch({ projectSlug, destinations, createMenu, iconFor
             id: h.id,
             title: h.title,
             subtitle: h.subtitle,
-            snippet: h.snippet,
+            snippet: h.snippet ?? reasonSnippet(h.reason),
             thumbUrl: h.thumbUrl,
             icon: h.thumbUrl ? undefined : iconFor(h.kind),
             highlight: true,
@@ -351,7 +360,7 @@ export function useClientSearch({ projectSlug, destinations, createMenu, iconFor
     if (goto.length > 0) out.push({ key: 'goto', heading: t('groupGoTo'), items: goto.map(navItem) })
     if (create.length > 0) out.push({ key: 'create', heading: t('groupCreate'), items: create.map(navItem) })
     return out
-  }, [mode, text, entries, recent, browseAll, newRequestsCount, settled, canSearch, locale, now, t, iconFor, moduleLabel, go, openTab, navItem, plainItem])
+  }, [mode, text, entries, recent, browseAll, newRequestsCount, settled, canSearch, locale, now, t, iconFor, moduleLabel, go, openTab, navItem, plainItem, reasonSnippet])
 
   const failed = canSearch && settled?.key === wanted && settled !== null && !settled.response.ok && settled.response.error !== 'too_short'
   const pending = canSearch && (wanted === null || settled?.key !== wanted)

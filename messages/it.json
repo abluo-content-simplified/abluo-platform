@@ -4693,6 +4693,9 @@
       "abluo_admin": "Super amministratore"
     },
     "search": {
+      "reason": {
+        "teacher": "Con {name}"
+      },
       "destinations": {
         "settings-form-notifications": {
           "label": "Notifiche dei Moduli",
