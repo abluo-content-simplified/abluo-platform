@@ -118,7 +118,7 @@ export function ConnectedAppsBrowser({
       {children ? <div className="pt-2 pb-6">{children}</div> : null}
 
       {allConnections ? (
-        <section aria-labelledby={partnersId} className="space-y-4">
+        <section id="partner-apps" aria-labelledby={partnersId} className="space-y-4">
           {children ? <SectionHeading id={partnersId} title={t('partnersTitle')} /> : null}
           <p className="max-w-2xl text-[0.9375rem] leading-6 text-muted-foreground">{t('intro')}</p>
 

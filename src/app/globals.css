@@ -551,3 +551,21 @@ html:has(input[data-billing-switch][value='year']:checked) [data-billing-show='y
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
 }
 [data-billing-option]:has(input:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+/* ── Section deep links (SectionTarget, 2026-11-08) ─────────────────────────────
+   A search result that points at a section of a page scrolls there and rings it
+   for ~1.5 s, in the existing --ring colour. Reduced motion: a static ring, no fade. */
+[data-section-flash] {
+  border-radius: 1rem;
+  animation: section-flash 1.5s ease-out;
+}
+@keyframes section-flash {
+  0%, 35% { box-shadow: 0 0 0 6px color-mix(in oklch, var(--ring) 40%, transparent); }
+  100% { box-shadow: 0 0 0 6px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-section-flash] {
+    animation: none;
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--ring) 40%, transparent);
+  }
+}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
+import { announceSectionTarget } from '@/lib/client/section-target'
 import { getPathname, useRouter } from '@/i18n/navigation'
 import { SearchPalette, type SearchPaletteGroup, type SearchPaletteItem } from '@/components/app/ui/SearchPalette'
 import { SearchTrigger } from '@/components/app/ui/SearchTrigger'
@@ -201,6 +202,7 @@ export function useClientSearch({ projectSlug, destinations, createMenu, iconFor
       if (entry) remember(entry)
       closeSearch()
       router.push(href)
+      announceSectionTarget(href)
     },
     [router, remember, closeSearch],
   )

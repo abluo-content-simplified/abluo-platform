@@ -28,6 +28,21 @@ describe('SUB_DESTINATIONS', () => {
     }
   })
 
+  it('a #section in an href exists as a literal id in the dashboard component source', () => {
+    const walk = (dir: string): string[] =>
+      fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+        const f = path.join(dir, e.name)
+        return e.isDirectory() ? (e.name === '__tests__' ? [] : walk(f)) : /\.tsx$/.test(e.name) ? [f] : []
+      })
+    const source = walk(path.join(process.cwd(), 'src/components/client')).map((f) => fs.readFileSync(f, 'utf8')).join('\n')
+    const withHash = SUB_DESTINATIONS.filter((d) => d.href('x').includes('#'))
+    expect(withHash.length).toBeGreaterThan(0)
+    for (const d of withHash) {
+      const id = d.href('x').split('#')[1]
+      expect(source.includes(`id="${id}"`), `${d.id} → #${id}`).toBe(true)
+    }
+  })
+
   it('does not point at admin or studio surfaces', () => {
     for (const d of SUB_DESTINATIONS) expect(d.href('x')).not.toMatch(/\/(studio|admin)(\/|$)/)
   })

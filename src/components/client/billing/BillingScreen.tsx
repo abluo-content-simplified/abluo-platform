@@ -183,7 +183,7 @@ function Invoices({ invoices }: { invoices: InvoiceSummary[] | null }) {
   const t = useTranslations('clientDashboard.billing.invoices')
   const format = useFormatter()
   return (
-    <section aria-labelledby="billing-invoices" className="flex flex-col gap-3">
+    <section id="invoices" aria-labelledby="billing-invoices" className="flex flex-col gap-3">
       <SectionHeading id="billing-invoices" title={t('heading')} />
       {invoices === null ? (
         <Notice tone="neutral">{t('unavailable')}</Notice>

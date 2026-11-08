@@ -184,7 +184,7 @@ export function AffiliatePrograms({
   )
 
   return (
-    <section aria-labelledby={affiliateId} className="flex flex-col gap-4">
+    <section id="affiliate-programs" aria-labelledby={affiliateId} className="flex flex-col gap-4">
       <SectionHeading id={affiliateId} title={t('affiliate.title')} />
       <p className="max-w-2xl text-[0.9375rem] leading-6 text-muted-foreground">{t('affiliate.intro')}</p>
       <ul className="grid gap-4 md:grid-cols-2">

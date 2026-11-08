@@ -104,7 +104,7 @@ export function FormNotifications({
   const confirmGroup = confirmLast && view ? view.groups.find((g) => g.key === confirmLast.groupKey) ?? null : null
 
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-3">
+    <section id="form-notifications" aria-labelledby={headingId} className="flex flex-col gap-3">
       <SectionHeading id={headingId} title={t('title')} />
       <p className="text-sm text-muted-foreground">{t('intro')}</p>
       <p className="text-sm text-muted-foreground">{t('previewNote')}</p>

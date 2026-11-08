@@ -23,12 +23,12 @@ export type SubDestination = {
 }
 
 export const SUB_DESTINATIONS: SubDestination[] = [
-  { id: 'settings-form-notifications', parent: 'settings', href: (s) => `/${s}/settings` },
-  { id: 'settings-translations', parent: 'settings', href: (s) => `/${s}/settings` },
-  { id: 'connected-affiliate-programs', parent: 'connections', href: (s) => `/${s}/apps`, permission: 'site.details.read' },
-  { id: 'connected-partner-apps', parent: 'connections', href: (s) => `/${s}/apps` },
-  { id: 'users-invite', parent: 'users', href: (s) => `/${s}/users` },
-  { id: 'billing-invoices', parent: 'billing', href: (s) => `/${s}/billing` },
+  { id: 'settings-form-notifications', parent: 'settings', href: (s) => `/${s}/settings#form-notifications` },
+  { id: 'settings-translations', parent: 'settings', href: (s) => `/${s}/settings#translations` },
+  { id: 'connected-affiliate-programs', parent: 'connections', href: (s) => `/${s}/apps#affiliate-programs`, permission: 'site.details.read' },
+  { id: 'connected-partner-apps', parent: 'connections', href: (s) => `/${s}/apps#partner-apps` },
+  { id: 'users-invite', parent: 'users', href: (s) => `/${s}/users#invite` },
+  { id: 'billing-invoices', parent: 'billing', href: (s) => `/${s}/billing#invoices` },
   { id: 'taxonomy-media-tags', parent: 'taxonomy', href: (s) => `/${s}/taxonomy?tab=media`, permission: 'media.library.manage' },
   { id: 'taxonomy-gallery-tags', parent: 'taxonomy', href: (s) => `/${s}/taxonomy?tab=galleries` },
   { id: 'media-add', parent: 'media', href: (s) => `/${s}/media/add` },

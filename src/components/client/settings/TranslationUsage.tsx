@@ -24,7 +24,7 @@ export function TranslationUsage({ projectSlug, view }: { projectSlug: string; v
   const n = (v: number) => new Intl.NumberFormat(locale).format(v)
 
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-3">
+    <section id="translations" aria-labelledby={headingId} className="flex flex-col gap-3">
       <SectionHeading id={headingId} title={t('title')} />
       <p className="text-sm text-muted-foreground">{t('intro')}</p>
       {view === 'unavailable' ? (

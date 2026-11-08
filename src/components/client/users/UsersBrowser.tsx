@@ -236,7 +236,7 @@ export function UsersBrowser({ title, projectSlug, locale, view }: { title: stri
         title={title}
         actions={
           view.invitableRoles.length > 0 ? (
-            <Button variant="primary" onClick={() => setInviting(true)}>
+            <Button id="invite" variant="primary" onClick={() => setInviting(true)}>
               {USERS_ICONS.plus}
               {t('invite')}
             </Button>

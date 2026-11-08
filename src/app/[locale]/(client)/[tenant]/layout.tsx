@@ -37,6 +37,7 @@ import { SupportReplyNotice } from '@/components/client/support/SupportReplyNoti
 import { getFormsDashboard } from '@/lib/api/dashboard/forms'
 import { SupportAccessNotice } from '@/components/client/support/SupportAccessNotice'
 import { BillingNotice } from '@/components/client/billing/BillingNotice'
+import { SectionTarget } from '@/components/client/SectionTarget'
 import { PAGE_WIDTH } from '@/components/app/ui/PageShell'
 
 /**
@@ -204,6 +205,7 @@ async function ClientProjectLayoutInner({
           {/* Notices above the page share its content width (PAGE_WIDTH) and gutters. A newer Abluo build is live: calm, never reloads by itself. */}
           <NewVersionNotice className={`mx-4 mt-4 md:mx-6 md:mt-6 ${PAGE_WIDTH}`} />
           <PresenceHeartbeat />
+          <SectionTarget />
           {/* Announcements (planned maintenance …) between their start and end. */}
           <AnnouncementBanners notices={notices} />
           {support ? (
