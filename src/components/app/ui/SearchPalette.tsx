@@ -88,6 +88,12 @@ export type SearchPaletteProps = {
   state: "ready" | "loading" | "error";
   /** Reload after an error. */
   onRetry?: () => void;
+  /**
+   * Enter while no row was chosen (arrows / hover): the caller may take it as
+   * "search now" (skip the pause) and return true; the first row then becomes
+   * the target of the NEXT Enter. Return false to open the first row as usual.
+   */
+  onSubmit?: () => boolean;
   /** Show the "Show archived" switch. */
   archived?: { value: boolean; onChange: (next: boolean) => void };
   /** Show `labels.minChars` (the query is too short to search). */
@@ -122,6 +128,7 @@ function PaletteBody({
   groups,
   state,
   onRetry,
+  onSubmit,
   archived,
   tooShort,
   labels,
@@ -149,6 +156,12 @@ function PaletteBody({
       : []),
   ]);
   const [activeKey, setActiveKey] = useState<string | null>(null);
+  // A new query starts from the top again, with no row chosen.
+  const [seenQuery, setSeenQuery] = useState(query);
+  if (seenQuery !== query) {
+    setSeenQuery(query);
+    setActiveKey(null);
+  }
   const activeIndex = Math.max(
     0,
     rows.findIndex((r) => r.key === activeKey),
@@ -176,6 +189,7 @@ function PaletteBody({
       move(0, 0);
     } else if (e.key === "Enter") {
       e.preventDefault();
+      if (activeKey === null && onSubmit?.()) return;
       active?.onSelect();
     }
   }

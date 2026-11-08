@@ -208,6 +208,12 @@ export function useClientSearch({ projectSlug, destinations, createMenu, iconFor
       groups={groups}
       state={state}
       onRetry={() => setRetry((n) => n + 1)}
+      onSubmit={() => {
+        // Enter before the pause is over: search now instead of opening a stale first row.
+        if (trimmed.length < SEARCH_MIN_CHARS || (debounced === trimmed && settled?.key === wanted)) return false
+        setDebounced(trimmed)
+        return true
+      }}
       archived={{ value: archived, onChange: setArchived }}
       tooShort={trimmed.length > 0 && trimmed.length < SEARCH_MIN_CHARS}
       labels={{
