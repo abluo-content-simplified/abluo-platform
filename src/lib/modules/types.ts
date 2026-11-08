@@ -1,3 +1,4 @@
+import type { SearchKind } from '@/lib/search/types'
 // ── Module manifest types ─────────────────────────────────────────────────────
 // ADR-011 Phase A2 — full ModuleManifest type.
 // ADR-011 Phase D3 — Navigation Derivation.
@@ -429,6 +430,69 @@ export type ModuleCreateAction = {
   iconKey?: string
 }
 
+// ── Dashboard search declaration (ADR-047 D4) ────────────────────────────────
+// A module becomes searchable by declaring this block; the search engine
+// (src/lib/search) never names a module.
+
+/** How a searchable field is stored, which decides how the engine matches it. */
+export type SearchFieldKind =
+  /** `{ en: "…", it: "…" }` keyed by platform locale (localizedString). */
+  | 'localizedString'
+  /** Same shape, longer text (localizedText). */
+  | 'localizedText'
+  /** `{ en: [blocks], it: [blocks] }` — matched on `pt::text()` per locale. */
+  | 'localizedPortableText'
+  /** A plain string. */
+  | 'string'
+  /** An array of plain strings (category / tag keys). */
+  | 'stringArray'
+
+export type SearchField = {
+  /** GROQ path of the field on the document (e.g. `title`, `place.venue->name`). Static, never user text. */
+  name: string
+  kind: SearchFieldKind
+  /** Ranking weight: title ×3, short text ×2, body ×1. */
+  weight: 1 | 2 | 3
+  /** Optional static GROQ clause that must hold for the field to count (e.g. a dereferenced doc is of this project). */
+  when?: string
+}
+
+/** Values the engine hands to title/subtitle projections. */
+export type SearchTextResolver = {
+  /** Resolve a string / locale-keyed object to one string (viewer locale, site default, then any). */
+  text: (value: unknown) => string
+}
+
+export type SanitySearchSource = {
+  type: 'sanity'
+  /** Sanity document type. */
+  docType: string
+  /** Static GROQ clause appended to the filter (e.g. `!defined(anonymisedAt)`). */
+  extraFilter?: string
+  /** The type has draft documents (default true). False for the Media Library. */
+  drafts?: boolean
+  /** Static GROQ projection fragment fetching what titleOf/subtitleOf need, plus `"thumb": <image url>`. */
+  projection: string
+  fields: SearchField[]
+  titleOf: (row: Record<string, unknown>, r: SearchTextResolver) => string
+  subtitleOf?: (row: Record<string, unknown>, r: SearchTextResolver) => string
+}
+
+/** Contact requests live in Supabase (form_submissions), not Sanity. */
+export type ContactRequestSearchSource = { type: 'contact-requests' }
+
+export type ModuleSearchDef = {
+  /** Result group id. */
+  kind: SearchKind
+  /** Read permission the viewer must hold (module permission, or the platform media permission). */
+  permission: string
+  source: SanitySearchSource | ContactRequestSearchSource
+  /** Locale-agnostic dashboard href of one result. */
+  href: (projectSlug: string, id: string) => string
+  /** Locale-agnostic dashboard list href ("See all"). */
+  listHref: (projectSlug: string) => string
+}
+
 export type ModuleManifest = {
 
   // ── Identity ──────────────────────────────────────────────────────────────
@@ -449,6 +513,13 @@ export type ModuleManifest = {
    * creation entry point (yet) omit it. Guarded by create-action-guard.test.ts.
    */
   createAction?: ModuleCreateAction
+
+  /**
+   * Optional dashboard-search declaration (ADR-047 D4): what is searched, how
+   * results are shown and where they link. A module with a `createAction` must
+   * declare this or be listed in NOT_SEARCHABLE (src/lib/search/not-searchable.ts).
+   */
+  search?: ModuleSearchDef
 
   // ── Platform contract ──────────────────────────────────────────────────────
   // Everything the platform needs to know to integrate this module.

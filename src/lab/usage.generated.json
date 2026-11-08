@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-06T17:43:07.423Z",
+  "generatedAt": "2026-11-08T11:28:09.325Z",
   "usage": {
     "button": [
       "src/app/(platform)/(auth)/forgot-password/page.tsx",
@@ -11,6 +11,8 @@
       "src/app/[locale]/(admin)/lab/page.tsx",
       "src/app/[locale]/(admin)/lab/todo/page.tsx",
       "src/app/[locale]/(admin)/projects/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/error.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/rules/error.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/error.tsx",
       "src/app/[locale]/(client)/[tenant]/courses/error.tsx",
       "src/app/[locale]/(client)/[tenant]/faq-sets/error.tsx",
@@ -48,10 +50,13 @@
       "src/components/app/ui/DateTimePicker.tsx",
       "src/components/app/ui/FormatPriceRows.tsx",
       "src/components/app/ui/ImpactPreview.tsx",
+      "src/components/app/ui/LanguagePicker.tsx",
       "src/components/app/ui/MessageComposer.tsx",
       "src/components/app/ui/Notice.tsx",
       "src/components/app/ui/PersonPicker.tsx",
       "src/components/app/ui/ScreenshotGrid.tsx",
+      "src/components/app/ui/SearchPalette.tsx",
+      "src/components/app/ui/SearchTrigger.tsx",
       "src/components/app/ui/TreeEditor.tsx",
       "src/components/app/ui/WeeklyScheduleEditor.tsx",
       "src/components/billing/BillingProfilePanel.tsx",
@@ -95,12 +100,12 @@
       "src/components/client/courses/CourseEditor.tsx",
       "src/components/client/courses/CoursePreviewButton.tsx",
       "src/components/client/courses/CoursesBrowser.tsx",
+      "src/components/client/courses/CoursesLastDateDialog.tsx",
       "src/components/client/courses/NewCourseDialog.tsx",
       "src/components/client/courses/Timetable.tsx",
       "src/components/client/courses/TimetableClassSheet.tsx",
       "src/components/client/courses/TimetableHolidays.tsx",
       "src/components/client/courses/TimetableRooms.tsx",
-      "src/components/client/courses/TimetableTermSheet.tsx",
       "src/components/client/create/AddContentSheet.tsx",
       "src/components/client/create/ImproveReview.tsx",
       "src/components/client/create/OpenForEdit.tsx",
@@ -149,7 +154,11 @@
       "src/components/client/posts/PostSheets.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
       "src/components/client/posts/post-bits.tsx",
+      "src/components/client/reservations/BookingDetailView.tsx",
+      "src/components/client/reservations/BookingRules.tsx",
+      "src/components/client/reservations/BookingsBrowser.tsx",
       "src/components/client/settings/FormNotifications.tsx",
+      "src/components/client/settings/TranslationUsage.tsx",
       "src/components/client/support/SupportAccessNotice.tsx",
       "src/components/client/support/SupportBanner.tsx",
       "src/components/client/support/SupportReplyNotice.tsx",
@@ -179,6 +188,7 @@
       "src/components/app/ui/CategoryPicker.tsx",
       "src/components/app/ui/CountryPicker.tsx",
       "src/components/app/ui/FormatPriceRows.tsx",
+      "src/components/app/ui/LanguagePicker.tsx",
       "src/components/app/ui/MessageComposer.tsx",
       "src/components/app/ui/PersonPicker.tsx",
       "src/components/auth/auth-ui.tsx",
@@ -216,6 +226,9 @@
       "src/components/client/media/PhotoCard.tsx",
       "src/components/client/persons/NewPersonDialog.tsx",
       "src/components/client/persons/PersonEditorTabs.tsx",
+      "src/components/client/reservations/BookingDetailView.tsx",
+      "src/components/client/reservations/BookingRules.tsx",
+      "src/components/client/reservations/LocalizedTextArea.tsx",
       "src/components/client/settings/FormNotifications.tsx",
       "src/components/client/taxonomy/InlineAdd.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
@@ -282,12 +295,14 @@
       "src/components/client/gallery/GallerySteps.tsx",
       "src/components/client/media/MediaGrid.tsx",
       "src/components/client/media/PhotoCard.tsx",
-      "src/components/client/persons/PersonEditorTabs.tsx"
+      "src/components/client/persons/PersonEditorTabs.tsx",
+      "src/components/client/reservations/LocalizedTextArea.tsx"
     ],
     "tabs": [
       "src/components/client/catalogue/setup/CategoriesSetup.tsx",
       "src/components/client/documents/DocumentsBrowser.tsx",
       "src/components/client/persons/PersonEditor.tsx",
+      "src/components/client/reservations/BookingsTabs.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx"
     ],
     "drag-grip": [
@@ -330,6 +345,7 @@
       "src/components/app/ui/BillingStatusPill.tsx",
       "src/components/app/ui/CategoryPicker.tsx",
       "src/components/app/ui/PersonPicker.tsx",
+      "src/components/app/ui/SearchPalette.tsx",
       "src/components/client/access/AccessGroupsBrowser.tsx",
       "src/components/client/billing/BillingScreen.tsx",
       "src/components/client/catalogue/CatalogueBrowser.tsx",
@@ -372,6 +388,9 @@
       "src/components/client/persons/PeopleTable.tsx",
       "src/components/client/persons/person-bits.tsx",
       "src/components/client/posts/PostsTable.tsx",
+      "src/components/client/reservations/BookingDetailView.tsx",
+      "src/components/client/reservations/BookingsBrowser.tsx",
+      "src/components/client/reservations/booking-bits.tsx",
       "src/components/client/taxonomy/TermSection.tsx",
       "src/components/client/tickets/SupportTicketsBrowser.tsx",
       "src/components/client/tickets/ticket-bits.tsx",
@@ -413,6 +432,7 @@
       "src/components/client/catalogue/setup/starters/PackSteps.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
       "src/components/client/faq/post/FaqPublishChoice.tsx",
+      "src/components/client/reservations/BookingRules.tsx",
       "src/components/client/users/UsersBrowser.tsx"
     ],
     "count-badge": [
@@ -426,9 +446,12 @@
     "switch": [
       "src/components/admin/projects/ProvisioningRunPanel.tsx",
       "src/components/app/shell/AppQuickAddSwitch.tsx",
+      "src/components/app/ui/SearchPalette.tsx",
       "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/catalogue/setup/PublicWebsite.tsx",
-      "src/components/client/editor/BodyEditor.tsx"
+      "src/components/client/editor/BodyEditor.tsx",
+      "src/components/client/persons/PersonEditorTabs.tsx",
+      "src/components/client/reservations/BookingRules.tsx"
     ],
     "toast": [
       "src/components/admin/backlog/BacklogBrowser.tsx",
@@ -465,6 +488,7 @@
       "src/components/client/persons/PeopleBrowser.tsx",
       "src/components/client/persons/PersonEditor.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
+      "src/components/client/reservations/BookingDetailView.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx",
       "src/components/client/users/UsersBrowser.tsx"
@@ -480,6 +504,7 @@
       "src/app/[locale]/(admin)/support/page.tsx",
       "src/app/[locale]/(admin)/whats-new/page.tsx",
       "src/app/[locale]/(client)/[tenant]/analytics/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/[id]/page.tsx",
       "src/app/[locale]/(client)/[tenant]/home/page.tsx",
       "src/app/[locale]/(client)/[tenant]/support/page.tsx",
       "src/app/[locale]/(client)/sites/page.tsx",
@@ -499,6 +524,7 @@
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
       "src/components/app/ui/AttentionList.tsx",
       "src/components/app/ui/PersonPicker.tsx",
+      "src/components/app/ui/SearchPalette.tsx",
       "src/components/client/access/AccessGroupsBrowser.tsx",
       "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
@@ -530,6 +556,8 @@
       "src/components/client/media/MediaLibraryScreen.tsx",
       "src/components/client/persons/PeopleBrowser.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
+      "src/components/client/reservations/BookingRules.tsx",
+      "src/components/client/reservations/BookingsBrowser.tsx",
       "src/components/client/settings/FormNotifications.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TermSection.tsx",
@@ -538,6 +566,7 @@
     ],
     "back-link": [
       "src/app/[locale]/(admin)/users/[key]/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/[id]/page.tsx",
       "src/components/admin/tickets/AdminTicketView.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/ItemEditor.tsx",
@@ -551,6 +580,7 @@
       "src/components/client/faq/FaqSetEditor.tsx",
       "src/components/client/gallery/GalleryDetail.tsx",
       "src/components/client/persons/PersonEditor.tsx",
+      "src/components/client/reservations/BookingDetailView.tsx",
       "src/components/client/tickets/NewRequestForm.tsx",
       "src/components/client/tickets/TicketConversation.tsx"
     ],
@@ -569,10 +599,17 @@
     ],
     "dialog-frame": [
       "src/components/app/ui/ImageViewer.tsx",
+      "src/components/app/ui/SearchPalette.tsx",
       "src/components/client/catalogue/setup/food/FoodSetupFlow.tsx",
       "src/components/client/create/AddContentSheet.tsx",
       "src/components/client/create/ImproveReview.tsx",
       "src/components/client/whats-new/WhatsNew.tsx"
+    ],
+    "search-palette": [
+      "src/components/client/search/ClientSearch.tsx"
+    ],
+    "search-trigger": [
+      "src/components/client/search/ClientSearch.tsx"
     ],
     "code-input": [
       "src/app/(platform)/(auth)/mfa/page.tsx"
@@ -583,6 +620,7 @@
     ],
     "picker-button": [
       "src/components/app/ui/CountryPicker.tsx",
+      "src/components/app/ui/LanguagePicker.tsx",
       "src/components/client/ProjectSwitcher.tsx"
     ],
     "sidebar-row-button": [
@@ -597,6 +635,7 @@
     "rail-item": [
       "src/components/app/shell/AppSidebar.tsx",
       "src/components/app/ui/RailFlyout.tsx",
+      "src/components/app/ui/SearchTrigger.tsx",
       "src/components/client/whats-new/WhatsNew.tsx"
     ],
     "rail-flyout": [
@@ -657,6 +696,9 @@
       "src/components/client/persons/PeopleBrowser.tsx",
       "src/components/client/persons/PersonEditor.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
+      "src/components/client/reservations/BookingDetailView.tsx",
+      "src/components/client/reservations/BookingRules.tsx",
+      "src/components/client/reservations/BookingsBrowser.tsx",
       "src/components/client/settings/SettingsForm.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx",
       "src/components/client/tickets/NewRequestForm.tsx",
@@ -699,7 +741,8 @@
       "src/components/client/discover/DiscoverModules.tsx",
       "src/components/client/home/ContinueEditing.tsx",
       "src/components/client/home/LatestList.tsx",
-      "src/components/client/settings/FormNotifications.tsx"
+      "src/components/client/settings/FormNotifications.tsx",
+      "src/components/client/settings/TranslationUsage.tsx"
     ],
     "confirm-dialog": [
       "src/components/admin/partners/PartnersBrowser.tsx",
@@ -720,7 +763,7 @@
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
       "src/components/client/courses/CourseClasses.tsx",
       "src/components/client/courses/CourseEditor.tsx",
-      "src/components/client/courses/Timetable.tsx",
+      "src/components/client/courses/CoursesDeleteDialog.tsx",
       "src/components/client/create/WizardShell.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
       "src/components/client/documents/DocumentsBrowser.tsx",
@@ -732,6 +775,7 @@
       "src/components/client/gallery/GalleryWizard.tsx",
       "src/components/client/persons/PersonAnonymiseDialog.tsx",
       "src/components/client/persons/PersonEditor.tsx",
+      "src/components/client/reservations/BookingDetailView.tsx",
       "src/components/client/settings/FormNotifications.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TermSheet.tsx",
@@ -749,6 +793,7 @@
       "src/components/app/ui/DatePicker.tsx",
       "src/components/app/ui/DateRangePicker.tsx",
       "src/components/app/ui/DateTimePicker.tsx",
+      "src/components/app/ui/LanguagePicker.tsx",
       "src/components/app/ui/PersonPicker.tsx",
       "src/components/client/ClientSidebar.tsx",
       "src/components/client/ProjectSwitcher.tsx",
@@ -765,11 +810,12 @@
       "src/components/client/catalogue/setup/starters/PackSteps.tsx",
       "src/components/client/courses/CourseActivitySheet.tsx",
       "src/components/client/courses/CourseClassSheet.tsx",
+      "src/components/client/courses/CoursesBrowser.tsx",
+      "src/components/client/courses/CoursesLastDateDialog.tsx",
       "src/components/client/courses/NewCourseDialog.tsx",
       "src/components/client/courses/TimetableClassSheet.tsx",
       "src/components/client/courses/TimetableHolidays.tsx",
       "src/components/client/courses/TimetableRooms.tsx",
-      "src/components/client/courses/TimetableTermSheet.tsx",
       "src/components/client/create/steps/CoverStep.tsx",
       "src/components/client/faq/FaqSetActivitySheet.tsx",
       "src/components/client/faq/FaqSetsBrowser.tsx",
@@ -841,6 +887,7 @@
       "src/components/client/access/AccessGroupsBrowser.tsx",
       "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/courses/CoursesFilters.tsx",
+      "src/components/client/courses/TimetableFilters.tsx",
       "src/components/client/documents/DocumentsBrowser.tsx",
       "src/components/client/events/EventList.tsx",
       "src/components/client/faq/FaqSetsFilters.tsx",
@@ -849,6 +896,7 @@
       "src/components/client/media/MediaLibraryScreen.tsx",
       "src/components/client/persons/PeopleFilters.tsx",
       "src/components/client/posts/PostsFilters.tsx",
+      "src/components/client/reservations/BookingsBrowser.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx",
       "src/components/client/tickets/SupportTicketsBrowser.tsx",
@@ -892,6 +940,7 @@
       "src/components/client/media/MediaTable.tsx",
       "src/components/client/persons/PeopleTable.tsx",
       "src/components/client/posts/PostsTable.tsx",
+      "src/components/client/reservations/BookingsBrowser.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TermSection.tsx",
       "src/components/client/tickets/SupportTicketsBrowser.tsx",
@@ -899,6 +948,7 @@
     ],
     "content-card": [
       "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/courses/CoursesBrowser.tsx",
       "src/components/client/courses/CoursesCards.tsx",
       "src/components/client/events/EventList.tsx",
       "src/components/client/faq/FaqSetCards.tsx",
@@ -951,6 +1001,7 @@
       "src/components/client/persons/PersonEditorTabs.tsx",
       "src/components/client/posts/PostsTable.tsx",
       "src/components/client/posts/post-bits.tsx",
+      "src/components/client/reservations/BookingsBrowser.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TermSection.tsx",
       "src/components/client/tickets/SupportTicketsBrowser.tsx",
@@ -975,6 +1026,7 @@
     ],
     "selection-bar": [
       "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/courses/CoursesBrowser.tsx",
       "src/components/client/documents/DocumentsBrowser.tsx",
       "src/components/client/forms/SubmissionsBrowser.tsx",
       "src/components/client/gallery/GalleryList.tsx",
@@ -1027,6 +1079,13 @@
       "src/app/[locale]/(client)/[tenant]/analytics/page.tsx",
       "src/app/[locale]/(client)/[tenant]/apps/page.tsx",
       "src/app/[locale]/(client)/[tenant]/billing/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/[id]/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/error.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/loading.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/rules/error.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/rules/loading.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/rules/page.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/[id]/page.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/collections/[id]/page.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/collections/new/page.tsx",
@@ -1080,6 +1139,8 @@
       "src/components/admin/AdminSidebar.tsx",
       "src/components/app/shell/AppSidebar.tsx",
       "src/components/app/ui/RailItem.tsx",
+      "src/components/app/ui/SearchPalette.tsx",
+      "src/components/app/ui/SearchTrigger.tsx",
       "src/components/app/ui/SidebarCollapseToggle.tsx",
       "src/components/app/ui/SidebarGroup.tsx",
       "src/components/app/ui/SidebarLink.tsx",
@@ -1092,7 +1153,8 @@
       "src/components/client/whats-new/WhatsNew.tsx"
     ],
     "abluo-logo": [
-      "src/components/app/shell/AppSidebar.tsx"
+      "src/components/app/shell/AppSidebar.tsx",
+      "src/components/site/Footer/AbluoCredit.tsx"
     ],
     "link-card": [
       "src/app/[locale]/(admin)/projects/[slug]/page.tsx",
@@ -1120,6 +1182,7 @@
     ],
     "bar-button": [
       "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/courses/CoursesBrowser.tsx",
       "src/components/client/documents/DocumentsBrowser.tsx",
       "src/components/client/editor/BodyEditor.tsx",
       "src/components/client/forms/SubmissionsBrowser.tsx",
@@ -1141,6 +1204,7 @@
       "src/components/client/media/AddPhotos.tsx"
     ],
     "toggle-chips": [
+      "src/components/app/ui/LanguagePicker.tsx",
       "src/components/app/ui/WeeklyScheduleEditor.tsx",
       "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/courses/CourseClassSheet.tsx",
@@ -1174,7 +1238,6 @@
       "src/components/client/catalogue/ItemEditor.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
       "src/components/client/courses/CourseEditor.tsx",
-      "src/components/client/courses/CoursesBrowser.tsx",
       "src/components/client/create/WizardShell.tsx",
       "src/components/client/faq/FaqSetEditor.tsx",
       "src/components/client/faq/FaqSetsBrowser.tsx",
@@ -1265,6 +1328,7 @@
       "src/components/client/billing/BillingScreen.tsx",
       "src/components/client/connections/AffiliatePrograms.tsx",
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
+      "src/components/client/reservations/BookingDetailView.tsx",
       "src/components/client/tickets/TicketConversation.tsx"
     ],
     "update-card": [
@@ -1317,6 +1381,7 @@
       "src/components/client/faq/FaqSetCards.tsx",
       "src/components/client/forms/SubmissionCards.tsx",
       "src/components/client/persons/PeopleCards.tsx",
+      "src/components/client/reservations/BookingsBrowser.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/taxonomy/TermSection.tsx",
       "src/components/client/tickets/SupportTicketsBrowser.tsx",
@@ -1330,6 +1395,7 @@
       "src/components/client/connections/ConsentScreen.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
       "src/components/client/persons/PersonEditorTabs.tsx",
+      "src/components/client/reservations/BookingRules.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/users/UsersSheets.tsx"
     ],
@@ -1357,7 +1423,8 @@
       "src/components/admin/projects/NewProjectWizard.tsx",
       "src/components/client/create/steps/CoverStep.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
-      "src/components/client/media/UploadQueueList.tsx"
+      "src/components/client/media/UploadQueueList.tsx",
+      "src/components/client/settings/TranslationUsage.tsx"
     ],
     "focal-point-picker": [
       "src/components/client/events/EventEditor.tsx",
@@ -1408,6 +1475,8 @@
       "src/app/[locale]/(admin)/projects/page.tsx",
       "src/app/[locale]/(admin)/users/page.tsx",
       "src/app/[locale]/(admin)/whats-new/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/error.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/rules/error.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/error.tsx",
       "src/app/[locale]/(client)/[tenant]/courses/[id]/page.tsx",
       "src/app/[locale]/(client)/[tenant]/courses/error.tsx",
@@ -1455,11 +1524,11 @@
       "src/components/client/courses/CourseClassSheet.tsx",
       "src/components/client/courses/CourseClasses.tsx",
       "src/components/client/courses/CourseEditor.tsx",
+      "src/components/client/courses/CoursesLastDateDialog.tsx",
       "src/components/client/courses/Timetable.tsx",
       "src/components/client/courses/TimetableClassSheet.tsx",
       "src/components/client/courses/TimetableHolidays.tsx",
       "src/components/client/courses/TimetableRooms.tsx",
-      "src/components/client/courses/TimetableTermSheet.tsx",
       "src/components/client/create/PreviewPane.tsx",
       "src/components/client/create/steps/CoverStep.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
@@ -1475,8 +1544,12 @@
       "src/components/client/persons/PersonEditorPhotoFocus.tsx",
       "src/components/client/persons/PersonEditorTabs.tsx",
       "src/components/client/persons/PersonUsedInLoader.tsx",
+      "src/components/client/reservations/BookingDetailView.tsx",
+      "src/components/client/reservations/BookingRules.tsx",
+      "src/components/client/reservations/BookingsBrowser.tsx",
       "src/components/client/settings/FormNotifications.tsx",
       "src/components/client/settings/SettingsForm.tsx",
+      "src/components/client/settings/TranslationUsage.tsx",
       "src/components/client/support/SupportReplyNotice.tsx",
       "src/components/client/taxonomy/InternalTagsPanel.tsx",
       "src/components/client/tickets/NewRequestForm.tsx",
@@ -1487,6 +1560,7 @@
     ],
     "panel": [
       "src/app/[locale]/(admin)/lab/todo/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/rules/loading.tsx",
       "src/app/[locale]/(client)/[tenant]/courses/loading.tsx",
       "src/app/[locale]/(client)/[tenant]/faq-sets/loading.tsx",
       "src/app/[locale]/(client)/[tenant]/people/loading.tsx",
@@ -1539,7 +1613,10 @@
       "src/components/client/persons/PersonEditor.tsx",
       "src/components/client/persons/PersonEditorPhotoFocus.tsx",
       "src/components/client/persons/PersonEditorTabs.tsx",
+      "src/components/client/reservations/BookingDetailView.tsx",
+      "src/components/client/reservations/BookingRules.tsx",
       "src/components/client/settings/FormNotifications.tsx",
+      "src/components/client/settings/TranslationUsage.tsx",
       "src/components/client/support/SupportAccessNotice.tsx",
       "src/components/client/tickets/TicketConversation.tsx"
     ],
@@ -1561,12 +1638,14 @@
       "src/components/client/catalogue/setup/starters/PackSteps.tsx",
       "src/components/client/connections/AffiliatePrograms.tsx",
       "src/components/client/courses/CourseClassSheet.tsx",
-      "src/components/client/courses/Timetable.tsx",
       "src/components/client/courses/TimetableClassSheet.tsx",
-      "src/components/client/persons/PersonEditorTabs.tsx"
+      "src/components/client/persons/PersonEditorTabs.tsx",
+      "src/components/client/reservations/BookingDetailView.tsx",
+      "src/components/client/reservations/BookingRules.tsx"
     ],
     "date-input": [
-      "src/components/client/persons/PersonEditorTabs.tsx"
+      "src/components/client/persons/PersonEditorTabs.tsx",
+      "src/components/client/reservations/BookingDetailView.tsx"
     ],
     "calendar": [
       "src/components/app/ui/DatePicker.tsx",
@@ -1583,8 +1662,11 @@
     "date-picker": [
       "src/components/admin/projects/BillingCardView.tsx",
       "src/components/client/courses/CourseClassSheet.tsx",
-      "src/components/client/courses/TimetableHolidays.tsx",
-      "src/components/client/courses/TimetableTermSheet.tsx"
+      "src/components/client/courses/CoursesLastDateDialog.tsx",
+      "src/components/client/courses/TimetableHolidays.tsx"
+    ],
+    "language-picker": [
+      "src/components/client/courses/CourseClassSheet.tsx"
     ],
     "country-picker": [
       "src/components/billing/BillingProfilePanel.tsx"
@@ -1617,11 +1699,11 @@
       "src/components/client/connections/AffiliatePrograms.tsx",
       "src/components/client/courses/CourseClassSheet.tsx",
       "src/components/client/courses/CourseEditor.tsx",
+      "src/components/client/courses/CoursesLastDateDialog.tsx",
       "src/components/client/courses/NewCourseDialog.tsx",
       "src/components/client/courses/TimetableClassSheet.tsx",
       "src/components/client/courses/TimetableHolidays.tsx",
       "src/components/client/courses/TimetableRooms.tsx",
-      "src/components/client/courses/TimetableTermSheet.tsx",
       "src/components/client/courses/schedule-bits.tsx",
       "src/components/client/create/steps/FaqStep.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
@@ -1630,6 +1712,9 @@
       "src/components/client/faq/post/FaqPickSheet.tsx",
       "src/components/client/persons/NewPersonDialog.tsx",
       "src/components/client/persons/PersonEditorTabs.tsx",
+      "src/components/client/reservations/BookingDetailView.tsx",
+      "src/components/client/reservations/BookingRules.tsx",
+      "src/components/client/reservations/LocalizedTextArea.tsx",
       "src/components/client/settings/FormNotifications.tsx",
       "src/components/client/tickets/NewRequestForm.tsx",
       "src/components/client/users/UsersSheets.tsx"
@@ -1639,11 +1724,14 @@
       "src/components/client/persons/PersonPickerField.tsx"
     ],
     "skeleton": [
+      "src/app/[locale]/(client)/[tenant]/bookings/loading.tsx",
+      "src/app/[locale]/(client)/[tenant]/bookings/rules/loading.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/loading.tsx",
       "src/app/[locale]/(client)/[tenant]/courses/loading.tsx",
       "src/app/[locale]/(client)/[tenant]/faq-sets/loading.tsx",
       "src/app/[locale]/(client)/[tenant]/people/loading.tsx",
       "src/components/app/ui/PersonPicker.tsx",
+      "src/components/app/ui/SearchPalette.tsx",
       "src/components/client/catalogue/setup/CategoryDeleteSheet.tsx",
       "src/components/client/catalogue/setup/food/FoodSetupFlow.tsx",
       "src/components/client/catalogue/setup/starters/StarterStructures.tsx",

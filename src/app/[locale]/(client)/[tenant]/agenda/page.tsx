@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { cleanSearchQ } from '@/lib/client/search-landing'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { EVENT_WRITE_PERMISSION, listEventsWithCategories, type EventListScreen } from '@/lib/api/event-drafts'
@@ -16,8 +17,15 @@ import { PageShell } from '@/components/app/ui/PageShell'
  */
 export const dynamic = 'force-dynamic'
 
-export default async function EventsPage({ params }: { params: Promise<{ tenant: string }> }) {
+export default async function EventsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ tenant: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const { tenant: projectSlug } = await params
+  const q = cleanSearchQ((await searchParams).q)
   const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=/${projectSlug}/agenda`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
@@ -38,6 +46,7 @@ export default async function EventsPage({ params }: { params: Promise<{ tenant:
         events={screen.events}
         categoryOptions={screen.categoryOptions}
         defaultLocale={screen.defaultLocale}
+        initialQuery={q}
         canWrite={grant.permissions.includes(EVENT_WRITE_PERMISSION)}
       />
     </PageShell>

@@ -2,6 +2,10 @@
 
 import { CreateAction } from '@/components/app/ui/CreateAction'
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { cleanSearchQ } from '@/lib/client/search-landing'
+import { useLandedParam } from '@/lib/client/use-search-landing'
+import { useStripSearchParam } from '@/lib/client/use-strip-search-param'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { PageHeader } from '@/components/app/ui/PageHeader'
@@ -105,6 +109,7 @@ export function CatalogueBrowser({
   initialView,
   initialStatus,
   initialSort = null,
+  initialQuery = '',
 }: {
   projectSlug: string
   /** The page title — always the interface dictionary's "Catalogue" (C11/K-2). */
@@ -115,6 +120,8 @@ export function CatalogueBrowser({
   initialView: string | null
   initialStatus: string | null
   initialSort?: string | null
+  /** `?q=` from the dashboard search: pre-fills the search box (ADR-047 D6). */
+  initialQuery?: string
 }) {
   const t = useTranslations('catalogue.dashboard.list')
   const tb = useTranslations('catalogue.dashboard.item.fields.book')
@@ -127,8 +134,18 @@ export function CatalogueBrowser({
   const [sort, setSort] = useState<ListSort>(() => parseListSort(initialSort))
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [lastPicked, setLastPicked] = useState<string | null>(null)
-  const [query, setQuery] = useState('')
+  // A visit from the dashboard search: the search text is set; the other
+  // filters are the route's (status from the address, no category) — search-landing.ts.
+  const [query, setQuery] = useState(initialQuery)
   const [category, setCategory] = useState('')
+  const landedQ = cleanSearchQ(useSearchParams().get('q'))
+  useLandedParam(landedQ, (q) => {
+    setQuery(q)
+    setCategory('')
+    setStatus('all')
+    syncUrl('all')
+  })
+  useStripSearchParam(landedQ)
   const [display, setDisplay] = useViewPreference<'list' | 'cards'>('catalogue.view', ['list', 'cards'], 'list')
   const [busy, setBusy] = useState(false)
   const { toast, show: setToast } = useUndo()

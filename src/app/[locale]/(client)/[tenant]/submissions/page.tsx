@@ -12,6 +12,7 @@ import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { SubmissionsBrowser } from '@/components/client/forms/SubmissionsBrowser'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { PageShell } from '@/components/app/ui/PageShell'
+import { cleanOpenId, cleanSearchQ, isUuidId } from '@/lib/client/search-landing'
 
 /**
  * Client dashboard — Submissions (leads). ADR-018 slice 6.
@@ -29,10 +30,16 @@ import { PageShell } from '@/components/app/ui/PageShell'
  */
 export default async function SubmissionsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tenant: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { tenant: projectSlug } = await params
+  // ADR-047 D6: `?q=` pre-fills the search, `?open={submissionId}` opens that request.
+  const address = await searchParams
+  const initialQuery = cleanSearchQ(address.q)
+  const initialOpenId = cleanOpenId(address.open, isUuidId)
 
   const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) {
@@ -71,6 +78,8 @@ export default async function SubmissionsPage({
           submissions={submissions}
           projectSlug={projectSlug}
           locale={locale}
+          initialQuery={initialQuery}
+          initialOpenId={initialOpenId}
           // UI hints only (ADR-028): hide controls the caller can't use. The
           // server actions re-check the same permissions and RLS enforces them.
           canUpdate={grant.permissions.includes(FORMS_SUBMISSION_UPDATE_PERMISSION)}

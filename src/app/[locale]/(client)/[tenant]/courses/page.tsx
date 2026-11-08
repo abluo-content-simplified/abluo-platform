@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { landingListQuery } from '@/lib/client/search-landing'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { COURSE_DELETE_PERMISSION, COURSE_READ_PERMISSION, COURSE_WRITE_PERMISSION, listCourses, type CourseListItem, type CourseSite } from '@/lib/api/course-drafts'
@@ -27,8 +28,7 @@ export default async function CoursesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { tenant: projectSlug } = await params
-  const query = new URLSearchParams()
-  for (const [k, v] of Object.entries(await searchParams)) if (typeof v === 'string') query.set(k, v)
+  const query = landingListQuery(await searchParams)
   const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=/${projectSlug}/courses`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
@@ -55,7 +55,7 @@ export default async function CoursesPage({
         canWrite={grant.permissions.includes(COURSE_WRITE_PERMISSION)}
         canDelete={grant.permissions.includes(COURSE_DELETE_PERMISSION)}
         canScheduleWrite={grant.permissions.includes(SCHEDULE_WRITE_PERMISSION)}
-        initialQuery={query.toString()}
+        initialQuery={query}
       />
     </PageShell>
   )

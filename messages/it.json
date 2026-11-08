@@ -4692,6 +4692,29 @@
       "member": "Membro",
       "abluo_admin": "Super amministratore"
     },
+    "search": {
+      "title": "Cerca",
+      "placeholder": "Cerca o vai a…",
+      "trigger": "Cerca",
+      "shortcutMac": "⌘K",
+      "shortcutOther": "Ctrl K",
+      "groupRecent": "Recenti",
+      "groupGoTo": "Vai a",
+      "groupCreate": "Crea",
+      "seeAll": "Vedi tutto in {module}",
+      "draft": "Bozza",
+      "archived": "Archiviato",
+      "showArchived": "Mostra archiviati",
+      "noResults": "Nessun risultato per “{q}”",
+      "minChars": "Scrivi almeno {count} caratteri per cercare nei tuoi contenuti.",
+      "error": "La ricerca non ha funzionato. Riprova.",
+      "retry": "Riprova",
+      "loading": "Ricerca in corso…",
+      "close": "Annulla",
+      "hintNavigate": "Naviga",
+      "hintOpen": "Apri",
+      "hintClose": "Chiudi"
+    },
     "filterBar": {
       "label": "Filtri",
       "search": "Cerca"

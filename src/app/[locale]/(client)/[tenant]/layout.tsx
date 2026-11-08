@@ -175,6 +175,7 @@ async function ClientProjectLayoutInner({
       <SidebarStateProvider initial={navPrefs} className="min-h-screen md:flex">
         <ClientSidebar
           navItems={navItems}
+          createMenu={buildCreateMenu(activeGrant)}
           projects={projects}
           activeSlug={activeGrant.projectSlug}
           account={{

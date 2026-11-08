@@ -4692,6 +4692,29 @@
       "member": "Mitglied",
       "abluo_admin": "Super-Admin"
     },
+    "search": {
+      "title": "Suche",
+      "placeholder": "Suchen oder springen zu…",
+      "trigger": "Suchen",
+      "shortcutMac": "⌘K",
+      "shortcutOther": "Strg K",
+      "groupRecent": "Zuletzt",
+      "groupGoTo": "Gehe zu",
+      "groupCreate": "Erstellen",
+      "seeAll": "Alle in {module} ansehen",
+      "draft": "Entwurf",
+      "archived": "Archiviert",
+      "showArchived": "Archivierte anzeigen",
+      "noResults": "Nichts gefunden für „{q}“",
+      "minChars": "Gib mindestens {count} Zeichen ein, um deine Inhalte zu durchsuchen.",
+      "error": "Die Suche hat nicht geklappt. Versuch es bitte noch einmal.",
+      "retry": "Erneut versuchen",
+      "loading": "Suche läuft…",
+      "close": "Abbrechen",
+      "hintNavigate": "Navigieren",
+      "hintOpen": "Öffnen",
+      "hintClose": "Schließen"
+    },
     "filterBar": {
       "label": "Filter",
       "search": "Suchen"

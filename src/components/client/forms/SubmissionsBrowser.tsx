@@ -1,6 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { cleanOpenId, cleanSearchQ, isUuidId } from '@/lib/client/search-landing'
+import { useLandedParam } from '@/lib/client/use-search-landing'
+import { dropOpenFromAddress, useStripSearchParam } from '@/lib/client/use-strip-search-param'
 import { useTranslations } from 'next-intl'
 import type { DashboardSubmission, SubmissionStatus } from '@/lib/api/client-dashboard'
 import {
@@ -60,6 +64,8 @@ export function SubmissionsBrowser({
   locale,
   canUpdate,
   canDelete,
+  initialQuery = '',
+  initialOpenId = '',
 }: {
   submissions: DashboardSubmission[]
   projectSlug: string
@@ -68,6 +74,9 @@ export function SubmissionsBrowser({
   canUpdate: boolean
   /** Server-computed from the caller's grant (forms.submission.delete). UI only — the server re-checks. */
   canDelete: boolean
+  /** ADR-047 D6: `?q=` pre-fills the search box; `?open=` opens that request when it is in the list. */
+  initialQuery?: string
+  initialOpenId?: string
 }) {
   const t = useTranslations('clientDashboard.submissions')
   const { toast, show, schedule } = useUndo()
@@ -81,7 +90,13 @@ export function SubmissionsBrowser({
   }
 
   // ── Filters ────────────────────────────────────────────────────────────────
-  const [filters, setFilters] = useState<SubmissionFilters>(DEFAULT_SUBMISSION_FILTERS)
+  // A visit from the dashboard search: the search text is set, every other filter is the default (search-landing.ts).
+  const [filters, setFilters] = useState<SubmissionFilters>(() => (initialQuery ? { ...DEFAULT_SUBMISSION_FILTERS, q: initialQuery } : DEFAULT_SUBMISSION_FILTERS))
+  const addressParams = useSearchParams()
+  const landedQ = cleanSearchQ(addressParams.get('q'))
+  const landedOpen = cleanOpenId(addressParams.get('open'), isUuidId)
+  useLandedParam(landedQ, (q) => setFilters((f) => ({ ...DEFAULT_SUBMISSION_FILTERS, sort: f.sort, q })))
+  useStripSearchParam(landedQ)
   const update = (patch: Partial<SubmissionFilters>) => setFilters((f) => ({ ...f, ...patch }))
   const reset = () => setFilters((f) => ({ ...DEFAULT_SUBMISSION_FILTERS, sort: f.sort }))
   const shown = useMemo(() => applySubmissionFilters(rows, filters), [rows, filters])
@@ -124,7 +139,20 @@ export function SubmissionsBrowser({
   }
 
   // ── Actions ────────────────────────────────────────────────────────────────
-  const [openId, setOpenId] = useState<string | null>(null)
+  // `?open=` for a request that is not in the list: nothing opens (no error).
+  const [openId, setOpenId] = useState<string | null>(initialOpenId && submissions.some((s) => s.id === initialOpenId) ? initialOpenId : null)
+  useLandedParam(landedOpen, (id) => {
+    if (rows.some((r) => r.id === id)) setOpenId(id)
+    else dropOpenFromAddress()
+  })
+  useEffect(() => {
+    if (initialOpenId && !submissions.some((s) => s.id === initialOpenId)) dropOpenFromAddress()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on arrival
+  }, [])
+  const closePanel = () => {
+    setOpenId(null)
+    dropOpenFromAddress()
+  }
   const [moreOpen, setMoreOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string[] | null>(null)
   const [busy, setBusy] = useState(false)
@@ -347,7 +375,7 @@ export function SubmissionsBrowser({
         title={opened ? nameOf(opened) : ''}
         subtitle={opened?.email ?? undefined}
         closeLabel={t('close')}
-        onClose={() => setOpenId(null)}
+        onClose={closePanel}
         actions={
           opened ? (
             <>

@@ -12,6 +12,7 @@ import { catalogueImageShape } from '@/lib/modules/catalogue/list-model'
 import { pathServedBase } from '@/lib/modules/catalogue/site-base'
 import { CatalogueBrowser } from '@/components/client/catalogue/CatalogueBrowser'
 import { PageShell } from '@/components/app/ui/PageShell'
+import { cleanSearchQ } from '@/lib/client/search-landing'
 
 /**
  * Client dashboard — the Catalogue lists (ADR-033, spec §10.2; ADR-042 N2):
@@ -67,6 +68,7 @@ async function CataloguePageInner({ params, searchParams, view }: CatalogueListP
         initialView={view}
         initialStatus={typeof query.status === 'string' ? query.status : null}
         initialSort={typeof query.sort === 'string' ? query.sort : null}
+        initialQuery={cleanSearchQ(query.q)}
       />
       {perfBeacon()}
     </PageShell>

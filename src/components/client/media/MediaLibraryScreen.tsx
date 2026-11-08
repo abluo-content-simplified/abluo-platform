@@ -3,6 +3,10 @@
 import { CreateAction } from '@/components/app/ui/CreateAction'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { useSearchParams } from 'next/navigation'
+import { cleanOpenId, cleanSearchQ, isAssetId } from '@/lib/client/search-landing'
+import { useLandedParam } from '@/lib/client/use-search-landing'
+import { dropOpenFromAddress, useStripSearchParam } from '@/lib/client/use-strip-search-param'
 import { BATCH_MAX, BatchSheet, type BatchMode } from '@/components/client/media/BatchSheet'
 import type { CardChange } from '@/components/client/media/PhotoCard'
 import { BarButton } from '@/components/app/ui/BarButton'
@@ -67,6 +71,15 @@ export type MediaLibraryScreenProps = {
   remove?: { label: string; deleted: string; undo: string; failed: string }
   /** Open with this tag chosen (the `?tag=` of the page — "Used by N photos" in Categories & Tags). */
   initialTag?: string
+  /**
+   * ADR-047 D6, the dashboard search: `?q=` pre-fills the search box and
+   * `?open={assetId}` opens that photo when it is in the library. With
+   * `fromAddress` the screen also follows later `?q=` / `?open=` visits and
+   * drops `open` from the address when the panel closes.
+   */
+  initialQuery?: string
+  initialOpenId?: string
+  fromAddress?: boolean
   /**
    * ADR-046: "Add animation" (admin only) — uploads one Lottie file into the
    * chosen project and reloads the library. Absent = no button.
@@ -141,6 +154,9 @@ export function MediaLibraryScreen({
   addDisabledHint,
   remove,
   initialTag = '',
+  initialQuery = '',
+  initialOpenId = '',
+  fromAddress = false,
   animations,
 }: MediaLibraryScreenProps) {
   const t = useTranslations('clientDashboard.media')
@@ -188,7 +204,18 @@ export function MediaLibraryScreen({
   const [size, setSize] = useViewPreference<ThumbSize>(SIZE_KEY, THUMB_SIZES, 'medium')
 
   // ── Filters ────────────────────────────────────────────────────────────────
-  const [filters, setFilters] = useState<MediaFilters>(() => (initialTag ? { ...DEFAULT_MEDIA_FILTERS, tag: initialTag.trim().toLowerCase().slice(0, 40) } : DEFAULT_MEDIA_FILTERS))
+  // A visit from the dashboard search: the search text is set, every other filter is
+  // the default (the date range is already "all") — search-landing.ts.
+  const [filters, setFilters] = useState<MediaFilters>(() => ({
+    ...DEFAULT_MEDIA_FILTERS,
+    ...(initialTag ? { tag: initialTag.trim().toLowerCase().slice(0, 40) } : {}),
+    ...(initialQuery ? { q: initialQuery } : {}),
+  }))
+  const addressParams = useSearchParams()
+  const landedQ = fromAddress ? cleanSearchQ(addressParams.get('q')) : ''
+  const landedOpen = fromAddress ? cleanOpenId(addressParams.get('open'), isAssetId) : ''
+  useLandedParam(landedQ, (q) => setFilters((f) => ({ ...DEFAULT_MEDIA_FILTERS, sort: f.sort, q })))
+  useStripSearchParam(landedQ)
   const update = (patch: Partial<MediaFilters>) => setFilters((f) => ({ ...f, ...patch }))
   const reset = () => setFilters((f) => ({ ...DEFAULT_MEDIA_FILTERS, sort: f.sort }))
   const shown = useMemo(() => applyMediaFilters(items, filters, localeOf), [items, filters, localeOf])
@@ -219,7 +246,8 @@ export function MediaLibraryScreen({
   )
 
   // ── Edit one photo ─────────────────────────────────────────────────────────
-  const [openId, setOpenId] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(initialOpenId || null)
+  useLandedParam(landedOpen, setOpenId)
   const saving = useRef<Promise<unknown>>(Promise.resolve())
   const onPhotoChange = useCallback((c: CardChange) => setItems((prev) => prev.map((i) => (i.assetId === c.assetId ? merge(i, c) : i))), [])
   const onSaving = useCallback((job: Promise<unknown>) => {
@@ -227,7 +255,18 @@ export function MediaLibraryScreen({
   }, [])
   const open = items.find((i) => i.assetId === openId) ?? null
   // Stable, so the panel keeps its focus while more photos load in the background.
-  const closeSheet = useCallback(() => setOpenId(null), [])
+  const closeSheet = useCallback(() => {
+    setOpenId(null)
+    dropOpenFromAddress()
+  }, [])
+  // `?open=` for a photo that is not in the library: do nothing, and drop the param once loading is done.
+  useEffect(() => {
+    if (state === 'ready' && openId && !items.some((i) => i.assetId === openId)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the photo is gone / never existed
+      setOpenId(null)
+      dropOpenFromAddress()
+    }
+  }, [state, items, openId])
 
   // ── Selection (both views) ─────────────────────────────────────────────────
   const { toast, show, schedule } = useUndo()

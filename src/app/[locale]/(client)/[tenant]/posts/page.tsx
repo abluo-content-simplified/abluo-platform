@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { startingListQuery } from '@/lib/client/remembered-list-query.server'
+import { landingListQuery } from '@/lib/client/search-landing'
 import { CreateAction } from '@/components/app/ui/CreateAction'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
@@ -127,7 +128,7 @@ export default async function PostsPage({
           posts={posts}
           languages={list.languages}
           categories={list.categories}
-          initialQuery={await startingListQuery('posts', projectSlug, toQueryString(await searchParams))}
+          initialQuery={await startingListQuery('posts', projectSlug, landingListQuery(await searchParams))}
           projectSlug={projectSlug}
           canEdit={canEdit}
           canDeleteLive={canDeletePublished(grant)}
@@ -210,10 +211,4 @@ function draftToBrowserPost(
     liveUrl: null,
     previewLocale: list.defaultLocale ?? Object.keys(draft.titles)[0] ?? locale,
   }
-}
-
-function toQueryString(sp: Record<string, string | string[] | undefined>): string {
-  const out = new URLSearchParams()
-  for (const [k, v] of Object.entries(sp)) if (typeof v === 'string') out.set(k, v)
-  return out.toString()
 }

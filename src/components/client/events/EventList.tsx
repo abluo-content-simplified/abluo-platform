@@ -2,6 +2,7 @@
 
 import { CreateAction } from '@/components/app/ui/CreateAction'
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import type { EventListItem } from '@/lib/api/event-drafts'
 import { PageHeader } from '@/components/app/ui/PageHeader'
@@ -16,6 +17,9 @@ import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTa
 import { ViewSwitch } from '@/components/app/ui/ViewSwitch'
 import { useViewPreference } from '@/components/app/ui/use-view-preference'
 import { searchText as searchable } from '@/lib/client/search-text'
+import { cleanSearchQ } from '@/lib/client/search-landing'
+import { useLandedParam } from '@/lib/client/use-search-landing'
+import { useStripSearchParam } from '@/lib/client/use-strip-search-param'
 import type { EventCategoryOption } from '@/lib/modules/events/categories'
 import { EVENT_ICONS, EventStatePill, eventState, type EventState, useEventDates } from './event-bits'
 import { EventCategoryChip } from './EventCategoryChip'
@@ -43,6 +47,7 @@ export function EventList({
   canWrite,
   categoryOptions = [],
   defaultLocale = 'en',
+  initialQuery = '',
 }: {
   projectSlug: string
   events: EventListItem[]
@@ -51,15 +56,27 @@ export function EventList({
   categoryOptions?: EventCategoryOption[]
   /** The site's default language, the fallback for a category name. */
   defaultLocale?: string
+  /** `?q=` from the dashboard search: pre-fills the search box (ADR-047 D6). */
+  initialQuery?: string
 }) {
   const t = useTranslations('clientDashboard.events.list')
   const ts = useTranslations('clientDashboard.events.state')
   const dates = useEventDates()
   const base = `/${projectSlug}/agenda`
-  const [query, setQuery] = useState('')
-  const [when, setWhen] = useState<When>('upcoming')
+  // A visit from the dashboard search: the search text is set and "Coming up"
+  // is widened to "All" so a past match is visible (search-landing.ts).
+  const [query, setQuery] = useState(initialQuery)
+  const [when, setWhen] = useState<When>(initialQuery ? 'all' : 'upcoming')
   const [status, setStatus] = useState<Status>('all')
   const [category, setCategory] = useState('')
+  const landedQ = cleanSearchQ(useSearchParams().get('q'))
+  useLandedParam(landedQ, (q) => {
+    setQuery(q)
+    setWhen('all')
+    setStatus('all')
+    setCategory('')
+  })
+  useStripSearchParam(landedQ)
   const ui = useLocale()
   const withCategories = hasEventCategories(categoryOptions)
   const categoryFilter = withCategories ? category : ''

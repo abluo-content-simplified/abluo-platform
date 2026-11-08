@@ -20,6 +20,8 @@ import { contentSheetSections, groupOfNavId, isNavItemActive, phoneNavLayout, re
 import { effectiveGroupOpen } from '@/lib/app-nav-preferences'
 import type { ClientProductUpdate } from '@/lib/whats-new/model'
 import { useWhatsNew } from './whats-new/WhatsNew'
+import { useClientSearch } from './search/ClientSearch'
+import type { CreateMenu } from '@/lib/modules/add-content-sheet'
 import { ProfilePanel, type ProfileData } from './account/ProfilePanel'
 
 /**
@@ -71,6 +73,8 @@ export type ClientSidebarProps = {
   newRequestsCount?: number
   /** Payment nudge for the person who pays (billingAttention): badge on Billing and on the phone's More tab; null = none. */
   billingAttention?: BillingAttention | null
+  /** What this person can create here (`buildCreateMenu`): feeds the search's Create group. */
+  createMenu?: CreateMenu | null
 }
 
 const ICONS = {
@@ -131,6 +135,7 @@ export function ClientSidebar({
   reportProblem = false,
   newRequestsCount = 0,
   billingAttention = null,
+  createMenu = null,
 }: ClientSidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -198,9 +203,22 @@ export function ClientSidebar({
     { key: 'discover', href: `/${activeSlug}/discover`, label: t('nav.discover'), icon: ICONS.discover, groupStart: bottom.length === 0 },
   ]
 
+  // Search (ADR-047): every destination the sidebar offers, in sidebar order, plus the phone-only ones are the same list.
+  const destinations = items.flatMap((e): { key: string; label: string; href: string; icon: string }[] =>
+    'node' in e ? [] : 'items' in e ? e.items.map(({ key, label, href, icon }) => ({ key, label, href, icon })) : [{ key: e.key, label: e.label, href: e.href, icon: e.icon }],
+  )
+  const search = useClientSearch({
+    projectSlug: activeSlug,
+    destinations,
+    createMenu,
+    iconFor,
+    moduleLabel: (id) => t(`nav.${id}`),
+  })
+
   return (
     <>
     <AppSidebar
+      search={search.triggers}
       id="client-sidebar"
       tagline={t('shell.brandTagline')}
       title={activeProjectName}
@@ -311,6 +329,7 @@ export function ClientSidebar({
         </div>
       </BottomSheet>
     ) : null}
+    {search.dialog}
     {news.panel}
     {profile ? <ProfilePanel open={profileOpen} onClose={() => setProfileOpen(false)} profile={profile} /> : null}
     </>

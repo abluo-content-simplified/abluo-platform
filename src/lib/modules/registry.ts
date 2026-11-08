@@ -14,6 +14,7 @@ import { brandHubSchemaTypes } from './brand-hub/schema'
 import { peopleSchemaTypes } from './people/schema'
 import { coursesSchemaTypes } from './courses/schema'
 import { SEGMENT_REGEX_SOURCE } from './catalogue/segment'
+import { personDisplayName } from './people/model'
 import { PROFILES, PROFILE_ORDER, profilesWith } from './catalogue/profiles'
 
 // ── Module registry ───────────────────────────────────────────────────────────
@@ -42,6 +43,26 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   {
     id: 'blog',
     createAction: { createOrder: 10, permission: 'blog.post.write', ready: true, href: (slug) => `/${slug}/posts/write/new`, },
+    search: {
+      kind: 'blog',
+      permission: 'blog.post.read',
+      href: (slug, id) => `/${slug}/posts/write/${id}`,
+      listHref: (slug) => `/${slug}/posts`,
+      source: {
+        type: 'sanity',
+        docType: 'post',
+        projection: 'title, subtitle, excerpt, "thumb": coverImage.asset->url',
+        fields: [
+        { name: 'title', kind: 'localizedString', weight: 3 },
+        { name: 'subtitle', kind: 'localizedString', weight: 2 },
+        { name: 'excerpt', kind: 'localizedText', weight: 2 },
+        { name: 'categories', kind: 'stringArray', weight: 2 },
+        { name: 'body', kind: 'localizedPortableText', weight: 1 },
+        ],
+        titleOf: (row, r) => r.text(row.title),
+        subtitleOf: (row, r) => r.text(row.subtitle) || r.text(row.excerpt),
+      },
+    },
     label: 'Blog',
     version: '1.0.0',
     status: 'released',
@@ -317,6 +338,27 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   {
     id: 'events',
     createAction: { createOrder: 30, permission: 'events.event.write', ready: true, href: (slug) => `/${slug}/agenda/new`, },
+    search: {
+      kind: 'events',
+      permission: 'events.event.read',
+      href: (slug, id) => `/${slug}/agenda/${id}`,
+      listHref: (slug) => `/${slug}/agenda`,
+      source: {
+        type: 'sanity',
+        docType: 'event',
+        projection: 'title, shortDescription, "thumb": heroImage.asset->url',
+        fields: [
+        { name: 'title', kind: 'localizedString', weight: 3 },
+        { name: 'shortDescription', kind: 'localizedText', weight: 2 },
+        { name: 'location', kind: 'localizedString', weight: 2 },
+        { name: 'place.venue->name', kind: 'localizedString', weight: 2, when: 'place.venue->projectSlug == $projectSlug' },
+        { name: 'categories', kind: 'stringArray', weight: 2 },
+        { name: 'fullDescription', kind: 'localizedPortableText', weight: 1 },
+        ],
+        titleOf: (row, r) => r.text(row.title),
+        subtitleOf: (row, r) => r.text(row.shortDescription),
+      },
+    },
     label: 'Events',
     version: '1.0.0',
     status: 'released',
@@ -599,6 +641,14 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   // collection pane would be the wrong shape here.
   {
     id: 'forms',
+    // Contact requests (Supabase form_submissions) — filtered server-side, gated like the Requests screen.
+    search: {
+      kind: 'forms',
+      permission: 'forms.submission.read',
+      href: (slug, id) => `/${slug}/submissions?open=${id}`,
+      listHref: (slug) => `/${slug}/submissions`,
+      source: { type: 'contact-requests' },
+    },
     label: 'Forms',
     version: '1.0.0',
     status: 'released',
@@ -1161,6 +1211,29 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   {
     id: 'catalogue',
     createAction: { createOrder: 50, permission: 'catalogue.item.write', ready: true, href: (slug) => `/${slug}/catalogue/new`, },
+    search: {
+      kind: 'catalogue',
+      permission: 'catalogue.item.read',
+      href: (slug, id) => `/${slug}/catalogue/${id}`,
+      listHref: (slug) => `/${slug}/catalogue/items`,
+      source: {
+        type: 'sanity',
+        docType: 'catalogueItem',
+        projection: 'name, byline, description, "thumb": select(images[0]->projectSlug == $projectSlug => images[0]->image.asset->url)',
+        fields: [
+        { name: 'name', kind: 'localizedString', weight: 3 },
+        { name: 'byline', kind: 'localizedString', weight: 2 },
+        { name: 'description', kind: 'localizedText', weight: 2 },
+        { name: 'categories', kind: 'stringArray', weight: 2 },
+        { name: 'primaryCategory', kind: 'string', weight: 2 },
+        { name: 'additionalCategories', kind: 'stringArray', weight: 2 },
+        { name: 'tags', kind: 'stringArray', weight: 2 },
+        { name: 'body', kind: 'localizedPortableText', weight: 1 },
+        ],
+        titleOf: (row, r) => r.text(row.name),
+        subtitleOf: (row, r) => r.text(row.byline) || r.text(row.description),
+      },
+    },
     label: 'Catalogue',
     version: '1.0.0',
     status: 'released',
@@ -1814,6 +1887,28 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   {
     id: 'people',
     createAction: { createOrder: 80, permission: 'people.person.write', ready: true, href: (slug) => `/${slug}/people?new=1`, },
+    // Public fields only — person_private (contact details etc.) is never searched (ADR-043).
+    search: {
+      kind: 'people',
+      permission: 'people.person.read',
+      href: (slug, id) => `/${slug}/people/${id}`,
+      listHref: (slug) => `/${slug}/people`,
+      source: {
+        type: 'sanity',
+        docType: 'person',
+        extraFilter: '!defined(anonymisedAt)',
+        projection: 'firstName, lastName, displayName, jobTitle, "thumb": select(photo->projectSlug == $projectSlug => photo->image.asset->url)',
+        fields: [
+        { name: 'displayName', kind: 'string', weight: 3 },
+        { name: 'firstName', kind: 'string', weight: 3 },
+        { name: 'lastName', kind: 'string', weight: 3 },
+        { name: 'jobTitle', kind: 'localizedString', weight: 2 },
+        { name: 'shortBio', kind: 'localizedText', weight: 2 },
+        ],
+        titleOf: (row) => personDisplayName(row),
+        subtitleOf: (row, r) => r.text(row.jobTitle),
+      },
+    },
     label: 'People',
     version: '1.0.0',
     status: 'released',
@@ -1945,6 +2040,24 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   {
     id: 'courses',
     createAction: { createOrder: 70, permission: 'courses.course.write', ready: true, href: (slug) => `/${slug}/courses?new=1`, },
+    // v1: teacher names live in Supabase (course_teachers), not on the Sanity course document — not searched yet (ADR-047 D3 follow-up).
+    search: {
+      kind: 'courses',
+      permission: 'courses.course.read',
+      href: (slug, id) => `/${slug}/courses/${id}`,
+      listHref: (slug) => `/${slug}/courses`,
+      source: {
+        type: 'sanity',
+        docType: 'course',
+        projection: 'title, shortDescription, "thumb": select(image->projectSlug == $projectSlug => image->image.asset->url)',
+        fields: [
+        { name: 'title', kind: 'localizedString', weight: 3 },
+        { name: 'shortDescription', kind: 'localizedText', weight: 2 },
+        ],
+        titleOf: (row, r) => r.text(row.title),
+        subtitleOf: (row, r) => r.text(row.shortDescription),
+      },
+    },
     label: 'Courses',
     version: '1.0.0',
     status: 'released',

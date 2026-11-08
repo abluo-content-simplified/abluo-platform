@@ -38,6 +38,8 @@ import { Toast } from '@/components/app/ui/Toast'
 import { dropIndex, usePointerDrag } from '@/components/app/ui/use-pointer-drag'
 import { useUndo } from '@/components/app/ui/use-undo'
 import { useViewPreference } from '@/components/app/ui/use-view-preference'
+import { normalizeListQuery } from '@/lib/client/search-landing'
+import { useSearchLanding } from '@/lib/client/use-search-landing'
 import { ViewSwitch } from '@/components/app/ui/ViewSwitch'
 import { pickerLabel, type PickerTerm } from '@/components/client/taxonomy/term-picker-model'
 import { PeopleFilters } from './PeopleFilters'
@@ -123,8 +125,14 @@ export function PeopleBrowser({
   // ── Filters (in the URL) ───────────────────────────────────────────────────
   const initialParams = useMemo(() => new URLSearchParams(initialQuery), [initialQuery])
   const [filters, setFilters] = useState<PersonFilters>(() => parsePersonFilters(initialParams))
+  // A visit from the dashboard search (`?q=`) while this list is open: start from its address (search-landing.ts).
+  const noteWritten = useSearchLanding(initialQuery, (qs) => setFilters(parsePersonFilters(new URLSearchParams(qs))), {
+    normalize: normalizeListQuery,
+    accept: (qs) => new URLSearchParams(qs).has('q'),
+  })
   const replaceUrl = (f: PersonFilters) => {
     const qs = personFiltersToParams(f).toString()
+    noteWritten(qs)
     startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }))
   }
   const update = (patch: Partial<PersonFilters>) => {

@@ -122,6 +122,11 @@ export type AppSidebarProps = {
   drawerSide?: 'left' | 'right'
   /** Phones: the hamburger at the left of the top bar. Default true; the client dashboard hides it (its "More" tab opens the same drawer). */
   showMenuButton?: boolean
+  /**
+   * Search (ADR-047), hosted without the frame knowing about it: `field` tops the expanded sidebar's nav (md+, above the first item),
+   * `rail` is the collapsed rail's first item, `icon` sits in the phone top bar just before the avatar. None → no search (the admin).
+   */
+  search?: { field: ReactNode; rail: ReactNode; icon: ReactNode }
 }
 
 const BRAND = 'Abluo'
@@ -154,6 +159,7 @@ export function AppSidebar({
   bottomBar,
   drawerSide = 'left',
   showMenuButton = true,
+  search,
 }: AppSidebarProps) {
   const t = useTranslations('app.shell')
   const pathname = usePathname() // locale-stripped, e.g. "/livener/posts"
@@ -225,6 +231,7 @@ export function AppSidebar({
         </button>
         ) : null}
         <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{heading}</span>
+        {search?.icon}
         <AccountMenu variant="bar" {...account} />
       </div>
 
@@ -273,6 +280,7 @@ export function AppSidebar({
           {top ? <div className="border-b border-border-subtle px-4 py-4">{top}</div> : null}
 
           <nav aria-label={navLabel ?? tagline} className="flex-1 space-y-0.5 px-3 py-4">
+            {search ? <div className="mb-3 hidden md:block">{search.field}</div> : null}
             {items.map((item) => {
               if (isGroup(item)) {
                 const badge = sumBadges(item.items)
@@ -340,6 +348,7 @@ export function AppSidebar({
               <SidebarCollapseToggle collapsed label={collapsible.expandLabel} onToggle={toggle} controls={id} />
             </div>
             <nav aria-label={navLabel ?? tagline} className="flex flex-1 flex-col items-center gap-1 px-2 py-3">
+              {search?.rail}
               {items.map((item) => {
                 if (isGroup(item)) {
                   return (

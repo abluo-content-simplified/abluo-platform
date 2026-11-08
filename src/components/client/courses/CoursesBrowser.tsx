@@ -33,6 +33,8 @@ import { PageHeader } from '@/components/app/ui/PageHeader'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
 import { useViewPreference } from '@/components/app/ui/use-view-preference'
+import { normalizeListQuery } from '@/lib/client/search-landing'
+import { useSearchLanding } from '@/lib/client/use-search-landing'
 import { ViewSwitch } from '@/components/app/ui/ViewSwitch'
 import { CoursesFilters } from './CoursesFilters'
 import { CoursesTable } from './CoursesTable'
@@ -106,8 +108,14 @@ export function CoursesBrowser({
   // ── Filters (in the URL) ───────────────────────────────────────────────────
   const initialParams = useMemo(() => new URLSearchParams(initialQuery), [initialQuery])
   const [filters, setFilters] = useState<CourseFilters>(() => parseCourseFilters(initialParams))
+  // A visit from the dashboard search (`?q=`) while this list is open: start from its address (search-landing.ts).
+  const noteWritten = useSearchLanding(initialQuery, (qs) => setFilters(parseCourseFilters(new URLSearchParams(qs))), {
+    normalize: normalizeListQuery,
+    accept: (qs) => new URLSearchParams(qs).has('q'),
+  })
   const replaceUrl = (f: CourseFilters) => {
     const qs = courseFiltersToParams(f).toString()
+    noteWritten(qs)
     startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }))
   }
   const update = (patch: Partial<CourseFilters>) => {

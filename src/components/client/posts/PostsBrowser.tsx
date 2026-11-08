@@ -1,7 +1,7 @@
 'use client'
 
 import { CreateAction } from '@/components/app/ui/CreateAction'
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useRef, useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
 import { getPathname, useRouter as useAppRouter } from '@/i18n/navigation'
@@ -46,6 +46,8 @@ import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import { DisplayTimeZoneContext } from '@/components/app/ui/list/cells'
 import { applyLiveOverlays, staleOverlays, type LiveOverlay } from '@/lib/client/posts-overlay'
 import { rememberListQuery } from '@/lib/client/remembered-list-query'
+import { isSearchLanding, normalizeListQuery } from '@/lib/client/search-landing'
+import { useSearchLanding } from '@/lib/client/use-search-landing'
 
 export type { BrowserPost } from './types'
 
@@ -114,12 +116,30 @@ export function PostsBrowser({
   const [view, chooseView] = useViewPreference<View>(VIEW_KEY, VIEWS, 'list')
 
   // ── Filters (in the URL) ───────────────────────────────────────────────────
-  const [filters, setFilters] = useState<PostFilters>(() => parseFilters(new URLSearchParams(initialQuery)))
+  // A visit from the dashboard search (`?q=` alone): the search text is set, the
+  // other filters are the defaults with the date range widened to "all" (the
+  // default "last 7 days" would hide older matches), and this visit does not
+  // overwrite the remembered filters (see search-landing.ts).
+  const fromSearch = useRef(isSearchLanding(initialQuery))
+  const filtersFromAddress = (qs: string): PostFilters => {
+    const parsed = parseFilters(new URLSearchParams(qs))
+    return isSearchLanding(qs) ? { ...parsed, range: 'all' } : parsed
+  }
+  const [filters, setFilters] = useState<PostFilters>(() => filtersFromAddress(initialQuery))
+  const noteWritten = useSearchLanding(
+    initialQuery,
+    (qs) => {
+      fromSearch.current = isSearchLanding(qs)
+      setFilters(filtersFromAddress(qs))
+    },
+    { normalize: normalizeListQuery, accept: (qs) => new URLSearchParams(qs).has('q') }
+  )
   const update = (patch: Partial<PostFilters>) => {
     const next = { ...filters, ...patch }
     setFilters(next)
     const qs = filtersToParams(next).toString()
-    if (projectSlug) rememberListQuery('posts', projectSlug, qs)
+    noteWritten(qs)
+    if (projectSlug && !fromSearch.current) rememberListQuery('posts', projectSlug, qs)
     startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }))
   }
   const reset = () => update({ ...DEFAULT_FILTERS, sort: filters.sort })

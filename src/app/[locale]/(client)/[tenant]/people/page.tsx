@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { landingListQuery } from '@/lib/client/search-landing'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import {
@@ -33,8 +34,7 @@ export default async function PeoplePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { tenant: projectSlug } = await params
-  const query = new URLSearchParams()
-  for (const [k, v] of Object.entries(await searchParams)) if (typeof v === 'string') query.set(k, v)
+  const query = landingListQuery(await searchParams)
   const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=/${projectSlug}/people`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
@@ -64,7 +64,7 @@ export default async function PeoplePage({
         canArchive={grant.permissions.includes(PEOPLE_ARCHIVE_PERMISSION)}
         canDelete={grant.permissions.includes(PEOPLE_DELETE_PERMISSION)}
         canAnonymise={grant.permissions.includes(PEOPLE_ANONYMISE_PERMISSION)}
-        initialQuery={query.toString()}
+        initialQuery={query}
       />
     </PageShell>
   )

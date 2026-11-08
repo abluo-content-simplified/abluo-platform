@@ -7,6 +7,7 @@ import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { MediaLibraryScreen } from '@/components/client/media/MediaLibraryScreen'
 import { PageShell } from '@/components/app/ui/PageShell'
 import { CLIENT_MEDIA_LINKS } from '@/lib/client/media-links'
+import { cleanOpenId, cleanSearchQ, isAssetId } from '@/lib/client/search-landing'
 
 /**
  * Client dashboard — Media: the project's Media Library in the shared page
@@ -21,7 +22,7 @@ export default async function MediaPage({
   searchParams,
 }: {
   params: Promise<{ tenant: string }>
-  searchParams?: Promise<{ add?: string; tag?: string }>
+  searchParams?: Promise<{ add?: string; tag?: string; q?: string | string[]; open?: string | string[] }>
 }) {
   const { tenant: projectSlug } = await params
   const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
@@ -42,7 +43,16 @@ export default async function MediaPage({
   const tag = typeof query?.tag === 'string' ? query.tag : ''
   return (
     <PageShell>
-      <MediaLibraryScreen projectSlug={projectSlug} site={site} links={CLIENT_MEDIA_LINKS} initialTag={tag} />
+      <MediaLibraryScreen
+        projectSlug={projectSlug}
+        site={site}
+        links={CLIENT_MEDIA_LINKS}
+        initialTag={tag}
+        // ADR-047 D6: `?q=` pre-fills the search, `?open={assetId}` opens that photo.
+        fromAddress
+        initialQuery={cleanSearchQ(query?.q)}
+        initialOpenId={cleanOpenId(query?.open, isAssetId)}
+      />
     </PageShell>
   )
 }
