@@ -532,3 +532,22 @@ dialog.app-panel[open][data-closing]::backdrop {
     transition: none;
   }
 }
+
+/* ── Billing switch (pricing sections, 2026-11-07) ─────────────────────────────
+   One monthly ⇄ yearly radio group drives every pricing section on the page
+   (src/components/sections/pricing/). Both variants are server-rendered;
+   these rules show one. Works without JavaScript; the hidden variant is
+   display:none, so assistive tech reads only the visible price. */
+[data-billing-show='month'] { display: contents; }
+[data-billing-show='year'] { display: none; }
+html:has(input[data-billing-switch][value='year']:checked) [data-billing-show='month'] { display: none; }
+html:has(input[data-billing-switch][value='year']:checked) [data-billing-show='year'] { display: contents; }
+
+[data-billing-option] { color: var(--color-text-secondary); }
+[data-billing-option]:has(input:checked) {
+  color: var(--color-text-primary);
+  background-color: var(--color-surface, var(--color-background));
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+}
+[data-billing-option]:has(input:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }

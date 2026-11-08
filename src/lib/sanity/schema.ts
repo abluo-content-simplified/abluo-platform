@@ -14,6 +14,7 @@ import { bodyLinkAnnotation } from '@/lib/sanity/fields/body-link'
 import { peopleRefsField } from '@/lib/modules/people/fields'
 import { isValidTermKey } from '@/lib/taxonomy/ids'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, headlineAccentField, BACKGROUND_SURFACE_OPTIONS } from '@/lib/sanity/fields/shared'
+import { pricingSchemaTypes } from '@/lib/sanity/schema-pricing'
 import {
   VentureListWireframe,
   ClientsFlowWireframe,
@@ -6467,6 +6468,7 @@ export const schemaTypes = [
   priceListRowType,
   priceListHighlightType,
   priceListSectionType,
+  ...pricingSchemaTypes,
   formOptionItemType,
   formFieldItemType,
   formSectionType,

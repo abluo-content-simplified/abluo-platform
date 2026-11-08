@@ -157,3 +157,41 @@ export function PriceListWireframe() {
     </svg>
   )
 }
+
+/**
+ * Pricing cards — a small pill (the switch) over three cards, the middle one
+ * with a heavier border (the highlighted plan) and a price bar in each.
+ */
+export function PricingCardsWireframe() {
+  return (
+    <svg {...BOX} fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="8" y="2.5" width="8" height="3" rx="1.5" stroke="currentColor" strokeWidth="1" opacity="0.55" />
+      {[2.5, 9, 15.5].map((x, i) => (
+        <g key={x}>
+          <rect x={x} y="8.5" width="6" height="13" stroke="currentColor" strokeWidth="1" opacity={i === 1 ? 1 : 0.3} />
+          <rect x={x + 1.5} y="11" width="3" height="2" fill="currentColor" />
+          <rect x={x + 1.5} y="15" width="3" height="1" fill="currentColor" opacity="0.3" />
+          <rect x={x + 1.5} y="17.5" width="3" height="1" fill="currentColor" opacity="0.3" />
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+/** Comparison table — a header row and a grid of ticks under three columns. */
+export function ComparisonTableWireframe() {
+  return (
+    <svg {...BOX} fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="2.5" y="3.5" width="19" height="17" stroke="currentColor" strokeWidth="1" opacity="0.3" />
+      <line x1="3" y1="8" x2="21" y2="8" stroke="currentColor" strokeWidth="1" />
+      {[11.5, 15, 18.5].map((y) => (
+        <g key={y}>
+          <rect x="4.5" y={y - 0.5} width="5" height="1" fill="currentColor" opacity="0.55" />
+          {[12.5, 15.5, 18.5].map((x) => (
+            <rect key={x} x={x} y={y - 1} width="1.5" height="1.5" fill="currentColor" />
+          ))}
+        </g>
+      ))}
+    </svg>
+  )
+}
