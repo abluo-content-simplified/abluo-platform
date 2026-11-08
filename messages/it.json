@@ -890,7 +890,10 @@
           "gallery": "Galleria",
           "media": "Aggiungi alla libreria",
           "catalogue": "Elemento del catalogo",
-          "faq": "Set di FAQ"
+          "faq": "Set di FAQ",
+          "courses": "Corso",
+          "people": "Persona",
+          "documents": "Documento"
         },
         "desc": {
           "blog": "Un articolo per il tuo sito, in pochi semplici passaggi.",
@@ -898,7 +901,11 @@
           "events": "Un appuntamento a cui partecipare.",
           "gallery": "Una raccolta di foto da mostrare.",
           "media": "Carica le foto una volta sola e usale ovunque nel tuo sito.",
-          "catalogue": "Un piatto, un prodotto o un servizio per il tuo catalogo."
+          "catalogue": "Un piatto, un prodotto o un servizio per il tuo catalogo.",
+          "faq": "Una serie di domande e risposte.",
+          "courses": "Un corso a cui le persone possono iscriversi.",
+          "people": "Un insegnante, un membro di una squadra o un relatore.",
+          "documents": "Un file per il tuo sito web, ad esempio un PDF."
         },
         "soon": "In arrivo",
         "more": "Altro che puoi aggiungere al tuo sito",
@@ -3798,6 +3805,390 @@
         }
       }
     },
+    "bookings": {
+      "tabs": {
+        "label": "Area prenotazioni",
+        "bookings": "Prenotazioni",
+        "rules": "Regole di prenotazione"
+      },
+      "list": {
+        "title": "Prenotazioni",
+        "searchLabel": "Cerca prenotazioni",
+        "search": "Riferimento, nome o email",
+        "filtersLabel": "Filtra prenotazioni",
+        "statusFilter": "Stato della prenotazione",
+        "allStatuses": "Tutti gli stati",
+        "paymentFilter": "Stato del pagamento",
+        "allPayments": "Tutti i pagamenti",
+        "whatFilter": "Corso o evento",
+        "allWhat": "Tutti i corsi e gli eventi",
+        "showing": "{from} – {to} di {total} prenotazioni",
+        "showingNone": "Nessuna prenotazione",
+        "clear": "Filtri trasparenti",
+        "noMatch": "Nessuna prenotazione corrisponde a questi filtri.",
+        "emptyTitle": "Nessuna prenotazione ancora",
+        "emptyBody": "Quando qualcuno effettua una prenotazione sul tuo sito web, la prenotazione appare qui con il relativo riferimento, i dati di pagamento e i posti disponibili.",
+        "unavailableTitle": "Le prenotazioni non sono ancora disponibili.",
+        "unavailableBody": "Le prenotazioni per il tuo sito sono ancora in fase di configurazione. Non c'è nessun problema e non è andato perso nulla. Le troverai qui non appena saranno pronte.",
+        "loadFailed": "Non è stato possibile caricare le tue prenotazioni. Riprova.",
+        "retry": "Riprova",
+        "previous": "Precedente",
+        "next": "Prossimo",
+        "pageLabel": "Pagine di prenotazioni",
+        "open": "Prenotazioni aperte {reference} , {name}",
+        "noName": "Nessun nome",
+        "anonymised": "Anonimo",
+        "pass": "Passaggio",
+        "noSessions": "Nessuna sessione",
+        "columns": {
+          "reference": "Riferimento",
+          "name": "Nome",
+          "what": "Prenotato",
+          "sessions": "Sessioni",
+          "amount": "Quantità",
+          "payment": "Pagamento",
+          "status": "Stato",
+          "created": "Realizzato su"
+        }
+      },
+      "status": {
+        "pending": "In attesa di",
+        "held": "Tenuto",
+        "awaiting_payment": "In attesa del pagamento",
+        "confirmed": "Confermato",
+        "cancelled": "Annullato",
+        "expired": "Scaduto"
+      },
+      "paymentStatus": {
+        "unpaid": "Non pagato",
+        "partially_paid": "Parzialmente pagato",
+        "paid": "Pagato",
+        "partially_refunded": "Rimborso parziale",
+        "refunded": "Rimborso effettuato"
+      },
+      "flag": {
+        "paymentReview": "Da esaminare: pagamento",
+        "eligibilityReview": "Da esaminare: l'iscrizione"
+      },
+      "method": {
+        "free": "Gratuito",
+        "bank_transfer": "Bonifico bancario",
+        "cash": "Contanti",
+        "other": "Altro",
+        "stripe": "Carta"
+      },
+      "detail": {
+        "back": "Prenotazioni",
+        "title": "Prenotazione {reference}",
+        "unavailableTitle": "Questa prenotazione non può essere visualizzata al momento.",
+        "unavailableBody": "Non c'è niente che non va e non è andato perso niente. Riprova tra un po'.",
+        "loadFailed": "Impossibile caricare questa prenotazione. Riprova.",
+        "summary": "Riepilogo",
+        "who": "Chi ha prenotato",
+        "name": "Nome",
+        "email": "E-mail",
+        "phone": "Telefono",
+        "reference": "Riferimento",
+        "madeOn": "Realizzato su",
+        "source": "Fatto",
+        "sourceWebsite": "Sul tuo sito web",
+        "sourceDashboard": "Aggiunto da te",
+        "what": "Prenotato",
+        "option": "Scelta",
+        "status": "Stato",
+        "total": "Totale",
+        "paid": "Pagato finora",
+        "toPay": "Ancora da pagare",
+        "holdUntil": "Posti riservati fino a",
+        "confirmedOn": "Confermato su",
+        "cancelledOn": "Annullato il",
+        "none": "—",
+        "attendees": "Persone che arrivano",
+        "attendeesNone": "Nessuna persona su questa prenotazione.",
+        "unnamed": "Senza nome",
+        "minor": "Minorenne, tutore legale: {name}",
+        "minorNoName": "Minorenne, accompagnato da un tutore",
+        "eligibility": {
+          "pending": "Verifica dell'iscrizione in corso",
+          "verified": "Iscrizione verificata",
+          "rejected": "Iscrizione non accettata"
+        },
+        "sessions": "Sessioni",
+        "sessionsNone": "Nessuna sessione inclusa in questa prenotazione.",
+        "session": "Sessione",
+        "allocation": {
+          "hold": "Tenuto",
+          "confirmed": "Prenotato",
+          "pass_attendance": "Incluso nel pass"
+        },
+        "released": "Rilasciato: {reason}",
+        "releaseReason": {
+          "cancelled": "prenotazione cancellata",
+          "expired": "la presa è finita",
+          "absence": "avviso di assenza",
+          "withdrawn": "il titolare del pass si è ritirato",
+          "organiser_cancelled": "sessione annullata",
+          "session_removed": "sessione rimossa",
+          "replaced": "sostituito"
+        },
+        "passes": "Pass",
+        "passCancelled": "Pass annullato",
+        "lines": "Cosa è stato acquistato",
+        "linesNone": "Nessuna coda per questa prenotazione.",
+        "adjustment": "Regolazione",
+        "lineQuantity": "{quantity} × {unit}",
+        "payments": "Pagamenti",
+        "paymentsNone": "Nessun pagamento registrato al momento.",
+        "paymentOn": "{method} , {date}",
+        "paymentReference": "Riferimento: {reference}",
+        "paymentState": {
+          "pending": "In attesa di",
+          "succeeded": "Ricevuto",
+          "failed": "Fallito",
+          "void": "Annullato"
+        },
+        "activity": "Storia",
+        "activityNone": "Non è ancora successo nulla.",
+        "by": {
+          "user": "Tu o un collega",
+          "participant": "Il partecipante",
+          "system": "Abluo",
+          "support": "Supporto Abluo"
+        },
+        "actions": "Azioni",
+        "recordPayment": "Registra un pagamento",
+        "confirm": "Conferma la prenotazione",
+        "extendHold": "Prolunga la pausa",
+        "cancel": "Annulla prenotazione",
+        "verifyEligibility": "Contrassegna l'iscrizione come verificata",
+        "why": {
+          "needWrite": "Puoi visualizzare questa prenotazione, ma solo il proprietario del sito o un editore possono modificarla.",
+          "needPay": "Solo chi ha l'autorizzazione a registrare i pagamenti può farlo.",
+          "closed": "Questa prenotazione è {status} , quindi non c'è altro da fare.",
+          "notConfirmable": "È possibile confermare solo le prenotazioni per le quali è in attesa di pagamento.",
+          "notExtendable": "Solo le prenotazioni bloccate o in attesa di pagamento possono essere mantenute bloccate per un periodo prolungato.",
+          "noEligibility": "Per questa prenotazione non è in corso alcun controllo di appartenenza.",
+          "fullyPaid": "Questa prenotazione è già stata pagata per intero. Puoi comunque registrare un altro pagamento."
+        },
+        "payment": {
+          "title": "Registra un pagamento",
+          "intro": "Annota il denaro che hai ricevuto, ad esempio un bonifico bancario. Puoi registrare più di un pagamento.",
+          "method": "Come è stato pagato",
+          "amount": "Importo (euro)",
+          "amountHint": "Ad esempio 25,00",
+          "date": "Data di ricezione",
+          "reference": "Riferimento bancario",
+          "referenceHint": "Il riferimento sull'estratto conto bancario, se presente",
+          "note": "Nota",
+          "save": "Registrazione del pagamento",
+          "saving": "Registrazione…",
+          "cancel": "Cancellare",
+          "amountInvalid": "Inserisci un importo superiore a zero, ad esempio 25,00.",
+          "dateInvalid": "Scegli il giorno in cui è arrivato il denaro."
+        },
+        "confirmDialog": {
+          "title": "Confermare questa prenotazione?",
+          "body": "{name} riceverà i luoghi e un'email di conferma. Utilizzare questo metodo quando il pagamento è stato effettuato al di fuori di Abluo.",
+          "confirm": "Conferma la prenotazione"
+        },
+        "extendDialog": {
+          "title": "Prolunga la tenuta",
+          "body": "Lascia i posti per {name} ancora per un po'. Scegli l'ultimo giorno.",
+          "date": "Tenere premuto fino a",
+          "confirm": "Prolunga la pausa"
+        },
+        "cancelDialog": {
+          "title": "Annullare questa prenotazione?",
+          "body": "I luoghi risalgono alle sessioni. {name} non viene comunicato automaticamente.",
+          "bodyPaid": "I posti si riferiscono alle sessioni. Per questa prenotazione è stato registrato un pagamento: la restituzione del denaro è a tua discrezione. {name} non viene comunicato automaticamente.",
+          "confirm": "Annulla prenotazione",
+          "keep": "Continua a prenotare"
+        },
+        "verifyDialog": {
+          "title": "Contrassegnare l'iscrizione come verificata?",
+          "body": "Hai controllato la bozza e il prezzo riservato ai soci è corretto.",
+          "confirm": "Contrassegna come verificato"
+        },
+        "someone": "il partecipante",
+        "done": {
+          "payment": "Pagamento di {amount} registrato.",
+          "paymentConfirmed": "Pagamento di {amount} registrato. La prenotazione è confermata.",
+          "paymentReview": "È stato registrato il pagamento di {amount} , ma i posti sono esauriti. La prenotazione necessita di una verifica.",
+          "confirmed": "Prenotazione confermata.",
+          "extended": "Posti riservati fino al {date} .",
+          "cancelled": "Prenotazione annullata. I posti sono di nuovo disponibili.",
+          "verified": "Iscrizione contrassegnata come verificata."
+        },
+        "reviewNotice": {
+          "payment": "Il pagamento è arrivato dopo la scadenza del periodo di prenotazione e dopo che i posti erano già stati assegnati. Decidete insieme al partecipante cosa fare (un'altra sessione o il rimborso del denaro).",
+          "eligibility": "Qualcuno ha scelto un prezzo riservato ai soci. Verifica la sua risposta e contrassegnala come verificata."
+        }
+      },
+      "errors": {
+        "unauthenticated": "Effettua nuovamente l'accesso. Non è stata apportata alcuna modifica.",
+        "forbidden": "Non hai il permesso di farlo. Non è stato modificato nulla.",
+        "unavailable": "Al momento non è possibile effettuare prenotazioni. Non è stata apportata alcuna modifica; riprova più tardi.",
+        "failed": "Non ha funzionato. Non è stato modificato nulla; riprova.",
+        "full": "Non ci sono più posti disponibili su {sessions} . Nulla è stato modificato.",
+        "fullUnknown": "una delle sessioni",
+        "not_found": "Non siamo riusciti a trovare questa prenotazione.",
+        "booking_not_found": "Non siamo riusciti a trovare questa prenotazione.",
+        "cannot_confirm": "Allo stato attuale, questa prenotazione non può essere confermata.",
+        "cannot_extend": "La prenotazione non può essere prorogata: scegliendo una data successiva, la prenotazione rimarrà comunque confermata.",
+        "changed": "La prenotazione è stata modificata da qualcun altro. L'abbiamo ricaricata; per favore, controlla di nuovo.",
+        "invalid_amount": "Inserisci un importo superiore a zero.",
+        "invalid_method": "Scegli la modalità di pagamento.",
+        "invalid_date": "Seleziona una data valida.",
+        "invalid_reference": "Il riferimento bancario è troppo lungo.",
+        "invalid_note": "La nota è troppo lunga.",
+        "invalid": "Alcuni dei dati inseriti non possono essere utilizzati.",
+        "invalid_booking": "Non siamo riusciti a trovare questa prenotazione.",
+        "payment_method_not_available": "Il bonifico bancario non è attivato nelle tue regole di prenotazione.",
+        "settings_missing": "Imposta prima le regole di prenotazione.",
+        "target_not_found": "Il corso o l'evento relativo a questa prenotazione non è stato trovato.",
+        "already_closed": "Questa prenotazione è stata annullata o è scaduta, pertanto non è possibile aggiungere un pagamento."
+      },
+      "activity": {
+        "booking.created": "Prenotazione effettuata",
+        "booking.confirmed": "Prenotazione confermata",
+        "booking.confirm_refused_full": "Impossibile confermare: i posti erano occupati.",
+        "booking.hold_extended": "Prolungamento della durata fino al {date}",
+        "booking.released": "luoghi rilasciati",
+        "booking.cancelled": "Prenotazione annullata",
+        "booking.expired": "La coda è finita, i posti sono stati rilasciati",
+        "booking.anonymised": "Dati personali rimossi",
+        "booking.eligibility_verified": "Iscrizione contrassegnata come verificata",
+        "payment.recorded": "Pagamento di {amount} registrato ( {method} )",
+        "pass.attending": "Il possessore del pass ha detto che stanno arrivando",
+        "pass.withdrawn": "Il titolare del permesso si è ritirato",
+        "other": "Aggiornamento"
+      },
+      "rules": {
+        "title": "Regole di prenotazione",
+        "intro": "Le regole che ogni prenotazione sul tuo sito deve rispettare: come le persone pagano, quando possono cancellare e come i possessori del pass confermano la loro partecipazione. Corsi ed eventi possono in seguito adottare regole proprie; queste sono le impostazioni predefinite.",
+        "save": "Salva",
+        "saving": "Risparmio…",
+        "undo": "Disfare",
+        "retry": "Riprova",
+        "loadFailed": "Non è stato possibile caricare le regole di prenotazione. Riprova.",
+        "unavailableTitle": "Le regole di prenotazione non sono ancora disponibili.",
+        "unavailableBody": "Le prenotazioni per il tuo sito sono ancora in fase di configurazione. Non c'è nessun problema e non è andato perso nulla. Le troverai qui non appena saranno pronte.",
+        "readOnly": "Puoi consultare queste regole, ma solo il proprietario del sito può modificarle.",
+        "saveNothingChanged": "Ancora niente da salvare. Modifica una regola e si accende la spia Salva.",
+        "saveBlockedInvalid": "Alcuni campi devono essere controllati prima di poter salvare. Sono contrassegnati qui sotto.",
+        "savedBody": "Regole di prenotazione salvate. Le nuove prenotazioni le rispetteranno d'ora in poi; le prenotazioni già effettuate manterranno le regole con cui sono state effettuate.",
+        "undoneBody": "Torniamo alle regole di prima.",
+        "conflictTitle": "Qualcuno ha cambiato queste regole per primo",
+        "conflictBody": "Abbiamo caricato la loro versione. Per favore, apporta nuovamente la modifica.",
+        "failed": {
+          "forbidden": {
+            "title": "Non puoi cambiare queste regole",
+            "body": "Solo il proprietario del sito può modificare le regole di prenotazione."
+          },
+          "unauthenticated": {
+            "title": "Effettua nuovamente l'accesso.",
+            "body": "La tua sessione è terminata. Accedi e riprova; non è stata apportata alcuna modifica."
+          },
+          "invalid": {
+            "title": "Alcuni campi hanno bisogno di un'occhiata",
+            "body": "Non è stato salvato nulla. I campi da correggere sono indicati di seguito."
+          },
+          "unavailable": {
+            "title": "Al momento non è possibile effettuare prenotazioni.",
+            "body": "Nessun dato è stato salvato. Riprova tra un po'."
+          },
+          "failed": {
+            "title": "Ciò non ha salvato",
+            "body": "Non è stato modificato nulla. Riprova."
+          },
+          "conflict": {
+            "title": "Qualcuno ha cambiato queste regole per primo",
+            "body": "Per favore, effettua nuovamente il resto."
+          }
+        },
+        "errors": {
+          "invalid": "Questo non sembra corretto. Per favore, controlla.",
+          "out_of_range": "Inserisci un numero intero compreso tra {min} e {max} .",
+          "too_long": "È troppo lungo. Mantienilo al di sotto di {chars} caratteri per lingua.",
+          "bad_language": "Questa lingua non è tra le lingue supportate dal tuo sito.",
+          "bad_prefix": "Utilizzare solo le lettere dalla A alla Z e i numeri fino a 6.",
+          "capability_off": "Questa funzionalità non è disponibile sul vostro sito."
+        },
+        "localized": {
+          "languageOf": "Lingua del {field}",
+          "notTranslated": "non ancora scritto",
+          "fallbackHint": "Se lasciato vuoto, i visitatori vedranno il testo {language} .",
+          "fallbackHintEmpty": "Se lasciato vuoto, i visitatori vedranno il testo {language} , che non è ancora stato scritto."
+        },
+        "outcomes": {
+          "cancel": {
+            "refund": "Rimborso (ogni richiesta deve essere approvata)",
+            "credit": "Credito per una prenotazione successiva",
+            "none": "Nessun rimborso"
+          },
+          "organiser": {
+            "notify_only": "Dillo semplicemente alle persone che hanno prenotato",
+            "credit": "Dare credito",
+            "proportional_refund": "Rimborso per la sessione persa"
+          }
+        },
+        "payments": {
+          "title": "Bonifico bancario",
+          "intro": "Permetti alle persone di prenotare ora e pagare tramite bonifico bancario. Il posto sarà riservato fino a quando non riceverai il pagamento.",
+          "holdDays": "Giorni per il pagamento",
+          "holdDaysHint": "Per quanto tempo viene riservato un posto dopo la prenotazione. Da 1 a 30 giorni.",
+          "cutoffHours": "Ultima prenotazione prima della prima sessione (ore)",
+          "cutoffHoursHint": "Il bonifico bancario si chiude questo numero di ore prima della prima sessione. 0 significa mai.",
+          "bankDetails": "Dati bancari",
+          "bankDetailsHint": "Intestatario del conto e IBAN, come dovrebbero essere visualizzati.",
+          "instructions": "Istruzioni di pagamento",
+          "instructionsHint": "Altre informazioni utili, ad esempio cosa scrivere nella causale del bonifico. Il loro codice di prenotazione viene aggiunto automaticamente."
+        },
+        "cancellations": {
+          "title": "Cancellazioni",
+          "intro": "Cosa succede quando qualcuno non può venire o quando si annulla una sessione.",
+          "outcome": "Ciò che ottengono",
+          "outcomeHint": "I rimborsi non sono mai automatici: ognuno di essi deve essere approvato da te.",
+          "selfCancel": {
+            "title": "Le persone possono cancellare la propria prenotazione",
+            "intro": "Annullano la prenotazione tramite il link fornito, entro la data limite stabilita.",
+            "deadline": "Scadenza (poche ore prima della prima sessione)",
+            "deadlineHint": "Tra 0 e 720. 48 sono due giorni."
+          },
+          "absence": {
+            "title": "Le persone possono dirti che non possono venire a una sessione",
+            "intro": "Un avviso di assenza per una singola sessione, senza annullare l'intera prenotazione.",
+            "releasePlace": "Liberate il loro posto per qualcun altro.",
+            "releasePlaceHint": "Il loro posto si libera di nuovo."
+          },
+          "organiser": {
+            "title": "Si annulla una sessione",
+            "intro": "Ecco cosa ottengono le persone che hanno prenotato quella sessione.",
+            "outcome": "Ciò che ottengono",
+            "outcomeHint": "Prima di inviare qualsiasi cosa, spetta sempre a te decidere se dirlo e cosa dire."
+          }
+        },
+        "passes": {
+          "title": "Pass",
+          "intro": "Come le persone con un pass ti fanno sapere che stanno arrivando. Un pass è il diritto di venire, non un posto.",
+          "signUp": "Titolari del pass",
+          "off": "Vieni e basta",
+          "offHint": "Non te lo comunicano in anticipo. Solo per i corsi senza limiti di posti.",
+          "optIn": "Di' \"Arrivo\"",
+          "optInHint": "Rispondono per ogni sessione. Si vede chi partecipa e i posti vengono conteggiati.",
+          "opens": "Le iscrizioni aprono (alcuni giorni prima)",
+          "opensHint": "Lasciare vuoto per aprirlo non appena la sessione sarà in vendita. Tra 1 e 60.",
+          "changeUntil": "Le risposte possono cambiare fino a (ore prima)",
+          "changeUntilHint": "Dopodiché, “Sto arrivando” rimane invariato. Tra 0 e 72."
+        },
+        "reference": {
+          "title": "Riferimento di prenotazione",
+          "intro": "Per ogni prenotazione viene fornito un breve riferimento che le persone inseriscono nella causale del bonifico bancario e citano quando ti scrivono.",
+          "prefix": "Inizio del riferimento",
+          "prefixHint": "Fino a 6 lettere o numeri. Ad esempio {example} . Lascia vuoto e ne sceglieremo uno noi per te."
+        }
+      }
+    },
     "courses": {
       "preview": {
         "button": "Anteprima",
@@ -3875,7 +4266,50 @@
           "clear": "Cancella i filtri",
           "noMatch": "Nessun corso corrisponde a questi filtri."
         },
-        "timetable": "Orario"
+        "timetable": "Orario",
+        "bulk": {
+          "toolbar": "Corsi selezionati",
+          "checkbox": "Seleziona {name}",
+          "all": "Seleziona tutto",
+          "allLabel": "Seleziona tutti i corsi in questo elenco",
+          "bar": {
+            "publish": "Pubblicare",
+            "archive": "Archivio",
+            "restore": "Ripristinare",
+            "lastDate": "Ultimo giorno",
+            "lastDateLong": "Modificare la data di fine delle lezioni",
+            "delete": "Eliminare",
+            "more": "Di più",
+            "clear": "Chiaro"
+          },
+          "detail": "{name} ( {reason} )",
+          "nothing": "Nulla da modificare: {details} .",
+          "attention": "{count} non può essere modificato: {details} .",
+          "reason": {
+            "archived": "archiviato",
+            "scheduled": "programmato",
+            "published": "piuttosto pubblicato",
+            "missing_text": "testi mancanti",
+            "not_published": "non pubblicato",
+            "not_archived": "non archiviato",
+            "has_been_published": "pubblicato, archivialo prima"
+          },
+          "delete": {
+            "body": "Questa operazione è irreversibile.",
+            "list": "Corsi da eliminare",
+            "confirm": "Eliminare"
+          },
+          "lastDate": {
+            "intro": "Ogni corso attivo tra quelli selezionati riceve questa data di scadenza. Un corso che si ripete termina il giorno della sua ultima lezione entro tale data. I corsi che non si ripetono e quelli che iniziano in un secondo momento rimangono invariati.",
+            "field": "Nuova data ultima",
+            "placeholder": "Scegli una data",
+            "needed": "Scegli prima una data.",
+            "cancel": "Cancellare",
+            "confirm": "Modifica la data di scadenza",
+            "changing": "Cambiamento…",
+            "nothing": "Non è stata modificata alcuna classe."
+          }
+        }
       },
       "newCourse": {
         "title": "Nuovo corso",
@@ -4013,8 +4447,6 @@
           "room": "Sala online",
           "noRoom": "Nessuna sala",
           "noRooms": "Aggiungi prima le sale online nella pagina Orario.",
-          "term": "Periodo",
-          "noTerm": "Nessun periodo",
           "startsOn": "Prima lezione",
           "startsOnHint": "Si possono scegliere solo i giorni in cui si svolge la lezione.",
           "endsOn": "Ultima lezione",
@@ -4040,7 +4472,9 @@
           "teachersAdd": "Aggiungi insegnante",
           "teachersTitle": "Scegli gli insegnanti",
           "save": "Salva",
-          "saving": "Salvataggio…"
+          "saving": "Salvataggio…",
+          "term": "Periodo",
+          "noTerm": "Nessun periodo"
         },
         "end": {
           "action": "Termina questa lezione",
@@ -4064,30 +4498,25 @@
         "title": "Orario",
         "back": "Torna ai corsi",
         "untitledCourse": "Corso senza titolo",
+        "filters": {
+          "label": "classi di filtro",
+          "search": "Cerca classi",
+          "searchPlaceholder": "Cerca per corso o docente",
+          "place": "Posto",
+          "placeAll": "Tutti i luoghi",
+          "noPlace": "Nessun posto",
+          "teacher": "Insegnante",
+          "teacherAll": "Tutti gli insegnanti",
+          "day": "Giorno",
+          "dayAll": "Tutti i giorni",
+          "language": "Lingua",
+          "languageAll": "Tutte le lingue",
+          "showing": "{shown} di {total} classi",
+          "clear": "Filtri trasparenti",
+          "noMatch": "Nessuna classe corrisponde a questi filtri."
+        },
         "openClass": "Apri {name}, {time}",
         "changes": "{count, plural, one {# modifica} other {# modifiche}}",
-        "term": {
-          "select": "Periodo",
-          "all": "Tutte le lezioni",
-          "none": "Senza periodo",
-          "new": "Nuovo periodo",
-          "edit": "Modifica periodo",
-          "range": "dal {from} al {to}",
-          "newTitle": "Nuovo periodo",
-          "editTitle": "Modifica periodo",
-          "name": "Nome",
-          "startsOn": "Primo giorno",
-          "endsOn": "Ultimo giorno",
-          "endBeforeStart": "L’ultimo giorno non può essere prima del primo.",
-          "datesHint": "Cambiando le date le lezioni di questo periodo si spostano o terminano.",
-          "save": "Salva",
-          "saving": "Salvataggio…",
-          "saved": "Periodo salvato.",
-          "delete": "Elimina periodo",
-          "deleteTitle": "Eliminare {name}?",
-          "deleteBody": "Si può eliminare solo un periodo senza lezioni.",
-          "deleted": "Periodo eliminato."
-        },
         "empty": {
           "title": "Ancora nessuna lezione",
           "body": "Aggiungi le lezioni dalla pagina di un corso. Compariranno qui.",
@@ -4187,6 +4616,28 @@
           "save": "Salva",
           "saving": "Salvataggio…",
           "saved": "Sala salvata."
+        },
+        "term": {
+          "select": "Periodo",
+          "all": "Tutte le lezioni",
+          "none": "Senza periodo",
+          "new": "Nuovo periodo",
+          "edit": "Modifica periodo",
+          "range": "dal {from} al {to}",
+          "newTitle": "Nuovo periodo",
+          "editTitle": "Modifica periodo",
+          "name": "Nome",
+          "startsOn": "Primo giorno",
+          "endsOn": "Ultimo giorno",
+          "endBeforeStart": "L’ultimo giorno non può essere prima del primo.",
+          "datesHint": "Cambiando le date le lezioni di questo periodo si spostano o terminano.",
+          "save": "Salva",
+          "saving": "Salvataggio…",
+          "saved": "Periodo salvato.",
+          "delete": "Elimina periodo",
+          "deleteTitle": "Eliminare {name}?",
+          "deleteBody": "Si può eliminare solo un periodo senza lezioni.",
+          "deleted": "Periodo eliminato."
         }
       }
     }
