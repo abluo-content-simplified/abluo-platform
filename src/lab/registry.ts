@@ -303,6 +303,8 @@ export const LAB_REGISTRY: LabEntry[] = [
       'Combobox pattern: focus stays in the input, ↑/↓ move, Enter opens, Esc closes. Rows are options; choosing one calls its onSelect (the caller navigates and closes).',
       'While refreshing, pass state="loading" with the previous groups: they stay visible; skeleton rows only show when there is nothing yet.',
       'Opened by SearchTrigger and ⌘K / Ctrl+K — but not from inside a rich-text editor, where ⌘K means "add link".',
+      'Matching, prefixes ("/" Go To, "+" Create), Top Hit, highlighting and relative dates are the pure helpers in search-match.ts; items with highlight:true get their matched word starts emphasised via highlightTerms.',
+      'Desktop only: ⌘/Ctrl+Enter calls onOpenNewTab, an active row with siteUrl shows "View on website" (also ⌘/Ctrl+Shift+Enter). Footer chips (`chips`) sit under the input on phones; `tip` is one quiet line while the query is empty.',
     ],
     demo: () => import('./demos/search-palette.demo'),
   },

@@ -76,6 +76,16 @@ List screens accept `?q=` and pre-fill `ListToolbar`'s search. No new search pag
 - **Accents:** GROQ `match` is case-insensitive but accent-sensitive. Each word is OR-ed with its accent-folded form and, for words of 4+ letters ending in a vowel, its stem (`perche` → `perch*` finds "perché"). Mid-word accents are not covered.
 - **Snippets:** when the title doesn't show the match, a second request for the shown ids only returns the matching text; the row shows "…around the **match**…" instead of the subtitle.
 
+## v1.2 — palette UX + settings pages (2026-11-08)
+- **Empty state:** Recent (4) · Quick Actions (4; "Contact Requests · N new" first when there are new ones) · Browse All (expands Go To + Create).
+- **Prefixes** at the start of the query: `/` Go To only, `+` Create only (no content search). `?` waits for help articles.
+- **Local matching** (Go To, Create, sub-pages): accent/case-insensitive, word prefix, typo tolerance (Damerau-Levenshtein 1 from 4 letters, 2 from 8), translated synonyms `app.search.synonyms.<id>`.
+- **Top Hit:** a strong navigation match (query equals/starts a label or synonym) shows first; otherwise content leads, then Go To, then Create.
+- **Sub-pages** (`src/lib/search/destinations.ts`, strings `app.search.destinations.<id>.{label,keywords}`): settings, connected apps, users, billing, categories & tags, catalogue setup, timetable, booking rules, protected pages… Gated by the parent nav item + optional permission. Legal Documents to be added when its page exists.
+- **Rows:** age ("2d") from `updatedAt`; ⌘↵ opens in a new tab; "View on website" (`siteUrl`, built with the sitemap's visibility rules and `canonicalUrl`, ADR-034) on the active row, desktop only. Matched words emphasised in titles.
+- **Footer:** `/ Go To` `+ Create` chips (under the input on phones), a rotating tip, Show archived always visible. Paste searches at once; reopening within 60 s restores the last query.
+- **No search logging** (Tom, 2026-11-08). If usage is ever measured: counts only, never the typed text.
+
 ## Known gaps (accepted for v1)
 - **No typo tolerance or meaning-based search** ("teeth cleaning" won't find "dental hygiene"). Revisit with Sanity embeddings if real use shows misses.
 

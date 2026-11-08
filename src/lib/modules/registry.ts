@@ -15,6 +15,10 @@ import { peopleSchemaTypes } from './people/schema'
 import { coursesSchemaTypes } from './courses/schema'
 import { SEGMENT_REGEX_SOURCE } from './catalogue/segment'
 import { personDisplayName } from './people/model'
+import { PERSON_HAS_PAGE } from './people/projection'
+import { COURSE_VISIBLE } from './courses/queries'
+import { publicFilterFor } from '@/lib/lifecycle/public-types'
+import { visibilityFilter } from './catalogue/visibility'
 import { PROFILES, PROFILE_ORDER, profilesWith } from './catalogue/profiles'
 
 // ── Module registry ───────────────────────────────────────────────────────────
@@ -51,6 +55,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       source: {
         type: 'sanity',
         docType: 'post',
+        site: { visible: publicFilterFor('post'), segment: { fixed: 'blog' } },
         projection: 'title, subtitle, excerpt, "thumb": coverImage.asset->url',
         fields: [
         { name: 'title', kind: 'localizedString', weight: 3 },
@@ -347,6 +352,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       source: {
         type: 'sanity',
         docType: 'event',
+        site: { visible: `${publicFilterFor('event')} && coalesce(visibility, "public") != "unlisted"`, segment: { fixed: 'events' } },
         projection: 'title, shortDescription, "thumb": heroImage.asset->url',
         fields: [
         { name: 'title', kind: 'localizedString', weight: 3 },
@@ -1221,6 +1227,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       source: {
         type: 'sanity',
         docType: 'catalogueItem',
+        site: { visible: `hasPage == true && defined(slug) && ${publicFilterFor('catalogueItem')} && ${visibilityFilter('sitemap')}`, segment: { moduleId: 'catalogue', configKey: 'publicSegment' } },
         projection: 'name, byline, description, "thumb": select(images[0]->projectSlug == $projectSlug => images[0]->image.asset->url)',
         fields: [
         { name: 'name', kind: 'localizedString', weight: 3 },
@@ -1903,6 +1910,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       source: {
         type: 'sanity',
         docType: 'person',
+        site: { visible: PERSON_HAS_PAGE, segment: { moduleId: 'people', configKey: 'profileSegment' } },
         extraFilter: '!defined(anonymisedAt)',
         projection: 'firstName, lastName, displayName, jobTitle, "thumb": select(photo->projectSlug == $projectSlug => photo->image.asset->url)',
         fields: [
@@ -2056,6 +2064,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       source: {
         type: 'sanity',
         docType: 'course',
+        site: { visible: COURSE_VISIBLE, segment: { moduleId: 'courses', configKey: 'courseSegment' } },
         projection: 'title, shortDescription, "thumb": select(image->projectSlug == $projectSlug => image->image.asset->url)',
         fields: [
         { name: 'title', kind: 'localizedString', weight: 3 },

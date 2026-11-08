@@ -4693,6 +4693,80 @@
       "abluo_admin": "Super-Admin"
     },
     "search": {
+      "destinations": {
+        "settings-form-notifications": {
+          "label": "Formular-Benachrichtigungen",
+          "keywords": "Formular-E-Mail, E-Mail vom Formular, Benachrichtigungen, Empfänger, wer bekommt E-Mails, Kontaktformular, E-Mail-Adresse, Anfragen"
+        },
+        "settings-translations": {
+          "label": "Übersetzungen",
+          "keywords": "Übersetzungsverbrauch, genutzte Übersetzungen, maschinelle Übersetzung, automatisch übersetzen, Übersetzungslimit, Sprachen, diesen Monat"
+        },
+        "connected-affiliate-programs": {
+          "label": "Affiliate-Programme",
+          "keywords": "Affiliate, Partnerprogramm, Affiliate-ID, Affiliate-Links, Amazon, Amazon Partnernet, Awin, Provision, Offenlegung"
+        },
+        "connected-partner-apps": {
+          "label": "Partner-Apps",
+          "keywords": "Partner-Apps, verbundene Apps, Integrationen, API, Zugriff, pausieren, trennen, Drittanbieter"
+        },
+        "users-invite": {
+          "label": "Jemanden Einladen",
+          "keywords": "einladen, Benutzer einladen, Benutzer hinzufügen, neuer Benutzer, Teammitglied, Rollen, Berechtigungen, wer hat Zugriff, Redakteur, Admin"
+        },
+        "billing-invoices": {
+          "label": "Rechnungen & Zahlung",
+          "keywords": "Rechnungen, Rechnung, Beleg, Zahlung, Zahlungsmethode, Karte, Abo, Tarif, MwSt, bezahlen"
+        },
+        "taxonomy-media-tags": {
+          "label": "Medien-Tags",
+          "keywords": "Medien-Tags, Foto-Tags, Bild-Tags, Labels, Fotos ordnen"
+        },
+        "taxonomy-gallery-tags": {
+          "label": "Galerie-Tags",
+          "keywords": "Galerie-Tags, Galerie-Labels, Album-Tags"
+        },
+        "media-add": {
+          "label": "Fotos Hinzufügen",
+          "keywords": "Fotos hinzufügen, hochladen, Fotos hochladen, Bilder hochladen, Bilder hinzufügen, neues Foto, Video hinzufügen"
+        },
+        "catalogue-setup-starters": {
+          "label": "Startstrukturen",
+          "keywords": "Starter, Vorlagen, Startstruktur, Voreinstellungen, Menüvorlage, loslegen"
+        },
+        "catalogue-setup-website": {
+          "label": "Öffentliche Website",
+          "keywords": "öffentliche Website, Katalog auf der Website, auf der Website anzeigen, Darstellung, Layout, Preise auf der Website, Katalogseite"
+        },
+        "catalogue-setup-defaults": {
+          "label": "Standardwerte für Artikel",
+          "keywords": "Standardwerte, Vorgaben, Standardwährung, Standard-MwSt, Standardeinstellungen"
+        },
+        "catalogue-setup-categories": {
+          "label": "Katalog-Kategorien",
+          "keywords": "Kategorien, Katalogkategorien, Menükategorien, Bereiche, Produktkategorien, Tags"
+        },
+        "catalogue-setup-tags": {
+          "label": "Katalog-Tags",
+          "keywords": "Tags, Katalog-Tags, Labels, Allergene, vegan, Ernährung, Badges"
+        },
+        "catalogue-setup-channels": {
+          "label": "Servicekanäle",
+          "keywords": "Servicekanäle, Kanäle, vor Ort, Abholung, Lieferung, Online-Bestellung, Bestellungen"
+        },
+        "courses-timetable": {
+          "label": "Stundenplan",
+          "keywords": "Stundenplan, Zeitplan, Wochenplan, Kurszeiten, Kalender, Unterrichtsstunden"
+        },
+        "booking-rules": {
+          "label": "Buchungsregeln",
+          "keywords": "Buchungsregeln, Regeln, Verfügbarkeit, Öffnungszeiten, Stornierung, Anzahlung, Kapazität, Reservierungseinstellungen"
+        },
+        "documents-pages": {
+          "label": "Geschützte Seiten",
+          "keywords": "geschützte Seiten, private Seiten, eingeschränkte Seiten, Mitgliederbereich, wer darf sehen"
+        }
+      },
       "title": "Suche",
       "placeholder": "Suchen oder springen zu…",
       "trigger": "Suchen",
@@ -4713,7 +4787,47 @@
       "close": "Abbrechen",
       "hintNavigate": "Navigieren",
       "hintOpen": "Öffnen",
-      "hintClose": "Schließen"
+      "hintClose": "Schließen",
+      "groupTopHit": "Bester Treffer",
+      "groupQuickActions": "Schnellaktionen",
+      "groupBrowse": "Mehr",
+      "browseAll": "Alles durchsuchen",
+      "quickRequests": "{label} · {count} neu",
+      "chipGoTo": "Gehe zu",
+      "chipCreate": "Erstellen",
+      "viewOnWebsite": "Auf der Website ansehen",
+      "tipGoTo": "Tippe /, um überall hinzuspringen",
+      "tipCreate": "Tippe +, um etwas Neues zu erstellen",
+      "tipNewTab": "⌘↵ oder Strg ↵ öffnet ein Ergebnis in einem neuen Tab",
+      "tipPaste": "Füge einen Namen ein, um sofort zu suchen",
+      "synonyms": {
+        "home": "übersicht, start, dashboard",
+        "blog": "artikel, beiträge, blog, neuigkeiten, schreiben",
+        "news": "aktuelles, meldungen, mitteilungen, nachrichten",
+        "events": "kalender, termin, veranstaltung, treffen, agenda",
+        "courses": "unterricht, stundenplan, workshops, lektionen",
+        "reservations": "buchungen, reservierungen, tische, termine",
+        "live": "stream, übertragung, produktionen, video",
+        "forms": "nachrichten, anfragen, kontakt, formulare, leads",
+        "whatsapp": "chat, nachrichten",
+        "gallery": "fotos, alben, bilder, galerien",
+        "faq": "fragen, antworten, hilfe",
+        "translate": "übersetzung, übersetzen, sprachen",
+        "media": "fotos, bilder, dateien, videos, mediathek",
+        "taxonomy": "tags, kategorien, schlagwörter, themen",
+        "people": "team, mitarbeiter, lehrer, autoren, referenten, personen",
+        "users": "benutzer, mitglieder, konten, einladen, rollen",
+        "connections": "integrationen, apps, partner, verbindungen",
+        "analytics": "statistiken, zugriffe, besucher, berichte",
+        "catalogue": "produkte, speisekarte, menü, artikel, leistungen, katalog",
+        "brand-hub": "marke, logo, richtlinien, farben, schriften",
+        "members": "passwörter, privat, geschützt, zugang",
+        "settings": "einstellungen, optionen, konfiguration, sprachen, datenschutz, impressum",
+        "support": "hilfe, tickets, problem, unterstützung",
+        "documents": "dokumente, dateien, pdf, downloads",
+        "billing": "rechnungen, zahlungen, abonnement, tarif",
+        "discover": "module, erweiterungen, hinzufügen, upgrade"
+      }
     },
     "filterBar": {
       "label": "Filter",

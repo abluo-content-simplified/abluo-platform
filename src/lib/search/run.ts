@@ -5,6 +5,7 @@
  */
 import type { DashboardSubmission } from '@/lib/api/client-dashboard'
 import { resolveLocalized } from '@/lib/api/client-dashboard'
+import { siteContext, siteUrlFor, PROJECT_KEY } from './site-url'
 import { filterRequests, requestSnippet } from './requests-search'
 import { buildSearchQuery, isSanitySearchDef, mergeRows, searchTermGroups, SITE_KEY, type MergedRow, type RawSearchRow, type SanitySearchDef, type SearchParams } from './sanity-search'
 import { buildSnippetQuery, firstSnippet, needlesOf, rowTexts, textHasNeedle } from './snippet'
@@ -98,6 +99,7 @@ export async function runSearch(input: SearchInput, deps: SearchDeps): Promise<S
   const siteDefault = typeof sanity?.[SITE_KEY] === 'string' ? (sanity[SITE_KEY] as string) : input.locale
   const r = { text: (v: unknown) => resolveLocalized(v as never, input.locale, siteDefault) ?? '' }
 
+  const siteCtx = siteContext(sanity?.[PROJECT_KEY], siteDefault)
   const groups = new Map<SearchKind, SearchGroup>()
   const seeAll = (def: SearchSource['def']) => `${def.listHref(slug)}?q=${encodeURIComponent(q)}`
 
@@ -113,6 +115,7 @@ export async function runSearch(input: SearchInput, deps: SearchDeps): Promise<S
       const subtitle = def.source.subtitleOf ? clip(def.source.subtitleOf(m.row, r)) : ''
       const th = thumb(m.row.thumb)
       const title = def.source.titleOf(m.row, r) || m.id
+      const siteUrl = m.site ? siteUrlFor(def, m.site, siteCtx, input.locale) : undefined
       const hit: SearchHit = {
         id: m.id,
         kind: def.kind,
@@ -120,6 +123,8 @@ export async function runSearch(input: SearchInput, deps: SearchDeps): Promise<S
         ...(subtitle && { subtitle }),
         ...(th && { thumbUrl: th }),
         href: def.href(slug, m.id),
+        ...(m.updatedAt && { updatedAt: m.updatedAt }),
+        ...(siteUrl && { siteUrl }),
         ...(m.draft && { draft: true }),
         ...(m.archived && { archived: true }),
       }
@@ -140,6 +145,7 @@ export async function runSearch(input: SearchInput, deps: SearchDeps): Promise<S
         title: s.name || s.email || s.formId || s.id,
         ...(clip(s.name ? (s.email ?? '') : s.createdAt.slice(0, 10)) && { subtitle: clip(s.name ? (s.email ?? '') : s.createdAt.slice(0, 10)) }),
         href: requestsDef.href(slug, s.id),
+        ...(s.createdAt && { updatedAt: s.createdAt }),
         ...(s.status === 'archived' && { archived: true }),
         ...(snippet && { snippet }),
         }

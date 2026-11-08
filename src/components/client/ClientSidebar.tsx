@@ -75,6 +75,8 @@ export type ClientSidebarProps = {
   billingAttention?: BillingAttention | null
   /** What this person can create here (`buildCreateMenu`): feeds the search's Create group. */
   createMenu?: CreateMenu | null
+  /** The person's permissions on the active project: some search sub-destinations need one. */
+  permissions?: readonly string[]
 }
 
 const ICONS = {
@@ -136,6 +138,7 @@ export function ClientSidebar({
   newRequestsCount = 0,
   billingAttention = null,
   createMenu = null,
+  permissions = [],
 }: ClientSidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -213,6 +216,8 @@ export function ClientSidebar({
     createMenu,
     iconFor,
     moduleLabel: (id) => t(`nav.${id}`),
+    permissions,
+    newRequestsCount,
   })
 
   return (

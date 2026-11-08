@@ -28,6 +28,13 @@ export type SearchHit = {
   thumbUrl?: string
   /** Locale-agnostic dashboard href: `/{projectSlug}/…` (the client prefixes the locale like every other link). */
   href: string
+  /** Last edited (ISO date-time) — the client shows it as "2d", "1w". */
+  updatedAt?: string
+  /**
+   * Public website URL of the item, only when it is published and visible on
+   * the site (absolute, on the project's own domain). Drives "View on website".
+   */
+  siteUrl?: string
   /** The item only exists as an unpublished draft. */
   draft?: boolean
   /** The item is archived (only returned when `includeArchived`). */

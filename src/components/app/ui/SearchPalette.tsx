@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useId,
   useRef,
   useState,
@@ -9,10 +10,12 @@ import {
 } from "react";
 import { AppIcon } from "@/components/app/shell/AppIcon";
 import { Button, IconButton } from "./Button";
+import { Chip } from "./Chip";
 import { DialogFrame } from "./DialogFrame";
 import { EmptyState } from "./EmptyState";
 import { Pill } from "./list/cells";
 import { inputClass } from "./field-styles";
+import { highlightSegments } from "./search-match";
 import { Skeleton } from "./Skeleton";
 import { Switch } from "./Switch";
 
@@ -29,6 +32,12 @@ import { Switch } from "./Switch";
  * (`aria-activedescendant`), Enter opens it, Esc closes, hover sets it.
  * Rows are options, not buttons: choosing one calls its `onSelect` (the caller
  * navigates and closes).
+ *
+ * Desktop extras (nothing of this on phones): ⌘/Ctrl+Enter calls the active
+ * row's `onOpenNewTab`; a row with `siteUrl` shows a "View on website" icon
+ * button while it is active or hovered, also reachable with ⌘/Ctrl+Shift+Enter.
+ * Footer: Show archived, the prefix chips (under the input on phones), the
+ * keyboard hints (md+) and, in the empty state, one quiet tip.
  *
  *   <SearchPalette open={open} onClose={close} query={q} onQueryChange={setQ} groups={groups} state="ready" labels={labels} />
  */
@@ -49,6 +58,14 @@ export type SearchPaletteItem = {
   icon?: string;
   /** A small status after the title (Draft / Archived). */
   badge?: { label: string; tone?: "muted" | "outline" };
+  /** Right-aligned age on the title line ("2d"); `title` is the full date for a tooltip. */
+  date?: { label: string; title?: string };
+  /** Emphasise the matched word starts of the title (see `highlightTerms`). */
+  highlight?: boolean;
+  /** Public page of the item: shows "View on website" on md+. */
+  siteUrl?: string;
+  /** ⌘/Ctrl+Enter on md+. */
+  onOpenNewTab?: () => void;
   onSelect: () => void;
 };
 
@@ -81,6 +98,17 @@ export type SearchPaletteLabels = {
   hintNavigate: string;
   hintOpen: string;
   hintClose: string;
+  /** Accessible name and tooltip of the row's "View on website" button. */
+  viewOnWebsite: string;
+};
+
+/** A footer chip that inserts a prefix ("/" Go To, "+" Create). */
+export type SearchPaletteChip = {
+  key: string;
+  /** Already translated, e.g. "Go To"; the token is drawn before it. */
+  label: string;
+  token: string;
+  onSelect: () => void;
 };
 
 export type SearchPaletteProps = {
@@ -104,9 +132,28 @@ export type SearchPaletteProps = {
   /** Show `labels.minChars` (the query is too short to search). */
   tooShort?: boolean;
   labels: SearchPaletteLabels;
+  /** Query words to emphasise in titles of items with `highlight`. */
+  highlightTerms?: string[];
+  /** Prefix chips: footer on md+, under the input on phones. */
+  chips?: SearchPaletteChip[];
+  /** One quiet line above the footer while the query is empty. `desktopOnly` hides it on phones (keyboard tips). */
+  tip?: { text: string; desktopOnly?: boolean };
+  /** Select the whole query on open (a reopened query is replaced by typing). */
+  selectOnOpen?: boolean;
+  /** The user pasted into the input: the caller may search without waiting. */
+  onPasteQuery?: () => void;
 };
 
-type Row = { id: string; onSelect: () => void };
+type Row = {
+  id: string;
+  onSelect: () => void;
+  onOpenNewTab?: () => void;
+  siteUrl?: string;
+};
+
+function openSite(url: string) {
+  window.open(url, "_blank", "noopener");
+}
 
 export function SearchPalette(props: SearchPaletteProps) {
   const { open, onClose, labels } = props;
@@ -137,8 +184,19 @@ function PaletteBody({
   archived,
   tooShort,
   labels,
+  highlightTerms,
+  chips,
+  tip,
+  selectOnOpen,
+  onPasteQuery,
 }: SearchPaletteProps) {
   const uid = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (selectOnOpen) inputRef.current?.select();
+    // Only when the palette opens (it is mounted per opening).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const listId = `${uid}-list`;
   const rowId = (key: string) => `${uid}-opt-${key}`;
   const listRef = useRef<HTMLDivElement>(null);
@@ -149,6 +207,8 @@ function PaletteBody({
       key: `${g.key}:${it.id}`,
       id: rowId(`${g.key}:${it.id}`),
       onSelect: it.onSelect,
+      onOpenNewTab: it.onOpenNewTab,
+      siteUrl: it.siteUrl,
     })),
     ...(g.seeAll
       ? [
@@ -194,6 +254,13 @@ function PaletteBody({
       move(0, 0);
     } else if (e.key === "Enter") {
       e.preventDefault();
+      if (e.metaKey || e.ctrlKey) {
+        // Secondary actions (desktop keyboards only): ⌘/Ctrl+Enter new tab, +Shift the public page.
+        if (e.shiftKey) {
+          if (active?.siteUrl) openSite(active.siteUrl);
+        } else active?.onOpenNewTab?.();
+        return;
+      }
       if (activeKey === null && onSubmit?.()) return;
       active?.onSelect();
     }
@@ -218,6 +285,7 @@ function PaletteBody({
             <AppIcon d={SEARCH_ICON} size={18} />
           </span>
           <input
+            ref={inputRef}
             type="text"
             role="combobox"
             aria-expanded="true"
@@ -235,6 +303,7 @@ function PaletteBody({
             placeholder={labels.placeholder}
             onChange={(e) => onQueryChange(e.target.value)}
             onKeyDown={onKeyDown}
+            onPaste={() => onPasteQuery?.()}
             className={inputClass({
               controlSize: "md",
               flush: true,
@@ -253,6 +322,14 @@ function PaletteBody({
           <AppIcon d="M6 6l12 12M18 6L6 18" size={18} />
         </IconButton>
       </div>
+
+      {chips && chips.length > 0 ? (
+        <div className="flex shrink-0 flex-wrap gap-2 border-b border-border-subtle px-3 py-2 md:hidden">
+          {chips.map((c) => (
+            <PrefixChip key={c.key} chip={c} inputRef={inputRef} />
+          ))}
+        </div>
+      ) : null}
 
       <div
         ref={listRef}
@@ -290,13 +367,27 @@ function PaletteBody({
                   <Lead item={it} />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start gap-2">
-                      <span className="min-w-0 truncate text-[0.9375rem] leading-6 font-medium text-foreground">
-                        {it.title}
+                      <span
+                        className={`min-w-0 truncate text-[0.9375rem] leading-6 text-foreground ${it.highlight ? "font-normal" : "font-medium"}`}
+                      >
+                        {it.highlight ? (
+                          <Highlighted text={it.title} terms={highlightTerms} />
+                        ) : (
+                          it.title
+                        )}
                       </span>
                       {it.badge ? (
                         <Pill tone={it.badge.tone ?? "muted"}>
                           {it.badge.label}
                         </Pill>
+                      ) : null}
+                      {it.date ? (
+                        <span
+                          title={it.date.title}
+                          className="ml-auto shrink-0 text-xs leading-6 text-muted-foreground tabular-nums"
+                        >
+                          {it.date.label}
+                        </span>
                       ) : null}
                     </span>
                     {it.snippet ? (
@@ -313,6 +404,23 @@ function PaletteBody({
                       </span>
                     ) : null}
                   </span>
+                  {it.siteUrl && active?.key === key ? (
+                    <IconButton
+                      aria-label={labels.viewOnWebsite}
+                      title={labels.viewOnWebsite}
+                      tabIndex={-1}
+                      className="-my-2 -mr-1 hidden shrink-0 self-start md:inline-grid"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openSite(it.siteUrl as string);
+                      }}
+                    >
+                      <AppIcon
+                        d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"
+                        size={18}
+                      />
+                    </IconButton>
+                  ) : null}
                 </Option>
               );
             })}
@@ -379,16 +487,33 @@ function PaletteBody({
         {status}
       </p>
 
+      {tip && query.length === 0 ? (
+        <p
+          className={`shrink-0 px-4 pb-1.5 text-xs text-muted-foreground ${tip.desktopOnly ? "hidden md:block" : ""}`}
+        >
+          {tip.text}
+        </p>
+      ) : null}
+
       <div className="flex shrink-0 items-center justify-between gap-4 border-t border-border-subtle px-4 py-1 md:py-1.5">
-        {archived ? (
-          <ArchivedToggle
-            value={archived.value}
-            onChange={archived.onChange}
-            label={labels.showArchived}
-          />
-        ) : (
-          <span />
-        )}
+        <div className="flex min-w-0 items-center gap-4">
+          {archived ? (
+            <ArchivedToggle
+              value={archived.value}
+              onChange={archived.onChange}
+              label={labels.showArchived}
+            />
+          ) : (
+            <span />
+          )}
+          {chips && chips.length > 0 ? (
+            <div className="hidden items-center gap-2 md:flex">
+              {chips.map((c) => (
+                <PrefixChip key={c.key} chip={c} inputRef={inputRef} />
+              ))}
+            </div>
+          ) : null}
+        </div>
         <div
           className="hidden items-center gap-4 text-xs text-muted-foreground md:flex"
           aria-hidden="true"
@@ -403,6 +528,44 @@ function PaletteBody({
 }
 
 const SEARCH_ICON = "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5";
+
+function PrefixChip({
+  chip,
+  inputRef,
+}: {
+  chip: SearchPaletteChip;
+  inputRef: { current: HTMLInputElement | null };
+}) {
+  return (
+    <Chip
+      // Keep the caret in the input: the chip only inserts the prefix.
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => {
+        chip.onSelect();
+        inputRef.current?.focus();
+      }}
+    >
+      <span className="font-sans text-muted-foreground">{chip.token}</span>
+      {chip.label}
+    </Chip>
+  );
+}
+
+function Highlighted({ text, terms }: { text: string; terms?: string[] }) {
+  return (
+    <>
+      {highlightSegments(text, terms ?? []).map((seg, i) =>
+        seg.match ? (
+          <mark key={i} className="bg-transparent font-medium text-foreground">
+            {seg.text}
+          </mark>
+        ) : (
+          seg.text
+        ),
+      )}
+    </>
+  );
+}
 
 function Option({
   id,

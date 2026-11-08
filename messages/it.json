@@ -4693,6 +4693,80 @@
       "abluo_admin": "Super amministratore"
     },
     "search": {
+      "destinations": {
+        "settings-form-notifications": {
+          "label": "Notifiche dei Moduli",
+          "keywords": "email dei moduli, email modulo, notifiche, destinatari, chi riceve le email, modulo di contatto, indirizzo email, richieste"
+        },
+        "settings-translations": {
+          "label": "Traduzioni",
+          "keywords": "utilizzo traduzioni, traduzioni usate, traduzione automatica, traduci, limite traduzioni, lingue, questo mese"
+        },
+        "connected-affiliate-programs": {
+          "label": "Programmi di Affiliazione",
+          "keywords": "affiliazione, affiliate, id affiliato, link affiliati, amazon, amazon associates, awin, commissioni, disclosure, informativa"
+        },
+        "connected-partner-apps": {
+          "label": "App Partner",
+          "keywords": "app partner, app collegate, integrazioni, api, accesso, sospendi, scollega, terze parti"
+        },
+        "users-invite": {
+          "label": "Invita Qualcuno",
+          "keywords": "invita, invita utente, aggiungi utente, nuovo utente, collaboratore, ruoli, permessi, chi ha accesso, editor, amministratore"
+        },
+        "billing-invoices": {
+          "label": "Fatture e Pagamento",
+          "keywords": "fatture, fattura, ricevuta, pagamento, metodo di pagamento, carta, abbonamento, piano, iva, pagare"
+        },
+        "taxonomy-media-tags": {
+          "label": "Tag dei Media",
+          "keywords": "tag media, tag foto, tag immagini, etichette, organizza foto"
+        },
+        "taxonomy-gallery-tags": {
+          "label": "Tag delle Gallerie",
+          "keywords": "tag gallerie, etichette gallerie, tag album"
+        },
+        "media-add": {
+          "label": "Aggiungi Foto",
+          "keywords": "aggiungi foto, carica, carica foto, carica immagini, aggiungi immagini, nuova foto, aggiungi video"
+        },
+        "catalogue-setup-starters": {
+          "label": "Strutture di Partenza",
+          "keywords": "starter, modelli, struttura di partenza, preimpostazioni, modello menu, iniziare"
+        },
+        "catalogue-setup-website": {
+          "label": "Sito Pubblico",
+          "keywords": "sito pubblico, catalogo sul sito, mostra sul sito, visualizzazione, layout, prezzi sul sito, pagina catalogo"
+        },
+        "catalogue-setup-defaults": {
+          "label": "Impostazioni Predefinite degli Elementi",
+          "keywords": "predefiniti, valori predefiniti, valuta predefinita, iva predefinita, impostazioni predefinite"
+        },
+        "catalogue-setup-categories": {
+          "label": "Categorie del Catalogo",
+          "keywords": "categorie, categorie catalogo, categorie menu, sezioni, categorie prodotto, tag"
+        },
+        "catalogue-setup-tags": {
+          "label": "Tag del Catalogo",
+          "keywords": "tag, tag catalogo, etichette, allergeni, vegano, dieta, badge"
+        },
+        "catalogue-setup-channels": {
+          "label": "Canali di Servizio",
+          "keywords": "canali di servizio, canali, al tavolo, asporto, consegna, ordine online, ordinazioni"
+        },
+        "courses-timetable": {
+          "label": "Orario",
+          "keywords": "orario, orario settimanale, calendario lezioni, programma, orari dei corsi, calendario, lezioni"
+        },
+        "booking-rules": {
+          "label": "Regole di Prenotazione",
+          "keywords": "regole prenotazione, regole, disponibilità, orari di apertura, cancellazione, caparra, capienza, impostazioni prenotazioni"
+        },
+        "documents-pages": {
+          "label": "Pagine Protette",
+          "keywords": "pagine protette, pagine private, pagine riservate, area riservata, chi può vedere"
+        }
+      },
       "title": "Cerca",
       "placeholder": "Cerca o vai a…",
       "trigger": "Cerca",
@@ -4713,7 +4787,47 @@
       "close": "Annulla",
       "hintNavigate": "Naviga",
       "hintOpen": "Apri",
-      "hintClose": "Chiudi"
+      "hintClose": "Chiudi",
+      "groupTopHit": "Risultato Migliore",
+      "groupQuickActions": "Azioni Rapide",
+      "groupBrowse": "Altro",
+      "browseAll": "Sfoglia Tutto",
+      "quickRequests": "{label} · {count, plural, one {# nuova} other {# nuove}}",
+      "chipGoTo": "Vai a",
+      "chipCreate": "Crea",
+      "viewOnWebsite": "Vedi sul sito",
+      "tipGoTo": "Scrivi / per andare ovunque",
+      "tipCreate": "Scrivi + per creare qualcosa di nuovo",
+      "tipNewTab": "⌘↵ o Ctrl ↵ apre il risultato in una nuova scheda",
+      "tipPaste": "Incolla un nome per cercare subito",
+      "synonyms": {
+        "home": "pannello, inizio, panoramica",
+        "blog": "articoli, notizie, blog, post, scrittura",
+        "news": "novità, aggiornamenti, comunicati",
+        "events": "calendario, agenda, appuntamento, incontro",
+        "courses": "lezioni, orario, laboratori, classi",
+        "reservations": "prenotazioni, tavoli, appuntamenti",
+        "live": "diretta, streaming, trasmissione, video",
+        "forms": "messaggi, richieste, contatti, moduli, lead",
+        "whatsapp": "chat, messaggi",
+        "gallery": "foto, album, immagini, gallerie",
+        "faq": "domande, risposte, aiuto",
+        "translate": "traduzione, traduci, lingue",
+        "media": "foto, immagini, file, video, libreria",
+        "taxonomy": "tag, categorie, etichette, argomenti",
+        "people": "team, staff, persone, insegnanti, autori, relatori",
+        "users": "utenti, membri, account, inviti, ruoli",
+        "connections": "integrazioni, app, partner, collegamenti",
+        "analytics": "statistiche, traffico, visitatori, rapporti",
+        "catalogue": "prodotti, menu, articoli, servizi, catalogo",
+        "brand-hub": "marchio, logo, linee guida, colori, caratteri",
+        "members": "password, privato, protetto, riservato, accesso",
+        "settings": "impostazioni, preferenze, opzioni, configurazione, lingue, privacy, legale",
+        "support": "aiuto, assistenza, ticket, problema",
+        "documents": "documenti, file, pdf, download",
+        "billing": "fatture, pagamenti, abbonamento, piano",
+        "discover": "moduli, extra, aggiungi, potenzia"
+      }
     },
     "filterBar": {
       "label": "Filtri",

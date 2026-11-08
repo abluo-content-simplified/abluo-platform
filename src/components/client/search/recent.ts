@@ -47,7 +47,4 @@ export function writeRecent(projectSlug: string, list: RecentEntry[]): void {
   }
 }
 
-/** Case- and accent-insensitive form for matching "Go to" / "Create" labels. Pure. */
-export function fold(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
-}
+export { fold } from '@/components/app/ui/search-match'

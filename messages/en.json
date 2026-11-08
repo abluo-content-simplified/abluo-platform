@@ -4677,6 +4677,80 @@
       "abluo_admin": "Super admin"
     },
     "search": {
+      "destinations": {
+        "settings-form-notifications": {
+          "label": "Form Notifications",
+          "keywords": "form email, form emails, notification, notifications, notification recipients, recipients, who gets emails, contact form, email address, inquiries email"
+        },
+        "settings-translations": {
+          "label": "Translations",
+          "keywords": "translation usage, translations used, machine translation, auto translate, translate, translation limit, languages this month"
+        },
+        "connected-affiliate-programs": {
+          "label": "Affiliate Programs",
+          "keywords": "affiliate, affiliate id, affiliate links, amazon, amazon associates, awin, partner id, tracking id, commission, disclosure"
+        },
+        "connected-partner-apps": {
+          "label": "Partner Apps",
+          "keywords": "partner apps, connected apps, integrations, api, access, pause, disconnect, third party"
+        },
+        "users-invite": {
+          "label": "Invite Someone",
+          "keywords": "invite, invite user, add user, new user, team member, roles, permissions, who has access, editor, admin"
+        },
+        "billing-invoices": {
+          "label": "Invoices & Payment",
+          "keywords": "invoices, invoice, receipt, payment, payment method, card, subscription, plan, vat, pay"
+        },
+        "taxonomy-media-tags": {
+          "label": "Media Tags",
+          "keywords": "media tags, photo tags, image tags, labels, tag photos, organise photos"
+        },
+        "taxonomy-gallery-tags": {
+          "label": "Gallery Tags",
+          "keywords": "gallery tags, gallery labels, album tags, tag galleries"
+        },
+        "media-add": {
+          "label": "Add Photos",
+          "keywords": "add photos, upload, upload photos, upload images, add images, new photo, add video"
+        },
+        "catalogue-setup-starters": {
+          "label": "Starter Structures",
+          "keywords": "starter, starters, templates, starter structure, preset, menu template, getting started"
+        },
+        "catalogue-setup-website": {
+          "label": "Public Website",
+          "keywords": "public website, website catalogue, show on website, display, layout, prices on website, catalogue page"
+        },
+        "catalogue-setup-defaults": {
+          "label": "Item Defaults",
+          "keywords": "item defaults, defaults, default values, default currency, default vat, default settings"
+        },
+        "catalogue-setup-categories": {
+          "label": "Catalogue Categories",
+          "keywords": "categories, catalogue categories, menu categories, sections, product categories, tags"
+        },
+        "catalogue-setup-tags": {
+          "label": "Catalogue Tags",
+          "keywords": "tags, catalogue tags, labels, allergens, vegan, dietary, badges"
+        },
+        "catalogue-setup-channels": {
+          "label": "Service Channels",
+          "keywords": "service channels, channels, dine in, takeaway, delivery, online order, ordering"
+        },
+        "courses-timetable": {
+          "label": "Timetable",
+          "keywords": "timetable, schedule, weekly schedule, class schedule, class times, calendar, orari, lessons"
+        },
+        "booking-rules": {
+          "label": "Booking Rules",
+          "keywords": "booking rules, rules, availability, opening hours, cancellation, deposit, capacity, reservation settings"
+        },
+        "documents-pages": {
+          "label": "Protected Pages",
+          "keywords": "protected pages, private pages, restricted pages, members pages, who can see"
+        }
+      },
       "title": "Search",
       "placeholder": "Search or jump to…",
       "trigger": "Search",
@@ -4697,7 +4771,47 @@
       "close": "Cancel",
       "hintNavigate": "Navigate",
       "hintOpen": "Open",
-      "hintClose": "Close"
+      "hintClose": "Close",
+      "groupTopHit": "Top Hit",
+      "groupQuickActions": "Quick Actions",
+      "groupBrowse": "More",
+      "browseAll": "Browse All",
+      "quickRequests": "{label} · {count} new",
+      "chipGoTo": "Go To",
+      "chipCreate": "Create",
+      "viewOnWebsite": "View on website",
+      "tipGoTo": "Type / to jump anywhere",
+      "tipCreate": "Type + to create something new",
+      "tipNewTab": "⌘↵ or Ctrl ↵ opens a result in a new tab",
+      "tipPaste": "Paste a name to search right away",
+      "synonyms": {
+        "home": "dashboard, start, overview",
+        "blog": "articles, news, blog, posts, writing",
+        "news": "updates, announcements, press",
+        "events": "calendar, agenda, appointment, meeting",
+        "courses": "classes, lessons, timetable, workshops",
+        "reservations": "bookings, reservations, tables, appointments",
+        "live": "stream, broadcast, productions, video",
+        "forms": "messages, inquiries, leads, contact, requests",
+        "whatsapp": "chat, messaging",
+        "gallery": "photos, albums, images, pictures",
+        "faq": "questions, answers, help",
+        "translate": "translation, languages",
+        "media": "photos, images, pictures, files, videos",
+        "taxonomy": "tags, categories, labels, topics",
+        "people": "team, staff, teachers, authors, speakers",
+        "users": "members, accounts, access, invite, roles",
+        "connections": "integrations, apps, partners",
+        "analytics": "statistics, stats, traffic, visitors, reports",
+        "catalogue": "products, menu, items, services",
+        "brand-hub": "brand, logo, guidelines, colours, fonts",
+        "members": "passwords, private, protected, restricted, login",
+        "settings": "preferences, options, configuration, languages, privacy, legal",
+        "support": "help, tickets, problem, assistance",
+        "documents": "files, pdf, downloads",
+        "billing": "invoices, payments, subscription, plan",
+        "discover": "modules, add-ons, extras, upgrade"
+      }
     },
     "filterBar": {
       "label": "Filters",

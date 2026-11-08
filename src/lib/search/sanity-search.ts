@@ -12,6 +12,7 @@
 import { LOCALE_CODES } from '@/lib/i18n/locales'
 import type { ModuleSearchDef, SanitySearchSource, SearchField } from '@/lib/modules/types'
 import type { SearchKind } from './types'
+import { PROJECT_KEY, segmentKey } from './site-url'
 
 export type SanitySearchDef = ModuleSearchDef & { source: SanitySearchSource }
 
@@ -137,8 +138,18 @@ const tiers = (fields: SearchField[]) =>
  * not mislabelled "draft only" (or un-archived) when the published document did
  * not match the words itself. Same project only.
  */
-const PUBLISHED_TWIN =
-  '"_pub": select(_id in path("drafts.**") => *[projectSlug == $projectSlug && _id == string::split(^._id, "drafts.")[1]][0]{ _id, archivedAt })'
+const publishedTwin = (site: string) =>
+  `"_pub": select(_id in path("drafts.**") => *[projectSlug == $projectSlug && _id == string::split(^._id, "drafts.")[1]][0]{ _id, archivedAt${site} })`
+
+/**
+ * The public-page facts of a declaration, read off the PUBLISHED document only:
+ * `_live` (is it on the website right now) and `_slugs`. A published row carries
+ * them at its root, a draft row on its `_pub` twin. Empty for types without a public page.
+ */
+const siteProjection = (def: SanitySearchDef) => {
+  const site = def.source.site
+  return site ? `, "_live": (${site.visible}), "_slugs": ${site.slugField ?? 'slug'}` : ''
+}
 
 /**
  * The sub-query for one declaration. Each search word is bound as `$t0…` with
@@ -165,23 +176,39 @@ export function buildSubQuery(def: SanitySearchDef, alts: number | number[]): st
     .filter((a): a is { expr: string; weight: 1 | 2 | 3 } => Boolean(a.expr))
     .map((a) => (a.weight === 1 ? a.expr : `boost(${a.expr}, ${a.weight})`))
   const ranked = scoreArgs.length ? ` | score(${scoreArgs.join(', ')})` : ''
-  return `*[${filter}]${ranked} | order(_score desc, _updatedAt desc)[0...${SEARCH_ROW_CAP}]{ _id, archivedAt, _score, ${PUBLISHED_TWIN}, ${s.projection} }`
+  return `*[${filter}]${ranked} | order(_score desc, _updatedAt desc)[0...${SEARCH_ROW_CAP}]{ _id, _updatedAt, archivedAt, _score${siteProjection(def)}, ${publishedTwin(siteProjection(def))}, ${s.projection} }`
 }
 
 export type SearchParams = Record<string, string | string[]>
 export type SanitySearchQuery = { query: string; params: SearchParams; kinds: SearchKind[] }
+
+/**
+ * The project facts the public URLs need, in the same request: its domain, the
+ * website's languages, and each declaration's path segment from the module
+ * installation config. Identifiers come from static declarations (validated).
+ */
+function projectFacts(defs: SanitySearchDef[]): string {
+  const segs = defs.flatMap((d) => {
+    const seg = d.source.site?.segment
+    if (!seg || 'fixed' in seg) return []
+    if (![seg.moduleId, seg.configKey, d.kind].every((x) => /^[A-Za-z][A-Za-z0-9-]*$/.test(x))) throw new Error(`search site route of "${d.kind}": invalid segment declaration`)
+    return [`"${segmentKey(d.kind)}": moduleInstallations[moduleId == "${seg.moduleId}" && enabled != false][0].config.${seg.configKey}`]
+  })
+  return `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ customDomain, "locales": coalesce(siteConfig->supportedLocales, *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].supportedLocales)${segs.length ? ', ' + segs.join(', ') : ''} }`
+}
 
 /** One GROQ object query for all the given Sanity declarations (+ the site's default locale). */
 export function buildSearchQuery(defs: SanitySearchDef[], projectSlug: string, terms: (string | string[])[]): SanitySearchQuery {
   const groups = terms.map((t) => (Array.isArray(t) ? t : [t]).slice(0, SEARCH_MAX_ALTERNATIVES))
   const entries = defs.map((d) => `"${d.kind}": ${buildSubQuery(d, groups.map((g) => g.length))}`)
   entries.push(`"${SITE_KEY}": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].defaultLocale`)
+  entries.push(`"${PROJECT_KEY}": ${projectFacts(defs)}`)
   const params: Record<string, string> = { projectSlug }
   groups.forEach((g, i) => g.forEach((t, j) => (params[termParam(i, j)] = t)))
   return { query: `{ ${entries.join(', ')} }`, params, kinds: defs.map((d) => d.kind) }
 }
 
-export type RawSearchRow = Record<string, unknown> & { _id: string; _score?: number; archivedAt?: unknown }
+export type RawSearchRow = Record<string, unknown> & { _id: string; _score?: number; archivedAt?: unknown; _updatedAt?: unknown }
 
 export type MergedRow = {
   id: string
@@ -190,6 +217,10 @@ export type MergedRow = {
   draft: boolean
   archived: boolean
   score: number
+  /** `_updatedAt` of the row shown (the draft when the draft is shown). */
+  updatedAt?: string
+  /** Public-page facts of the PUBLISHED document (undefined when there is none). */
+  site?: { live: boolean; slugs: unknown }
 }
 
 const bare = (id: string) => id.replace(/^drafts\./, '')
@@ -222,6 +253,8 @@ export function mergeRows(rows: readonly RawSearchRow[] | null | undefined, incl
       row,
       draft: !twin,
       archived,
+      updatedAt: typeof row._updatedAt === 'string' ? row._updatedAt : undefined,
+      site: twin ? { live: twin._live === true, slugs: twin._slugs } : undefined,
       score: Math.max(typeof draft?._score === 'number' ? draft._score : 0, typeof published?._score === 'number' ? published._score : 0),
     })
   }

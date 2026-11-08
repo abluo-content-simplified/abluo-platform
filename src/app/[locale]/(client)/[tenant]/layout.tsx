@@ -176,6 +176,7 @@ async function ClientProjectLayoutInner({
         <ClientSidebar
           navItems={navItems}
           createMenu={buildCreateMenu(activeGrant)}
+          permissions={activeGrant.permissions}
           projects={projects}
           activeSlug={activeGrant.projectSlug}
           account={{

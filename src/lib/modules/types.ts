@@ -473,6 +473,19 @@ export type SearchTextResolver = {
   text: (value: unknown) => string
 }
 
+/**
+ * Where an item lives on the PUBLIC website (for "View on website" in search).
+ * Evaluated on the PUBLISHED document only — a draft has no public page.
+ */
+export type SearchSiteRoute = {
+  /** Static GROQ boolean on the published document: it is on the website right now (lifecycle, page flag, visibility …). */
+  visible: string
+  /** Field holding the per-language slug map `{ <locale>: { current } }` (default `slug`). */
+  slugField?: string
+  /** The path segment(s) below the language: a fixed word, or a value read from the project's module installation config (a string, or a per-language map). */
+  segment: { fixed: string } | { moduleId: string; configKey: string }
+}
+
 export type SanitySearchSource = {
   type: 'sanity'
   /** Sanity document type. */
@@ -484,6 +497,8 @@ export type SanitySearchSource = {
   /** Static GROQ projection fragment fetching what titleOf/subtitleOf need, plus `"thumb": <image url>`. */
   projection: string
   fields: SearchField[]
+  /** Public page of the item, when the type has one. Omit for types without a public page. */
+  site?: SearchSiteRoute
   titleOf: (row: Record<string, unknown>, r: SearchTextResolver) => string
   subtitleOf?: (row: Record<string, unknown>, r: SearchTextResolver) => string
 }
