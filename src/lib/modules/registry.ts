@@ -41,6 +41,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   // ── Blog ───────────────────────────────────────────────────────────────────
   {
     id: 'blog',
+    createAction: { createOrder: 10, permission: 'blog.post.write', ready: true, href: (slug) => `/${slug}/posts/write/new`, },
     label: 'Blog',
     version: '1.0.0',
     status: 'released',
@@ -196,6 +197,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   // that has no other content module.
   {
     id: 'news',
+    createAction: { createOrder: 20, permission: 'news.article.write', ready: false, },
     label: 'News',
     version: '1.0.0',
     status: 'released',
@@ -314,6 +316,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   // ── Events ─────────────────────────────────────────────────────────────────
   {
     id: 'events',
+    createAction: { createOrder: 30, permission: 'events.event.write', ready: true, href: (slug) => `/${slug}/agenda/new`, },
     label: 'Events',
     version: '1.0.0',
     status: 'released',
@@ -728,6 +731,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   // 006-install-gallery-module installs it where galleries exist; run it first.
   {
     id: 'gallery',
+    createAction: { createOrder: 40, permission: 'gallery.gallery.write', ready: true, href: (slug) => `/${slug}/galleries/new`, },
     label: 'Gallery',
     version: '1.0.0',
     status: 'released',
@@ -817,6 +821,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   // 007-install-faq-module installs it where FAQs exist; run it first.
   {
     id: 'faq',
+    createAction: { createOrder: 60, permission: 'faq.set.write', ready: true, href: (slug) => `/${slug}/faq-sets?new=1`, },
     label: 'FAQ',
     version: '1.0.0',
     status: 'released',
@@ -1155,6 +1160,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   // The first tenant is a restaurant; nothing here knows that.
   {
     id: 'catalogue',
+    createAction: { createOrder: 50, permission: 'catalogue.item.write', ready: true, href: (slug) => `/${slug}/catalogue/new`, },
     label: 'Catalogue',
     version: '1.0.0',
     status: 'released',
@@ -1718,6 +1724,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   // refused while it is off.
   {
     id: 'documents',
+    createAction: { createOrder: 90, permission: 'documents.document.manage', ready: true, href: (slug) => `/${slug}/document-library/new`, },
     label: 'Documents',
     version: '1.0.0',
     status: 'released',
@@ -1806,6 +1813,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   // module is installed.
   {
     id: 'people',
+    createAction: { createOrder: 80, permission: 'people.person.write', ready: true, href: (slug) => `/${slug}/people?new=1`, },
     label: 'People',
     version: '1.0.0',
     status: 'released',
@@ -1936,6 +1944,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   // `courses` installation like every module section.
   {
     id: 'courses',
+    createAction: { createOrder: 70, permission: 'courses.course.write', ready: true, href: (slug) => `/${slug}/courses?new=1`, },
     label: 'Courses',
     version: '1.0.0',
     status: 'released',
@@ -2051,6 +2060,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   // Stripe and reminders are locked off in code, not config fields.
   {
     id: 'reservations',
+    // TODO(createAction): no create action yet — the booking form is not built (ADR-044).
     label: 'Reservations',
     version: '1.0.0',
     status: 'released',

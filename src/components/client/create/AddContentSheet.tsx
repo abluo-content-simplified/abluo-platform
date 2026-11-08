@@ -13,8 +13,7 @@ import type { CreateMenu } from '@/lib/modules/add-content-sheet'
  * Add content → "What would you like to create?" (ADR-025 D8 · the Type step).
  *
  * Cards come from the project's installed content modules (`buildCreateMenu`,
- * computed on the server), shown as ChoiceCards (icon + label). Blog post and
- * Gallery are actionable: they open their wizard with NO document yet (lazy
+ * computed on the server), shown as ChoiceCards (icon + label). Ready types (from each module's create action) are actionable: they open their wizard with NO document yet (lazy
  * creation — the first real content creates the draft, so closing early
  * leaves nothing behind). "Add to media library" (owner/editor) opens the
  * media wizard. Other installed types say "Coming soon". Owners also see
@@ -63,24 +62,12 @@ export function AddContentSheet({
     setShown(false)
   }, [open])
 
-  /** Opens the wizard with NO document yet (lazy creation). */
-  function start(moduleId: string) {
+  /** Opens the creation entry point with NO document yet (lazy creation). `href` comes from the module's create action. */
+  function start(href: string) {
     if (busy) return
     setBusy(true)
     setError(null)
-    router.push(
-      moduleId === 'gallery'
-        ? `/${projectSlug}/galleries/new`
-        : moduleId === 'events'
-          ? `/${projectSlug}/agenda/new`
-          : moduleId === 'media'
-          ? `/${projectSlug}/media/add`
-          : moduleId === 'catalogue'
-          ? `/${projectSlug}/catalogue/new`
-          : moduleId === 'faq'
-          ? `/${projectSlug}/faq-sets?new=1`
-          : `/${projectSlug}/posts/write/new`
-    )
+    router.push(href)
     onClose()
     setBusy(false)
   }
@@ -141,16 +128,16 @@ export function AddContentSheet({
                 {menu.available.map((item) => (
                   <ChoiceCard
                     key={item.moduleId}
-                    icon={<TypeIcon moduleId={item.moduleId} />}
+                    icon={<TypeIcon moduleId={item.iconKey} />}
                     label={t(`items.${item.moduleId}`)}
-                    disabled={!item.ready || busy}
+                    disabled={!item.ready || !item.href || busy}
                     busy={item.ready && busy}
                     badge={item.ready ? undefined : t('soon')}
-                    onSelect={item.ready ? () => start(item.moduleId) : undefined}
+                    onSelect={item.ready && item.href ? () => start(item.href!) : undefined}
                   />
                 ))}
                 {mediaLibrary ? (
-                  <ChoiceCard icon={<TypeIcon moduleId="media" />} label={t('items.media')} disabled={busy} onSelect={() => start('media')} />
+                  <ChoiceCard icon={<TypeIcon moduleId="media" />} label={t('items.media')} disabled={busy} onSelect={() => start(`/${projectSlug}/media/add`)} />
                 ) : null}
               </ChoiceCardGrid>
             )}
@@ -194,6 +181,9 @@ const TYPE_ICONS: Record<string, string> = {
   gallery: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9h.01',
   media: 'M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   catalogue: 'M4 6h16M4 12h16M4 18h10M18 16v4M16 18h4',
+  courses: 'M3 8l9-4 9 4-9 4zM7 10.5V15c0 1.4 2.2 3 5 3s5-1.6 5-3v-4.5M21 8v6',
+  people: 'M16 20v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM20 20v-1a3.5 3.5 0 0 0-2.5-3.3M16 4.2a3.5 3.5 0 0 1 0 6.6',
+  documents: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6',
   faq: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12zM9.6 9.5a2.5 2.5 0 0 1 4.9.8c0 1.7-2.5 2.2-2.5 2.2M12 15.5h.01',
 }
 

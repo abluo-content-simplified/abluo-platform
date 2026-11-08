@@ -416,6 +416,19 @@ export type ModuleTaxonomyDef = {
 // platform — derivation is wired in Phases D1–D4. Declaring them now gives
 // the registry a single authoritative source of truth for each module's
 // surface area before any derivation logic exists.
+export type ModuleCreateAction = {
+  /** Fixed position in the sheet (ascending). */
+  createOrder: number
+  /** Permission needed to create (a real module permission). */
+  permission: string
+  /** True when the guided entry point exists; false shows "Coming soon" once installed. */
+  ready: boolean
+  /** Locale-agnostic dashboard href opening the creation entry point. Required when `ready`. */
+  href?: (projectSlug: string) => string
+  /** Icon key in the sheet (defaults to the module id). */
+  iconKey?: string
+}
+
 export type ModuleManifest = {
 
   // ── Identity ──────────────────────────────────────────────────────────────
@@ -429,6 +442,13 @@ export type ModuleManifest = {
   status: 'released' | 'deprecated' | 'archived'
   /** Non-functional in A2. Reserved for future UI grouping. */
   category?: ModuleCategory
+  /**
+   * Optional "create" action of this module in the client dashboard's Add-content
+   * sheet ("What would you like to create?", ADR-025 D8). The ONE place a module
+   * declares it; `buildCreateMenu` derives the sheet from it. Modules without a
+   * creation entry point (yet) omit it. Guarded by create-action-guard.test.ts.
+   */
+  createAction?: ModuleCreateAction
 
   // ── Platform contract ──────────────────────────────────────────────────────
   // Everything the platform needs to know to integrate this module.

@@ -890,7 +890,10 @@
           "gallery": "Gallery",
           "media": "Add to media library",
           "catalogue": "Catalogue item",
-          "faq": "FAQ set"
+          "faq": "FAQ set",
+          "courses": "Course",
+          "people": "Person",
+          "documents": "Document"
         },
         "desc": {
           "blog": "An article for your website, in a few easy steps.",
@@ -898,7 +901,11 @@
           "events": "A date people can come to.",
           "gallery": "A set of photos to show.",
           "media": "Upload photos once, then use them anywhere on your site.",
-          "catalogue": "A dish, product or service for your catalogue."
+          "catalogue": "A dish, product or service for your catalogue.",
+          "faq": "A set of questions and answers.",
+          "courses": "A course people can join.",
+          "people": "A teacher, team member or speaker.",
+          "documents": "A file for your website, such as a PDF."
         },
         "soon": "Coming soon",
         "more": "More you can add to your site",
