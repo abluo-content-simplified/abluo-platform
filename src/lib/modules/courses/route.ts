@@ -4,7 +4,7 @@
 // their own file so every fetchForTenant call site names its query directly
 // (fetch-for-tenant-call-sites.test.ts proves each is tenant-scoped).
 
-import { COURSE_BY_OLD_SLUG_QUERY, COURSE_BY_SLUG_QUERY, COURSE_TIMETABLE_PAGES_QUERY } from './queries'
+import { COURSE_BY_OLD_SLUG_QUERY, COURSE_BY_SLUG_QUERY, COURSE_GATE_PAGE_QUERY, COURSE_TIMETABLE_PAGES_QUERY } from './queries'
 import { resolveCourseRoute, type CourseRouteOutcome, type CoursesFetch } from './website'
 
 export function loadCourseRoute<C>(
@@ -27,4 +27,23 @@ export async function loadTimetablePages(fetchForTenant: CoursesFetch): Promise<
   } catch {
     return []
   }
+}
+
+/** Access fields of ONE timetable page (COURSE_GATE_PAGE_QUERY); a failure reads as none (→ denied by the caller). */
+export async function loadCourseGatePage(
+  fetchForTenant: CoursesFetch,
+  params: { pageId: string; locale: string; defaultLocale: string; ancestorPaths: string[] },
+): Promise<CourseGatePageRow | null> {
+  try {
+    return await fetchForTenant<CourseGatePageRow | null>(COURSE_GATE_PAGE_QUERY, params)
+  } catch {
+    return null
+  }
+}
+
+export type CourseGatePageRow = {
+  access?: unknown
+  ancestorAccess?: Array<{ access?: unknown }> | null
+  contentWithheld?: boolean | null
+  accessPromptNote?: unknown
 }

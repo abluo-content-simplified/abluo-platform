@@ -3853,7 +3853,8 @@
           "payment": "Zahlung",
           "status": "Status",
           "created": "Erstellt am"
-        }
+        },
+        "sessions": "{count, plural, one {# Termin} other {# Termine}}"
       },
       "status": {
         "pending": "Ausstehend",
@@ -4026,7 +4027,9 @@
         "reviewNotice": {
           "payment": "Die Zahlung ging ein, nachdem die Reservierungsfrist abgelaufen war und die Plätze bereits vergeben waren. Kläre mit dem Teilnehmer das weitere Vorgehen (weitere Sitzung oder Rückerstattung des Geldes).",
           "eligibility": "Jemand hat einen Mitgliedspreis gewählt. Überprüfe den Beleg und markiere ihn dann als verifiziert."
-        }
+        },
+        "sessionsNoDetails": "{count, plural, one {# Termin} other {# Termine}}. Die Details der Termine wurden mit dieser Buchung nicht gespeichert.",
+        "passValid": "{entries, plural, =0 {Unbegrenzte Teilnahmen} one {# Teilnahme} other {# Teilnahmen}}, gültig vom {from} bis {to}"
       },
       "errors": {
         "unauthenticated": "Bitte melde dich erneut an. Es hat sich nichts geändert.",
@@ -4053,18 +4056,18 @@
         "already_closed": "Diese Buchung wurde storniert oder ist abgelaufen, daher kann keine Zahlung hinzugefügt werden."
       },
       "activity": {
-        "booking.created": "Buchung vorgenommen",
-        "booking.confirmed": "Buchung bestätigt",
-        "booking.confirm_refused_full": "Konnte nicht bestätigt werden: Die Plätze waren bereits belegt.",
-        "booking.hold_extended": "Sperrfrist verlängert bis {date}",
-        "booking.released": "Freigegebene Plätze",
-        "booking.cancelled": "Buchung storniert",
-        "booking.expired": "Die Sperre wurde aufgehoben, Plätze freigegeben",
-        "booking.anonymised": "Persönliche Daten entfernt",
-        "booking.eligibility_verified": "Mitgliedschaft als verifiziert gekennzeichnet",
-        "payment.recorded": "Zahlung von {amount} verbucht ( {method} )",
-        "pass.attending": "Der Passinhaber sagte, er komme.",
-        "pass.withdrawn": "Der Passinhaber hat seine Teilnahme zurückgezogen.",
+        "booking_created": "Buchung vorgenommen",
+        "booking_confirmed": "Buchung bestätigt",
+        "booking_confirm_refused_full": "Konnte nicht bestätigt werden: Die Plätze waren bereits belegt.",
+        "booking_hold_extended": "Sperrfrist verlängert bis {date}",
+        "booking_released": "Freigegebene Plätze",
+        "booking_cancelled": "Buchung storniert",
+        "booking_expired": "Die Sperre wurde aufgehoben, Plätze freigegeben",
+        "booking_anonymised": "Persönliche Daten entfernt",
+        "booking_eligibility_verified": "Mitgliedschaft als verifiziert gekennzeichnet",
+        "payment_recorded": "Zahlung von {amount} verbucht ( {method} )",
+        "pass_attending": "Der Passinhaber sagte, er komme.",
+        "pass_withdrawn": "Der Passinhaber hat seine Teilnahme zurückgezogen.",
         "other": "Aktualisieren"
       },
       "rules": {
@@ -4260,8 +4263,7 @@
           "unpublished": "{name} ist nicht mehr veröffentlicht. Er ist nicht mehr auf deiner Website.",
           "publishedAgain": "{name} ist wieder auf deiner Website.",
           "unpublishDate": "{name} verlässt deine Website am {date}.",
-          "unpublishDateRemoved": "{name} hat kein Veröffentlichungsende mehr.",
-          "deleted": "{name} ist gelöscht."
+          "unpublishDateRemoved": "{name} hat kein Veröffentlichungsende mehr."
         },
         "filters": {
           "label": "Kurse filtern",
@@ -4312,7 +4314,11 @@
           "done": {
             "restore": "{count, plural, one {# Kurs ist wiederhergestellt und bleibt unveröffentlicht, bis du ihn erneut veröffentlichst.} other {# Kurse sind wiederhergestellt und bleiben unveröffentlicht, bis du sie erneut veröffentlichst.}}",
             "unpublish": "{count, plural, one {# Kurs ist nicht mehr veröffentlicht und nicht mehr auf deiner Website.} other {# Kurse sind nicht mehr veröffentlicht und nicht mehr auf deiner Website.}}",
-            "unpublishOn": "{count, plural, one {# Kurs hat} other {# Kurse haben}} ein Veröffentlichungsende."
+            "unpublishOn": "{count, plural, one {# Kurs hat} other {# Kurse haben}} ein Veröffentlichungsende.",
+            "publish": "{count, plural, one {# Kurs ist veröffentlicht} other {# Kurse sind veröffentlicht}}.",
+            "archive": "{count, plural, one {# Kurs ist archiviert} other {# Kurse sind archiviert}} und nicht mehr auf deiner Website.",
+            "delete": "{count, plural, one {# Kurs ist gelöscht} other {# Kurse sind gelöscht}}.",
+            "deleteClasses": "{count, plural, one {# Kurstermin wurde} other {# Kurstermine wurden}} mit beendet."
           },
           "detail": "{name} ( {reason} )",
           "nothing": "Nichts zu ändern: {details} .",
@@ -4330,7 +4336,12 @@
           "delete": {
             "body": "Das lässt sich nicht rückgängig machen.",
             "list": "Zu löschende Kurse",
-            "confirm": "Löschen"
+            "confirm": "Löschen",
+            "title": "{count, plural, one {„{name}“ löschen?} other {# Kurse löschen?}}",
+            "classes": "{count, plural, one {Sein # Kurstermin wird auch gelöscht.} other {Seine # Kurstermine werden auch gelöscht.}}",
+            "classesMany": "{count, plural, one {Deren # Kurstermin wird auch gelöscht.} other {Deren # Kurstermine werden auch gelöscht.}}",
+            "skipped": "{count, plural, one {# ausgewählter Kurs wird nicht gelöscht: Er ist veröffentlicht, archiviere ihn zuerst.} other {# ausgewählte Kurse werden nicht gelöscht, weil sie veröffentlicht sind. Archiviere sie zuerst.}}",
+            "classCount": "{count, plural, one {# Kurstermin} other {# Kurstermine}}"
           },
           "lastDate": {
             "intro": "Alle aktiven Kurse der ausgewählten Lehrveranstaltungen erhalten dieses letzte Datum. Kurse, die sich wiederholen, enden an ihrem letzten Kurstag oder davor. Kurse, die sich nicht wiederholen, und Kurse, die später beginnen, bleiben unverändert.",
@@ -4340,8 +4351,21 @@
             "cancel": "Stornieren",
             "confirm": "Letztes Datum ändern",
             "changing": "Ändern…",
-            "nothing": "Es wurde kein Klassenwechsel vorgenommen."
-          }
+            "nothing": "Es wurde kein Klassenwechsel vorgenommen.",
+            "title": "Letzten Termin der Kurse für {count, plural, one {# Kurs} other {# Kurse}} ändern",
+            "done": "{count, plural, one {# Kurstermin hat} other {# Kurstermine haben}} einen neuen letzten Termin.",
+            "reason": {
+              "archived": "{count, plural, one {# archivierter Kurs übersprungen} other {# archivierte Kurse übersprungen}}",
+              "no_classes": "{count, plural, one {# Kurs hat} other {# Kurse haben}} keine Termine",
+              "once": "{count, plural, one {# Kurstermin wiederholt sich nicht} other {# Kurstermine wiederholen sich nicht}}",
+              "unchanged": "{count, plural, one {# Kurstermin endet} other {# Kurstermine enden}} bereits an diesem Tag",
+              "before_first": "{count, plural, one {# Kurstermin beginnt} other {# Kurstermine beginnen}} nach diesem Tag"
+            }
+          },
+          "count": "{count, plural, one {# Kurs ausgewählt} other {# Kurse ausgewählt}}",
+          "moreTitle": "Mehr für {count, plural, one {# Kurs} other {# Kurse}}",
+          "skipped": "{count, plural, one {# blieb unverändert: {details}.} other {# blieben unverändert: {details}.}}",
+          "classesLeft": "{count, plural, one {# Kurstermin konnte nicht beendet werden und braucht noch deine Aufmerksamkeit im Stundenplan.} other {# Kurstermine konnten nicht beendet werden und brauchen noch deine Aufmerksamkeit im Stundenplan.}}"
         },
         "teachersMore": "{names} +{count}",
         "when": {
@@ -4565,9 +4589,7 @@
           "teachersAdd": "Lehrkraft hinzufügen",
           "teachersTitle": "Lehrkräfte auswählen",
           "save": "Speichern",
-          "saving": "Speichern…",
-          "term": "Zeitraum",
-          "noTerm": "Kein Zeitraum"
+          "saving": "Speichern…"
         },
         "end": {
           "action": "Diese Stunde beenden",
@@ -4612,8 +4634,7 @@
         "changes": "{count, plural, one {# Änderung} other {# Änderungen}}",
         "empty": {
           "title": "Noch keine Stunden",
-          "body": "Füge Stunden auf der Seite eines Kurses hinzu. Dann erscheinen sie hier.",
-          "termBody": "Dieser Zeitraum hat noch keine Stunden."
+          "body": "Füge Stunden auf der Seite eines Kurses hinzu. Dann erscheinen sie hier."
         },
         "grid": {
           "label": "Wöchentlicher Stundenplan",
@@ -4709,28 +4730,6 @@
           "save": "Speichern",
           "saving": "Speichern…",
           "saved": "Raum gespeichert."
-        },
-        "term": {
-          "select": "Zeitraum",
-          "all": "Alle Stunden",
-          "none": "Ohne Zeitraum",
-          "new": "Neuer Zeitraum",
-          "edit": "Zeitraum bearbeiten",
-          "range": "{from} bis {to}",
-          "newTitle": "Neuer Zeitraum",
-          "editTitle": "Zeitraum bearbeiten",
-          "name": "Name",
-          "startsOn": "Erster Tag",
-          "endsOn": "Letzter Tag",
-          "endBeforeStart": "Der letzte Tag darf nicht vor dem ersten liegen.",
-          "datesHint": "Wenn du die Daten änderst, werden die Stunden dieses Zeitraums verschoben oder beendet.",
-          "save": "Speichern",
-          "saving": "Speichern…",
-          "saved": "Zeitraum gespeichert.",
-          "delete": "Zeitraum löschen",
-          "deleteTitle": "{name} löschen?",
-          "deleteBody": "Nur ein Zeitraum ohne Stunden kann gelöscht werden.",
-          "deleted": "Zeitraum gelöscht."
         }
       }
     },

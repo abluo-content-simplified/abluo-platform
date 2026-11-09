@@ -11,7 +11,8 @@
 // sitemap list. The base path is the module config `courseSegment` — the route
 // owns it, never these queries.
 
-import { pageIsOpen } from '@/lib/access/groq'
+import { pageIsOpen, PAGE_ACCESS_PROJECTION } from '@/lib/access/groq'
+import { ACCESS_PROMPT_NOTE_PROJECTION } from '@/lib/sanity/queries'
 import { isPublicFilter } from '@/lib/lifecycle/visibility'
 
 /** The public fields of a course, locale-resolved with the usual fallback. */
@@ -89,11 +90,29 @@ export const COURSE_BY_OLD_SLUG_QUERY = /* groq */ `
   }
 `
 
+/**
+ * Course page access (members-only courses): the Access policy of ONE published
+ * timetable page and of the closed pages above it — never content. Binds
+ * $pageId, $locale, $ancestorPaths (slugAncestorPaths of its slug). The course
+ * page is open to whoever may open a timetable page that shows the course.
+ */
+export const COURSE_GATE_PAGE_QUERY = /* groq */ `
+  *[_type == "page" && projectSlug == $projectSlug && _id == $pageId && !(_id in path("drafts.**"))][0] {
+    ${PAGE_ACCESS_PROJECTION},
+    ${ACCESS_PROMPT_NOTE_PROJECTION}
+  }
+`
+
+/** Published pages whose timetable sections show the course at `^` (all courses, or picked). */
+const COURSE_SHOWING_PAGES = /* groq */ `*[_type == "page" && projectSlug == $projectSlug && !(_id in path("drafts.**")) && !(_id in path("versions.**")) && count(sections[_type == "timetableSection" && (courseScope != "pick" || ^.^._id in courses[]._ref)]) > 0]`
+
 /** Sitemap: courses on the website; one URL per locale where a slug is set (the caller adds the segment). */
 export const SITEMAP_COURSES_QUERY = /* groq */ `
   *[_type == "course" && projectSlug == $projectSlug && ${COURSE_VISIBLE} && defined(slug)] {
     "slugMap": slug,
-    _updatedAt
+    _updatedAt,
+    // Members only: shown by timetable pages, none of them open (the course page takes their access) — never in the sitemap.
+    "membersOnly": count(${COURSE_SHOWING_PAGES}) > 0 && count(${COURSE_SHOWING_PAGES}[${pageIsOpen()}]) == 0
   }
 `
 

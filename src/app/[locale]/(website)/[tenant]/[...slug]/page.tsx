@@ -38,7 +38,7 @@ import {
   profileSegmentFor,
 } from '@/lib/modules/people/website'
 import { loadPersonRoute } from '@/lib/modules/people/route'
-import { CourseRoute, courseRouteMetadata, type CourseRouteRecord } from '@/components/courses/CourseRoute'
+import { CourseRoute, courseGateFor, courseRouteMetadata, type CourseRouteRecord } from '@/components/courses/CourseRoute'
 import { courseSegmentFor, isCoursesModuleOn, planCourseRoute } from '@/lib/modules/courses/website'
 import { loadCourseRoute } from '@/lib/modules/courses/route'
 
@@ -131,7 +131,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (courseDispatch) {
     const outcome = await loadCourseRoute<CourseRouteRecord>(fetchForTenant, { slug: courseDispatch.slug, locale, defaultLocale })
     if (outcome.kind === 'found') {
-      return courseRouteMetadata({ course: outcome.course, moduleConfig, siteConfig: config, tenantId, locale, defaultLocale })
+      // Members-only course pages (they take the access of their timetable pages): nothing about the course for a closed visitor.
+      const courseGate = await courseGateFor({ course: outcome.course, fetchForTenant, tenantId: String(tenantId), locale, defaultLocale, enabledModuleIds: getEnabledModuleIds(moduleConfig) })
+      if (courseGate.kind === 'denied') return deniedPageMetadata({ locale, siteName: config?.siteName ?? String(tenantId) })
+      const courseMeta = courseRouteMetadata({ course: outcome.course, moduleConfig, siteConfig: config, tenantId, locale, defaultLocale })
+      return courseGate.kind === 'granted' ? grantedPageMetadata(courseMeta) : courseMeta
     }
   }
 
@@ -302,6 +306,24 @@ export default async function WebsitePageRoute({ params, searchParams }: PagePro
   if (courseDispatch && courseSegment) {
     const outcome = await loadCourseRoute<CourseRouteRecord>(fetchForTenant, { slug: courseDispatch.slug, locale, defaultLocale })
     if (outcome.kind === 'found') {
+      const courseGate = await courseGateFor({ course: outcome.course, fetchForTenant, tenantId: String(tenantId), locale, defaultLocale, enabledModuleIds: getEnabledModuleIds(moduleConfig) })
+      if (courseGate.kind === 'denied') {
+        // Same placeholder as a members-only page: nothing of the course, the sign-in, the timetable page's note.
+        const { notice: fromRoute, waitMinutes } = parseAccessNotice(searchParams ? await searchParams : undefined)
+        const notice = promptNotice(promptNoticeKind(fromRoute, courseGate.gate), getAccessMessages(locale), waitMinutes)
+        return (
+          <RestrictedPage
+            locale={locale}
+            homeHref={siteBase || '/'}
+            actions={accessFormActions(siteBase)}
+            returnTo={`${siteBase}/${slug}`}
+            fields={ACCESS_FORM_FIELDS}
+            notice={notice ? { tone: notice.tone, text: notice.text, invalid: notice.invalid } : null}
+            signedIn={courseGate.gate?.visitor === 'other_groups'}
+            note={courseGate.note ? resolveBodyLinks(courseGate.note as never, { siteBase, siteHosts: siteHostsForProject(String(tenantId)), projectSlug: String(tenantId) }) : null}
+          />
+        )
+      }
       return (
         <CourseRoute
           course={outcome.course}

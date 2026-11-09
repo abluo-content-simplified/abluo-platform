@@ -15,16 +15,10 @@ import type { ServiceDeps } from '../service/types'
 import { processOutbox, type ConsumerResult, type SiteContext } from './consumer'
 import { createContentLoader } from './data'
 import { createSupabaseOutboxRepo } from './outbox'
+import { RESERVATION_SITE_QUERY } from './queries'
 
 const REASON = 'ADR-044 reservations sweep: expire holds and deliver reservation_outbox emails (server-only tables, migration 066)'
 const TIME_BUDGET_MS = 45_000
-
-const SITE_QUERY = /* groq */ `
-  *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
-    siteName, timeZone, email,
-    "logoUrl": logo.asset->url
-  }
-`
 
 export type SweepReport =
   | { skipped: 'reservations unavailable' }
@@ -39,7 +33,7 @@ function siteLoader(db: ReservationDb) {
     if (!p) return null
     let cfg: { siteName?: string | null; timeZone?: string | null; email?: string | null; logoUrl?: string | null } | null = null
     try {
-      cfg = await tenantClient(asProjectSlug(String(p.slug))).fetchForTenant(SITE_QUERY)
+      cfg = await tenantClient(asProjectSlug(String(p.slug))).fetchForTenant(RESERVATION_SITE_QUERY)
     } catch (err) {
       // Unbranded is better than silent: fall back to the project name and send.
       console.error('[reservations] site settings read failed for a project:', err instanceof Error ? err.message : String(err))

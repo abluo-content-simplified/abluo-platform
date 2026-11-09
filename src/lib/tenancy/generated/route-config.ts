@@ -139,7 +139,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectId: "ba57987d-3679-4bf5-8178-6d0cb968d05d",
     defaultLocale: "en",
     supportedLocales: ["en", "fr"],
-    status: "preview",
+    status: "active",
   },
   {
     host: "cyce.localhost",
@@ -149,7 +149,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectId: "ba57987d-3679-4bf5-8178-6d0cb968d05d",
     defaultLocale: "en",
     supportedLocales: ["en", "fr"],
-    status: "preview",
+    status: "active",
   },
   {
     host: "cyce.preview.abluo.app",
@@ -159,7 +159,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectId: "ba57987d-3679-4bf5-8178-6d0cb968d05d",
     defaultLocale: "en",
     supportedLocales: ["en", "fr"],
-    status: "preview",
+    status: "active",
   },
   {
     host: "dev.abluo.app",

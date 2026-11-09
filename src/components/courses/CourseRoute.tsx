@@ -24,7 +24,10 @@ import { siteTimeZone, timetableForSection } from '@/lib/scheduling/timetable.se
 import { todayIn, type TimetableCourseInput } from '@/lib/modules/courses/timetable'
 import { COURSE_PAGE_WINDOW_DAYS, courseClasses, timetablePageHref } from '@/lib/modules/courses/course-page'
 import { buildCourseSchema } from '@/lib/modules/courses/structured'
-import { loadTimetablePages } from '@/lib/modules/courses/route'
+import { loadCourseGatePage, loadTimetablePages } from '@/lib/modules/courses/route'
+import { decideCourseGate, type CourseGate } from '@/lib/modules/courses/course-gate'
+import { normalizePlacementPages } from '@/lib/modules/courses/placement'
+import { decideGateForRequest } from '@/lib/access/page-gate.server'
 import { coursePathsByLocale, courseSegments, type CoursesFetch } from '@/lib/modules/courses/website'
 import { isPeopleModuleOn, profileSegmentFor } from '@/lib/modules/people/website'
 import { getEnabledModuleIds, type ProjectModuleConfig } from '@/lib/modules/config'
@@ -171,5 +174,28 @@ export async function CourseRoute(props: {
         timetableHref={timetablePageHref(pages, course._id, locale, siteBase)}
       />
     </SlugMapProvider>
+  )
+}
+
+/**
+ * Who may open this course page: the access of the timetable pages that show
+ * the course (course-gate.ts). Called by the route BEFORE any metadata or
+ * content of the course is produced.
+ */
+export async function courseGateFor(opts: {
+  course: Pick<CourseRouteRecord, '_id'>
+  fetchForTenant: CoursesFetch
+  tenantId: string
+  locale: string
+  defaultLocale: string
+  enabledModuleIds: readonly string[] | null
+}): Promise<CourseGate> {
+  const pages = normalizePlacementPages(await loadTimetablePages(opts.fetchForTenant))
+  return decideCourseGate(
+    { pages, courseDocId: opts.course._id, locale: opts.locale },
+    {
+      readPage: (pageId, ancestorPaths) => loadCourseGatePage(opts.fetchForTenant, { pageId, locale: opts.locale, defaultLocale: opts.defaultLocale, ancestorPaths }),
+      decide: (fields) => decideGateForRequest(fields, opts.tenantId, opts.enabledModuleIds),
+    },
   )
 }

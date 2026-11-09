@@ -86,8 +86,9 @@ export const ACTIVITY_ACTIONS = [
   'booking.cancelled', 'booking.expired', 'booking.anonymised', 'booking.eligibility_verified',
   'payment.recorded', 'pass.attending', 'pass.withdrawn',
 ] as const
-export function activityKeyOf(action: string): (typeof ACTIVITY_ACTIONS)[number] | 'other' {
-  return (ACTIVITY_ACTIONS as readonly string[]).includes(action) ? (action as (typeof ACTIVITY_ACTIONS)[number]) : 'other'
+/** The message key of an activity action: dots become underscores (a dot in a message key reads as nesting). */
+export function activityKeyOf(action: string): string {
+  return (ACTIVITY_ACTIONS as readonly string[]).includes(action) ? action.replace(/\./g, '_') : 'other'
 }
 
 export const PAYMENT_METHOD_CHOICES = ['bank_transfer', 'cash', 'other'] as const

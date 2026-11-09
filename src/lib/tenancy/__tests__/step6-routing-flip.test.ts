@@ -128,6 +128,10 @@ const LIVE_HOSTS: HostCase[] = [
   { host: 'ch-psicoterapeuta.com',        tenantSlug: 'hoffmann',        projectSlug: 'hoffmann',        projectId: '6d709178-f33a-4b4a-be52-521189e11290', defaultLocale: 'it' },
   { host: 'hoffmann.preview.abluo.app',   tenantSlug: 'hoffmann',        projectSlug: 'hoffmann',        projectId: '6d709178-f33a-4b4a-be52-521189e11290', defaultLocale: 'it' },
   { host: 'hoffmann.localhost',           tenantSlug: 'hoffmann',        projectSlug: 'hoffmann',        projectId: '6d709178-f33a-4b4a-be52-521189e11290', defaultLocale: 'it' },
+  // cyce — live on its own domain since 2026-11-09 (en default, en + fr)
+  { host: 'cyce.info',                    tenantSlug: 'cyce',            projectSlug: 'cyce',            projectId: 'ba57987d-3679-4bf5-8178-6d0cb968d05d', defaultLocale: 'en' },
+  { host: 'cyce.preview.abluo.app',       tenantSlug: 'cyce',            projectSlug: 'cyce',            projectId: 'ba57987d-3679-4bf5-8178-6d0cb968d05d', defaultLocale: 'en' },
+  { host: 'cyce.localhost',               tenantSlug: 'cyce',            projectSlug: 'cyce',            projectId: 'ba57987d-3679-4bf5-8178-6d0cb968d05d', defaultLocale: 'en' },
   // amelie — active; custom_domain ameliez.com set 2026-09-29 (DNS moves from IONOS/Webflow at cutover).
   { host: 'ameliez.com',                  tenantSlug: 'amelie',          projectSlug: 'amelie',          projectId: 'fb34c7e4-6ecf-489a-b56a-8acbf75909cd', defaultLocale: 'en' },
   { host: 'amelie.preview.abluo.app',     tenantSlug: 'amelie',          projectSlug: 'amelie',          projectId: 'fb34c7e4-6ecf-489a-b56a-8acbf75909cd', defaultLocale: 'en' },
@@ -237,7 +241,7 @@ describe('an unknown URL segment still produces a clean 404, not an empty 200', 
     const activeSlugs = [
       ...new Set(GENERATED_HOST_ROUTES.filter((r) => r.status === 'active').map((r) => r.projectSlug)),
     ].sort()
-    expect(activeSlugs).toEqual(['abluo', 'amelie', 'freeriders', 'hoffmann', 'livener', 'noemi', 'nologo', 'studiomartegani', 'tmz'])
+    expect(activeSlugs).toEqual(['abluo', 'amelie', 'cyce', 'freeriders', 'hoffmann', 'livener', 'noemi', 'nologo', 'studiomartegani', 'tmz'])
     for (const slug of activeSlugs) {
       expect(isKnownProjectSegment(asUrlProjectSegment(slug)), slug).toBe(true)
     }

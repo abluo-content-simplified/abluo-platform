@@ -57,6 +57,20 @@ function topLevelFunctions(src: string): Fn[] {
  */
 const reachesResolver = (body: string) => body.includes('getTenantAuthorizationContext(') || /\bresolveProjectAction\s*\(/.test(body)
 
+/** Functions imported from a relative sibling module (`./x`) whose own body reaches the resolver. */
+function siblingHelpers(file: string, src: string): string[] {
+  const out: string[] = []
+  for (const m of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"](\.\/[^'"]+)['"]/g)) {
+    const names = m[1].split(',').map((n) => n.trim().replace(/^type\s+/, '').split(/\s+as\s+/).pop()!.trim()).filter(Boolean)
+    const base = join(file, '..', m[2])
+    const target = [`${base}.ts`, `${base}.tsx`].find((f) => { try { return statSync(f).isFile() } catch { return false } })
+    if (!target) continue
+    const fns = topLevelFunctions(readFileSync(target, 'utf8'))
+    for (const fn of fns) if (names.includes(fn.name) && reachesResolver(fn.body)) out.push(fn.name)
+  }
+  return out
+}
+
 const actionFiles = files(ROOT).filter((f) => /^\s*['"]use server['"]/.test(readFileSync(f, 'utf8')))
 
 describe('client-dashboard server actions go through the support-aware resolver', () => {
@@ -69,6 +83,9 @@ describe('client-dashboard server actions go through the support-aware resolver'
     const src = readFileSync(file, 'utf8')
     const fns = topLevelFunctions(src)
     const helpers = new Set(fns.filter((f) => !f.exported && reachesResolver(f.body)).map((f) => f.name))
+    // A 'use server' file may export only actions, so shared runners live in a sibling module
+    // (e.g. bookings/run-action.ts): its functions that reach the resolver count as helpers too.
+    for (const helper of siblingHelpers(file, src)) helpers.add(helper)
 
     it(`${rel}: never asks for the render purpose`, () => {
       expect(src).not.toMatch(/purpose\s*:\s*['"]render['"]/)

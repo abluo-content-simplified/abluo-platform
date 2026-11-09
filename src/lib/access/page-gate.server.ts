@@ -19,7 +19,7 @@ import type { WebsitePage } from '@/lib/sanity/types'
 import { resolveScopeFromProjectSegment } from '@/lib/tenancy/host-scope'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 import { accessEnvironment, withSiteAccessStore } from './server'
-import { decidePageGate, type PageGate, type PageGateDeps } from './page-gate'
+import { decidePageGate, type PageAccessFields, type PageGate, type PageGateDeps } from './page-gate'
 import { slugAncestorPaths } from './policy'
 import { sessionCookieName } from './session-token'
 import { isSecureAccessRequest } from './request'
@@ -76,6 +76,19 @@ export const loadGatedPage = cache(async function loadGatedPage(
   // Same document or nothing: a page renamed between the two reads is not served.
   return full && full._id === first._id ? { page: full, gate } : { page: first, gate: { kind: 'denied', reason: 'inconsistent', navigation: 'hidden', visitor: 'none' } }
 })
+
+/**
+ * The same decision for page access fields read elsewhere (a module page that
+ * inherits the access of the pages showing it — e.g. a course page takes the
+ * access of its timetable pages). Same deps, same deny-by-default rules.
+ */
+export function decideGateForRequest(
+  fields: PageAccessFields,
+  tenantSegment: string,
+  enabledModuleIds: readonly string[] | null
+): Promise<PageGate> {
+  return decidePageGate(fields, { projectSegment: tenantSegment, enabledModuleIds }, requestDeps())
+}
 
 /**
  * What the sign-in page may say about this browser on this project (never

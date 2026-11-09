@@ -57,7 +57,7 @@ describe('words for the codes (messages/en.json)', () => {
     for (const code of ACTION_ERROR_CODES) expect(typeof en.errors[code], code).toBe('string')
   })
   it('every activity code has a text, and a fallback exists', () => {
-    for (const a of ACTIVITY_ACTIONS) expect(typeof en.activity[a], a).toBe('string')
+    for (const a of ACTIVITY_ACTIONS) expect(typeof en.activity[activityKeyOf(a) as keyof typeof en.activity], a).toBe('string')
     expect(typeof en.activity.other).toBe('string')
   })
   it('unknown codes get the calm fallback', () => {

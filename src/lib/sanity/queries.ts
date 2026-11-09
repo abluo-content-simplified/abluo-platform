@@ -84,6 +84,9 @@ const bodyWithLinks = (expr: string) => /* groq */ `(${expr})[]{
   }`
 const locBody = (field: string) => bodyWithLinks(loc(field))
 
+/** R9 — the optional note under the sign-in, localized with its links (public text by design; read WITH the policy). Binds $locale, $defaultLocale, $projectSlug. */
+export const ACCESS_PROMPT_NOTE_PROJECTION = /* groq */ `"accessPromptNote": select(defined(access.promptNote) => ${locBody('access.promptNote')})`
+
 // hotspot / crop fall back to the Media Library asset's (ADR-022: focal points
 // live on mediaAsset.image) — a section image is a bare asset reference, so the
 // focus Tom sets in the Media Library was never reaching the website.
@@ -2264,7 +2267,7 @@ export const pageBySlugQuery = /* groq */ `
     // R9 — the optional note under the sign-in. Read WITH the policy (outside
     // the content gate) because it is shown while the page is locked; it is
     // public text by design (Studio says so). Absent when not set.
-    "accessPromptNote": select(defined(access.promptNote) => ${locBody('access.promptNote')}),
+    ${ACCESS_PROMPT_NOTE_PROJECTION},
     ${onlyWhenReadable(`
       "title": ${loc('title')},
       backgroundPattern,

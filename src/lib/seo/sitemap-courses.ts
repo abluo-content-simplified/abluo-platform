@@ -17,6 +17,8 @@ import { cleanCourseSegments } from '@/lib/modules/courses/website'
 export type CourseSitemapRow = {
   slugMap?: Record<string, { current?: string | null } | undefined> | null
   _updatedAt?: string | null
+  /** The course page is members only (it takes the access of its timetable pages): never listed. */
+  membersOnly?: boolean | null
 }
 
 export function courseSitemapEntries(opts: {
@@ -30,6 +32,7 @@ export function courseSitemapEntries(opts: {
   const segments = cleanCourseSegments(opts.courseSegment)
   const out: MetadataRoute.Sitemap = []
   for (const row of opts.rows ?? []) {
+    if (row.membersOnly) continue
     for (const locale of opts.locales) {
       const segment = segments[locale]
       const slug = row.slugMap?.[locale]?.current
