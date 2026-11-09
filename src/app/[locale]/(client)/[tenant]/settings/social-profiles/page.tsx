@@ -41,6 +41,8 @@ export default async function SocialProfilesPage({ params }: { params: Promise<{
         projectSlug={projectSlug}
         rev={view.rev}
         initial={view.socialLinks}
+        live={view.socialLinksLive}
+        unpublished={view.socialLinksUnpublished}
         canWrite={view.canWrite && !(ctx.support && !ctx.support.writesAllowed)}
       />
     </PageShell>

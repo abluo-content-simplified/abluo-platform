@@ -45,9 +45,10 @@ function fake(opts: { draft?: boolean; catalogue?: boolean | 'noconfig' } = {}) 
   })
   let n = 0
   const committed: Array<{ id: string; ops: Record<string, unknown> }> = []
-  const fetch = vi.fn(async (q: string) => {
+  const fetch = vi.fn(async (q: string, _p?: unknown, o?: { perspective?: string }) => {
     if (q.startsWith('count(')) return 1
-    if (q.includes('_type == "siteConfig"')) return [...docs.values()].filter((d) => d._type === 'siteConfig')
+    // Like the API at SANITY_API_VERSION: without the raw perspective, drafts are invisible.
+    if (q.includes('_type == "siteConfig"')) return [...docs.values()].filter((d) => d._type === 'siteConfig' && (o?.perspective === 'raw' || !d._id.startsWith('drafts.')))
     if (q.includes('_type == "project"')) {
       const p = docs.get('proj1')!
       const inst = (p.moduleInstallations as Array<Record<string, any>>).find((i) => i.moduleId === 'catalogue')
@@ -235,5 +236,42 @@ describe('Settings → Social Profiles (ADR-049 Amendment A)', () => {
     const view = await loadSettings(owner(), 'project-a', f.deps)
     await saveSettings(owner(), 'project-a', { rev: view.rev, set: { socialLinks: [] } }, f.deps)
     expect(f.docs.get('site1')!.socialLinks).toBeUndefined()
+  })
+})
+
+describe('Settings → Social Profiles with an unpublished Website Settings draft (Claudia Hoffmann, 2026-11-09)', () => {
+  // The real shapes: published hoffmann-site-config has NO socialLinks; drafts.hoffmann-site-config has LinkedIn + Facebook.
+  const HOFFMANN_DRAFT = [
+    { _key: '3df43e531509', _type: 'socialLink', platform: 'linkedin', url: 'https://it.linkedin.com/in/claudia-hoffmann-psicoterapeuta' },
+    { _key: 'dbbc809a99dd', _type: 'socialLink', platform: 'facebook', url: 'https://www.facebook.com/claudiahoffmannpsicologapsicoterapeuta/' },
+  ]
+
+  it('reads the draft too (raw perspective) and shows the latest list, marked as not live yet', async () => {
+    const f = fake({ draft: true })
+    f.docs.get('drafts.site1')!.socialLinks = HOFFMANN_DRAFT
+    const view = await loadSettings(owner(), 'project-a', f.deps)
+    for (const call of f.fetch.mock.calls.filter((c) => String(c[0]).includes('siteConfig'))) expect(call[2]).toEqual({ perspective: 'raw' })
+    expect(view.socialLinksLive).toEqual([])
+    expect(view.socialLinks.map((r) => r.platform)).toEqual(['linkedin', 'facebook'])
+    expect(view.socialLinksUnpublished).toBe(true)
+  })
+
+  it('saving that list puts it live AND keeps Studio’s draft in step (the next Studio Publish no longer undoes it)', async () => {
+    const f = fake({ draft: true })
+    f.docs.get('drafts.site1')!.socialLinks = HOFFMANN_DRAFT
+    const view = await loadSettings(owner(), 'project-a', f.deps)
+    await saveSettings(owner(), 'project-a', { rev: view.rev, set: { socialLinks: view.socialLinks } }, f.deps)
+    const want = HOFFMANN_DRAFT
+    expect(f.docs.get('site1')!.socialLinks).toEqual(want)
+    expect(f.docs.get('drafts.site1')!.socialLinks).toEqual(want)
+    const after = await loadSettings(owner(), 'project-a', f.deps)
+    expect(after.socialLinksUnpublished).toBe(false)
+  })
+
+  it('no draft: the published list, nothing pending', async () => {
+    const f = fake()
+    const view = await loadSettings(owner(), 'project-a', f.deps)
+    expect(view.socialLinks).toEqual([])
+    expect(view.socialLinksUnpublished).toBe(false)
   })
 })

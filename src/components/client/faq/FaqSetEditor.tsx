@@ -16,6 +16,7 @@ import {
 } from '@/app/[locale]/(client)/[tenant]/faq-sets/actions'
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
 import type { PendingSet } from '@/lib/client/autosave/journal'
+import { openThenSave } from '@/lib/client/autosave/open-then-save'
 import { DeletePermanentlyDialog } from '@/components/app/lifecycle/DeletePermanentlyDialog'
 import { BackLink } from '@/components/app/ui/BackLink'
 import { Button } from '@/components/app/ui/Button'
@@ -143,18 +144,17 @@ export function FaqSetEditor({
 
   // ── Autosave ───────────────────────────────────────────────────────────────
   const send = useCallback(
-    async (input: { rev: string; set: PendingSet }) => {
-      let rev = input.rev
-      if (!hasDraftRef.current || !rev) {
-        // A published set: the first change opens its draft (an exact copy).
-        const opened = await openFaqSetForEditAction({ projectSlug, id })
-        if (!opened.ok) return { ok: false, error: opened.error } as const
-        rev = opened.rev
-        hasDraftRef.current = true
-      }
-      const r = await patchFaqSetDraftAction({ projectSlug, id, rev, set: input.set })
-      return r.ok ? ({ ok: true, rev: r.rev } as const) : ({ ok: false, error: r.error } as const)
-    },
+    // A published set: the first change opens its draft (an exact copy). A save failing right after hands
+    // the opened revision to the engine (openThenSave), never a stale one.
+    (input: { rev: string; set: PendingSet }) =>
+      openThenSave(input, {
+        hasDraft: () => hasDraftRef.current,
+        markDraft: () => {
+          hasDraftRef.current = true
+        },
+        open: () => openFaqSetForEditAction({ projectSlug, id }),
+        save: (rev, set) => patchFaqSetDraftAction({ projectSlug, id, rev, set }),
+      }),
     [projectSlug, id]
   )
   /** Set once useAutosave exists (below): a reload must hand the server's revision to the engine. */

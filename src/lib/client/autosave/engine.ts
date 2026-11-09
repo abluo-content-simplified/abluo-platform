@@ -25,7 +25,18 @@ import type { JournalStorage, PendingSet } from './journal'
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'offline' | 'conflict' | 'error'
 
-export type SendResult = { ok: true; rev: string } | { ok: false; error: string }
+/**
+ * What one send answered. A refusal may still carry `rev`: the send opened the
+ * draft (a published document's first change) and the save after it did not
+ * go through — the draft now exists at that revision, and the retry (or the
+ * next save) must be sent against it, never against the revision held before
+ * the draft existed (Digital Cards, 2026-11-09: that stale revision was
+ * refused as "edited elsewhere").
+ */
+export type SendResult = { ok: true; rev: string } | { ok: false; error: string; rev?: string }
+
+/** What `exclusive()` runs: gets the confirmed revision, returns its value and the revision the editor must continue from ('' = no draft any more). */
+export type ExclusiveOp<T> = (rev: string) => Promise<{ value: T; rev?: string }>
 
 export type AutosaveOptions = {
   draftId: string
@@ -63,10 +74,21 @@ export type Autosave = {
    * current (the caller may show its values), false when it must be ignored.
    */
   adoptRead(rev: string, since: number): boolean
+  /**
+   * Publish / discard / lifecycle / reload: sends everything first, then runs
+   * `op` with the confirmed revision while NO autosave is sent. Edits made
+   * meanwhile are kept (journaled) and go out after `op`, against the revision
+   * `op` returns — '' when the draft is gone (published, discarded): the next
+   * change then opens a fresh draft. Resolves `{ ok: false }` (op not run)
+   * when the flush could not save everything (offline, conflict).
+   */
+  exclusive<T>(op: ExclusiveOp<T>): Promise<{ ok: true; value: T } | { ok: false }>
   /** Saves the server has confirmed so far (a counter; see adoptRead). */
   readonly confirmed: number
   /** Something is waiting to be sent or in flight. */
   readonly busy: boolean
+  /** An exclusive operation is running. */
+  readonly held: boolean
   /**
    * The draft now has its real id: move the journal from the current key to
    * `nextKey` and journal under it from now on. Resolves once moved.
@@ -133,6 +155,8 @@ export function createAutosave(opts: AutosaveOptions): Autosave {
   let confirmed = 0
   let state: SaveState = 'idle'
   let disposed = false
+  /** An exclusive operation is running: nothing is sent until it ends. */
+  let held = false
 
   const has = (s: PendingSet) => Object.keys(s).length > 0
 
@@ -179,7 +203,7 @@ export function createAutosave(opts: AutosaveOptions): Autosave {
   }
 
   async function run(): Promise<void> {
-    if (stopped()) return
+    if (stopped() || held) return
     if (inFlight) return inFlight
     if (!has(pending)) return
     if (retryTimer) {
@@ -213,6 +237,8 @@ export function createAutosave(opts: AutosaveOptions): Autosave {
       inFlight = null
       inFlightSet = {}
       if (disposed) return
+      // The send opened the draft, then its save failed: continue from the draft's revision.
+      if (!result.ok && typeof result.rev === 'string' && result.rev) rev = result.rev
 
       if (result.ok) {
         attempt = 0
@@ -271,6 +297,27 @@ export function createAutosave(opts: AutosaveOptions): Autosave {
     return inFlight
   }
 
+  /** Sends everything now. Resolves true when the server has confirmed all of it (false while an exclusive operation holds sends). */
+  async function flush(): Promise<boolean> {
+    if (timer) {
+      clearTimeout(timer)
+      timer = null
+    }
+    // At most a few rounds: in flight → its follow-up → done.
+    for (let i = 0; i < 5; i++) {
+      if (stopped()) return false
+      if (inFlight) {
+        await inFlight
+        continue
+      }
+      if (!has(pending)) return state !== 'offline' || attempt === 0
+      if (held) return false
+      await run()
+      if (state === 'offline') return false
+    }
+    return !has(pending) && !inFlight
+  }
+
   return {
     set(patch) {
       if (disposed || !patch || !has(patch)) return
@@ -281,23 +328,19 @@ export function createAutosave(opts: AutosaveOptions): Autosave {
       if (state !== 'offline') setState('saving')
       schedule(debounceMs)
     },
-    async flush() {
-      if (timer) {
-        clearTimeout(timer)
-        timer = null
+    flush,
+    async exclusive<T>(op: ExclusiveOp<T>) {
+      if (disposed || held) return { ok: false } as const
+      if (!(await flush())) return { ok: false } as const
+      held = true
+      try {
+        const out = await op(rev)
+        if (typeof out?.rev === 'string') rev = out.rev
+        return { ok: true, value: out.value } as const
+      } finally {
+        held = false
+        if (has(pending) && !stopped()) schedule(0)
       }
-      // At most a few rounds: in flight → its follow-up → done.
-      for (let i = 0; i < 5; i++) {
-        if (stopped()) return false
-        if (inFlight) {
-          await inFlight
-          continue
-        }
-        if (!has(pending)) return state !== 'offline' || attempt === 0
-        await run()
-        if (state === 'offline') return false
-      }
-      return !has(pending) && !inFlight
     },
     async replay() {
       if (!storage) return null
@@ -335,8 +378,9 @@ export function createAutosave(opts: AutosaveOptions): Autosave {
       if (typeof next === 'string' && next) rev = next
     },
     adoptRead(next, since) {
-      if (disposed || inFlight || has(pending) || confirmed !== since) return false
-      if (typeof next === 'string' && next) rev = next
+      if (disposed || held || inFlight || has(pending) || confirmed !== since) return false
+      // '' = the snapshot has no draft (published / discarded): the next change opens one.
+      if (typeof next === 'string') rev = next
       return true
     },
     get confirmed() {
@@ -344,6 +388,9 @@ export function createAutosave(opts: AutosaveOptions): Autosave {
     },
     get busy() {
       return Boolean(inFlight) || has(pending)
+    },
+    get held() {
+      return held
     },
     async rekey(nextKey) {
       if (!nextKey || nextKey === key) return

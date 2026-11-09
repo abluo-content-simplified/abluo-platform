@@ -136,6 +136,55 @@ export interface PersonCardShow extends DigitalCardShowShared {
 
 export type DigitalCardShow = SiteCardShow | PersonCardShow
 
+// ── The address when the site has no locations[] ───────────────────────────────
+
+/**
+ * The key the single Website Settings address (`siteConfig.location`, type
+ * businessLocation) goes by on a card when the site has no `locations[]`
+ * (Claudia Hoffmann's site, 2026-11-09). One key everywhere: the editor's
+ * switch, `show.locations`, the website card, the vCard ADR field.
+ */
+export const SITE_LOCATION_FALLBACK_KEY = 'location'
+
+export type CardAddress = { street?: string; postalCode?: string; city?: string; state?: string; country?: string }
+
+const addrText = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
+
+/** Does this address hold anything worth showing? */
+export function hasCardAddress(a: unknown): a is CardAddress {
+  if (!a || typeof a !== 'object') return false
+  const r = a as Record<string, unknown>
+  return ['street', 'postalCode', 'city', 'state', 'country'].some((k) => addrText(r[k]) !== '')
+}
+
+/** Only the five address fields, trimmed (never `_type` or anything else stored beside them). */
+export function cleanCardAddress(a: { [K in keyof CardAddress]?: string | null }): CardAddress {
+  const out: CardAddress = {}
+  for (const k of ['street', 'postalCode', 'city', 'state', 'country'] as const) {
+    const v = addrText(a[k])
+    if (v) out[k] = v
+  }
+  return out
+}
+
+/** "Via Amendola 11, 21100 Varese VA" — one line, for the editor. */
+export function cardAddressLine(a: { [K in keyof CardAddress]?: string | null }): string {
+  const c = cleanCardAddress(a)
+  const cityLine = [c.postalCode, c.city, c.state].filter(Boolean).join(' ')
+  return [c.street, cityLine].filter(Boolean).join(', ')
+}
+
+/**
+ * The site's locations as the card sees them: `locations[]` when it has any;
+ * otherwise the single `location` (when it holds an address) as ONE location
+ * keyed SITE_LOCATION_FALLBACK_KEY; otherwise none.
+ */
+export function cardSiteLocations<L>(locations: readonly L[] | null | undefined, location: unknown, fallback: (address: CardAddress, key: string) => L): L[] {
+  const list = Array.isArray(locations) ? locations.filter((l) => l != null) : []
+  if (list.length) return list
+  return hasCardAddress(location) ? [fallback(cleanCardAddress(location), SITE_LOCATION_FALLBACK_KEY)] : []
+}
+
 /** What exists, so "all socials / all locations" can be filled in. */
 export interface DigitalCardAvailable {
   socials?: readonly string[]

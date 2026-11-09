@@ -97,6 +97,7 @@ export const DIGITAL_CARD_SITE_FIELDS = /* groq */ `
         mapsUrl,
         shortName
       },
+      location { street, postalCode, city, state, country },
       "seoDefaultDescription": ${loc('seoDefaultDescription')}
     },
     "project": *[_type == "project" && projectSlug == $projectSlug && ${PUBLISHED}][0]{
@@ -176,6 +177,8 @@ export interface DigitalCardSitePublic {
     mapsUrl?: string | null
     shortName?: string | null
   }> | null
+  /** The single Website Settings address — the card's one location when `locations[]` is empty. */
+  location?: BusinessLocation | null
   seoDefaultDescription?: string | null
 }
 

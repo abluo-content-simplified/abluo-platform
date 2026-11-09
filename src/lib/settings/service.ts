@@ -71,8 +71,17 @@ export type SettingsView = {
   catalogueInstalled: boolean
   /** Stored affiliate disclosure per site language (missing = empty = standard wording). */
   disclosure: Record<string, string>
-  /** The website's social profiles (siteConfig.socialLinks), in order — Settings → Social Profiles. */
+  /**
+   * The website's social profiles (siteConfig.socialLinks), in order — Settings
+   * → Social Profiles. Draft over published: when Studio holds an unpublished
+   * Website Settings draft, its list (that is what the next Studio Publish
+   * makes live, and a save here writes both).
+   */
   socialLinks: SocialLinkRow[]
+  /** The profiles the website shows now (published). */
+  socialLinksLive: SocialLinkRow[]
+  /** Studio's draft holds a different list than the website shows: saving here puts `socialLinks` live. */
+  socialLinksUnpublished: boolean
   canWrite: boolean
 }
 
@@ -97,9 +106,19 @@ function grantFor(ctx: TenantAuthorizationContext, projectId: string, permission
   return grant
 }
 
+/**
+ * Reads with the RAW perspective. At SANITY_API_VERSION (after 2025-02-19) the
+ * API's default perspective is `published`: SITE_QUERY never returned Studio's
+ * draft of Website Settings, so `draft` was always null and a save here was
+ * NOT copied onto the draft — the next Publish in Studio put the old values
+ * back (found 2026-11-09 on Claudia Hoffmann's site, whose Website Settings
+ * draft holds LinkedIn + Facebook). Every query here filters drafts itself.
+ */
+const RAW = { perspective: 'raw' } as const
+
 function scopedClient(ctx: TenantAuthorizationContext, projectId: string, client: Client): TenantScopedSanityClient {
   return tenantScopedSanityClient(ctx, projectId, {
-    fetch: <T>(query: string, params?: Record<string, unknown>) => client.fetch(query, params ?? {}) as Promise<T>,
+    fetch: <T>(query: string, params?: Record<string, unknown>) => client.fetch(query, params ?? {}, RAW) as Promise<T>,
   })
 }
 
@@ -125,8 +144,11 @@ function catalogueActive(enabledModuleIds: readonly string[], project: ProjectDo
 export async function loadSettings(ctx: TenantAuthorizationContext, projectId: string, deps: SettingsDeps = {}): Promise<SettingsView> {
   const grant = grantFor(ctx, projectId, SETTINGS_READ)
   const client = deps.client ?? sanityWriteClient
-  const { published, project } = await readDocs(scopedClient(ctx, projectId, client))
+  const { published, draft, project } = await readDocs(scopedClient(ctx, projectId, client))
   if (!published) throw new SettingsError('not_found', 'No site configuration.')
+  const socialLive = socialRowsFromStored(published.socialLinks)
+  // Draft over published — when the draft holds a list (a draft without the field is not read as "remove them all").
+  const social = draft && Array.isArray(draft.socialLinks) ? socialRowsFromStored(draft.socialLinks) : socialLive
   const installed = catalogueActive(grant.enabledModuleIds, project)
   const stored = (installed ? project?.catalogue?.disclosure : null) ?? {}
   const disclosure: Record<string, string> = {}
@@ -139,7 +161,9 @@ export async function loadSettings(ctx: TenantAuthorizationContext, projectId: s
     awin: { publisherId: looksLikeAwinPublisherId(published.awinPublisherId) ? published.awinPublisherId.trim() : '', shops: shopsFromStored(published.affiliateShops) },
     catalogueInstalled: installed,
     disclosure,
-    socialLinks: socialRowsFromStored(published.socialLinks),
+    socialLinks: social,
+    socialLinksLive: socialLive,
+    socialLinksUnpublished: JSON.stringify(social) !== JSON.stringify(socialLive),
     canWrite: grant.permissions.includes(SETTINGS_WRITE),
   }
 }

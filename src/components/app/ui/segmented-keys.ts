@@ -46,12 +46,13 @@ const SEG: Record<SegmentedAppearance, { base: string; on: string; off: string }
   },
   soft: {
     base: `${SEG_BASE} flex-1 px-3 text-[0.9375rem] whitespace-nowrap`,
-    on: 'bg-muted text-foreground',
+    // The muted fill alone is 1.07:1 against the group: the inset `input` ring makes the choice visible (≥ 3:1, WCAG 1.4.11).
+    on: 'bg-muted text-foreground ring-1 ring-input ring-inset',
     off: 'text-muted-foreground hover:text-foreground',
   },
   pill: {
     base: 'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-[0.9375rem] font-medium whitespace-nowrap focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
-    on: 'bg-background text-foreground shadow-sm',
+    on: 'bg-background text-foreground shadow-sm ring-1 ring-input ring-inset',
     off: 'text-muted-foreground hover:text-foreground',
   },
   chips: {

@@ -36,6 +36,8 @@ const en = {
   errorInvalid: 'One of the addresses could not be saved. Check it and try again.',
   errorFailed: 'Could not save. Try again.',
   reload: 'Reload',
+  unpublished: "Website Settings has changes in Studio that are not on your website yet. You see the latest version here; Save puts it on the website.",
+  unpublishedReadOnly: "Website Settings has changes in Studio that are not on your website yet. You see the latest version here.",
 }
 
 export type SocialProfilesMessages = typeof en
@@ -69,6 +71,8 @@ const it: SocialProfilesMessages = {
   errorInvalid: 'Uno degli indirizzi non è stato salvato. Controllalo e riprova.',
   errorFailed: 'Non è stato possibile salvare. Riprova.',
   reload: 'Ricarica',
+  unpublished: "Le impostazioni del sito hanno modifiche in Studio non ancora pubblicate sul sito. Qui vedi la versione più recente; Salva la mette sul sito.",
+  unpublishedReadOnly: "Le impostazioni del sito hanno modifiche in Studio non ancora pubblicate sul sito. Qui vedi la versione più recente.",
 }
 
 const de: SocialProfilesMessages = {
@@ -100,6 +104,8 @@ const de: SocialProfilesMessages = {
   errorInvalid: 'Eine der Adressen konnte nicht gespeichert werden. Prüfe sie und versuche es erneut.',
   errorFailed: 'Speichern nicht möglich. Versuche es erneut.',
   reload: 'Neu laden',
+  unpublished: "Die Website-Einstellungen haben Änderungen im Studio, die noch nicht auf der Website sind. Hier siehst du die neueste Fassung; Speichern bringt sie auf die Website.",
+  unpublishedReadOnly: "Die Website-Einstellungen haben Änderungen im Studio, die noch nicht auf der Website sind. Hier siehst du die neueste Fassung.",
 }
 
 const MESSAGES: Record<string, SocialProfilesMessages> = { en, it, de }

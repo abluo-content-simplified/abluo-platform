@@ -11,7 +11,7 @@
  * draft is created, without recreating the engine.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { createAutosave, type Autosave, type SaveState, type SendResult } from './engine'
+import { createAutosave, type Autosave, type ExclusiveOp, type SaveState, type SendResult } from './engine'
 import { createIdbJournal, type JournalStorage, type PendingSet } from './journal'
 
 export function useAutosave({
@@ -90,6 +90,13 @@ export function useAutosave({
   const currentState = useCallback((): SaveState => engineRef.current?.state ?? 'idle', [])
   const retry = useCallback(() => engineRef.current?.retryNow(), [])
   const rekey = useCallback(async (nextKey: string) => engineRef.current?.rekey(nextKey), [])
+  /** See Autosave.exclusive: flush, then run `op` with no autosave sent meanwhile; continue from the revision it returns. */
+  const exclusive = useCallback(
+    async <T,>(op: ExclusiveOp<T>): Promise<{ ok: true; value: T } | { ok: false }> => (engineRef.current ? engineRef.current.exclusive(op) : { ok: true, value: (await op(rev)).value }),
+    [rev]
+  )
+  /** Edits are waiting to be sent or in flight (e.g. typed during an exclusive operation): keep what is on screen. */
+  const hasPending = useCallback(() => Boolean(engineRef.current?.busy), [])
 
-  return { state, rejected, set, flush, currentRev, currentState, discard, adoptRev, confirmedCount, adoptRead, retry, rekey, replayed }
+  return { state, rejected, set, flush, currentRev, currentState, discard, adoptRev, confirmedCount, adoptRead, exclusive, hasPending, retry, rekey, replayed }
 }

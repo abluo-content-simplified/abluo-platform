@@ -9,6 +9,8 @@ import { shortUrl, socialPlatformLabel } from '@/lib/settings/social-links'
 import { Button, ButtonLink } from '@/components/app/ui/Button'
 import { Panel } from '@/components/app/ui/Panel'
 import { Switch } from '@/components/app/ui/Switch'
+import { getDigitalCardSiteMessages } from '@/lib/i18n/digital-cards-site-messages'
+import { linkDisplay } from './links-model'
 import { linkComplete, linkKindLabel } from './DigitalCardLinks'
 
 const H2 = 'text-[1.0625rem] leading-7 font-semibold text-foreground'
@@ -170,7 +172,8 @@ export function DigitalCardContents({
   }
   const buttons: Row[] = links.map((l) => {
     const kind = linkKindLabel(m, l.kind)
-    const label = l.label[lang]?.trim() || l.label[defaultLocale]?.trim() || kind
+    // The label visitors see: typed, else the page's / file's title, else the standard one (as the website).
+    const label = linkDisplay(l, lang, defaultLocale, { pages: snapshot.pages, files: snapshot.files }, getDigitalCardSiteMessages(lang)).label
     const t = target(l)
     return {
       key: `button-${l.key}`,
@@ -201,6 +204,7 @@ export function DigitalCardContents({
           <EmptyLine text={isPerson ? formatDigitalCardsMessage(e.personMissingSocials, { name: firstName }) : e.siteMissingSocials} fix={isPerson ? personFix : socialFix} />
         }
       />
+      {!isPerson && av.socialsPendingInStudio ? <EmptyLine text={c.socialsPendingStudio} fix={socialFix} /> : null}
       {!isPerson ? (
         <Group
           title={c.groupLocations}

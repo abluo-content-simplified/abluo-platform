@@ -18,7 +18,7 @@ import type { ReactNode } from 'react'
  * Layout: 2 columns on phones, 3 from 640px, gap 0.75rem. Card: min height
  * 7.5rem, padding 1.25rem, radius-xl, flex column justify-between; icon
  * ~30px (stroke 1.5), label 17px / 22px, weight 500. States: rest = 1px
- * border on bg-card; selected = 2px foreground border + bg-muted (padding
+ * border on bg-card (a choice: the input token, ≥ 3:1; an action: border); selected = 2px foreground border + bg-muted (padding
  * −1px, nothing shifts); hover (devices that hover) = bg-accent; focus = 2px
  * ring with a 2px offset.
  */
@@ -78,7 +78,10 @@ export function ChoiceCard({
       disabled={disabled}
       onClick={onSelect}
       className={`relative flex min-h-[7.5rem] flex-col items-start justify-between rounded-xl text-left text-foreground transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none disabled:cursor-not-allowed disabled:text-muted-foreground motion-reduce:transition-none ${className} ${
-        selected ? 'border-2 border-foreground bg-muted p-[calc(1.25rem-1px)]' : 'border border-border bg-card p-5 enabled:hover:bg-accent'
+        selected
+          ? 'border-2 border-foreground bg-muted p-[calc(1.25rem-1px)]'
+          : // An unselected CHOICE shows its boundary at ≥ 3:1 (the input token, WCAG 1.4.11); an action card keeps the quiet border.
+            `border ${radio ? 'border-input' : 'border-border'} bg-card p-5 enabled:hover:bg-accent`
       }`}
     >
       <span aria-hidden="true" className="grid size-[1.875rem] place-items-center [&>svg]:size-[1.875rem]">

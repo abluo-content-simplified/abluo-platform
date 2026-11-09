@@ -236,3 +236,63 @@ describe('adoptRead — a snapshot read from the server (Digital Cards, 2026-11-
     expect(h.a.rev).toBe('after-hang')
   })
 })
+
+describe('the draft opened by a failed send, and exclusive operations (Digital Cards publish, 2026-11-09)', () => {
+  it('a refusal that carries the opened revision is retried against it, never against the stale one', async () => {
+    const h = harness([{ ok: false, error: 'failed', rev: 'opened-1' }])
+    h.a.set({ 'description.de': 'Hallo' })
+    await tick(500)
+    expect(h.a.state).toBe('offline')
+    expect(h.a.rev).toBe('opened-1')
+    await tick(1000) // the retry
+    expect(h.calls.map((c) => c.rev)).toEqual(['r1', 'opened-1'])
+    expect(h.a.state).toBe('saved')
+  })
+
+  it('a read with no draft (rev "") is adopted: the next change opens a fresh draft', async () => {
+    const h = harness()
+    expect(h.a.adoptRead('', h.a.confirmed)).toBe(true)
+    expect(h.a.rev).toBe('')
+  })
+
+  it('exclusive: flushes first, runs the operation with the confirmed revision, sends nothing meanwhile, then continues from its revision', async () => {
+    const h = harness()
+    h.a.set({ 'title.en': 'A' })
+    let seen = ''
+    const run = h.a.exclusive(async (rev) => {
+      seen = rev
+      h.a.set({ 'title.en': 'typed while publishing' })
+      await tick(5000)
+      expect(h.calls).toHaveLength(1) // held
+      return { value: 'published', rev: '' }
+    })
+    await tick(0)
+    const out = await run
+    expect(out).toEqual({ ok: true, value: 'published' })
+    expect(seen).toBe('r2')
+    await tick(0)
+    expect(h.calls.map((c) => c.rev)).toEqual(['r1', '']) // the next send starts from "no draft"
+    expect(h.calls[1].set).toEqual({ 'title.en': 'typed while publishing' })
+  })
+
+  it('exclusive: refused (operation not run) when the flush cannot save everything', async () => {
+    const h = harness([{ ok: false, error: 'conflict' }])
+    h.a.set({ 'title.en': 'A' })
+    const op = vi.fn(async () => ({ value: 1 }))
+    const run = h.a.exclusive(op)
+    await tick(0)
+    expect(await run).toEqual({ ok: false })
+    expect(op).not.toHaveBeenCalled()
+  })
+
+  it('exclusive: an operation that keeps the revision leaves it unchanged; a throw releases the hold', async () => {
+    const h = harness()
+    await h.a.exclusive(async () => ({ value: null }))
+    expect(h.a.rev).toBe('r1')
+    await expect(h.a.exclusive(async () => Promise.reject(new Error('x')))).rejects.toThrow('x')
+    expect(h.a.held).toBe(false)
+    h.a.set({ 'title.en': 'B' })
+    await tick(500)
+    expect(h.calls).toHaveLength(1)
+  })
+})

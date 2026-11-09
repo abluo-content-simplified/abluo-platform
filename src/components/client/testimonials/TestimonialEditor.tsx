@@ -16,6 +16,7 @@ import {
 import { saveTestimonialPrivateAction, translateTestimonialFieldsAction } from '@/app/[locale]/(client)/[tenant]/testimonials/editor-actions'
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
 import type { PendingSet } from '@/lib/client/autosave/journal'
+import { openThenSave } from '@/lib/client/autosave/open-then-save'
 import { formatTranslateMessage, getTranslateMessages } from '@/lib/i18n/translate-messages'
 import { effectiveStatus, isWritableTarget, type TranslationMeta } from '@/lib/translate/status'
 import { TermPicker } from '@/components/client/taxonomy/TermPicker'
@@ -178,9 +179,11 @@ export function TestimonialEditor({
   const privTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const privChain = useRef<Promise<boolean>>(Promise.resolve(true))
 
-  const apply = useCallback((s: TestimonialSnapshot) => {
+  /** Shows a server snapshot. `keepValues`: edits typed meanwhile are still being saved — keep what is on screen. */
+  const apply = useCallback((s: TestimonialSnapshot, keepValues = false) => {
     hasDraftRef.current = s.hasDraft
     setStatus({ state: s.status, hasDraft: s.hasDraft, isPublished: s.isPublished, hasChanges: s.hasChanges })
+    if (keepValues) return
     const next = valuesOf(s)
     valuesRef.current = next
     setValues(next)
@@ -188,31 +191,42 @@ export function TestimonialEditor({
 
   // ── Autosave (public text → draft) ─────────────────────────────────────────
   const send = useCallback(
-    async (input: { rev: string; set: PendingSet }) => {
-      let rev = input.rev
-      if (!hasDraftRef.current || !rev) {
-        // A published testimonial: the first change opens the draft (an exact copy).
-        const opened = await openTestimonialForEditAction({ projectSlug, id })
-        if (!opened.ok) return { ok: false, error: opened.error } as const
-        rev = opened.rev
-        hasDraftRef.current = true
-      }
-      const r = await saveTestimonialDraftAction({ projectSlug, id, rev, set: input.set })
-      return r.ok ? ({ ok: true, rev: r.rev } as const) : ({ ok: false, error: r.error } as const)
-    },
+    // A published testimonial: the first change opens the draft (an exact
+    // copy); a save failing right after hands the opened revision to the engine.
+    (input: { rev: string; set: PendingSet }) =>
+      openThenSave(input, {
+        hasDraft: () => hasDraftRef.current,
+        markDraft: () => {
+          hasDraftRef.current = true
+        },
+        open: () => openTestimonialForEditAction({ projectSlug, id }),
+        save: (rev, set) => saveTestimonialDraftAction({ projectSlug, id, rev, set }),
+      }),
     [projectSlug, id]
   )
-  /** Set once useAutosave exists (below): a reload must hand the server's revision to the engine. */
-  const adoptRevRef = useRef<(rev: string) => void>(() => {})
+  /** Set once useAutosave exists (below). */
+  const engineRef = useRef<{ exclusive: ReturnType<typeof useAutosave>['exclusive']; hasPending: () => boolean } | null>(null)
+  /**
+   * Reads the testimonial back with no autosave sent meanwhile (after a
+   * flush) and continues from the revision read — '' when there is no draft
+   * (the next change opens one). Archive / restore / discard change the
+   * draft's revision; before, a reload adopted the read's revision even when a
+   * save had landed during the read (→ "edited elsewhere"), and wiped edits
+   * typed meanwhile.
+   */
   const reload = useCallback(async () => {
-    const r = await getTestimonialAction({ projectSlug, id })
-    if (r.ok) {
-      apply(r.testimonial)
-      // Archive / restore / discard change the draft's revision: without this
-      // the next autosave would be refused as "edited elsewhere".
-      if (r.testimonial.rev) adoptRevRef.current(r.testimonial.rev)
-    }
-    return r.ok
+    const engine = engineRef.current
+    if (!engine) return false
+    let snap: TestimonialSnapshot | null = null
+    const out = await engine.exclusive(async () => {
+      const r = await getTestimonialAction({ projectSlug, id })
+      if (!r.ok) return { value: null }
+      snap = r.testimonial
+      return { value: null, rev: r.testimonial.rev }
+    })
+    if (!out.ok || !snap) return false
+    apply(snap, engine.hasPending())
+    return true
   }, [projectSlug, id, apply])
   /** A tab closed mid-save is replayed by the engine; once it lands, show what the server now holds. */
   const [replayed, setReplayed] = useState(false)
@@ -220,10 +234,10 @@ export function TestimonialEditor({
     if (r && Object.keys(r).length) setReplayed(true)
   }, [])
   const autosave = useAutosave({ draftId: `testimonial:${id}`, rev: initial.rev, send, onReady })
-  const adoptRev = autosave.adoptRev
+  const { exclusive, hasPending } = autosave
   useEffect(() => {
-    adoptRevRef.current = adoptRev
-  }, [adoptRev])
+    engineRef.current = { exclusive, hasPending }
+  }, [exclusive, hasPending])
   const flushEngine = autosave.flush
   useEffect(() => {
     if (!replayed) return
@@ -395,9 +409,17 @@ export function TestimonialEditor({
     setPublishing(true)
     setNotice(null)
     try {
-      if (!(await flushed())) return
       if (!(await flushPrivate())) return
-      const r = await publishTestimonialDraftAction({ projectSlug, id, rev: autosave.currentRev() })
+      // Flush, then publish with the confirmed revision while no autosave is
+      // sent; the draft is gone afterwards (rev ''), so anything typed
+      // meanwhile opens a fresh draft instead of hitting the deleted one.
+      const out = await autosave.exclusive<Awaited<ReturnType<typeof publishTestimonialDraftAction>>>(async (rev) => {
+        const res = await publishTestimonialDraftAction({ projectSlug, id, rev })
+        if (res.ok) hasDraftRef.current = false
+        return res.ok ? { value: res, rev: '' } : { value: res }
+      })
+      if (!out.ok) return setNotice(te(autosave.currentState() === 'conflict' ? 'conflict' : 'offline'))
+      const r = out.value
       if (!r.ok) {
         if (r.error === 'permission_required') {
           setPermissionMissing(true)
@@ -406,9 +428,8 @@ export function TestimonialEditor({
         }
         return setNotice(errorText(r.error))
       }
-      hasDraftRef.current = false
-      await autosave.discard()
-      setStatus((s) => ({ ...s, hasDraft: false, hasChanges: false, isPublished: true, state: 'published' }))
+      const typedMeanwhile = autosave.hasPending()
+      setStatus((s) => ({ ...s, hasDraft: typedMeanwhile, hasChanges: typedMeanwhile, isPublished: true, state: 'published' }))
       show({ message: t('published'), tone: 'status' })
       router.refresh()
     } catch {

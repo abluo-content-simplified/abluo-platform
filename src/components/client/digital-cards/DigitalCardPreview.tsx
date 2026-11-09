@@ -13,6 +13,7 @@ import { getDigitalCardSiteMessages } from '@/lib/i18n/digital-cards-site-messag
 import type { FocalPoint } from '@/components/app/ui/FocalPointPicker'
 import { Notice } from '@/components/app/ui/Notice'
 import { Panel } from '@/components/app/ui/Panel'
+import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
 import { Skeleton } from '@/components/app/ui/Skeleton'
 import { DigitalCardView } from '@/components/digital-cards/DigitalCardView'
 
@@ -36,6 +37,7 @@ export function DigitalCardPreview({
   kind,
   publicId,
   lang,
+  languages,
   languageName,
   description,
   links,
@@ -48,9 +50,11 @@ export function DigitalCardPreview({
   id: string
   kind: DigitalCardKind
   publicId: string
-  /** The website language being edited. */
+  /** The website language being edited — the preview follows it unless another one is picked above the preview. */
   lang: string
-  languageName: string
+  /** Every language of the site, default first. */
+  languages: readonly string[]
+  languageName: (code: string) => string
   description: Record<string, string>
   links: readonly DigitalCardLinkValue[]
   backgroundId: string | null
@@ -61,14 +65,18 @@ export function DigitalCardPreview({
 }) {
   const m = getDigitalCardsMessages(useLocale())
   const c = m.card
+  // The preview's own language: follows the editing tab; a language picked
+  // here holds until the editing tab changes again.
+  const [picked, setPicked] = useState<{ editing: string; value: string } | null>(null)
+  const previewLang = picked && picked.editing === lang && languages.includes(picked.value) ? picked.value : lang
   const fileIds = useMemo(() => [...new Set(links.map((l) => (l.kind === 'file' ? l.file : null)).filter((f): f is string => Boolean(f)))].sort(), [links])
-  const key = `${lang}|${backgroundId ?? ''}|${fileIds.join(',')}`
+  const key = `${previewLang}|${backgroundId ?? ''}|${fileIds.join(',')}`
   const [state, setState] = useState<{ key: string; base: DigitalCardPreviewBase } | 'failed' | null>(null)
 
   useEffect(() => {
     let live = true
     const timer = setTimeout(() => {
-      getDigitalCardPreviewAction({ projectSlug, id, locale: lang, backgroundId, fileIds })
+      getDigitalCardPreviewAction({ projectSlug, id, locale: previewLang, backgroundId, fileIds })
         .then((r) => live && setState(r.ok ? { key, base: r.preview } : 'failed'))
         .catch(() => live && setState('failed'))
     }, 250)
@@ -76,11 +84,11 @@ export function DigitalCardPreview({
       live = false
       clearTimeout(timer)
     }
-  }, [projectSlug, id, lang, backgroundId, fileIds, key])
+  }, [projectSlug, id, previewLang, backgroundId, fileIds, key])
 
   // The last data read stays on screen while the next one loads (no flashing).
   const base = state && state !== 'failed' ? state.base : null
-  const siteMessages = getDigitalCardSiteMessages(lang)
+  const siteMessages = getDigitalCardSiteMessages(previewLang)
   const view = useMemo(() => {
     if (!base) return null
     const withFocal =
@@ -97,13 +105,24 @@ export function DigitalCardPreview({
 
   return (
     <Panel as="section" aria-labelledby="card-preview" className="space-y-3">
-      <div>
-        <h2 id="card-preview" className={H2}>
-          {c.previewTitle}
-        </h2>
-        <p className="text-sm leading-5 text-muted-foreground">
-          {c.previewHint} {formatDigitalCardsMessage(c.previewLanguage, { language: languageName })}
-        </p>
+      <div className="space-y-2">
+        <div>
+          <h2 id="card-preview" className={H2}>
+            {c.previewTitle}
+          </h2>
+          <p className="text-sm leading-5 text-muted-foreground">
+            {c.previewHint} {formatDigitalCardsMessage(c.previewLanguage, { language: languageName(previewLang) })}
+          </p>
+        </div>
+        {languages.length > 1 ? (
+          <SegmentedControl
+            label={c.previewLanguagePick}
+            appearance="soft"
+            value={previewLang}
+            onChange={(value) => setPicked({ editing: lang, value })}
+            options={languages.map((l) => ({ value: l, label: l.toUpperCase() }))}
+          />
+        ) : null}
       </div>
       {state === 'failed' && !base ? (
         <Notice tone="error">{c.previewFailed}</Notice>

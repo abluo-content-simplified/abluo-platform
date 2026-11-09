@@ -27,6 +27,7 @@ import {
   DIGITAL_CARD_SOURCE_PATTERN,
   DIGITAL_CARDS_MODULE_ID,
   cardPath,
+  cardSiteLocations,
   encodeContact,
   isValidUrlName,
   qrTarget,
@@ -302,6 +303,35 @@ export function pageHref(page: DigitalCardLinkPublic['page'], siteBase: string):
   return `${siteBase.replace(/\/+$/, '')}/${slug}`
 }
 
+/**
+ * The label a link shows when none was typed for the language (D8): the page's
+ * or file's title, else the standard label of the kind. One function for the
+ * website card and the editor (the label field's placeholder and the links
+ * list), so what the editor promises is what visitors see.
+ */
+export function linkDefaultLabel(kind: DigitalCardLinkKind, target: { pageTitle?: string | null; fileTitle?: string | null }, m: DigitalCardSiteMessages): string {
+  switch (kind) {
+    case 'url':
+      return m.linkUrl
+    case 'page':
+      return text(target.pageTitle) || m.linkPage
+    case 'form':
+      return m.linkForm
+    case 'booking':
+      return m.linkBooking
+    case 'file':
+      return text(target.fileTitle) || m.linkFile
+    case 'phone':
+      return m.linkPhone
+    case 'email':
+      return m.linkEmail
+    case 'whatsapp':
+      return m.linkWhatsapp
+    default:
+      return m.linkUrl
+  }
+}
+
 /** One shown link → what renders, or null when its target is missing / not allowed (D8). */
 export function linkView(
   link: DigitalCardLinkPublic,
@@ -315,7 +345,7 @@ export function linkView(
   switch (link.kind) {
     case 'url': {
       const href = /^https?:\/\//i.test(text(link.url)) ? safeLinkHref(text(link.url)) : null
-      return href ? { ...base, label: label || m.linkUrl, href, external: true } : null
+      return href ? { ...base, label: label || linkDefaultLabel('url', {}, m), href, external: true } : null
     }
     case 'page':
     case 'form':
@@ -323,21 +353,19 @@ export function linkView(
       if (link.kind === 'booking' && !ctx.enabledModules.includes(RESERVATIONS_MODULE_ID)) return null
       const href = pageHref(link.page, ctx.siteBase)
       if (!href) return null
-      const fallback = link.kind === 'page' ? text(link.page?.title) || m.linkPage : link.kind === 'form' ? m.linkForm : m.linkBooking
-      return { ...base, label: label || fallback, href, external: false }
+      return { ...base, label: label || linkDefaultLabel(link.kind, { pageTitle: link.page?.title }, m), href, external: false }
     }
     case 'file': {
       const raw = text(link.file?.url)
       const href = /^https:\/\//i.test(raw) ? raw : null
-      return href ? { ...base, label: label || text(link.file?.title) || m.linkFile, href, external: true } : null
+      return href ? { ...base, label: label || linkDefaultLabel('file', { fileTitle: link.file?.title }, m), href, external: true } : null
     }
     case 'phone':
     case 'email':
     case 'whatsapp': {
       const href = CONTACT_HREF[link.kind](link.value)
       if (!href) return null
-      const fallback = link.kind === 'phone' ? m.linkPhone : link.kind === 'email' ? m.linkEmail : m.linkWhatsapp
-      return { ...base, label: label || fallback, hrefEnc: encodeContact(href), external: link.kind === 'whatsapp' }
+      return { ...base, label: label || linkDefaultLabel(link.kind, {}, m), hrefEnc: encodeContact(href), external: link.kind === 'whatsapp' }
     }
     default:
       return null
@@ -373,9 +401,16 @@ function locationLines(address: { street?: string | null; postalCode?: string | 
   return [text(address.street), cityLine, text(address.country)].filter(Boolean)
 }
 
+type SiteLocation = NonNullable<NonNullable<DigitalCardSiteResult['site']>['locations']>[number]
+
+/** The site's locations — `locations[]`, or the single Website Settings address as one (key SITE_LOCATION_FALLBACK_KEY). */
+export function siteLocations(site: DigitalCardSiteResult['site']): SiteLocation[] {
+  return cardSiteLocations<SiteLocation>(site?.locations, site?.location, (address, key) => ({ _key: key, name: null, address, mapsUrl: null, shortName: null }))
+}
+
 /** The shown locations, in the order of the switches (the first one is the vCard address). */
 function shownLocations(card: DigitalCardSiteResult, keys: readonly string[]) {
-  const all = card.site?.locations ?? []
+  const all = siteLocations(card.site)
   return keys
     .map((k) => all.find((l) => l?._key === k))
     .filter((l): l is NonNullable<typeof l> => !!l)
@@ -390,7 +425,7 @@ export function siteCardView(card: DigitalCardSiteResult, ctx: CardViewContext):
   const site = card.site ?? {}
   const m = ctx.messages
   const socialsAvailable = (site.socialLinks ?? []).map((s) => s?.platform).filter((p): p is NonNullable<typeof p> => !!p)
-  const locationsAvailable = (site.locations ?? []).map((l) => l?._key).filter((k): k is string => !!k)
+  const locationsAvailable = siteLocations(site).map((l) => l?._key).filter((k): k is string => !!k)
   const show = resolveShow('site', card.show, { socials: socialsAvailable, locations: locationsAvailable })
   const siteName = orNull(site.siteName)
   const { primary, links } = linkViews(card.links, { ...ctx, enabledModules: card.project?.enabledModules ?? [] })
@@ -541,7 +576,7 @@ export function siteVCardInput(card: DigitalCardSiteResult, websiteUrl?: string 
   const site = card.site ?? {}
   const show = resolveShow('site', card.show, {
     socials: (site.socialLinks ?? []).map((s) => s?.platform).filter((p): p is NonNullable<typeof p> => !!p),
-    locations: (site.locations ?? []).map((l) => l?._key).filter((k): k is string => !!k),
+    locations: siteLocations(site).map((l) => l?._key).filter((k): k is string => !!k),
   })
   const first = shownLocations(card, show.locations)[0]
   return {

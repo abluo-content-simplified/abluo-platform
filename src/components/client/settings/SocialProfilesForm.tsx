@@ -40,10 +40,29 @@ const same = (a: readonly SocialLinkRow[], b: readonly SocialLinkRow[]) => JSON.
  * type (https, on the chosen network); Save says why it is disabled. After a
  * save: "Done · Undo" (Undo saves the previous list back).
  */
-export function SocialProfilesForm({ projectSlug, rev: initialRev, initial, canWrite }: { projectSlug: string; rev: string; initial: SocialLinkRow[]; canWrite: boolean }) {
+export function SocialProfilesForm({
+  projectSlug,
+  rev: initialRev,
+  initial,
+  live = initial,
+  unpublished = false,
+  canWrite,
+}: {
+  projectSlug: string
+  rev: string
+  /** The latest list — Studio's unpublished Website Settings draft when there is one. */
+  initial: SocialLinkRow[]
+  /** What the website shows now (published). */
+  live?: SocialLinkRow[]
+  /** Studio's draft differs from the website: show the latest list, say so, and let Save put it live. */
+  unpublished?: boolean
+  canWrite: boolean
+}) {
   const t = getSocialProfilesMessages(useLocale())
   const [rows, setRows] = useState<SocialLinkRow[]>(initial)
-  const [saved, setSaved] = useState<SocialLinkRow[]>(initial)
+  // Compared with what is LIVE: a list waiting in Studio can be saved (= made live) at once.
+  const [saved, setSaved] = useState<SocialLinkRow[]>(live)
+  const [pendingInStudio, setPendingInStudio] = useState(unpublished)
   const [rev, setRev] = useState(initialRev)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -87,6 +106,8 @@ export function SocialProfilesForm({ projectSlug, rev: initialRev, initial, canW
       setRev(next)
       setRows(list)
       setSaved(list)
+      // A save writes the website AND Studio's draft: nothing is waiting any more.
+      setPendingInStudio(false)
       show(
         {
           message: `${t.done} · ${t.saved}`,
@@ -152,6 +173,7 @@ export function SocialProfilesForm({ projectSlug, rev: initialRev, initial, canW
         )}
       </div>
       {!canWrite ? <Notice tone="info">{t.readOnly}</Notice> : null}
+      {pendingInStudio ? <Notice tone="info">{canWrite ? t.unpublished : t.unpublishedReadOnly}</Notice> : null}
       {error ? (
         <Notice
           tone="error"

@@ -10,6 +10,7 @@ import {
   setCatalogueDatesAction,
 } from '@/app/[locale]/(client)/[tenant]/catalogue/actions'
 import { timedAction } from '@/lib/perf/client-log'
+import { openThenSave } from '@/lib/client/autosave/open-then-save'
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
 import type { PendingSet } from '@/lib/client/autosave/journal'
 import { routePreDraft } from '@/lib/client/lazy-draft'
@@ -111,10 +112,14 @@ export function useCatalogueDraft({
         markDraft()
         return { ok: true, rev: r.rev } as const
       } else if (!hasDraftRef.current || !rev) {
-        const opened = await timedAction('catalogue.open', () => openCatalogueForEditAction({ projectSlug, kind, id: idRef.current }))
-        if (!opened.ok) return { ok: false, error: opened.error } as const
-        rev = opened.rev
-        markDraft()
+        // The save after an open goes through openThenSave: if it fails, the
+        // engine continues from the opened revision, never a stale one.
+        return openThenSave(input, {
+          hasDraft: () => false,
+          markDraft,
+          open: () => timedAction('catalogue.open', () => openCatalogueForEditAction({ projectSlug, kind, id: idRef.current })),
+          save: (openedRev, set) => timedAction('catalogue.patch (autosave)', () => patchCatalogueDraftAction({ projectSlug, kind, id: idRef.current, rev: openedRev, set })),
+        })
       }
       const r = await timedAction('catalogue.patch (autosave)', () => patchCatalogueDraftAction({ projectSlug, kind, id: idRef.current, rev, set: input.set }))
       return r.ok ? ({ ok: true, rev: r.rev } as const) : ({ ok: false, error: r.error } as const)

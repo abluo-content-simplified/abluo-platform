@@ -17,6 +17,7 @@ import {
 } from '@/app/[locale]/(client)/[tenant]/cards/actions'
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
 import type { PendingSet } from '@/lib/client/autosave/journal'
+import { openThenSave } from '@/lib/client/autosave/open-then-save'
 import { digitalCardErrorText, formatDigitalCardsMessage, getDigitalCardsMessages } from '@/lib/i18n/digital-cards-messages'
 import { formatTranslateMessage, getTranslateMessages } from '@/lib/i18n/translate-messages'
 import { MediaLibraryPicker } from '@/components/client/media/MediaLibraryPicker'
@@ -42,7 +43,9 @@ import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
 import { MediaFrame } from '@/components/app/ui/list/cells'
 import { DigitalCardContents } from './DigitalCardContents'
-import { DigitalCardLinks, linkComplete, linkKindLabel, linksPayload } from './DigitalCardLinks'
+import { DigitalCardLinks, linkComplete, linksPayload } from './DigitalCardLinks'
+import { linkDisplay } from './links-model'
+import { getDigitalCardSiteMessages } from '@/lib/i18n/digital-cards-site-messages'
 import { DigitalCardPreview } from './DigitalCardPreview'
 import type { EditorTab } from './editor-tabs'
 import { DigitalCardShare } from './DigitalCardShare'
@@ -160,42 +163,56 @@ export function DigitalCardEditor({
   }, [])
 
   // ── Autosave ───────────────────────────────────────────────────────────────
+  // The first change of a published card opens its draft; a save that fails
+  // right after hands the opened revision to the engine (openThenSave), so a
+  // retry is never sent with the revision of a draft that no longer exists.
   const send = useCallback(
-    async (input: { rev: string; set: PendingSet }) => {
-      let rev = input.rev
-      if (!hasDraftRef.current || !rev) {
-        const opened = await openDigitalCardForEditAction({ projectSlug, id })
-        if (!opened.ok) return { ok: false, error: opened.error } as const
-        rev = opened.rev
-        hasDraftRef.current = true
-      }
-      const r = await saveDigitalCardDraftAction({ projectSlug, id, rev, set: input.set })
-      return r.ok ? ({ ok: true, rev: r.rev } as const) : ({ ok: false, error: r.error } as const)
-    },
+    (input: { rev: string; set: PendingSet }) =>
+      openThenSave(input, {
+        hasDraft: () => hasDraftRef.current,
+        markDraft: () => {
+          hasDraftRef.current = true
+        },
+        open: () => openDigitalCardForEditAction({ projectSlug, id }),
+        save: (rev, set) => saveDigitalCardDraftAction({ projectSlug, id, rev, set }),
+      }),
     [projectSlug, id]
   )
-  // A snapshot is only adopted when nothing was saved, queued or sent while it
-  // was being read (autosave.adoptRead). Before, the snapshot was applied and
-  // its revision adopted unconditionally: a save that landed during the read
-  // was rolled back on screen (the text just typed vanished) and the engine
-  // went back to the older revision, so the next save was refused as "Edited
-  // elsewhere" in a single window.
-  const readGateRef = useRef<{ since: () => number; adopt: (rev: string, since: number) => boolean }>({ since: () => 0, adopt: () => true })
-  const reload = useCallback(async () => {
-    const since = readGateRef.current.since()
-    const r = await getDigitalCardAction({ projectSlug, id })
-    if (r.ok) apply(r.card, !readGateRef.current.adopt(r.card.rev, since))
-    return r.ok
-  }, [projectSlug, id, apply])
   const [replayed, setReplayed] = useState(false)
   const onReady = useCallback((r: PendingSet | null) => {
     if (r && Object.keys(r).length) setReplayed(true)
   }, [])
   const autosave = useAutosave({ draftId: `digital-card:${id}`, rev: initial.rev, send, onReady })
-  const { confirmedCount, adoptRead } = autosave
-  useEffect(() => {
-    readGateRef.current = { since: confirmedCount, adopt: adoptRead }
-  }, [confirmedCount, adoptRead])
+  const { exclusive, hasPending } = autosave
+  /**
+   * Runs a server step (publish, discard, a lifecycle change — or nothing, for
+   * a plain reload) and reads the card back, all while NO autosave is sent
+   * (autosave.exclusive, after a flush). The engine continues from the
+   * revision just read ('' once the draft is gone: the next change opens a
+   * fresh one); edits typed meanwhile stay on screen and are saved right
+   * after. Before (2026-11-09), publish deleted the draft but the engine kept
+   * that draft's revision, and reads could interleave with saves.
+   * `ok(value)`: the step went through (only then is the card read back).
+   * Resolves null when the flush could not save everything first.
+   */
+  const serverStep = useCallback(
+    async <T,>(step: (rev: string) => Promise<T>, ok: (value: T) => boolean, opts: { draftGone?: boolean } = {}): Promise<{ value: T } | null> => {
+      let card: DigitalCardSnapshot | null = null
+      const out = await exclusive(async (rev) => {
+        const value = await step(rev)
+        if (!ok(value)) return { value }
+        const r = await getDigitalCardAction({ projectSlug, id })
+        if (r.ok) card = r.card
+        return { value, rev: r.ok ? r.card.rev : opts.draftGone ? '' : undefined }
+      })
+      if (!out.ok) return null
+      if (card) apply(card, hasPending())
+      else if (opts.draftGone) hasDraftRef.current = false
+      return { value: out.value }
+    },
+    [exclusive, hasPending, projectSlug, id, apply]
+  )
+  const reload = useCallback(async () => Boolean(await serverStep(async () => true, () => true)), [serverStep])
   const flushEngine = autosave.flush
   useEffect(() => {
     if (!replayed) return
@@ -356,15 +373,15 @@ export function DigitalCardEditor({
     setNotice(null)
     setBlocked(null)
     try {
-      if (!(await flushed())) return
-      const r = await publishDigitalCardDraftAction({ projectSlug, id, rev: autosave.currentRev() })
+      // Flush, publish with the confirmed revision and read the card back with
+      // no autosave in between; anything typed meanwhile goes to a new draft.
+      const out = await serverStep((rev) => publishDigitalCardDraftAction({ projectSlug, id, rev }), (r) => r.ok, { draftGone: true })
+      if (!out) return setNotice(errorText(autosave.currentState() === 'conflict' ? 'conflict' : 'offline'))
+      const r = out.value
       if (!r.ok) {
         if (r.error === 'publish_blocked' && r.detail?.missing?.length) return setBlocked(r.detail.missing)
         return setNotice(errorText(r.error))
       }
-      hasDraftRef.current = false
-      await autosave.discard()
-      await reload()
       show({ message: `${e.done} · ${e.published}`, tone: 'status' })
       router.refresh()
     } catch {
@@ -381,11 +398,11 @@ export function DigitalCardEditor({
     setBusy(true)
     setNotice(null)
     try {
-      if ((op === 'archive' || op === 'unpublish') && !(await flushed())) return
       const wasLive = live
-      const r = await digitalCardLifecycleAction({ projectSlug, id, op })
+      const out = await serverStep(() => digitalCardLifecycleAction({ projectSlug, id, op }), (r) => r.ok)
+      if (!out) return setNotice(errorText(autosave.currentState() === 'conflict' ? 'conflict' : 'offline'))
+      const r = out.value
       if (!r.ok) return setNotice(errorText(r.error))
-      await reload()
       show(
         {
           message: `${e.done} · ${DONE[op]}`,
@@ -394,9 +411,14 @@ export function DigitalCardEditor({
             undo: () => {
               show(null)
               void (async () => {
-                await digitalCardLifecycleAction({ projectSlug, id, op: undoOp })
-                if (op === 'archive' && wasLive) await digitalCardLifecycleAction({ projectSlug, id, op: 'backOnline' })
-                await reload()
+                await serverStep(
+                  async () => {
+                    await digitalCardLifecycleAction({ projectSlug, id, op: undoOp })
+                    if (op === 'archive' && wasLive) await digitalCardLifecycleAction({ projectSlug, id, op: 'backOnline' })
+                    return true
+                  },
+                  () => true
+                )
                 router.refresh()
               })()
             },
@@ -418,11 +440,18 @@ export function DigitalCardEditor({
     setConfirmError(null)
     try {
       if (confirm === 'discard') {
-        await autosave.flush()
-        const r = await discardDigitalCardDraftAction({ projectSlug, id, rev: autosave.currentRev() })
-        if (!r.ok) return setConfirmError(errorText(r.error))
-        await autosave.discard()
-        await reload()
+        const out = await serverStep(
+          async (rev) => {
+            const r = await discardDigitalCardDraftAction({ projectSlug, id, rev })
+            // The person chose to throw the changes away: nothing typed meanwhile is kept either.
+            if (r.ok) await autosave.discard()
+            return r
+          },
+          (r) => r.ok,
+          { draftGone: true }
+        )
+        if (!out) return setConfirmError(errorText(autosave.currentState() === 'conflict' ? 'conflict' : 'offline'))
+        if (!out.value.ok) return setConfirmError(errorText(out.value.error))
         setConfirm(null)
         show({ message: `${e.done} · ${e.discarded}`, tone: 'status' })
         return
@@ -470,7 +499,7 @@ export function DigitalCardEditor({
   const shareName = isPerson ? (snapshot.publishedUrlName ?? (isValidUrlName(values.urlName) && nameCheck?.state !== 'taken' ? values.urlName : null)) : null
   const sharePath = shareName ? `/link/${shareName}` : '/link'
   const fileName = isPerson ? shareName || 'card' : 'link'
-  const linkLabels = Object.fromEntries(values.links.map((l) => [l.key, l.label[d]?.trim() || Object.values(l.label)[0] || linkKindLabel(m, l.kind)]))
+  const linkLabels = Object.fromEntries(values.links.map((l) => [l.key, linkDisplay(l, d, d, { pages: snapshot.pages, files: snapshot.files }, getDigitalCardSiteMessages(d)).label]))
   const descriptionCount = cardTextLength(values.description[lang])
   const rejectedHere = autosave.rejected.find((r) => r === `description.${lang}`)
   const descriptionError =
@@ -829,7 +858,8 @@ export function DigitalCardEditor({
                   kind={initial.kind}
                   publicId={snapshot.publicId}
                   lang={lang}
-                  languageName={languageName(lang)}
+                  languages={languages}
+                  languageName={languageName}
                   description={values.description}
                   links={values.links}
                   backgroundId={values.background?.assetId ?? null}
@@ -841,9 +871,7 @@ export function DigitalCardEditor({
             </div>
           </div>
         ) : tab === 'share' ? (
-          <div className="max-w-3xl space-y-5">
-            <DigitalCardShare origin={snapshot.origin} path={sharePath} fileName={fileName} ready={!isPerson || Boolean(shareName)} live={live} />
-          </div>
+          <DigitalCardShare origin={snapshot.origin} path={sharePath} fileName={fileName} ready={!isPerson || Boolean(shareName)} live={live} />
         ) : canSeeStats ? (
           <DigitalCardStats projectSlug={projectSlug} cardId={id} linkLabels={linkLabels} />
         ) : null}

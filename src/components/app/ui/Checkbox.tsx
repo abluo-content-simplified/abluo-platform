@@ -6,7 +6,8 @@ import { OVERLAY_CHIP } from './list/overlay-chip'
 /**
  * Square checkbox for lists. A real `<input type="checkbox">` (so keyboard,
  * forms and screen readers just work) with a 1.25rem visual box inside a 44px
- * hit area. Supports a mixed ("select all") state. `variant="chip"`: the same
+ * hit area. Unchecked, the box's border is the `input` token (≥ 3:1 against
+ * page and card, light and dark — WCAG 1.4.11). Supports a mixed ("select all") state. `variant="chip"`: the same
  * 1.25rem box inside a 2rem round overlay chip (card media controls).
  *
  *   <Checkbox checked={all} indeterminate={some && !all} aria-label="Select all"
@@ -58,7 +59,7 @@ export function Checkbox({
       <span
         aria-hidden="true"
         className={`pointer-events-none grid size-5 place-items-center rounded-[0.3rem] border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background peer-disabled:opacity-50 ${
-          on ? 'border-transparent bg-action text-action-foreground' : 'border-muted-foreground/60 bg-background peer-hover:border-foreground'
+          on ? 'border-transparent bg-action text-action-foreground' : 'border-input bg-background peer-hover:border-foreground'
         }`}
       >
         {indeterminate ? (

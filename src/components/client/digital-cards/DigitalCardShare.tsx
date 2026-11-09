@@ -17,8 +17,9 @@ const TAGGED_SOURCES = ['instagram', 'linkedin', 'facebook', 'whatsapp', 'email'
 type TaggedSource = (typeof TAGGED_SOURCES)[number]
 
 /**
- * The editor's Share tab (Amendment A): the QR code for print (D12) and the
- * links to share, each saying where to use it (D11). On a phone each link
+ * The editor's Share tab (Amendment A, round 4 layout): the links to share,
+ * each saying where exactly to put it (D11), and beside them on a computer the
+ * QR code for print (D12). On a phone each link
  * also has a Share button (the system share sheet, when the browser has one). Both encode the
  * project's canonical address (ADR-034, https://www.<domain>) — never a
  * preview host — so a site without its own domain gets an explanation
@@ -103,51 +104,9 @@ export function DigitalCardShare({
     }
   }
 
+  // Two columns on a computer: the links to share on the left, the QR code on the right; one column on a phone.
   return (
-    <>
-      <Panel as="section" aria-labelledby="card-qr" className="space-y-3" id="card-qr-section">
-        <div>
-          <h2 id="card-qr" className={H2}>
-            {c.qrTitle}
-          </h2>
-          <p className="text-sm leading-5 text-muted-foreground">{c.qrFor}</p>
-        </div>
-        {!origin ? (
-          <Notice tone="info">{e.qrNoDomain}</Notice>
-        ) : !ready ? (
-          <Notice tone="info">{e.qrNoUrlName}</Notice>
-        ) : (
-          <>
-            <p className="text-sm leading-5 break-words text-muted-foreground">{formatDigitalCardsMessage(e.qrHint, { address })}</p>
-            {qr === 'failed' ? (
-              <Notice tone="error">{e.qrFailed}</Notice>
-            ) : (
-              <div className="flex flex-col items-start gap-3 sm:flex-row">
-                {svgHref ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- a generated data: SVG
-                  <img src={svgHref} alt={formatDigitalCardsMessage(e.qrAlt, { address })} width="160" height="160" className="size-40 shrink-0 rounded-xl border border-border" />
-                ) : (
-                  <Skeleton shape="block" className="size-40 shrink-0" />
-                )}
-                <div className="flex flex-wrap gap-2 sm:flex-col">
-                  {svgHref && current ? (
-                    <>
-                      <a href={svgHref} download={`${fileName}-qr.svg`} className={buttonClass({ variant: 'secondary' })}>
-                        {e.qrSvg}
-                      </a>
-                      <a href={current.png} download={`${fileName}-qr.png`} className={buttonClass({ variant: 'secondary' })}>
-                        {e.qrPng}
-                      </a>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-            )}
-            {!live ? <p className="text-sm leading-5 text-muted-foreground">{e.qrNotLive}</p> : null}
-          </>
-        )}
-      </Panel>
-
+    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
       <Panel as="section" aria-labelledby="card-tagged" className="space-y-3">
         <h2 id="card-tagged" className={H2}>
           {c.linksTitle}
@@ -189,6 +148,49 @@ export function DigitalCardShare({
           </>
         )}
       </Panel>
-    </>
+      <Panel as="section" aria-labelledby="card-qr" className="space-y-3" id="card-qr-section">
+        <div>
+          <h2 id="card-qr" className={H2}>
+            {c.qrTitle}
+          </h2>
+          <p className="text-sm leading-5 text-muted-foreground">{c.qrFor}</p>
+        </div>
+        {!origin ? (
+          <Notice tone="info">{e.qrNoDomain}</Notice>
+        ) : !ready ? (
+          <Notice tone="info">{e.qrNoUrlName}</Notice>
+        ) : (
+          <>
+            <p className="text-sm leading-5 break-words text-muted-foreground">{formatDigitalCardsMessage(e.qrHint, { address })}</p>
+            {qr === 'failed' ? (
+              <Notice tone="error">{e.qrFailed}</Notice>
+            ) : (
+              <div className="flex flex-col items-start gap-3 sm:flex-row lg:flex-col">
+                {svgHref ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- a generated data: SVG
+                  <img src={svgHref} alt={formatDigitalCardsMessage(e.qrAlt, { address })} width="160" height="160" className="size-40 shrink-0 rounded-xl border border-border" />
+                ) : (
+                  <Skeleton shape="block" className="size-40 shrink-0" />
+                )}
+                <div className="flex flex-wrap gap-2 sm:flex-col lg:flex-row">
+                  {svgHref && current ? (
+                    <>
+                      <a href={svgHref} download={`${fileName}-qr.svg`} className={buttonClass({ variant: 'secondary' })}>
+                        {e.qrSvg}
+                      </a>
+                      <a href={current.png} download={`${fileName}-qr.png`} className={buttonClass({ variant: 'secondary' })}>
+                        {e.qrPng}
+                      </a>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            )}
+            {!live ? <p className="text-sm leading-5 text-muted-foreground">{e.qrNotLive}</p> : null}
+          </>
+        )}
+      </Panel>
+
+    </div>
   )
 }

@@ -21,6 +21,7 @@ import {
 } from '@/app/[locale]/(client)/[tenant]/people/actions'
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
 import type { PendingSet } from '@/lib/client/autosave/journal'
+import { openThenSave } from '@/lib/client/autosave/open-then-save'
 import { contactsSignature, publishBlockers, savableContacts, type ContactRow } from '@/lib/client/person-editor'
 import { siteHostsForProject } from '@/lib/links/link-target'
 import type { LinkTools } from '@/components/client/editor/BodyEditor'
@@ -194,18 +195,17 @@ export function PersonEditor({
 
   // ── Autosave (public profile → draft) ──────────────────────────────────────
   const send = useCallback(
-    async (input: { rev: string; set: PendingSet }) => {
-      let rev = input.rev
-      if (!hasDraftRef.current || !rev) {
-        // A published person: the first change opens the draft (an exact copy).
-        const opened = await openPersonForEditAction({ projectSlug, id })
-        if (!opened.ok) return { ok: false, error: opened.error } as const
-        rev = opened.rev
-        hasDraftRef.current = true
-      }
-      const r = await savePersonDraftAction({ projectSlug, id, rev, set: input.set })
-      return r.ok ? ({ ok: true, rev: r.rev } as const) : ({ ok: false, error: r.error } as const)
-    },
+    // A published person: the first change opens the draft (an exact copy). A save failing right after hands
+    // the opened revision to the engine (openThenSave), never a stale one.
+    (input: { rev: string; set: PendingSet }) =>
+      openThenSave(input, {
+        hasDraft: () => hasDraftRef.current,
+        markDraft: () => {
+          hasDraftRef.current = true
+        },
+        open: () => openPersonForEditAction({ projectSlug, id }),
+        save: (rev, set) => savePersonDraftAction({ projectSlug, id, rev, set }),
+      }),
     [projectSlug, id]
   )
   /** Set once useAutosave exists (below): a reload must hand the server's revision to the engine. */

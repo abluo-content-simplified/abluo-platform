@@ -16,6 +16,7 @@ import {
 } from '@/app/[locale]/(client)/[tenant]/courses/actions'
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
 import type { PendingSet } from '@/lib/client/autosave/journal'
+import { openThenSave } from '@/lib/client/autosave/open-then-save'
 import { COURSE_COLORS, type CourseColor } from '@/lib/modules/courses/model'
 import { courseColorVar } from '@/lib/modules/courses/palette'
 import { ColorSwatches } from '@/components/app/ui/ColorSwatches'
@@ -148,18 +149,17 @@ export function CourseEditor({
 
   // ── Autosave (draft) ───────────────────────────────────────────────────────
   const send = useCallback(
-    async (input: { rev: string; set: PendingSet }) => {
-      let rev = input.rev
-      if (!hasDraftRef.current || !rev) {
-        // A published course: the first change opens the draft (an exact copy).
-        const opened = await openCourseForEditAction({ projectSlug, id })
-        if (!opened.ok) return { ok: false, error: opened.error } as const
-        rev = opened.rev
-        hasDraftRef.current = true
-      }
-      const r = await saveCourseDraftAction({ projectSlug, id, rev, set: input.set })
-      return r.ok ? ({ ok: true, rev: r.rev } as const) : ({ ok: false, error: r.error } as const)
-    },
+    // A published course: the first change opens the draft (an exact copy). A save failing right after hands
+    // the opened revision to the engine (openThenSave), never a stale one.
+    (input: { rev: string; set: PendingSet }) =>
+      openThenSave(input, {
+        hasDraft: () => hasDraftRef.current,
+        markDraft: () => {
+          hasDraftRef.current = true
+        },
+        open: () => openCourseForEditAction({ projectSlug, id }),
+        save: (rev, set) => saveCourseDraftAction({ projectSlug, id, rev, set }),
+      }),
     [projectSlug, id]
   )
   /** Set once useAutosave exists (below): a reload must hand the server's revision to the engine. */

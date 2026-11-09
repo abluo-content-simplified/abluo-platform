@@ -2,18 +2,21 @@
 
 import { useState } from 'react'
 import { useLocale } from 'next-intl'
+import { getDigitalCardSiteMessages } from '@/lib/i18n/digital-cards-site-messages'
 import type { DigitalCardLinkValue, DigitalCardSnapshot } from '@/lib/api/digital-cards'
 import { DIGITAL_CARD_LIMITS, DIGITAL_CARD_LINK_KINDS, DIGITAL_CARD_LINK_TARGET, defaultNewLinkKind, type DigitalCardLinkKind } from '@/lib/modules/digital-cards/model'
 import { formatDigitalCardsMessage, getDigitalCardsMessages, type DigitalCardsMessages } from '@/lib/i18n/digital-cards-messages'
 import { MediaLibraryPicker } from '@/components/client/media/MediaLibraryPicker'
 import { Button } from '@/components/app/ui/Button'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
-import { Checkbox } from '@/components/app/ui/Checkbox'
+import { DragGrip, DropLine } from '@/components/app/ui/DragGrip'
 import { Field } from '@/components/app/ui/Field'
 import { Panel } from '@/components/app/ui/Panel'
 import { Select } from '@/components/app/ui/Select'
 import { TextInput } from '@/components/app/ui/TextInput'
 import { Pill } from '@/components/app/ui/list/cells'
+import { usePointerDrag } from '@/components/app/ui/use-pointer-drag'
+import { dropLink, linkDisplay, linkFallbackLabel, moveIndex } from './links-model'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_RE = /^\+?[0-9 ()./-]{6,}$/
@@ -119,10 +122,20 @@ export function newLink(key: string, sitePages: boolean): DigitalCardLinkValue {
 const H2 = 'text-[1.0625rem] leading-7 font-semibold text-foreground'
 
 /**
- * Links (D8): add, edit, reorder (⋯ Move up / Move down), show or hide, one
- * Primary Action. Labels are per language (the language switch above); left
- * empty, the website uses a standard label for the kind. Booking needs the
- * Reservations module; files come from the Media Library picker.
+ * Links (D8), round 4 (Tom 2026-11-09: "adding a link is confusing"). The
+ * list shows every link as it will look on the card — its label (or the
+ * label it gets when none is typed: the page's or file's title, else the
+ * standard one, exactly as the website does), the one-liner, and a small
+ * "type · target" line — with the ⋮⋮ grip to reorder (drag, or ArrowUp /
+ * ArrowDown on the grip) and the ⋯ menu: Edit, Show / Hide, Primary Action,
+ * Remove.
+ *
+ * Add link → the new link opens for editing in the order you fill it in:
+ * Type (a page of this website first) → its target (page, address, number,
+ * file) → Label (optional; the placeholder shows what the card shows when it
+ * stays empty) → One-line description (optional). Labels and one-liners are
+ * per language (the language switch above). Booking needs the Reservations
+ * module; files come from the Media Library picker.
  */
 export function DigitalCardLinks({
   projectSlug,
@@ -150,9 +163,12 @@ export function DigitalCardLinks({
 }) {
   const m = getDigitalCardsMessages(useLocale())
   const e = m.editor
+  const siteMessages = getDigitalCardSiteMessages(lang)
   const [pickingFor, setPickingFor] = useState<string | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
   const [fileNames, setFileNames] = useState<Record<string, string>>({})
   const kinds = DIGITAL_CARD_LINK_KINDS.filter((k) => k !== 'booking' || reservations || links.some((l) => l.kind === 'booking'))
+  const targets = { pages, files: { ...files, ...Object.fromEntries(Object.entries(fileNames).map(([id, title]) => [id, { url: files[id]?.url ?? null, title }])) } as DigitalCardSnapshot['files'] }
 
   const update = (key: string, patch: Partial<DigitalCardLinkValue>) => {
     onChange(
@@ -164,18 +180,16 @@ export function DigitalCardLinks({
       })
     )
   }
-  const move = (index: number, dir: -1 | 1) => {
-    const to = index + dir
-    if (to < 0 || to >= links.length) return
-    const next = [...links]
-    ;[next[index], next[to]] = [next[to], next[index]]
-    onChange(next)
-  }
+  const drag = usePointerDrag((key, over) => {
+    const next = dropLink(links, key, over)
+    if (next) onChange(next)
+  })
   const add = () => {
     if (links.length >= DIGITAL_CARD_LIMITS.links) return
-    onChange([...links, newLink(newKey(), pages.length > 0)])
+    const link = newLink(newKey(), pages.length > 0)
+    onChange([...links, link])
+    setEditing(link.key)
   }
-  const nameOf = (l: DigitalCardLinkValue) => l.label[lang]?.trim() || l.label[defaultLocale]?.trim() || linkKindLabel(m, l.kind)
 
   return (
     <Panel as="section" aria-labelledby="card-links" className="space-y-4" id="card-links-section">
@@ -193,47 +207,69 @@ export function DigitalCardLinks({
         ) : null}
       </div>
       {links.length === 0 ? <p className="text-[0.9375rem] leading-6 text-muted-foreground">{e.noLinks}</p> : null}
-      <ol className="flex flex-col gap-3">
+      <ol aria-label={e.linksTitle} className="flex flex-col gap-3">
         {links.map((l, i) => {
           const target = DIGITAL_CARD_LINK_TARGET[l.kind]
           const complete = linkComplete(l)
+          const shown = linkDisplay(l, lang, defaultLocale, targets, siteMessages)
+          const kindName = linkKindLabel(m, l.kind)
+          const open = editing === l.key
           const menu: CardMenuItem[] = editable
             ? [
-                ...(i > 0 ? [{ key: 'up', label: e.moveUp, onSelect: () => move(i, -1) }] : []),
-                ...(i < links.length - 1 ? [{ key: 'down', label: e.moveDown, onSelect: () => move(i, 1) }] : []),
+                { key: 'edit', label: open ? e.linkDone : e.linkEdit, onSelect: () => setEditing(open ? null : l.key) },
+                { key: 'shown', label: l.hidden ? e.linkShow : e.linkHide, onSelect: () => update(l.key, { hidden: !l.hidden, ...(l.hidden ? {} : { primary: false }) }) },
+                ...(l.hidden ? [] : [{ key: 'primary', label: l.primary ? e.linkRemovePrimary : e.linkMakePrimary, onSelect: () => update(l.key, { primary: !l.primary }) }]),
                 {
                   key: 'remove',
                   label: e.removeLink,
                   destructive: true,
                   separated: true,
                   onSelect: () => {
+                    if (open) setEditing(null)
                     onChange(links.filter((x) => x.key !== l.key))
                     onRemove(l, i)
                   },
                 },
               ]
             : []
-          const fileName = l.file ? fileNames[l.file] ?? files[l.file]?.title ?? l.file : null
+          // What the card shows when the label stays empty in this language.
+          const labelPlaceholder = (lang !== defaultLocale && l.label[defaultLocale]?.trim()) || linkFallbackLabel(l, targets, siteMessages)
+          const fileName = l.file ? targets.files[l.file]?.title ?? l.file : null
           return (
-            <li key={l.key}>
-              <Panel padding="md" className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 space-y-1">
-                    <p className="text-[0.9375rem] leading-6 font-semibold break-words text-foreground">
-                      {i + 1}. {nameOf(l)}
-                    </p>
-                    <span className="flex flex-wrap items-start gap-1.5">
-                      {l.primary && !l.hidden ? <Pill tone="success">{e.linkPrimaryNote}</Pill> : null}
-                      {l.hidden ? <Pill tone="muted">{e.linkHiddenNote}</Pill> : null}
-                      {!complete ? <Pill tone="warning">{e.linkIncomplete}</Pill> : null}
-                    </span>
-                  </div>
-                  {menu.length ? <CardMenu label={formatDigitalCardsMessage(e.linkActionsFor, { name: nameOf(l) })} items={menu} /> : null}
+            <Panel as="li" key={l.key} padding="md" className={`relative space-y-3 ${drag.dragging === l.key ? 'opacity-50' : ''}`} {...drag.rowProps(l.key)}>
+              <DropLine edge={drag.edge(l.key)} />
+              <div className="flex items-start gap-2">
+                {editable && links.length > 1 ? (
+                  <DragGrip
+                    label={formatDigitalCardsMessage(e.linkMove, { name: shown.label, position: i + 1, total: links.length })}
+                    drag={drag.gripProps(l.key)}
+                    onMove={(dir) => onChange(moveIndex(links, i, i + dir))}
+                  />
+                ) : null}
+                <div className={`min-w-0 flex-1 space-y-0.5 ${editable && links.length > 1 ? 'pt-2' : ''}`}>
+                  <p className={`text-[0.9375rem] leading-6 font-semibold break-words ${l.hidden ? 'text-muted-foreground' : 'text-foreground'}`}>{shown.label}</p>
+                  {shown.description ? <p className="text-sm leading-5 break-words text-foreground">{shown.description}</p> : null}
+                  <p className="text-sm leading-5 break-words text-muted-foreground">
+                    {complete && shown.target ? formatDigitalCardsMessage(m.card.buttonTarget, { kind: kindName, target: shown.target }) : kindName}
+                  </p>
+                  <span className="flex flex-wrap items-start gap-1.5 pt-1 empty:hidden">
+                    {l.primary && !l.hidden ? <Pill tone="success">{e.linkPrimaryNote}</Pill> : null}
+                    {l.hidden ? <Pill tone="muted">{e.linkHiddenNote}</Pill> : null}
+                    {!complete ? <Pill tone="warning">{e.linkIncomplete}</Pill> : null}
+                  </span>
                 </div>
-                <div className="grid items-start gap-3 md:grid-cols-2">
-                  <Field label={e.linkKind}>
+                {editable && !open ? (
+                  <Button variant="quiet" aria-label={formatDigitalCardsMessage(e.linkEditFor, { name: shown.label })} onClick={() => setEditing(l.key)}>
+                    {e.linkEdit}
+                  </Button>
+                ) : null}
+                {menu.length ? <CardMenu label={formatDigitalCardsMessage(e.linkActionsFor, { name: shown.label })} items={menu} /> : null}
+              </div>
+              {open && editable ? (
+                <div className="space-y-3 border-t border-border-subtle pt-3">
+                  <Field label={e.linkKind} hint={e.linkKindHint}>
                     {(p) => (
-                      <Select {...p} value={l.kind} disabled={!editable} onChange={(ev) => update(l.key, { kind: ev.target.value as DigitalCardLinkKind })}>
+                      <Select {...p} value={l.kind} onChange={(ev) => update(l.key, { kind: ev.target.value as DigitalCardLinkKind })}>
                         {kinds.map((k) => (
                           <option key={k} value={k}>
                             {linkKindLabel(m, k)}
@@ -242,91 +278,76 @@ export function DigitalCardLinks({
                       </Select>
                     )}
                   </Field>
-                  <Field label={formatDigitalCardsMessage(e.linkLabel, { language: lang.toUpperCase() })} hint={e.linkLabelHint} hintBelow>
+                  {target === 'page' ? (
+                    <Field label={e.linkPage} hint={l.kind === 'form' ? e.linkFormHint : l.kind === 'booking' ? e.linkBookingHint : undefined}>
+                      {(p) => (
+                        <Select {...p} value={l.page ?? ''} onChange={(ev) => update(l.key, { page: ev.target.value || null })}>
+                          <option value="">{e.linkPageNone}</option>
+                          {pages.map((pg) => (
+                            <option key={pg.id} value={pg.id}>
+                              {pg.title}
+                            </option>
+                          ))}
+                        </Select>
+                      )}
+                    </Field>
+                  ) : null}
+                  {target === 'url' ? (
+                    <Field label={e.linkUrl}>
+                      {(p) => <TextInput {...p} type="url" inputMode="url" value={l.url} maxLength={2000} placeholder="https://" onChange={(ev) => update(l.key, { url: ev.target.value })} />}
+                    </Field>
+                  ) : null}
+                  {target === 'value' ? (
+                    <Field label={l.kind === 'email' ? e.linkEmail : l.kind === 'whatsapp' ? e.linkWhatsapp : e.linkPhone} hint={l.kind === 'email' ? undefined : e.linkNumberHint}>
+                      {(p) => (
+                        <TextInput
+                          {...p}
+                          type={l.kind === 'email' ? 'email' : 'tel'}
+                          inputMode={l.kind === 'email' ? 'email' : 'tel'}
+                          value={l.value}
+                          maxLength={DIGITAL_CARD_LIMITS.value}
+                          onChange={(ev) => update(l.key, { value: ev.target.value })}
+                        />
+                      )}
+                    </Field>
+                  ) : null}
+                  {target === 'file' ? (
+                    <div className="space-y-2">
+                      <p className="text-[0.9375rem] font-medium text-foreground">{e.linkFile}</p>
+                      <div className="flex flex-wrap items-start gap-3">
+                        <p className="min-w-0 py-2.5 text-[0.9375rem] leading-6 break-all text-foreground">{fileName ?? <span className="text-muted-foreground">{e.noFile}</span>}</p>
+                        <Button onClick={() => setPickingFor(l.key)}>{l.file ? e.changeFile : e.chooseFile}</Button>
+                      </div>
+                    </div>
+                  ) : null}
+                  <Field label={formatDigitalCardsMessage(e.linkLabel, { language: lang.toUpperCase() })} hint={formatDigitalCardsMessage(e.linkLabelDefaultHint, { label: labelPlaceholder })} hintBelow>
                     {(p) => (
                       <TextInput
                         {...p}
                         value={l.label[lang] ?? ''}
-                        readOnly={!editable}
                         maxLength={DIGITAL_CARD_LIMITS.label}
-                        placeholder={lang !== defaultLocale ? l.label[defaultLocale] || linkKindLabel(m, l.kind) : linkKindLabel(m, l.kind)}
+                        placeholder={labelPlaceholder}
                         onChange={(ev) => update(l.key, { label: { ...l.label, [lang]: ev.target.value } })}
                       />
                     )}
                   </Field>
-                </div>
-                <Field label={formatDigitalCardsMessage(e.linkDescription, { language: lang.toUpperCase() })} hint={e.linkDescriptionHint}>
-                  {(p) => (
-                    <TextInput
-                      {...p}
-                      value={l.description[lang] ?? ''}
-                      readOnly={!editable}
-                      maxLength={DIGITAL_CARD_LIMITS.linkDescription}
-                      placeholder={lang !== defaultLocale ? l.description[defaultLocale] || undefined : undefined}
-                      onChange={(ev) => update(l.key, { description: { ...l.description, [lang]: ev.target.value } })}
-                    />
-                  )}
-                </Field>
-                {target === 'url' ? (
-                  <Field label={e.linkUrl}>
-                    {(p) => <TextInput {...p} type="url" inputMode="url" value={l.url} readOnly={!editable} maxLength={2000} placeholder="https://" onChange={(ev) => update(l.key, { url: ev.target.value })} />}
-                  </Field>
-                ) : null}
-                {target === 'page' ? (
-                  <Field label={e.linkPage} hint={l.kind === 'form' ? e.linkFormHint : l.kind === 'booking' ? e.linkBookingHint : undefined}>
-                    {(p) => (
-                      <Select {...p} value={l.page ?? ''} disabled={!editable} onChange={(ev) => update(l.key, { page: ev.target.value || null })}>
-                        <option value="">{e.linkPageNone}</option>
-                        {pages.map((pg) => (
-                          <option key={pg.id} value={pg.id}>
-                            {pg.title}
-                          </option>
-                        ))}
-                      </Select>
-                    )}
-                  </Field>
-                ) : null}
-                {target === 'value' ? (
-                  <Field label={l.kind === 'email' ? e.linkEmail : l.kind === 'whatsapp' ? e.linkWhatsapp : e.linkPhone} hint={l.kind === 'email' ? undefined : e.linkNumberHint}>
+                  <Field label={formatDigitalCardsMessage(e.linkDescription, { language: lang.toUpperCase() })} hint={e.linkDescriptionHint}>
                     {(p) => (
                       <TextInput
                         {...p}
-                        type={l.kind === 'email' ? 'email' : 'tel'}
-                        inputMode={l.kind === 'email' ? 'email' : 'tel'}
-                        value={l.value}
-                        readOnly={!editable}
-                        maxLength={DIGITAL_CARD_LIMITS.value}
-                        onChange={(ev) => update(l.key, { value: ev.target.value })}
+                        value={l.description[lang] ?? ''}
+                        maxLength={DIGITAL_CARD_LIMITS.linkDescription}
+                        placeholder={lang !== defaultLocale ? l.description[defaultLocale] || undefined : undefined}
+                        onChange={(ev) => update(l.key, { description: { ...l.description, [lang]: ev.target.value } })}
                       />
                     )}
                   </Field>
-                ) : null}
-                {target === 'file' ? (
-                  <div className="space-y-2">
-                    <p className="text-[0.9375rem] font-medium text-foreground">{e.linkFile}</p>
-                    <div className="flex flex-wrap items-start gap-3">
-                      <p className="min-w-0 py-2.5 text-[0.9375rem] leading-6 break-all text-foreground">{fileName ?? <span className="text-muted-foreground">{e.noFile}</span>}</p>
-                      {editable ? <Button onClick={() => setPickingFor(l.key)}>{l.file ? e.changeFile : e.chooseFile}</Button> : null}
-                    </div>
+                  <div className="flex justify-end">
+                    <Button onClick={() => setEditing(null)}>{e.linkDone}</Button>
                   </div>
-                ) : null}
-                <div className="flex flex-col gap-1 sm:flex-row sm:gap-6">
-                  <label className="flex items-start gap-1">
-                    <Checkbox aria-label={e.linkShown} checked={!l.hidden} disabled={!editable} onChange={(on) => update(l.key, { hidden: !on, ...(on ? {} : { primary: false }) })} />
-                    <span className="pt-2.5 text-[0.9375rem] leading-6 text-foreground">{e.linkShown}</span>
-                  </label>
-                  <label className="flex items-start gap-1">
-                    <Checkbox aria-label={e.linkPrimary} checked={l.primary} disabled={!editable || l.hidden} describedBy={`link-primary-${l.key}`} onChange={(on) => update(l.key, { primary: on })} />
-                    <span className="pt-2.5">
-                      <span className="block text-[0.9375rem] leading-6 text-foreground">{e.linkPrimary}</span>
-                      <span id={`link-primary-${l.key}`} className="block text-sm leading-5 text-muted-foreground">
-                        {e.linkPrimaryHint}
-                      </span>
-                    </span>
-                  </label>
                 </div>
-              </Panel>
-            </li>
+              ) : null}
+            </Panel>
           )
         })}
       </ol>

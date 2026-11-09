@@ -53,8 +53,12 @@ import {
   DIGITAL_CARD_STATS_RANGES,
   DIGITAL_CARD_TYPE,
   DIGITAL_CARD_LINK_TYPE,
+  SITE_LOCATION_FALLBACK_KEY,
+  cardAddressLine,
   cardPath,
   cardTextLength,
+  cleanCardAddress,
+  hasCardAddress,
   isValidUrlName,
   primaryLinkCount,
   resolveShow,
@@ -181,8 +185,10 @@ export interface DigitalCardAvailability {
   values: { phone: string; email: string; whatsapp: string; role: string }
   /** Site: socialLinks by platform; person: People contacts by _key. */
   socials: DigitalCardOption[]
-  /** Site card only: siteConfig.locations by _key. */
+  /** Site card only: siteConfig.locations by _key — or, without any, the single `siteConfig.location` (key SITE_LOCATION_FALLBACK_KEY). */
   locations: DigitalCardOption[]
+  /** Site card only: Studio's unpublished Website Settings draft has social profiles the website does not show yet. */
+  socialsPendingInStudio: boolean
   /** Person card only. */
   photo: boolean
   role: boolean
@@ -331,8 +337,12 @@ type SiteRow = {
     hasLogo?: unknown
     socialLinks?: Array<{ _key?: unknown; platform?: unknown; url?: unknown }> | null
     locations?: Array<{ _key?: unknown; name?: unknown; shortName?: unknown; city?: unknown }> | null
+    /** The single address (businessLocation) — the card's location when `locations[]` is empty. */
+    location?: { street?: unknown; postalCode?: unknown; city?: unknown; state?: unknown; country?: unknown } | null
   } | null
   project?: { customDomain?: unknown; whatsappNumber?: unknown } | null
+  /** Studio's unpublished Website Settings draft — its social profiles only (never shown on a card). */
+  draftSocials?: Array<{ platform?: unknown; url?: unknown }> | null
 }
 
 const SITE_QUERY = /* groq */ `{
@@ -340,12 +350,14 @@ const SITE_QUERY = /* groq */ `{
     siteName, defaultLocale, supportedLocales, phone, email, whatsappNumber,
     "hasLogo": defined(logo.asset) || defined(logoLight.asset),
     socialLinks[]{ _key, platform, url },
-    locations[]{ _key, name, shortName, "city": address.city }
+    locations[]{ _key, name, shortName, "city": address.city },
+    location{ street, postalCode, city, state, country }
   },
   "project": *[_type == "project" && projectSlug == $projectSlug && ${PUBLISHED}][0]{
     customDomain,
     "whatsappNumber": moduleInstallations[moduleId == "whatsapp" && enabled != false][0].config.whatsappNumber
-  }
+  },
+  "draftSocials": *[_type == "siteConfig" && projectSlug == $projectSlug && _id in path("drafts.**")][0].socialLinks[]{ platform, url }
 }`
 
 interface SiteFacts {
@@ -359,10 +371,27 @@ interface SiteFacts {
   values: DigitalCardAvailability['values']
   socials: DigitalCardOption[]
   locations: DigitalCardOption[]
+  socialsPendingInStudio: boolean
+}
+
+/**
+ * Does Studio's unpublished Website Settings draft hold a social profile the
+ * published settings do not (Claudia Hoffmann, 2026-11-09: LinkedIn and
+ * Facebook only in the draft)? The card shows what the website shows — the
+ * published profiles — and the editor says that more are waiting.
+ */
+export function socialsPendingInStudio(published: DigitalCardOption[], draft: SiteRow['draftSocials']): boolean {
+  const live = new Set(published.map((s) => `${s.key}|${(s.detail ?? '').trim()}`))
+  return (draft ?? []).some((d) => {
+    const platform = str(d?.platform).trim()
+    const url = str(d?.url).trim()
+    return Boolean(platform && url) && !live.has(`${platform}|${url}`)
+  })
 }
 
 async function readSiteFacts(client: Client, projectSlug: string): Promise<SiteFacts> {
-  const row = (await client.fetch<SiteRow | null>(SITE_QUERY, { projectSlug })) ?? {}
+  // Raw perspective: the draft of Website Settings is read for `draftSocials` only; every other field is filtered to published.
+  const row = (await client.fetch<SiteRow | null>(SITE_QUERY, { projectSlug }, RAW)) ?? {}
   const c = row.config ?? {}
   const locales = strings(c.supportedLocales)
   const defaultLocale = str(c.defaultLocale) || locales[0]
@@ -380,6 +409,11 @@ async function readSiteFacts(client: Client, projectSlug: string): Promise<SiteF
     if (!key) continue
     locations.push({ key, label: pickText(l?.name, languages) || str(l?.shortName) || str(l?.city) || key, ...(str(l?.city) && { detail: str(l?.city) }) })
   }
+  // No locations[]: the single Website Settings address is the card's one location.
+  if (!locations.length && hasCardAddress(c.location)) {
+    const a = cleanCardAddress(c.location)
+    locations.push({ key: SITE_LOCATION_FALLBACK_KEY, label: a.city || a.street || cardAddressLine(a), detail: cardAddressLine(a) })
+  }
   return {
     site: { defaultLocale, languages },
     siteName: str(c.siteName).trim(),
@@ -396,6 +430,7 @@ async function readSiteFacts(client: Client, projectSlug: string): Promise<SiteF
     },
     socials,
     locations,
+    socialsPendingInStudio: socialsPendingInStudio(socials, row.draftSocials),
   }
 }
 
@@ -458,6 +493,7 @@ function personAvailability(p: PersonRow | null | undefined, facts: SiteFacts, r
       .filter((c) => (DIGITAL_CARD_PERSON_SOCIAL_KINDS as readonly unknown[]).includes(c.kind))
       .map((c) => ({ key: c._key, label: str(c.label).trim() || str(c.kind), detail: c.value })),
     locations: [],
+    socialsPendingInStudio: false,
     photo: Boolean(str(p?.photoUrl)),
     role: Boolean(pickText(p?.jobTitle, facts.site.languages).trim()),
     profilePage: p?.visibility === 'page' && Boolean(slugHere),
@@ -476,6 +512,7 @@ function siteAvailability(facts: SiteFacts, reservations: boolean): DigitalCardA
     values: facts.values,
     socials: facts.socials,
     locations: facts.locations,
+    socialsPendingInStudio: facts.socialsPendingInStudio,
     photo: false,
     role: false,
     profilePage: false,
