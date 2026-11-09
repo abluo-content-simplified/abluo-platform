@@ -4257,11 +4257,11 @@
         "done": {
           "archived": "{name} ist archiviert. Es ist nicht mehr auf deiner Website.",
           "restored": "{name} ist wiederhergestellt. Er ist nicht veröffentlicht: veröffentliche ihn erneut, um ihn wieder auf deine Website zu bringen.",
-          "deleted": "{name} ist gelöscht.",
           "unpublished": "{name} ist nicht mehr veröffentlicht. Er ist nicht mehr auf deiner Website.",
           "publishedAgain": "{name} ist wieder auf deiner Website.",
           "unpublishDate": "{name} verlässt deine Website am {date}.",
-          "unpublishDateRemoved": "{name} hat kein Veröffentlichungsende mehr."
+          "unpublishDateRemoved": "{name} hat kein Veröffentlichungsende mehr.",
+          "deleted": "{name} ist gelöscht."
         },
         "filters": {
           "label": "Kurse filtern",
@@ -4309,6 +4309,11 @@
             "unpublish": "Veröffentlichung aufheben",
             "unpublishOn": "Offline am…"
           },
+          "done": {
+            "restore": "{count, plural, one {# Kurs ist wiederhergestellt und bleibt unveröffentlicht, bis du ihn erneut veröffentlichst.} other {# Kurse sind wiederhergestellt und bleiben unveröffentlicht, bis du sie erneut veröffentlichst.}}",
+            "unpublish": "{count, plural, one {# Kurs ist nicht mehr veröffentlicht und nicht mehr auf deiner Website.} other {# Kurse sind nicht mehr veröffentlicht und nicht mehr auf deiner Website.}}",
+            "unpublishOn": "{count, plural, one {# Kurs hat} other {# Kurse haben}} ein Veröffentlichungsende."
+          },
           "detail": "{name} ( {reason} )",
           "nothing": "Nichts zu ändern: {details} .",
           "attention": "{count} konnte nicht geändert werden: {details} .",
@@ -4336,11 +4341,6 @@
             "confirm": "Letztes Datum ändern",
             "changing": "Ändern…",
             "nothing": "Es wurde kein Klassenwechsel vorgenommen."
-          },
-          "done": {
-            "restore": "{count, plural, one {# Kurs ist wiederhergestellt und bleibt unveröffentlicht, bis du ihn erneut veröffentlichst.} other {# Kurse sind wiederhergestellt und bleiben unveröffentlicht, bis du sie erneut veröffentlichst.}}",
-            "unpublish": "{count, plural, one {# Kurs ist nicht mehr veröffentlicht und nicht mehr auf deiner Website.} other {# Kurse sind nicht mehr veröffentlicht und nicht mehr auf deiner Website.}}",
-            "unpublishOn": "{count, plural, one {# Kurs hat} other {# Kurse haben}} ein Veröffentlichungsende."
           }
         },
         "teachersMore": "{names} +{count}",

@@ -4257,11 +4257,11 @@
         "done": {
           "archived": "{name} è archiviato. Non è più sul tuo sito.",
           "restored": "{name} è stato ripristinato. Non è pubblicato: pubblicalo di nuovo per rimetterlo sul sito.",
-          "deleted": "{name} è stato eliminato.",
           "unpublished": "{name} non è più pubblicato. Non è più sul tuo sito.",
           "publishedAgain": "{name} è di nuovo sul tuo sito.",
           "unpublishDate": "{name} lascia il tuo sito il {date}.",
-          "unpublishDateRemoved": "{name} non ha più una fine pubblicazione."
+          "unpublishDateRemoved": "{name} non ha più una fine pubblicazione.",
+          "deleted": "{name} è stato eliminato."
         },
         "filters": {
           "label": "Filtra i corsi",
@@ -4309,6 +4309,11 @@
             "unpublish": "Annulla pubblicazione",
             "unpublishOn": "Fine pubblicazione il…"
           },
+          "done": {
+            "restore": "{count, plural, one {# corso è stato ripristinato. Non è pubblicato finché non lo pubblichi di nuovo.} other {# corsi sono stati ripristinati. Non sono pubblicati finché non li pubblichi di nuovo.}}",
+            "unpublish": "{count, plural, one {# corso non è più pubblicato. Non è più sul tuo sito.} other {# corsi non sono più pubblicati. Non sono più sul tuo sito.}}",
+            "unpublishOn": "{count, plural, one {# corso ha} other {# corsi hanno}} una fine pubblicazione."
+          },
           "detail": "{name} ( {reason} )",
           "nothing": "Nulla da modificare: {details} .",
           "attention": "{count} non può essere modificato: {details} .",
@@ -4336,11 +4341,6 @@
             "confirm": "Modifica la data di scadenza",
             "changing": "Cambiamento…",
             "nothing": "Non è stata modificata alcuna classe."
-          },
-          "done": {
-            "restore": "{count, plural, one {# corso è stato ripristinato. Non è pubblicato finché non lo pubblichi di nuovo.} other {# corsi sono stati ripristinati. Non sono pubblicati finché non li pubblichi di nuovo.}}",
-            "unpublish": "{count, plural, one {# corso non è più pubblicato. Non è più sul tuo sito.} other {# corsi non sono più pubblicati. Non sono più sul tuo sito.}}",
-            "unpublishOn": "{count, plural, one {# corso ha} other {# corsi hanno}} una fine pubblicazione."
           }
         },
         "teachersMore": "{names} +{count}",
