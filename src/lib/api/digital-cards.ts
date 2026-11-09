@@ -54,6 +54,7 @@ import {
   DIGITAL_CARD_TYPE,
   DIGITAL_CARD_LINK_TYPE,
   cardPath,
+  cardTextLength,
   isValidUrlName,
   primaryLinkCount,
   resolveShow,
@@ -145,6 +146,8 @@ export interface DigitalCardLinkValue {
   key: string
   kind: DigitalCardLinkKind
   label: Record<string, string>
+  /** Optional one-liner under the label, per language (≤ DIGITAL_CARD_LIMITS.linkDescription). */
+  description: Record<string, string>
   url: string
   /** kind page / form / booking: the page id. */
   page: string | null
@@ -170,6 +173,12 @@ export interface DigitalCardAvailability {
   phone: boolean
   email: boolean
   whatsapp: boolean
+  /**
+   * The values themselves, so "What's on your card" shows the real number /
+   * address (Amendment A). Site: Website Settings; person: the first PUBLIC
+   * People contact of the kind (preferred first). '' = none.
+   */
+  values: { phone: string; email: string; whatsapp: string; role: string }
   /** Site: socialLinks by platform; person: People contacts by _key. */
   socials: DigitalCardOption[]
   /** Site card only: siteConfig.locations by _key. */
@@ -347,6 +356,7 @@ interface SiteFacts {
   phone: boolean
   email: boolean
   whatsapp: boolean
+  values: DigitalCardAvailability['values']
   socials: DigitalCardOption[]
   locations: DigitalCardOption[]
 }
@@ -378,6 +388,12 @@ async function readSiteFacts(client: Client, projectSlug: string): Promise<SiteF
     phone: Boolean(str(c.phone).trim()),
     email: Boolean(str(c.email).trim()),
     whatsapp: Boolean(str(row.project?.whatsappNumber).trim() || str(c.whatsappNumber).trim()),
+    values: {
+      phone: str(c.phone).trim(),
+      email: str(c.email).trim(),
+      whatsapp: str(row.project?.whatsappNumber).trim() || str(c.whatsappNumber).trim(),
+      role: '',
+    },
     socials,
     locations,
   }
@@ -392,7 +408,7 @@ type PersonRow = {
   displayName?: unknown
   jobTitle?: unknown
   photoUrl?: unknown
-  contacts?: Array<{ _key?: unknown; kind?: unknown; value?: unknown; label?: unknown }> | null
+  contacts?: Array<{ _key?: unknown; kind?: unknown; value?: unknown; label?: unknown; preferred?: unknown }> | null
   visibility?: unknown
   anonymised?: unknown
   archived?: unknown
@@ -401,7 +417,7 @@ type PersonRow = {
 
 const PERSON_FIELDS = /* groq */ `_id, firstName, lastName, displayName, jobTitle,
   "photoUrl": select(photo->projectSlug == $projectSlug => photo->image.asset->url),
-  contacts[]{ _key, kind, value, label },
+  contacts[]{ _key, kind, value, label, preferred },
   "visibility": coalesce(visibility, "listed"),
   "anonymised": defined(anonymisedAt),
   "archived": defined(archivedAt),
@@ -418,12 +434,16 @@ async function readPeople(client: Client, projectSlug: string, ids: string[] | n
   return Array.isArray(rows) ? rows : []
 }
 
-const contactsOf = (p: PersonRow | null | undefined) =>
-  (p?.contacts ?? []).filter((c) => KEY_RE.test(str(c?._key)) && str(c?.value).trim()) as Array<{ _key: string; kind?: unknown; value: string; label?: unknown }>
+/** The person's usable public contacts, preferred ones first (the website's order, website.ts firstOfKind). */
+const contactsOf = (p: PersonRow | null | undefined) => {
+  const list = (p?.contacts ?? []).filter((c) => KEY_RE.test(str(c?._key)) && str(c?.value).trim()) as Array<{ _key: string; kind?: unknown; value: string; label?: unknown; preferred?: unknown }>
+  return [...list.filter((c) => c.preferred === true), ...list.filter((c) => c.preferred !== true)]
+}
 
 function personAvailability(p: PersonRow | null | undefined, facts: SiteFacts, reservations: boolean): DigitalCardAvailability {
   const contacts = contactsOf(p)
   const has = (kind: string) => contacts.some((c) => c.kind === kind)
+  const first = (kind: string) => contacts.find((c) => c.kind === kind)?.value.trim() ?? ''
   const slug = objectOf(p?.slug)
   const slugHere = str(objectOf(slug?.[facts.site.defaultLocale])?.current)
   return {
@@ -433,6 +453,7 @@ function personAvailability(p: PersonRow | null | undefined, facts: SiteFacts, r
     phone: has('phone'),
     email: has('email'),
     whatsapp: has('whatsapp'),
+    values: { phone: first('phone'), email: first('email'), whatsapp: first('whatsapp'), role: pickText(p?.jobTitle, facts.site.languages).trim() },
     socials: contacts
       .filter((c) => (DIGITAL_CARD_PERSON_SOCIAL_KINDS as readonly unknown[]).includes(c.kind))
       .map((c) => ({ key: c._key, label: str(c.label).trim() || str(c.kind), detail: c.value })),
@@ -452,6 +473,7 @@ function siteAvailability(facts: SiteFacts, reservations: boolean): DigitalCardA
     phone: facts.phone,
     email: facts.email,
     whatsapp: facts.whatsapp,
+    values: facts.values,
     socials: facts.socials,
     locations: facts.locations,
     photo: false,
@@ -572,6 +594,7 @@ function linksOf(value: unknown): DigitalCardLinkValue[] {
       key: str(l._key),
       kind,
       label: localized(l.label),
+      description: localized(l.description),
       url: str(l.url),
       page: refOf(l.page),
       file: refOf(l.file),
@@ -728,14 +751,14 @@ function linkComplete(l: DigitalCardLinkValue): boolean {
   }
 }
 
-function cleanLabel(value: unknown, allowed: ReadonlySet<string>): Record<string, string> {
+function cleanLabel(value: unknown, allowed: ReadonlySet<string>, max: number = DIGITAL_CARD_LIMITS.label, what = 'A label'): Record<string, string> {
   if (value === null || value === undefined) return {}
   const o = objectOf(value)
-  if (!o) throw new DigitalCardError('invalid_value', 'A label must be one value per language.')
+  if (!o) throw new DigitalCardError('invalid_value', `${what} must be one value per language.`)
   const out: Record<string, string> = {}
   for (const [loc, v] of Object.entries(o)) {
     if (!LOCALE_KEY.test(loc) || !allowed.has(loc)) throw new DigitalCardError('invalid_value', `Language "${loc}" is not on this site.`)
-    const t = cleanLine(v ?? '', DIGITAL_CARD_LIMITS.label, 'A label')
+    const t = cleanLine(v ?? '', max, what)
     if (t) out[loc] = t
   }
   return out
@@ -760,10 +783,11 @@ function cleanLinks(value: unknown, allowed: ReadonlySet<string>, reservations: 
     const kind = l.kind as DigitalCardLinkKind
     if (kind === 'booking' && !reservations) throw new DigitalCardError('invalid_value', 'Booking links need the Reservations module.')
     const label = cleanLabel(l.label, allowed)
+    const description = cleanLabel(l.description, allowed, DIGITAL_CARD_LIMITS.linkDescription, 'A link description')
     const hidden = l.hidden === undefined ? false : cleanBool(l.hidden, 'Hidden')
     const primary = l.primary === undefined ? false : cleanBool(l.primary, 'Primary Action')
     const target = DIGITAL_CARD_LINK_TARGET[kind]
-    const v: DigitalCardLinkValue = { key, kind, label, url: '', page: null, file: null, value: '', hidden, primary }
+    const v: DigitalCardLinkValue = { key, kind, label, description, url: '', page: null, file: null, value: '', hidden, primary }
     if (target === 'url') v.url = cleanUrl(l.url)
     if (target === 'page' && l.page !== null && l.page !== undefined && l.page !== '') {
       if (typeof l.page !== 'string' || !DOC_ID.test(l.page) || l.page.startsWith('drafts.')) throw new DigitalCardError('invalid_value', 'Unknown page.')
@@ -787,6 +811,7 @@ function cleanLinks(value: unknown, allowed: ReadonlySet<string>, reservations: 
       _type: DIGITAL_CARD_LINK_TYPE,
       kind,
       ...(Object.keys(label).length && { label: { _type: 'localizedString', ...label } }),
+      ...(Object.keys(description).length && { description: { _type: 'localizedString', ...description } }),
       ...(v.url && { url: v.url }),
       ...(v.page && { page: { _type: 'reference', _ref: v.page, _weak: true } }),
       ...(v.file && { file: { _type: 'reference', _ref: v.file } }),
@@ -817,7 +842,8 @@ const BOOLEAN_SWITCHES: Record<DigitalCardKind, readonly string[]> = {
   site: ['name', 'description', 'phone', 'email', 'whatsapp', 'saveContact', 'logo', 'businessName'],
   person: ['name', 'description', 'phone', 'email', 'whatsapp', 'saveContact', 'photo', 'role', 'businessName', 'profileLink'],
 }
-const LIST_SWITCHES: Record<DigitalCardKind, readonly string[]> = { site: ['socials', 'locations'], person: ['socials'] }
+/** Lists: `hiddenSocials` (the profiles turned off — Amendment A; on by default) and the shown `locations`. */
+const LIST_SWITCHES: Record<DigitalCardKind, readonly string[]> = { site: ['hiddenSocials', 'locations'], person: ['hiddenSocials'] }
 
 function cleanSwitch(kind: DigitalCardKind, key: string, value: unknown): unknown {
   if (BOOLEAN_SWITCHES[kind].includes(key)) return cleanBool(value, 'A switch')
@@ -1008,7 +1034,6 @@ export async function saveDigitalCardDraft(
     guard,
   ])
   if (!draft) notFound()
-  if (draft._rev !== input.rev) throw new DigitalCardError('conflict', 'This card was edited elsewhere.')
   if (archivedAtOf(published ?? draft)) throw new DigitalCardError('archived', 'Restore this card to edit it.')
   const kind = kindOf(draft)
   const allowedLocales = new Set(facts.site.languages)
@@ -1026,7 +1051,7 @@ export async function saveDigitalCardDraft(
       if (!LOCALE_KEY.test(sub) || !allowedLocales.has(sub)) throw new DigitalCardError('invalid_field', `Language "${sub}" is not on this site.`)
       if (typeof value !== 'string' && value !== null) throw new DigitalCardError('invalid_value', 'The description must be text.')
       const t = typeof value === 'string' ? value.replace(/\r\n?/g, '\n').trim() : ''
-      if (t.length > DIGITAL_CARD_LIMITS.description) throw new DigitalCardError('invalid_value', 'The description is too long.')
+      if (cardTextLength(t) > DIGITAL_CARD_LIMITS.description) throw new DigitalCardError('invalid_value', 'The description is too long.', { field: 'description' })
       ensure.description = { _type: 'localizedText' }
       if (t) set[path] = t
       else unset.push(path)
@@ -1060,6 +1085,16 @@ export async function saveDigitalCardDraft(
     set.urlName = name
   }
 
+  // The revision guard. A stale revision is a conflict — unless the draft already
+  // holds exactly what this request asks for: then the request is a repeat of a
+  // save whose answer never reached the browser (a reload or a lost response
+  // while it was in flight). Nothing is written and nobody's change is
+  // overwritten, so answering with the current revision is safe.
+  if (draft._rev !== input.rev) {
+    if (holdsAlready(draft, set, unset)) return { rev: draft._rev ?? '' }
+    throw new DigitalCardError('conflict', 'This card was edited elsewhere.')
+  }
+
   await assertTargetsExist(client, grant.projectSlug, targets.pages, targets.files)
   if (backgroundId) {
     const ok = await client.fetch<string | null>(`*[_id == $id && _type == "mediaAsset" && projectSlug == $projectSlug && defined(image.asset)][0]._id`, { id: backgroundId, projectSlug: grant.projectSlug })
@@ -1079,6 +1114,30 @@ export async function saveDigitalCardDraft(
     guard
   )) as { _rev?: string } | undefined
   return { rev: result?._rev ?? '' }
+}
+
+/** Key-order-independent JSON, for comparing stored values. */
+function stable(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(stable).join(',')}]`
+  if (v && typeof v === 'object') {
+    return `{${Object.keys(v as Record<string, unknown>)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${stable((v as Record<string, unknown>)[k])}`)
+      .join(',')}}`
+  }
+  return JSON.stringify(v ?? null)
+}
+
+const valueAt = (doc: Record<string, unknown>, path: string): unknown => path.split('.').reduce<unknown>((o, k) => (o && typeof o === 'object' ? (o as Record<string, unknown>)[k] : undefined), doc)
+
+/** Does the draft already hold every value of this save (set paths equal, unset paths absent)? */
+function holdsAlready(draft: Record<string, unknown>, set: Record<string, unknown>, unset: string[]): boolean {
+  for (const [path, v] of Object.entries(set)) if (stable(valueAt(draft, path)) !== stable(v)) return false
+  for (const path of unset) {
+    const cur = valueAt(draft, path)
+    if (cur !== undefined && cur !== null && cur !== '') return false
+  }
+  return true
 }
 
 // ── Publish / discard ─────────────────────────────────────────────────────────
@@ -1287,6 +1346,83 @@ export async function getDigitalCardStats(
     return await (deps.stats?.readStats ?? readStatsStore)({ projectSlug: grant.projectSlug, cardId: publicId, from, to })
   } catch {
     throw new DigitalCardError('failed', 'Could not read the statistics.')
+  }
+}
+
+/** One card's numbers in the Analytics overview. */
+export interface DigitalCardsOverviewCard {
+  /** Sanity id: links to the card's Statistics tab. */
+  id: string
+  kind: DigitalCardKind
+  /** The person's name; '' for the site card (shown as the site name). */
+  name: string
+  visits: number
+  clicks: number
+}
+
+/** The Digital Cards block of the Analytics page: every card together. */
+export type DigitalCardsOverview =
+  | { available: false }
+  | {
+      available: true
+      days: number
+      siteName: string
+      totals: { visits: number; clicks: number }
+      /** Busiest first; cards that no longer exist are left out. */
+      cards: DigitalCardsOverviewCard[]
+      sources: Array<{ source: string; visits: number; clicks: number }>
+    }
+
+/**
+ * Totals for ALL the project's cards (Analytics page, Amendment A): visits,
+ * clicks, top cards, sources over the last `days` (7/30/90/365). Needs
+ * digital-cards.stats.read; the project slug comes from the grant
+ * (readStats with cardId null).
+ */
+export async function getDigitalCardsOverview(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { days: number },
+  deps: DigitalCardDeps = {}
+): Promise<DigitalCardsOverview> {
+  const grant = grantFor(ctx, projectId, DIGITAL_CARD_STATS_PERMISSION)
+  if (!(DIGITAL_CARD_STATS_RANGES as readonly unknown[]).includes(input?.days)) throw new DigitalCardError('invalid_value', 'Unknown range.')
+  const client = deps.client ?? sanityWriteClient
+  const { from, to } = statsRange(input.days, (deps.now ?? (() => new Date()))())
+  let read: DigitalCardStatsRead
+  try {
+    read = await (deps.stats?.readStats ?? readStatsStore)({ projectSlug: grant.projectSlug, cardId: null, from, to })
+  } catch {
+    throw new DigitalCardError('failed', 'Could not read the statistics.')
+  }
+  if (!read.available) return { available: false }
+  const [facts, rows, people] = await readsInOrder<[SiteFacts, CardRow[], PersonRow[]]>([
+    readSiteFacts(client, grant.projectSlug),
+    readCards(client, grant.projectSlug),
+    readPeople(client, grant.projectSlug, null),
+  ])
+  const peopleById = new Map(people.map((p) => [p._id, p]))
+  const byPublicId = new Map<string, { id: string; kind: DigitalCardKind; name: string }>()
+  for (const [id, e] of groupCards(rows)) {
+    const row = (e.published ?? e.draft)!
+    const publicId = publicIdOf(row)
+    if (!publicId) continue
+    const kind = kindOf(row)
+    const personId = kind === 'person' ? refOf(row.person) : null
+    byPublicId.set(publicId, { id, kind, name: kind === 'person' ? personName(personId ? peopleById.get(personId) : null) : '' })
+  }
+  const cards: DigitalCardsOverviewCard[] = []
+  for (const c of read.stats.cards) {
+    const card = byPublicId.get(c.cardId)
+    if (card) cards.push({ ...card, visits: c.visits, clicks: c.clicks })
+  }
+  return {
+    available: true,
+    days: input.days,
+    siteName: facts.siteName,
+    totals: { visits: read.stats.totals.visits, clicks: read.stats.totals.clicks },
+    cards,
+    sources: read.stats.sources.map((x) => ({ source: x.source, visits: x.visits, clicks: x.clicks })),
   }
 }
 

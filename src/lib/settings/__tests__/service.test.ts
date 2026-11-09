@@ -199,3 +199,41 @@ describe('Awin settings', () => {
     await expect(saveSettings(editor(), 'project-a', { rev, set: { awinPublisherId: '123456' } }, f.deps)).rejects.toBeInstanceOf(TenantAuthorizationError)
   })
 })
+
+describe('Settings → Social Profiles (ADR-049 Amendment A)', () => {
+  it('loads the stored profiles; saves the whole list on the published document AND the Studio draft', async () => {
+    const f = fake({ draft: true })
+    f.docs.get('site1')!.socialLinks = [
+      { _key: 'a', _type: 'socialLink', platform: 'instagram', url: 'https://instagram.com/old' },
+      { _key: 'z', _type: 'socialLink', platform: 'myspace', url: 'https://myspace.com/x' },
+    ]
+    const view = await loadSettings(owner(), 'project-a', f.deps)
+    expect(view.socialLinks).toEqual([{ _key: 'a', platform: 'instagram', url: 'https://instagram.com/old' }])
+    await saveSettings(owner(), 'project-a', { rev: view.rev, set: { socialLinks: [{ _key: 'b', platform: 'linkedin', url: 'linkedin.com/company/t' }, { _key: 'a', platform: 'instagram', url: 'https://instagram.com/new' }] } }, f.deps)
+    const want = [
+      { _type: 'socialLink', _key: 'b', platform: 'linkedin', url: 'https://linkedin.com/company/t' },
+      { _type: 'socialLink', _key: 'a', platform: 'instagram', url: 'https://instagram.com/new' },
+      // a row the page does not know (no editable platform) is kept for Studio
+      { _type: 'socialLink', _key: 'z', platform: 'myspace', url: 'https://myspace.com/x' },
+    ]
+    expect(f.docs.get('site1')!.socialLinks).toEqual(want)
+    expect(f.docs.get('drafts.site1')!.socialLinks).toEqual(want)
+  })
+
+  it('needs site.details.write, refuses a bad address and a stale revision', async () => {
+    const f = fake()
+    const view = await loadSettings(owner(), 'project-a', f.deps)
+    await expect(saveSettings(editor(), 'project-a', { rev: view.rev, set: { socialLinks: [] } }, f.deps)).rejects.toBeInstanceOf(TenantAuthorizationError)
+    await expect(saveSettings(owner(), 'project-a', { rev: view.rev, set: { socialLinks: [{ _key: 'a', platform: 'x', url: 'http://x.com/a' }] } }, f.deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(saveSettings(owner(), 'project-a', { rev: 'stale|p1', set: { socialLinks: [] } }, f.deps)).rejects.toMatchObject({ code: 'conflict' })
+    expect(f.committed).toEqual([])
+  })
+
+  it('an empty list removes the field', async () => {
+    const f = fake()
+    f.docs.get('site1')!.socialLinks = [{ _key: 'a', _type: 'socialLink', platform: 'x', url: 'https://x.com/a' }]
+    const view = await loadSettings(owner(), 'project-a', f.deps)
+    await saveSettings(owner(), 'project-a', { rev: view.rev, set: { socialLinks: [] } }, f.deps)
+    expect(f.docs.get('site1')!.socialLinks).toBeUndefined()
+  })
+})

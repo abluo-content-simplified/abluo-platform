@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useLocale } from 'next-intl'
 import type { DigitalCardLinkValue, DigitalCardSnapshot } from '@/lib/api/digital-cards'
-import { DIGITAL_CARD_LIMITS, DIGITAL_CARD_LINK_KINDS, DIGITAL_CARD_LINK_TARGET, type DigitalCardLinkKind } from '@/lib/modules/digital-cards/model'
+import { DIGITAL_CARD_LIMITS, DIGITAL_CARD_LINK_KINDS, DIGITAL_CARD_LINK_TARGET, defaultNewLinkKind, type DigitalCardLinkKind } from '@/lib/modules/digital-cards/model'
 import { formatDigitalCardsMessage, getDigitalCardsMessages, type DigitalCardsMessages } from '@/lib/i18n/digital-cards-messages'
 import { MediaLibraryPicker } from '@/components/client/media/MediaLibraryPicker'
 import { Button } from '@/components/app/ui/Button'
@@ -61,6 +61,24 @@ export function linkComplete(l: DigitalCardLinkValue): boolean {
 }
 
 /**
+ * One line as the server stores it (spaces collapsed), within `max` UTF-16
+ * units without splitting an emoji. The input's `maxLength` counts grapheme
+ * clusters in Chrome, so an emoji-rich label can pass the browser yet be
+ * longer for the server — which would refuse the WHOLE links list.
+ */
+function fitLine(value: string, max: number): string {
+  const t = value.trim().replace(/\s+/g, ' ')
+  if (t.length <= max) return t
+  let out = ''
+  for (const ch of t) {
+    if (out.length + ch.length > max) break
+    out += ch
+  }
+  return out.trimEnd()
+}
+const fitAll = (values: Record<string, string>, max: number): Record<string, string> => Object.fromEntries(Object.entries(values).map(([loc, v]) => [loc, fitLine(v, max)]))
+
+/**
  * The links as the autosave sends them: a value still being typed that is not
  * valid yet goes as empty (a draft may hold an unfinished link), so one
  * keystroke never gets the whole list refused.
@@ -73,7 +91,8 @@ export function linksPayload(links: readonly DigitalCardLinkValue[]): Array<Reco
     return {
       key: l.key,
       kind: l.kind,
-      label: l.label,
+      label: fitAll(l.label, DIGITAL_CARD_LIMITS.label),
+      description: fitAll(l.description, DIGITAL_CARD_LIMITS.linkDescription),
       url: target === 'url' ? urlForServer(l.url) : '',
       page: target === 'page' ? l.page : null,
       file: target === 'file' ? l.file : null,
@@ -90,6 +109,11 @@ function newKey(): string {
   } catch {
     return Math.random().toString(36).slice(2, 14)
   }
+}
+
+/** A new link: "a page of this website" — or a web address when the site has no pages yet. */
+export function newLink(key: string, sitePages: boolean): DigitalCardLinkValue {
+  return { key, kind: defaultNewLinkKind(sitePages), label: {}, description: {}, url: '', page: null, file: null, value: '', hidden: false, primary: false }
 }
 
 const H2 = 'text-[1.0625rem] leading-7 font-semibold text-foreground'
@@ -149,7 +173,7 @@ export function DigitalCardLinks({
   }
   const add = () => {
     if (links.length >= DIGITAL_CARD_LIMITS.links) return
-    onChange([...links, { key: newKey(), kind: 'url', label: {}, url: '', page: null, file: null, value: '', hidden: false, primary: false }])
+    onChange([...links, newLink(newKey(), pages.length > 0)])
   }
   const nameOf = (l: DigitalCardLinkValue) => l.label[lang]?.trim() || l.label[defaultLocale]?.trim() || linkKindLabel(m, l.kind)
 
@@ -231,6 +255,18 @@ export function DigitalCardLinks({
                     )}
                   </Field>
                 </div>
+                <Field label={formatDigitalCardsMessage(e.linkDescription, { language: lang.toUpperCase() })} hint={e.linkDescriptionHint}>
+                  {(p) => (
+                    <TextInput
+                      {...p}
+                      value={l.description[lang] ?? ''}
+                      readOnly={!editable}
+                      maxLength={DIGITAL_CARD_LIMITS.linkDescription}
+                      placeholder={lang !== defaultLocale ? l.description[defaultLocale] || undefined : undefined}
+                      onChange={(ev) => update(l.key, { description: { ...l.description, [lang]: ev.target.value } })}
+                    />
+                  )}
+                </Field>
                 {target === 'url' ? (
                   <Field label={e.linkUrl}>
                     {(p) => <TextInput {...p} type="url" inputMode="url" value={l.url} readOnly={!editable} maxLength={2000} placeholder="https://" onChange={(ev) => update(l.key, { url: ev.target.value })} />}

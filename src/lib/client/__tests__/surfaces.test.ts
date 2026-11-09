@@ -172,8 +172,8 @@ describe('buildTenantSurfaces', () => {
   it('an owner with every module sees every nav item and the module widgets', () => {
     const s = buildTenantSurfaces(grantFor('owner', ['blog', 'forms', 'gallery']))
     // ADR-042 §3: Content · Catalogue · Visitors · Library · Insights · Project, then the bottom block.
-    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'forms', 'media', 'taxonomy', 'analytics', 'users', 'connections', 'settings', 'support'])
-    expect(s.nav.map((n) => n.group)).toEqual(['content', 'content', 'visitors', 'library', 'library', 'insights', 'project', 'project', 'project', 'bottom'])
+    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'forms', 'media', 'taxonomy', 'analytics', 'users', 'connections', 'settings', 'socialProfiles', 'support'])
+    expect(s.nav.map((n) => n.group)).toEqual(['content', 'content', 'visitors', 'library', 'library', 'insights', 'project', 'project', 'project', 'project', 'bottom'])
     expect(ids(s.widgets)).toEqual(expect.arrayContaining(['siteStatus', 'attention', 'glance.posts', 'glance.requests', 'glance.galleries', 'traffic', 'latest.posts']))
   })
 
@@ -197,6 +197,9 @@ describe('buildTenantSurfaces', () => {
 
   it('Settings: Owner, Site admin and Editor see it; nobody without site.details.read', () => {
     for (const role of ['owner', 'editor'] as const) expect(ids(buildTenantSurfaces(grantFor(role, ['blog'])).nav)).toContain('settings')
+    // Settings → Social Profiles (ADR-049 Amendment A) follows the same permission.
+    for (const role of ['owner', 'editor'] as const) expect(ids(buildTenantSurfaces(grantFor(role, ['blog'])).nav)).toContain('socialProfiles')
+    expect(ids(buildTenantSurfaces({ permissions: [], enabledModuleIds: [] }).nav)).not.toContain('socialProfiles')
     expect(ids(buildTenantSurfaces({ permissions: [], enabledModuleIds: [] }).nav)).not.toContain('settings')
     expect(ids(buildTenantSurfaces({ permissions: ['settings.manage'], enabledModuleIds: [] }).nav)).not.toContain('settings')
   })
@@ -321,7 +324,7 @@ describe('navigation groups (ADR-042 N1, section 3)', () => {
     expect(by('visitors')).toEqual(['forms', 'members', 'reservations'])
     expect(by('library')).toEqual(['people', 'media', 'taxonomy'])
     expect(by('insights')).toEqual(['analytics'])
-    expect(by('project')).toEqual(['users', 'connections', 'settings', 'billing'])
+    expect(by('project')).toEqual(['users', 'connections', 'settings', 'socialProfiles', 'billing'])
     expect(by('bottom')).toEqual(['support'])
   })
 

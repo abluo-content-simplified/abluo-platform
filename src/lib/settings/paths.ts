@@ -7,11 +7,15 @@
  */
 import { toStored, type AmazonRowsError } from './amazon-rows'
 import { AWIN_PATH, SHOPS_PATH, toStoredAwinId, toStoredShops, type StoredShop } from './affiliate-shops-rows'
+import { toStoredSocialLinks, type SocialLinkRow } from './social-links'
 
 export { AWIN_PATH, SHOPS_PATH }
 
 /** siteConfig.amazonTrackingIds (whole list; rows are small and keyed by marketplace). */
 export const AMAZON_PATH = 'amazonTrackingIds'
+/** siteConfig.socialLinks (whole list, in order) — Settings → Social Profiles (ADR-049 Amendment A). */
+export const SOCIAL_LINKS_PATH = 'socialLinks'
+type StoredSocialLinks = Array<SocialLinkRow & { _type: 'socialLink' }>
 /** Catalogue module config, one language: `affiliateDisclosure.<locale>`. */
 export const DISCLOSURE_PREFIX = 'affiliateDisclosure.'
 export const MAX_DISCLOSURE_LENGTH = 600
@@ -25,8 +29,15 @@ function okStored(rows: unknown) {
 }
 
 export type ParsedSet =
-  | { ok: true; amazon?: StoredRows; /** '' = unset */ awinPublisherId?: string; /** [] = unset */ affiliateShops?: StoredShop[]; disclosure: Record<string, string> }
-  | { ok: false; error: 'invalid_field' | 'invalid_value' | AmazonRowsError; path?: string }
+  | {
+      ok: true
+      amazon?: StoredRows
+      /** '' = unset */ awinPublisherId?: string
+      /** [] = unset */ affiliateShops?: StoredShop[]
+      /** [] = unset */ socialLinks?: StoredSocialLinks
+      disclosure: Record<string, string>
+    }
+  | { ok: false; error: 'invalid_field' | 'invalid_value' | 'too_many' | AmazonRowsError; path?: string }
 
 /** Control characters out, line breaks kept as spaces, trimmed. */
 export function cleanDisclosure(v: unknown): string | null {
@@ -40,6 +51,7 @@ export function parseSettingsSet(set: unknown): ParsedSet {
   let amazon: StoredRows | undefined
   let awinPublisherId: string | undefined
   let affiliateShops: StoredShop[] | undefined
+  let socialLinks: StoredSocialLinks | undefined
   const disclosure: Record<string, string> = {}
   for (const [path, value] of Object.entries(set as Record<string, unknown>)) {
     if (path === AMAZON_PATH) {
@@ -54,6 +66,10 @@ export function parseSettingsSet(set: unknown): ParsedSet {
       const r = toStoredShops(value)
       if (!r.ok) return { ok: false, error: r.error, path }
       affiliateShops = r.value
+    } else if (path === SOCIAL_LINKS_PATH) {
+      const r = toStoredSocialLinks(value)
+      if (!r.ok) return { ok: false, error: r.error, path }
+      socialLinks = r.value
     } else if (path.startsWith(DISCLOSURE_PREFIX)) {
       const locale = path.slice(DISCLOSURE_PREFIX.length)
       if (!LOCALE.test(locale)) return { ok: false, error: 'invalid_field', path }
@@ -64,8 +80,15 @@ export function parseSettingsSet(set: unknown): ParsedSet {
       return { ok: false, error: 'invalid_field', path }
     }
   }
-  if (amazon === undefined && awinPublisherId === undefined && affiliateShops === undefined && Object.keys(disclosure).length === 0) return { ok: false, error: 'invalid_value' }
-  return { ok: true, ...(amazon !== undefined ? { amazon } : {}), ...(awinPublisherId !== undefined ? { awinPublisherId } : {}), ...(affiliateShops !== undefined ? { affiliateShops } : {}), disclosure }
+  if (amazon === undefined && awinPublisherId === undefined && affiliateShops === undefined && socialLinks === undefined && Object.keys(disclosure).length === 0) return { ok: false, error: 'invalid_value' }
+  return {
+    ok: true,
+    ...(amazon !== undefined ? { amazon } : {}),
+    ...(awinPublisherId !== undefined ? { awinPublisherId } : {}),
+    ...(affiliateShops !== undefined ? { affiliateShops } : {}),
+    ...(socialLinks !== undefined ? { socialLinks } : {}),
+    disclosure,
+  }
 }
 
 /** The combined revision the page holds: siteConfig (published) and project document, joined. */

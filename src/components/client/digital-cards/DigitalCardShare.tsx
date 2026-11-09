@@ -14,9 +14,12 @@ const H2 = 'text-[1.0625rem] leading-7 font-semibold text-foreground'
 /** D12 — black on white, whatever the theme: it is printed. */
 const QR_COLORS = { dark: '#000000ff', light: '#ffffffff' }
 const TAGGED_SOURCES = ['instagram', 'linkedin', 'facebook', 'whatsapp', 'email', 'print'] as const
+type TaggedSource = (typeof TAGGED_SOURCES)[number]
 
 /**
- * QR code (D12) and tagged share links (D11) of one card. Both encode the
+ * The editor's Share tab (Amendment A): the QR code for print (D12) and the
+ * links to share, each saying where to use it (D11). On a phone each link
+ * also has a Share button (the system share sheet, when the browser has one). Both encode the
  * project's canonical address (ADR-034, https://www.<domain>) — never a
  * preview host — so a site without its own domain gets an explanation
  * instead. The QR code is drawn in the browser with `qrcode` (SVG + PNG),
@@ -46,6 +49,28 @@ export function DigitalCardShare({
   const address = origin ? `${origin}${path}` : path
   const [qr, setQr] = useState<{ target: string; svg: string; png: string } | 'failed' | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
+  const c = m.card
+  const where: Record<TaggedSource, string> = {
+    instagram: c.whereInstagram,
+    linkedin: c.whereLinkedin,
+    facebook: c.whereFacebook,
+    whatsapp: c.whereWhatsapp,
+    email: c.whereEmail,
+    print: c.wherePrint,
+  }
+  // The system share sheet exists only in the browser (and mostly on phones).
+  const [canShare, setCanShare] = useState(false)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a browser capability, unknown on the server
+    setCanShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function')
+  }, [])
+  async function share(url: string) {
+    try {
+      await navigator.share({ url })
+    } catch {
+      // Cancelled by the person, or not allowed: nothing to say.
+    }
+  }
 
   useEffect(() => {
     if (!target) return
@@ -81,9 +106,12 @@ export function DigitalCardShare({
   return (
     <>
       <Panel as="section" aria-labelledby="card-qr" className="space-y-3" id="card-qr-section">
-        <h2 id="card-qr" className={H2}>
-          {e.qrTitle}
-        </h2>
+        <div>
+          <h2 id="card-qr" className={H2}>
+            {c.qrTitle}
+          </h2>
+          <p className="text-sm leading-5 text-muted-foreground">{c.qrFor}</p>
+        </div>
         {!origin ? (
           <Notice tone="info">{e.qrNoDomain}</Notice>
         ) : !ready ? (
@@ -122,7 +150,7 @@ export function DigitalCardShare({
 
       <Panel as="section" aria-labelledby="card-tagged" className="space-y-3">
         <h2 id="card-tagged" className={H2}>
-          {e.taggedTitle}
+          {c.linksTitle}
         </h2>
         {!origin ? (
           <Notice tone="info">{e.qrNoDomain}</Notice>
@@ -130,22 +158,30 @@ export function DigitalCardShare({
           <Notice tone="info">{e.qrNoUrlName}</Notice>
         ) : (
           <>
-            <p className="text-sm leading-5 text-muted-foreground">{e.taggedHint}</p>
+            <p className="text-sm leading-5 text-muted-foreground">{c.linksHint}</p>
             <ul className="divide-y divide-border-subtle">
               {TAGGED_SOURCES.map((source) => {
                 const url = taggedLink(origin, path, source)
                 const name = digitalCardSourceName(m, source)
                 return (
-                  <li key={source} className="flex items-start justify-between gap-3 py-2">
+                  <li key={source} className="flex flex-col items-start gap-2 py-3 sm:flex-row sm:justify-between sm:gap-3">
                     <span className="min-w-0">
                       <span className="block text-[0.9375rem] leading-6 font-medium text-foreground">{name}</span>
+                      <span className="block text-sm leading-5 text-muted-foreground">{where[source]}</span>
                       <span className="block text-sm leading-5 break-all text-muted-foreground" translate="no">
                         {url}
                       </span>
                     </span>
-                    <Button aria-label={formatDigitalCardsMessage(e.copyFor, { source: name })} onClick={() => void copy(source, url)}>
-                      {copied === source ? e.copiedShort : e.copy}
-                    </Button>
+                    <span className="flex shrink-0 flex-wrap gap-2">
+                      <Button aria-label={formatDigitalCardsMessage(e.copyFor, { source: name })} onClick={() => void copy(source, url)}>
+                        {copied === source ? e.copiedShort : e.copy}
+                      </Button>
+                      {canShare ? (
+                        <Button className="md:hidden" aria-label={formatDigitalCardsMessage(c.shareFor, { source: name })} onClick={() => void share(url)}>
+                          {c.share}
+                        </Button>
+                      ) : null}
+                    </span>
                   </li>
                 )
               })}

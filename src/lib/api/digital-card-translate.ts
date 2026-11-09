@@ -1,6 +1,6 @@
 /**
  * Translate on a Digital Card — the dashboard path of ADR-023 for the card's
- * short description and its link labels (ADR-049 D8).
+ * short description, its link labels and link one-liners (ADR-049 D8).
  *
  * Mirrors `testimonial-translate.ts`: same engine as POST /api/translate
  * (`runTranslate`), same provider / quota / metering.
@@ -24,13 +24,15 @@ import { loadTranslateConfig } from '@/lib/translate/config'
 import { runTranslate, type TranslateDeps } from '@/lib/translate/service'
 import { TranslateError, type TranslateUsageSummary } from '@/lib/translate/types'
 import { validateTranslateRequest } from '@/lib/translate/validate'
-import { DIGITAL_CARD_LIMITS, DIGITAL_CARD_TYPE } from '@/lib/modules/digital-cards/model'
+import { DIGITAL_CARD_LIMITS, DIGITAL_CARD_TYPE, cardTextLength } from '@/lib/modules/digital-cards/model'
 
 export type DigitalCardTranslateResult = {
   /** Target language → text, for the description. */
   description: Record<string, string>
   /** Link key → target language → label. */
   labels: Record<string, Record<string, string>>
+  /** Link key → target language → one-line description. */
+  linkDescriptions: Record<string, Record<string, string>>
   usage: TranslateUsageSummary | null
 }
 
@@ -68,7 +70,7 @@ export async function translateDigitalCard(
   if (!config.enabled) throw new TranslateError('module_disabled', grant.projectSlug)
 
   // The texts to translate: the description and every label written in the source language.
-  type Item = { kind: 'description' } | { kind: 'label'; key: string }
+  type Item = { kind: 'description' } | { kind: 'label' | 'linkDescription'; key: string }
   const items: Item[] = []
   const texts: string[] = []
   const desc = textAt(doc.description, input.sourceLocale)
@@ -84,24 +86,33 @@ export async function translateDigitalCard(
       items.push({ kind: 'label', key })
       texts.push(label)
     }
+    const line = textAt(l?.description, input.sourceLocale)
+    if (key && line) {
+      items.push({ kind: 'linkDescription', key })
+      texts.push(line)
+    }
   }
   const targetOf = (item: Item, loc: string) =>
-    item.kind === 'description' ? textAt(doc.description, loc) : textAt(links.find((l) => l?._key === item.key)?.label, loc)
+    item.kind === 'description'
+      ? textAt(doc.description, loc)
+      : textAt(links.find((l) => l?._key === item.key)?.[item.kind === 'label' ? 'label' : 'description'], loc)
   const targets = config.supportedLocales.filter((loc) => loc !== input.sourceLocale && items.some((it) => !targetOf(it, loc)))
   if (!items.length || !targets.length) throw new TranslateError('invalid_request', 'nothing to translate')
 
   const req = validateTranslateRequest({ projectSlug: grant.projectSlug, sourceLocale: input.sourceLocale, targetLocales: targets, texts, format: 'text', documentId: input.id })
   const outcome = await runTranslate(req, ctx.userId, { ...defaultTranslateDeps(), ...deps.translate })
-  const out: DigitalCardTranslateResult = { description: {}, labels: {}, usage: outcome.usage }
+  const out: DigitalCardTranslateResult = { description: {}, labels: {}, linkDescriptions: {}, usage: outcome.usage }
   for (const loc of req.targetLocales) {
     items.forEach((item, i) => {
       if (targetOf(item, loc)) return // someone's text: kept
       const text = (outcome.translations[loc]?.[i] ?? '').trim().replace(/[ \t]+/g, ' ')
       if (!text) return
       if (item.kind === 'description') {
-        if (text.length <= DIGITAL_CARD_LIMITS.description) out.description[loc] = text
-      } else if (text.length <= DIGITAL_CARD_LIMITS.label) {
-        ;(out.labels[item.key] ??= {})[loc] = text.replace(/\s+/g, ' ')
+        if (cardTextLength(text) <= DIGITAL_CARD_LIMITS.description) out.description[loc] = text
+      } else if (item.kind === 'label') {
+        if (text.length <= DIGITAL_CARD_LIMITS.label) (out.labels[item.key] ??= {})[loc] = text.replace(/\s+/g, ' ')
+      } else if (text.replace(/\s+/g, ' ').length <= DIGITAL_CARD_LIMITS.linkDescription) {
+        ;(out.linkDescriptions[item.key] ??= {})[loc] = text.replace(/\s+/g, ' ')
       }
     })
   }

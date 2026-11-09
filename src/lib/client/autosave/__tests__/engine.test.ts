@@ -201,3 +201,38 @@ describe('applyPatch', () => {
     expect(src.title).toEqual({ en: 'a' })
   })
 })
+
+describe('adoptRead — a snapshot read from the server (Digital Cards, 2026-11-09)', () => {
+  it('is adopted when nothing was saved, queued or sent since the read started', async () => {
+    const h = harness()
+    const since = h.a.confirmed
+    expect(h.a.adoptRead('r9', since)).toBe(true)
+    expect(h.a.rev).toBe('r9')
+  })
+
+  it('is refused when a save landed during the read — the revision is never rolled back', async () => {
+    const h = harness()
+    const since = h.a.confirmed
+    h.a.set({ 'description.it': 'Ciao' })
+    await tick(500)
+    expect(h.a.rev).toBe('r2')
+    expect(h.a.adoptRead('r1', since)).toBe(false)
+    expect(h.a.rev).toBe('r2')
+    h.a.set({ 'description.de': 'Hallo' })
+    await tick(500)
+    expect(h.calls[1].rev).toBe('r2')
+  })
+
+  it('is refused while something waits or is in flight', async () => {
+    const h = harness(['hang'])
+    h.a.set({ 'title.en': 'A' })
+    expect(h.a.busy).toBe(true)
+    expect(h.a.adoptRead('x', h.a.confirmed)).toBe(false) // waiting
+    await tick(500)
+    expect(h.a.adoptRead('x', h.a.confirmed)).toBe(false) // in flight
+    h.release()
+    await tick(0)
+    expect(h.a.busy).toBe(false)
+    expect(h.a.rev).toBe('after-hang')
+  })
+})

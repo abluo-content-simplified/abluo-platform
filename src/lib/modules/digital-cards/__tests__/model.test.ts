@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   DIGITAL_CARD_PERMISSIONS,
   DIGITAL_CARDS_MODULE_ID,
+  DIGITAL_CARD_LIMITS,
   DIGITAL_CARD_TYPE,
   buildVCard,
+  cardTextLength,
+  defaultNewLinkKind,
   cardPath,
   decodeContact,
   defaultShow,
@@ -98,22 +101,40 @@ describe("What's shown (D7)", () => {
       whatsapp: true,
       saveContact: true,
       socials: ['instagram', 'facebook'],
+      hiddenSocials: [],
       logo: true,
       businessName: true,
       locations: ['k1', 'k2'],
     })
   })
 
-  it('person card: photo, name, role on; phone, email, WhatsApp, Save contact off', () => {
-    const show = defaultShow('person')
+  it('person card: photo, name, role and every social profile on; phone, email, WhatsApp, Save contact off', () => {
+    const show = defaultShow('person', { socials: ['c1', 'c2'] })
     expect(show).toMatchObject({ photo: true, name: true, role: true, nameMode: 'full', businessName: true, profileLink: true })
-    expect(show).toMatchObject({ phone: false, email: false, whatsapp: false, saveContact: false, socials: [] })
+    expect(show).toMatchObject({ phone: false, email: false, whatsapp: false, saveContact: false, socials: ['c1', 'c2'], hiddenSocials: [] })
+  })
+
+  it('Amendment A: social profiles are on unless hidden — a profile added later appears on its own', () => {
+    expect(resolveShow('site', { hiddenSocials: ['facebook'] }, { socials: ['instagram', 'facebook'] })).toMatchObject({ socials: ['instagram'], hiddenSocials: ['facebook'] })
+    // added later: not in the hidden list → shown
+    expect(resolveShow('site', { hiddenSocials: ['facebook'] }, { socials: ['instagram', 'facebook', 'youtube'] }).socials).toEqual(['instagram', 'youtube'])
+    // a hidden profile that no longer exists changes nothing
+    expect(resolveShow('person', { hiddenSocials: ['gone'] }, { socials: ['c1'] }).socials).toEqual(['c1'])
+    // the order is the source's, never the stored list's
+    expect(resolveShow('site', {}, { socials: ['x', 'instagram'] }).socials).toEqual(['x', 'instagram'])
+  })
+
+  it('Amendment A: an old stored `socials` list (the shown ones) is no longer read — everything shows', () => {
+    expect(resolveShow('site', { socials: ['facebook'] }, { socials: ['instagram', 'facebook'] }).socials).toEqual(['instagram', 'facebook'])
+    expect(resolveShow('person', { socials: [] }, { socials: ['c1', 'c2'] }).socials).toEqual(['c1', 'c2'])
+    // …but a stored hiddenSocials still wins over it
+    expect(resolveShow('site', { socials: ['instagram', 'facebook'], hiddenSocials: ['instagram'] }, { socials: ['instagram', 'facebook'] }).socials).toEqual(['facebook'])
   })
 
   it('resolveShow keeps stored switches and fills the rest with defaults', () => {
     expect(resolveShow('person', null)).toEqual(defaultShow('person'))
-    const s = resolveShow('person', { phone: true, nameMode: 'first', socials: ['c1', 3], photo: 'yes' })
-    expect(s).toMatchObject({ phone: true, nameMode: 'first', socials: ['c1'], photo: true })
+    const s = resolveShow('person', { phone: true, nameMode: 'first', hiddenSocials: ['c1', 3], photo: 'yes' }, { socials: ['c1', 'c2'] })
+    expect(s).toMatchObject({ phone: true, nameMode: 'first', hiddenSocials: ['c1'], socials: ['c2'], photo: true })
     expect(resolveShow('person', { nameMode: 'nick' }).nameMode).toBe('full')
     expect(resolveShow('site', { locations: [] }, { locations: ['k1'] }).locations).toEqual([])
     expect(resolveShow('site', {}, { locations: ['k1'] }).locations).toEqual(['k1'])
@@ -125,6 +146,23 @@ describe('links (D8)', () => {
     expect(primaryLinkCount([{ primary: true }, { primary: true, hidden: true }, {}])).toBe(1)
     expect(primaryLinkCount([{ primary: true }, { primary: true }])).toBe(2)
     expect(primaryLinkCount(null)).toBe(0)
+  })
+})
+
+describe('limits and lengths (Tom 2026-11-09)', () => {
+  it('description 600 and link one-liner 120 per language', () => {
+    expect(DIGITAL_CARD_LIMITS.description).toBe(600)
+    expect(DIGITAL_CARD_LIMITS.linkDescription).toBe(120)
+  })
+  it('counts like the server: line breaks normalised, ends trimmed, UTF-16 units', () => {
+    expect(cardTextLength('  ciao\r\nmondo \n')).toBe('ciao\nmondo'.length)
+    expect(cardTextLength('🧘‍♀️')).toBe(5) // one emoji the browser counts as 1
+    expect(cardTextLength(null)).toBe(0)
+    expect(cardTextLength(undefined)).toBe(0)
+  })
+  it('a new link is a page of the site, a web address when the site has no pages', () => {
+    expect(defaultNewLinkKind(true)).toBe('page')
+    expect(defaultNewLinkKind(false)).toBe('url')
   })
 })
 

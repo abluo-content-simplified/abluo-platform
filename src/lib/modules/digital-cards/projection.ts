@@ -33,21 +33,25 @@ const PUBLISHED = `!(_id in path("drafts.**"))`
 /** Live on the website right now: this project's, published, not archived, not unpublished. Needs $projectSlug. */
 export const DIGITAL_CARD_PUBLIC = /* groq */ `_type == "${DIGITAL_CARD_TYPE}" && projectSlug == $projectSlug && ${PUBLISHED} && ${publicFilterFor('digitalCard')}`
 
-/** A Media Library image reference (field on the current document) with its focal point, only when it belongs to this project. */
-const mediaImage = (field: string) => /* groq */ `select(${field}->projectSlug == $projectSlug => ${field}->{
+/** What a Media Library asset projects to as a card image (focal point included). Needs $locale / $defaultLocale. */
+export const DIGITAL_CARD_MEDIA_IMAGE_PROJECTION = /* groq */ `{
       "asset": image.asset,
       "hotspot": image.hotspot,
       "crop": image.crop,
       "alt": ${loc('altText')},
       "lqip": image.asset->metadata.lqip,
       "dimensions": image.asset->metadata.dimensions { width, height, aspectRatio }
-    })`
+    }`
+
+/** A Media Library image reference (field on the current document) with its focal point, only when it belongs to this project. */
+const mediaImage = (field: string) => /* groq */ `select(${field}->projectSlug == $projectSlug => ${field}->${DIGITAL_CARD_MEDIA_IMAGE_PROJECTION})`
 
 /** One shown link, its target resolved. Hidden links are left out. */
 export const DIGITAL_CARD_LINK_FIELDS = /* groq */ `
       _key,
       kind,
       "label": ${loc('label')},
+      "description": ${loc('description')},
       "primary": coalesce(primary, false),
       "url": select(kind == "url" => url),
       "value": select(kind in ["phone", "email", "whatsapp"] => value),
@@ -118,6 +122,8 @@ export interface DigitalCardLinkPublic {
   kind: DigitalCardLinkKind
   /** Locale-resolved; null = use the standard label of the kind (site dictionary). */
   label?: string | null
+  /** Locale-resolved one-liner under the label; null/empty = none. Never in the vCard. */
+  description?: string | null
   primary: boolean
   /** kind url. */
   url?: string | null
@@ -137,7 +143,10 @@ export type DigitalCardShowRaw = Partial<{
   email: boolean
   whatsapp: boolean
   saveContact: boolean
+  /** Before Amendment A: the shown profiles. No longer read. */
   socials: string[]
+  /** The profiles turned off (Amendment A). */
+  hiddenSocials: string[]
   logo: boolean
   businessName: boolean
   locations: string[]

@@ -69,14 +69,43 @@ export const DIGITAL_CARD_STATS_RANGES = [7, 30, 90, 365] as const
 export const DIGITAL_CARD_LIMITS = {
   links: 30,
   label: 80,
-  description: 300,
+  /** Per language. 300 → 600 (2026-11-09): Tom's pasted descriptions did not fit. */
+  description: 600,
+  /** The optional one-liner under a link's label, per language. */
+  linkDescription: 120,
   value: 120,
   retiredUrlNames: 50,
 } as const
 
+/** The kind a newly added link starts as: a page of this website, or a web address when the site has no pages. */
+export function defaultNewLinkKind(sitePages: boolean): DigitalCardLinkKind {
+  return sitePages ? 'page' : 'url'
+}
+
+/**
+ * The length the server checks a text against: line breaks normalised, ends
+ * trimmed, counted in UTF-16 code units (JavaScript `length`). The editor's
+ * counter uses the SAME function — never the browser's `maxLength`, which
+ * Chrome applies per grapheme cluster (an emoji or a decomposed accent is one
+ * "character" for it but 2–7 for the server), so a paste the browser let
+ * through was refused by the server as too long.
+ */
+export function cardTextLength(value: string | null | undefined): number {
+  return typeof value === 'string' ? value.replace(/\r\n?/g, '\n').trim().length : 0
+}
+
 // ── What's shown (D7) ─────────────────────────────────────────────────────────
 
-/** Switches both kinds have. `socials` = site: socialLink.platform values; person: People contact _keys. */
+/**
+ * Switches both kinds have. Social profiles are identified by — site:
+ * socialLink.platform values; person: People contact _keys.
+ *
+ * Amendment A (2026-11-09): profiles are ON by default and the card stores the
+ * ones turned OFF (`hiddenSocials`), so a profile added later appears without
+ * touching the card. `socials` is DERIVED by resolveShow (available − hidden)
+ * and never stored any more; an old stored `socials` list is ignored, which
+ * shows every profile (Tom: on by default).
+ */
 export interface DigitalCardShowShared {
   name: boolean
   description: boolean
@@ -84,7 +113,10 @@ export interface DigitalCardShowShared {
   email: boolean
   whatsapp: boolean
   saveContact: boolean
+  /** The profiles shown, in the order of the source (derived). */
   socials: string[]
+  /** The profiles turned off (stored). */
+  hiddenSocials: string[]
 }
 
 export interface SiteCardShow extends DigitalCardShowShared {
@@ -113,7 +145,8 @@ export interface DigitalCardAvailable {
 /**
  * The defaults of a new card (D7). Site: everything that exists on (pass the
  * available socials and locations). Person: photo, name, role, business name,
- * profile link on; phone, email, WhatsApp, Save contact OFF; no socials.
+ * profile link and every social profile on; phone, email, WhatsApp, Save
+ * contact OFF (D7 — a person's own contacts are opt-in).
  */
 export function defaultShow(kind: 'site', available?: DigitalCardAvailable): SiteCardShow
 export function defaultShow(kind: 'person', available?: DigitalCardAvailable): PersonCardShow
@@ -128,6 +161,7 @@ export function defaultShow(kind: DigitalCardKind, available: DigitalCardAvailab
       whatsapp: true,
       saveContact: true,
       socials: [...(available.socials ?? [])],
+      hiddenSocials: [],
       logo: true,
       businessName: true,
       locations: [...(available.locations ?? [])],
@@ -140,7 +174,8 @@ export function defaultShow(kind: DigitalCardKind, available: DigitalCardAvailab
     email: false,
     whatsapp: false,
     saveContact: false,
-    socials: [],
+    socials: [...(available.socials ?? [])],
+    hiddenSocials: [],
     photo: true,
     role: true,
     nameMode: 'full',
@@ -154,6 +189,7 @@ const strings = (v: unknown): string[] | null => (Array.isArray(v) ? v.filter((s
 /**
  * The stored switches over the defaults: a switch never stored keeps its
  * default, so a card created in Studio (no `show` yet) renders like a new one.
+ * `socials` = the available profiles minus `hiddenSocials` (pass `available`).
  */
 export function resolveShow(kind: 'site', stored: unknown, available?: DigitalCardAvailable): SiteCardShow
 export function resolveShow(kind: 'person', stored: unknown, available?: DigitalCardAvailable): PersonCardShow
@@ -164,12 +200,15 @@ export function resolveShow(kind: DigitalCardKind, stored: unknown, available: D
   const out: Record<string, unknown> = { ...base }
   for (const [key, def] of Object.entries(base)) {
     const v = s[key]
+    if (key === 'socials') continue // derived below — an old stored list is not read (Amendment A)
     if (typeof def === 'boolean' && typeof v === 'boolean') out[key] = v
     else if (Array.isArray(def)) {
       const list = strings(v)
       if (list) out[key] = list
     } else if (key === 'nameMode' && (DIGITAL_CARD_NAME_MODES as readonly unknown[]).includes(v)) out[key] = v
   }
+  const hidden = new Set(out.hiddenSocials as string[])
+  out.socials = (available.socials ?? []).filter((k) => !hidden.has(k))
   return out as unknown as DigitalCardShow
 }
 

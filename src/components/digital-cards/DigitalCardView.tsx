@@ -11,6 +11,7 @@ import type { DigitalCardSiteMessages } from '@/lib/i18n/digital-cards-site-mess
 import type { CardLinkView, CardView } from '@/lib/modules/digital-cards/website'
 import { CardBeacon } from './CardBeacon'
 import { CardContacts } from './CardContacts'
+import { CardQrButton } from './CardQrButton'
 import { EncodedLink } from './EncodedLink'
 
 /**
@@ -32,12 +33,20 @@ export interface DigitalCardViewProps {
   /** Production deployment on the project's own domain — see CardBeacon. */
   countable: boolean
   motion?: MotionTokens | null
+  /**
+   * The dashboard editor's live preview (Amendment A): the card fills its
+   * frame instead of the window (background absolute, not fixed), and nothing
+   * is counted. The editor makes the frame inert, so nothing in it can be used.
+   */
+  preview?: boolean
 }
 
 const FOCUS = 'outline-offset-2 focus-visible:outline focus-visible:outline-2'
 const FOCUS_STYLE: CSSProperties = { outlineColor: 'var(--color-primary)' }
 
 const BUTTON = `flex min-h-12 w-full items-center justify-center gap-2 px-5 py-3 text-center text-base font-semibold transition-opacity hover:opacity-90 ${FOCUS}`
+/** A link with a one-liner: label and line stacked, still one target of at least 48px. */
+const BUTTON_STACKED = `flex min-h-12 w-full flex-col items-center justify-center gap-0.5 px-5 py-2.5 text-center transition-opacity hover:opacity-90 ${FOCUS}`
 const PRIMARY_STYLE: CSSProperties = {
   ...FOCUS_STYLE,
   backgroundColor: 'var(--btn-primary-bg, var(--color-primary))',
@@ -57,7 +66,22 @@ const SECONDARY_STYLE: CSSProperties = {
 
 function CardButton({ link, primary, messages }: { link: CardLinkView; primary: boolean; messages: DigitalCardSiteMessages }) {
   const style = primary ? PRIMARY_STYLE : SECONDARY_STYLE
-  const label = (
+  // The accessible name is the label (+ "opens in a new tab"); the one-liner is
+  // its description: aria-hidden inside the link so it stays out of the name,
+  // and referenced by aria-describedby so screen readers still read it.
+  const descriptionId = link.description ? `card-link-desc-${link.key}` : undefined
+  const className = link.description ? BUTTON_STACKED : BUTTON
+  const label = link.description ? (
+    <>
+      <span className="text-base font-semibold">
+        {link.label}
+        {link.external && <span className="sr-only"> ({messages.opensInNewTab})</span>}
+      </span>
+      <span id={descriptionId} aria-hidden="true" className="text-sm leading-5 font-normal opacity-75">
+        {link.description}
+      </span>
+    </>
+  ) : (
     <>
       {link.label}
       {link.external && <span className="sr-only"> ({messages.opensInNewTab})</span>}
@@ -65,7 +89,7 @@ function CardButton({ link, primary, messages }: { link: CardLinkView; primary: 
   )
   if (link.hrefEnc) {
     return (
-      <EncodedLink hrefEnc={link.hrefEnc} linkKey={link.key} external={link.external} hint={messages.needsScript} className={BUTTON} style={style}>
+      <EncodedLink hrefEnc={link.hrefEnc} linkKey={link.key} external={link.external} hint={messages.needsScript} className={className} style={style} describedBy={descriptionId}>
         {label}
       </EncodedLink>
     )
@@ -73,19 +97,19 @@ function CardButton({ link, primary, messages }: { link: CardLinkView; primary: 
   if (!link.href) return null
   if (link.external) {
     return (
-      <a href={link.href} target="_blank" rel="noopener noreferrer" data-card-link={link.key} className={BUTTON} style={style}>
+      <a href={link.href} target="_blank" rel="noopener noreferrer" data-card-link={link.key} className={className} style={style} aria-describedby={descriptionId}>
         {label}
       </a>
     )
   }
   return (
-    <Link href={link.href} data-card-link={link.key} className={BUTTON} style={style}>
+    <Link href={link.href} data-card-link={link.key} className={className} style={style} aria-describedby={descriptionId}>
       {label}
     </Link>
   )
 }
 
-export function DigitalCardView({ view, messages, legalLinks, projectSlug, countable, motion }: DigitalCardViewProps) {
+export function DigitalCardView({ view, messages, legalLinks, projectSlug, countable, motion, preview = false }: DigitalCardViewProps) {
   // Motion only through the platform primitives, timed by the design system.
   const duration = motion?.durationSlow !== undefined ? motion.durationSlow / 1000 : 0.35
   const ease = resolveEasing(motion?.easingDecelerate, [0.0, 0.0, 0.2, 1])
@@ -95,7 +119,7 @@ export function DigitalCardView({ view, messages, legalLinks, projectSlug, count
   const muted: CSSProperties = { color: 'var(--color-text-secondary)' }
 
   return (
-    <div className="relative isolate min-h-[100svh] w-full" style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)' }}>
+    <div className={`relative isolate w-full ${preview ? 'min-h-full' : 'min-h-[100svh]'}`} style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)' }}>
       {bg && (
         <>
           {/* Decorative: the Media Library image, its focal point kept in view. */}
@@ -105,18 +129,18 @@ export function DigitalCardView({ view, messages, legalLinks, projectSlug, count
             sizes="100vw"
             alt=""
             aria-hidden="true"
-            className="fixed inset-0 -z-20 h-full w-full object-cover"
+            className={`${preview ? 'absolute' : 'fixed'} inset-0 -z-20 h-full w-full object-cover`}
             style={{ objectPosition: focalObjectPosition(bg) }}
           />
           {/* Readability layer: the site's own background colour, no new colour. */}
           <div
             aria-hidden="true"
-            className="fixed inset-0 -z-10"
+            className={`${preview ? 'absolute' : 'fixed'} inset-0 -z-10`}
             style={{ background: 'color-mix(in oklab, var(--color-background) 80%, transparent)' }}
           />
         </>
       )}
-      <CardBeacon projectSlug={projectSlug} cardId={view.publicId} countable={countable} />
+      {preview ? null : <CardBeacon projectSlug={projectSlug} cardId={view.publicId} countable={countable} />}
 
       <div className="mx-auto flex w-full max-w-[28rem] flex-col items-center gap-8 px-5 pb-10 pt-12 text-center sm:pt-16">
         <FadeIn duration={duration} ease={ease} className="flex w-full flex-col items-center gap-3">
@@ -246,7 +270,7 @@ export function DigitalCardView({ view, messages, legalLinks, projectSlug, count
           </section>
         )}
 
-        {(view.saveContactHref || view.profile) && (
+        {(view.saveContactHref || view.profile || view.qr) && (
           <div className="flex w-full flex-col items-center gap-3">
             {view.saveContactHref && (
               // A plain link to the route handler: the browser downloads the .vcf.
@@ -264,6 +288,7 @@ export function DigitalCardView({ view, messages, legalLinks, projectSlug, count
                 <Icon name="arrow-right" size={16} />
               </Link>
             )}
+            {view.qr && <CardQrButton url={view.qr.url} address={view.qr.address} messages={messages} />}
           </div>
         )}
 

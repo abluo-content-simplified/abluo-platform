@@ -20,6 +20,7 @@ import {
   discardDigitalCardDraft,
   getDigitalCard,
   getDigitalCardStats,
+  getDigitalCardsOverview,
   listDigitalCards,
   openDigitalCardForEdit,
   publishBlockers,
@@ -296,19 +297,23 @@ describe('list and read', () => {
     const card = await getDigitalCard(ctx(viewer()), PROJECT, CARD, fake().deps)
     expect(card).toMatchObject({ kind: 'person', urlName: 'anna', publishedUrlName: 'anna-rossi', rev: 'd1', path: '/link/anna', origin: 'https://www.cyce.info' })
     expect(card.person).toMatchObject({ id: 'person-anna', name: 'Anna Rossi', firstName: 'Anna', live: true })
-    expect(card.show).toMatchObject({ photo: true, name: true, role: true, phone: false, email: false, whatsapp: false, saveContact: false, nameMode: 'full', socials: [] })
+    // Amendment A: social profiles on by default (nothing hidden); contacts stay off (D7)
+    expect(card.show).toMatchObject({ photo: true, name: true, role: true, phone: false, email: false, whatsapp: false, saveContact: false, nameMode: 'full', socials: ['c2'], hiddenSocials: [] })
     expect(card.availability).toMatchObject({ phone: true, email: false, whatsapp: false, photo: true, role: true, profilePage: true, reservations: false })
+    // the real values "What's on your card" shows (public People contacts only)
+    expect(card.availability.values).toEqual({ phone: '+39 333 1234567', email: '', whatsapp: '', role: 'Insegnante' })
     expect(card.availability.socials).toEqual([{ key: 'c2', label: 'instagram', detail: 'https://instagram.com/anna' }])
     // D4 — a person card without its own background shows the site card's.
     expect(card.background).toBeNull()
     expect(card.inheritedBackground).toMatchObject({ assetId: 'img-1', url: 'https://cdn/bg.jpg' })
-    expect(card.links).toEqual([{ key: 'l1', kind: 'url', label: {}, url: 'https://example.com/', page: null, file: null, value: '', hidden: false, primary: true }])
+    expect(card.links).toEqual([{ key: 'l1', kind: 'url', label: {}, description: {}, url: 'https://example.com/', page: null, file: null, value: '', hidden: false, primary: true }])
   })
 
   it('the site card switches start with everything that exists on', async () => {
     const card = await getDigitalCard(ctx(viewer()), PROJECT, SITE, fake().deps)
     expect(card.show).toMatchObject({ logo: true, businessName: true, phone: true, socials: ['instagram'], locations: ['loc1'] })
     expect(card.availability).toMatchObject({ logo: true, phone: true, email: false, socials: [{ key: 'instagram' }], locations: [{ key: 'loc1', label: 'Sala' }] })
+    expect(card.availability.values).toEqual({ phone: '+32 2 000000', email: '', whatsapp: '', role: '' })
     expect(card.inheritedBackground).toBeNull()
   })
 
@@ -370,15 +375,18 @@ describe('saveDigitalCardDraft', () => {
 
   it('saves switches, the description and the background, revision-guarded', async () => {
     const f = fake()
-    expect(await save({ 'show.phone': true, 'show.nameMode': 'first', 'show.socials': ['c2'], 'description.en': ' Yoga teacher ', background: 'img-2' }, f)).toEqual({ rev: 'd2' })
+    expect(await save({ 'show.phone': true, 'show.nameMode': 'first', 'show.hiddenSocials': ['c2', 'c2'], 'description.en': ' Yoga teacher ', background: 'img-2' }, f)).toEqual({ rev: 'd2' })
     expect(f.patchOps).toContainEqual(['ifRevisionId', 'd1'])
     const set = f.patchOps.find((o) => o[0] === 'set')![1] as Record<string, unknown>
-    expect(set).toEqual({ 'show.phone': true, 'show.nameMode': 'first', 'show.socials': ['c2'], 'description.en': 'Yoga teacher', background: { _type: 'reference', _ref: 'img-2' } })
+    expect(set).toEqual({ 'show.phone': true, 'show.nameMode': 'first', 'show.hiddenSocials': ['c2'], 'description.en': 'Yoga teacher', background: { _type: 'reference', _ref: 'img-2' } })
   })
 
   it('refuses switches of the other kind, wrong values and unknown languages', async () => {
     await expect(save({ 'show.logo': true })).rejects.toMatchObject({ code: 'invalid_field' })
     await expect(save({ 'show.locations': ['x'] })).rejects.toMatchObject({ code: 'invalid_field' })
+    // Amendment A: the old shown-list is no longer written
+    await expect(save({ 'show.socials': ['c2'] })).rejects.toMatchObject({ code: 'invalid_field' })
+    await expect(save({ 'show.hiddenSocials': ['bad id!'] })).rejects.toMatchObject({ code: 'invalid_value' })
     await expect(save({ 'show.phone': 'yes' })).rejects.toMatchObject({ code: 'invalid_value' })
     await expect(save({ 'show.nameMode': 'nick' })).rejects.toMatchObject({ code: 'invalid_value' })
     await expect(save({ 'description.fr': 'x' })).rejects.toMatchObject({ code: 'invalid_field' })
@@ -452,6 +460,42 @@ describe('saveDigitalCardDraft', () => {
     const archived = baseDocs()
     archived[CARD] = { ...archived[CARD], archivedAt: '2026-10-10T00:00:00Z' }
     await expect(save({ 'show.phone': true }, fake({ docs: archived }))).rejects.toMatchObject({ code: 'archived' })
+  })
+
+  it('the description holds up to 600 characters per language (the server count: trimmed, UTF-16 units)', async () => {
+    const f = fake()
+    const long = 'x'.repeat(600)
+    await expect(save({ 'description.it': `  ${long}\r\n` }, f)).resolves.toEqual({ rev: 'd2' })
+    expect((f.patchOps.find((o) => o[0] === 'set')![1] as Record<string, unknown>)['description.it']).toBe(long)
+    await expect(save({ 'description.it': 'x'.repeat(601) })).rejects.toMatchObject({ code: 'invalid_value', detail: { field: 'description' } })
+    // An emoji counts as its UTF-16 units, like the editor's counter.
+    await expect(save({ 'description.it': '🧘‍♀️'.repeat(121) })).rejects.toMatchObject({ code: 'invalid_value' })
+  })
+
+  it('stores a link’s one-line description per language, ≤ 120, site languages only', async () => {
+    const f = fake()
+    await save({ links: [{ key: 'a', kind: 'url', url: 'https://cyce.info/', label: { it: 'Orari' }, description: { it: '  Orari   e prezzi ', en: '' } }] }, f)
+    const set = f.patchOps.find((o) => o[0] === 'set')![1] as { links: any[] }
+    expect(set.links[0]).toMatchObject({ label: { _type: 'localizedString', it: 'Orari' }, description: { _type: 'localizedString', it: 'Orari e prezzi' } })
+    const g = fake()
+    await save({ links: [{ key: 'a', kind: 'url', description: { it: '' } }] }, g)
+    expect((g.patchOps.find((o) => o[0] === 'set')![1] as { links: any[] }).links[0]).not.toHaveProperty('description')
+    await expect(save({ links: [{ key: 'a', kind: 'url', description: { it: 'x'.repeat(121) } }] })).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(save({ links: [{ key: 'a', kind: 'url', description: { fr: 'x' } }] })).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(save({ links: [{ key: 'a', kind: 'url', description: 'x' }] })).rejects.toMatchObject({ code: 'invalid_value' })
+  })
+
+  it('a stale revision whose values the draft ALREADY holds (a resent save) answers with the current revision and writes nothing', async () => {
+    const docs = baseDocs()
+    docs[`drafts.${CARD}`] = { ...docs[`drafts.${CARD}`], description: { _type: 'localizedText', it: 'Ciao' }, show: { phone: true } }
+    const f = fake({ docs })
+    await expect(saveDigitalCardDraft(ctx(editor()), PROJECT, { id: CARD, rev: 'old', set: { 'description.it': ' Ciao ', 'show.phone': true } }, f.deps)).resolves.toEqual({ rev: 'd1' })
+    expect(f.writes).toEqual([])
+    // Anything different is still a conflict.
+    await expect(saveDigitalCardDraft(ctx(editor()), PROJECT, { id: CARD, rev: 'old', set: { 'description.it': 'Ciao!' } }, f.deps)).rejects.toMatchObject({ code: 'conflict' })
+    await expect(saveDigitalCardDraft(ctx(editor()), PROJECT, { id: CARD, rev: 'old', set: { 'description.en': '' } }, f.deps)).resolves.toEqual({ rev: 'd1' })
+    await expect(saveDigitalCardDraft(ctx(editor()), PROJECT, { id: CARD, rev: 'old', set: { 'description.it': '' } }, f.deps)).rejects.toMatchObject({ code: 'conflict' })
+    expect(f.writes).toEqual([])
   })
 
   it('a 409 from Sanity is a conflict', async () => {
@@ -592,5 +636,53 @@ describe('URL name check and statistics', () => {
     const f = fake()
     f.readStats.mockRejectedValueOnce(new Error('db down'))
     await expect(getDigitalCardStats(ctx(editor()), PROJECT, { id: CARD, days: 30 }, f.deps)).rejects.toBeInstanceOf(DigitalCardError)
+  })
+})
+
+// ── Analytics overview (Amendment A) ──────────────────────────────────────────
+
+describe('all cards together (Analytics page)', () => {
+  it('needs digital-cards.stats.read before any read', async () => {
+    const f = fake()
+    await expect(getDigitalCardsOverview(ctx(viewer()), PROJECT, { days: 30 }, f.deps)).rejects.toThrow(TenantAuthorizationError)
+    expect(f.readStats).not.toHaveBeenCalled()
+    await expect(getDigitalCardsOverview(ctx(grant()), PROJECT, { days: 12 }, f.deps)).rejects.toMatchObject({ code: 'invalid_value' })
+  })
+
+  it('reads every card of the GRANT’s project and names them; unknown card ids are left out', async () => {
+    const f = fake()
+    f.readStats.mockResolvedValueOnce({
+      available: true,
+      stats: {
+        totals: { visits: 12, clicks: 4 },
+        cards: [
+          { cardId: PUBLIC_ID, visits: 9, clicks: 3 },
+          { cardId: '33333333-3333-4333-8333-333333333333', visits: 2, clicks: 1 },
+          { cardId: '99999999-9999-4999-8999-999999999999', visits: 1, clicks: 0 },
+        ],
+        links: [],
+        sources: [{ source: 'qr', visits: 8, clicks: 2 }],
+        days: [],
+      },
+    } as never)
+    const r = await getDigitalCardsOverview(ctx(editor()), PROJECT, { days: 30 }, f.deps)
+    expect(f.readStats).toHaveBeenCalledWith({ projectSlug: 'cyce', cardId: null, from: expect.any(String), to: expect.any(String) })
+    expect(r).toEqual({
+      available: true,
+      days: 30,
+      siteName: 'CYCE',
+      totals: { visits: 12, clicks: 4 },
+      cards: [
+        { id: CARD, kind: 'person', name: 'Anna Rossi', visits: 9, clicks: 3 },
+        { id: SITE, kind: 'site', name: '', visits: 2, clicks: 1 },
+      ],
+      sources: [{ source: 'qr', visits: 8, clicks: 2 }],
+    })
+  })
+
+  it('before migration 068: not available', async () => {
+    const f = fake()
+    f.readStats.mockResolvedValueOnce({ available: false } as never)
+    expect(await getDigitalCardsOverview(ctx(grant()), PROJECT, { days: 7 }, f.deps)).toEqual({ available: false })
   })
 })

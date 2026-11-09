@@ -19,13 +19,17 @@ import { cleanProfileSegment, cleanProfileSegments, personHref } from '@/lib/mod
 import type { PersonPublic } from '@/lib/modules/people/projection'
 import type { DigitalCardSiteMessages } from '@/lib/i18n/digital-cards-site-messages'
 import { formatDigitalCardSiteMessage } from '@/lib/i18n/digital-cards-site-messages'
+import { canonicalOrigin } from '@/lib/seo/canonical'
+import { socialPlatformLabel } from '@/lib/settings/social-links'
 import {
   DIGITAL_CARD_PERSON_SOCIAL_KINDS,
   DIGITAL_CARD_SEGMENT,
   DIGITAL_CARD_SOURCE_PATTERN,
   DIGITAL_CARDS_MODULE_ID,
+  cardPath,
   encodeContact,
   isValidUrlName,
+  qrTarget,
   resolveShow,
   slugifyUrlName,
   type DigitalCardLinkKind,
@@ -187,6 +191,8 @@ export interface CardLinkView {
   key: string
   kind: DigitalCardLinkKind
   label: string
+  /** Optional one-liner shown under the label (described-by, not part of the name). */
+  description?: string
   primary: boolean
   /** Plain href (url, page, form, booking, file). */
   href?: string
@@ -234,6 +240,21 @@ export interface CardView {
   /** Person card: "More about …" → the People profile page. */
   profile: { href: string; label: string } | null
   background: DigitalCardImage | null
+  /**
+   * "Show QR code" (Amendment A): what the code encodes — the card's canonical
+   * address (ADR-034) + `?src=qr` — and the address shown with it. null while
+   * the site has no domain of its own (a preview host is never printed).
+   */
+  qr: { url: string; address: string } | null
+}
+
+/** The card's QR target on the canonical host, or null without a custom domain. */
+export function cardQr(card: { kind: 'site' | 'person'; urlName?: string | null; project?: { customDomain?: string | null } | null }): CardView['qr'] {
+  const origin = canonicalOrigin(card.project?.customDomain ?? null)
+  if (!origin) return null
+  const path = cardPath(card.kind, card.kind === 'person' ? card.urlName : null)
+  if (card.kind === 'person' && path === `/${DIGITAL_CARD_SEGMENT}`) return null
+  return { url: qrTarget(origin, path), address: `${origin.replace(/^https:\/\//, '')}${path}` }
 }
 
 export interface CardViewContext {
@@ -289,7 +310,8 @@ export function linkView(
   if (!link || typeof link._key !== 'string' || !link._key) return null
   const m = ctx.messages
   const label = text(link.label)
-  const base = { key: link._key, kind: link.kind, primary: link.primary === true }
+  const description = text(link.description).replace(/\s+/g, ' ').trim()
+  const base = { key: link._key, kind: link.kind, primary: link.primary === true, ...(description && { description }) }
   switch (link.kind) {
     case 'url': {
       const href = /^https?:\/\//i.test(text(link.url)) ? safeLinkHref(text(link.url)) : null
@@ -334,10 +356,6 @@ export function linkViews(
   return { primary, links: views.filter((_, i) => i !== primaryIndex).map((v) => ({ ...v, primary: false })) }
 }
 
-const SOCIAL_LABELS: Record<string, string> = {
-  youtube: 'YouTube', instagram: 'Instagram', linkedin: 'LinkedIn', facebook: 'Facebook',
-  x: 'X', tiktok: 'TikTok', threads: 'Threads', pinterest: 'Pinterest',
-}
 
 function personName(person: PersonPublic, mode: 'full' | 'first'): string | null {
   const first = text(person.firstName)
@@ -387,7 +405,7 @@ export function siteCardView(card: DigitalCardSiteResult, ctx: CardViewContext):
     .filter((s) => s?.platform && show.socials.includes(s.platform))
     .map((s, i): CardSocialView | null => {
       const href = /^https?:\/\//i.test(text(s.url)) ? safeLinkHref(text(s.url)) : null
-      return href ? { key: s._key ?? `${s.platform}-${i}`, label: SOCIAL_LABELS[s.platform] ?? s.platform, href, icon: s.platform } : null
+      return href ? { key: s._key ?? `${s.platform}-${i}`, label: socialPlatformLabel(s.platform), href, icon: s.platform } : null
     })
     .filter((s): s is CardSocialView => s !== null)
 
@@ -416,6 +434,7 @@ export function siteCardView(card: DigitalCardSiteResult, ctx: CardViewContext):
     saveContactHref: null,
     profile: null,
     background: card.background?.asset ? card.background : null,
+    qr: cardQr(card),
   }
   view.saveContactHref = show.saveContact && vcardHasContent(siteVCardInput(card)) ? `${siteCardHref(ctx.siteBase)}/contact.vcf` : null
   return view
@@ -476,6 +495,7 @@ export function personCardView(card: DigitalCardPersonResult & { person: PersonP
     saveContactHref: null,
     profile: profileHref ? { href: profileHref, label: formatDigitalCardSiteMessage(m.moreAbout, { name: shortName }) } : null,
     background: card.background?.asset ? card.background : card.siteCard?.background?.asset ? card.siteCard.background : null,
+    qr: cardQr(card),
   }
   view.saveContactHref =
     show.saveContact && vcardHasContent(personVCardInput(card)) ? `${personCardHref(ctx.siteBase, card.urlName)}/contact.vcf` : null

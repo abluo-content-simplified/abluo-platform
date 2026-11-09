@@ -37,6 +37,7 @@ import { looksLikeAwinPublisherId } from '@/lib/affiliate/awin-links'
 import type { AffiliateShopId } from '@/lib/affiliate/shops'
 import { buildDisclosurePatch } from './disclosure-patch'
 import { decodeRev, encodeRev, parseSettingsSet } from './paths'
+import { socialRowsFromStored, type SocialLinkRow } from './social-links'
 
 export const SETTINGS_READ = 'site.details.read'
 export const SETTINGS_WRITE = 'site.details.write'
@@ -70,20 +71,22 @@ export type SettingsView = {
   catalogueInstalled: boolean
   /** Stored affiliate disclosure per site language (missing = empty = standard wording). */
   disclosure: Record<string, string>
+  /** The website's social profiles (siteConfig.socialLinks), in order — Settings → Social Profiles. */
+  socialLinks: SocialLinkRow[]
   canWrite: boolean
 }
 
 type Client = Pick<typeof sanityWriteClient, 'fetch' | 'transaction'>
 export type SettingsDeps = { client?: Client }
 
-type SiteDoc = { _id: string; _rev: string; defaultLocale?: string | null; supportedLocales?: string[] | null; amazonTrackingIds?: Array<Partial<AmazonTrackingId>> | null; awinPublisherId?: unknown; affiliateShops?: Array<{ shop?: unknown } | null> | null }
+type SiteDoc = { _id: string; _rev: string; defaultLocale?: string | null; supportedLocales?: string[] | null; amazonTrackingIds?: Array<Partial<AmazonTrackingId>> | null; awinPublisherId?: unknown; affiliateShops?: Array<{ shop?: unknown } | null> | null; socialLinks?: unknown }
 type ProjectDoc = {
   _id: string
   _rev: string
   catalogue?: { _key?: string | null; enabled?: boolean | null; hasConfig?: boolean | null; disclosure?: Record<string, unknown> | null } | null
 } | null
 
-export const SITE_QUERY = /* groq */ `*[_type == "siteConfig" && projectSlug == $projectSlug]{ _id, _rev, defaultLocale, supportedLocales, amazonTrackingIds, awinPublisherId, affiliateShops }`
+export const SITE_QUERY = /* groq */ `*[_type == "siteConfig" && projectSlug == $projectSlug]{ _id, _rev, defaultLocale, supportedLocales, amazonTrackingIds, awinPublisherId, affiliateShops, socialLinks[]{ _key, platform, url } }`
 export const PROJECT_QUERY = /* groq */ `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ _id, _rev, "catalogue": moduleInstallations[moduleId == "catalogue"][0]{ _key, enabled, "hasConfig": defined(config), "disclosure": config.affiliateDisclosure } }`
 
 const isDraft = (id: string) => id.startsWith('drafts.')
@@ -136,6 +139,7 @@ export async function loadSettings(ctx: TenantAuthorizationContext, projectId: s
     awin: { publisherId: looksLikeAwinPublisherId(published.awinPublisherId) ? published.awinPublisherId.trim() : '', shops: shopsFromStored(published.affiliateShops) },
     catalogueInstalled: installed,
     disclosure,
+    socialLinks: socialRowsFromStored(published.socialLinks),
     canWrite: grant.permissions.includes(SETTINGS_WRITE),
   }
 }
@@ -174,6 +178,16 @@ export async function saveSettings(
   if (parsed.amazon !== undefined) (parsed.amazon.length ? Object.assign(set, { amazonTrackingIds: parsed.amazon }) : unset.push('amazonTrackingIds'))
   if (parsed.awinPublisherId !== undefined) (parsed.awinPublisherId ? Object.assign(set, { awinPublisherId: parsed.awinPublisherId }) : unset.push('awinPublisherId'))
   if (parsed.affiliateShops !== undefined) (parsed.affiliateShops.length ? Object.assign(set, { affiliateShops: parsed.affiliateShops }) : unset.push('affiliateShops'))
+  // The whole list, in order (Settings → Social Profiles). Rows with a platform
+  // the dashboard does not know are never sent to the page, so they are kept.
+  if (parsed.socialLinks !== undefined) {
+    const kept = Array.isArray(published.socialLinks)
+      ? (published.socialLinks as Array<Record<string, unknown> | null>).filter((r): r is Record<string, unknown> => !!r && typeof r === 'object' && socialRowsFromStored([r]).length === 0).map((r) => ({ _type: 'socialLink', ...r }))
+      : []
+    const next = [...parsed.socialLinks, ...kept]
+    if (next.length) set.socialLinks = next
+    else unset.push('socialLinks')
+  }
   if (Object.keys(set).length || unset.length) {
     if (!siteRev) throw new SettingsError('invalid_value', 'Missing revision.')
     const change = { ...(Object.keys(set).length ? { set } : {}), ...(unset.length ? { unset } : {}) }

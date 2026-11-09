@@ -42,3 +42,19 @@ Tenants want a Linktree-like digital business card: one branded mobile page, one
 - The website layout gains one bare branch keyed on a proxy request header (`x-abluo-card`), like the draft-preview marker.
 - Privacy-policy templates gain one sentence about anonymous visit counting.
 - One Supabase migration (068) and one cron route.
+
+## Amendment A — 2026-11-09 usability round
+
+**Status:** Accepted (Tom approved the usability rework in chat, 2026-11-09). Build contracts updated in `docs/engineering/digital-cards/CONTRACTS.md`.
+
+1. **Editor in three tabs** — Card · Share · Statistics, with the shared `Tabs` exactly like the People editor; `?tab=share|stats` opens a tab directly.
+2. **Live preview** — the Card tab shows the card beside the fields (desktop) or below behind a toggle (phone), rendered by the website's own `DigitalCardView` from the values on screen, in the tenant's design system scoped to the preview frame (colours, buttons, radii, fonts from `resolveColours`; theme follows the dashboard's light/dark class, or the site's locked theme). The frame is inert and never counted; the legal footer is not shown in it.
+3. **"What's on your card"** replaces the switch grid: one list grouped About / Contact / Social profiles / Locations / Buttons, each item with its real value and one switch; missing data has no switch and a short "Add it in …" link (site socials → Settings → Social Profiles; other site data → Support; person data → People).
+4. **Social profiles on by default** (refines D7 for socials only): the card stores the profiles turned OFF (`show.hiddenSocials`), for both kinds, so a profile added later appears without touching the card. A previously stored shown-list (`show.socials`) is no longer read — every profile not hidden shows (Tom: on by default). Website, vCard and dashboard all go through `resolveShow`. A person's phone, e-mail, WhatsApp and Save contact stay OFF by default (D7 unchanged).
+5. **Background focus point** — after choosing the background, the shared `FocalPointPicker` (through the new shared `AssetFocusPanel`, also used by People) saves the point on the Media Library asset with the Media screen's own action — no new store. The website already honours it (`focalObjectPosition`).
+6. **"Show QR code" on the public card** — a small button opening the card's own canonical address with `?src=qr` as a large QR in an accessible modal dialog, drawn client-side; absent without a custom domain; not counted as a link click.
+7. **Share tab** — "QR Code" for print, then "Links to share", each saying where to use it (profile bio, message or status, e-mail signature), with copy buttons and a phone-only Share button (system share sheet).
+8. **Statistics** — the per-card statistics in their own tab; the Analytics page gains a Digital Cards block (all cards together, last 30 days, top cards linking to their Statistics tab, sources) for readers with `digital-cards.stats.read` when the module is installed.
+9. **Settings → Social Profiles** — a client dashboard page where the client adds, edits, removes and reorders the website's social profiles. It writes the SAME `siteConfig.socialLinks` as Website Settings, through the existing Settings writer (`site.details.write`, allow-listed path, single-project guard, revision guard, published + Studio draft patched — live at once). This is a second editing surface for one field, accepted on purpose: Studio stays the Abluo-side editor of the same data, not a second configuration (ADR-014 holds — one field, one meaning).
+
+Consequences: the `show.socials` field is kept hidden/read-only in the schema for stored data; `resolveShow` derives the shown list. One new client server action file (`settings/social-profiles/actions.ts`), one new read-only preview service, one new nav item.

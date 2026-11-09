@@ -54,6 +54,20 @@ export type Autosave = {
   /** Adopt a revision produced by another write path of this editor (e.g. the cover upload). */
   setRev(rev: string): void
   /**
+   * Adopt the revision of a snapshot READ from the server — only when nothing
+   * was saved since the read started (`since` = `confirmed` before the read)
+   * and nothing is waiting or in flight. Otherwise the read is older than what
+   * this editor already wrote: adopting it would roll the revision back and the
+   * next save would be refused as "edited elsewhere", and applying its values
+   * would wipe what the person just typed. Returns true when the snapshot is
+   * current (the caller may show its values), false when it must be ignored.
+   */
+  adoptRead(rev: string, since: number): boolean
+  /** Saves the server has confirmed so far (a counter; see adoptRead). */
+  readonly confirmed: number
+  /** Something is waiting to be sent or in flight. */
+  readonly busy: boolean
+  /**
    * The draft now has its real id: move the journal from the current key to
    * `nextKey` and journal under it from now on. Resolves once moved.
    */
@@ -116,6 +130,7 @@ export function createAutosave(opts: AutosaveOptions): Autosave {
   let timer: ReturnType<typeof setTimeout> | null = null
   let retryTimer: ReturnType<typeof setTimeout> | null = null
   let attempt = 0
+  let confirmed = 0
   let state: SaveState = 'idle'
   let disposed = false
 
@@ -201,6 +216,7 @@ export function createAutosave(opts: AutosaveOptions): Autosave {
 
       if (result.ok) {
         attempt = 0
+        confirmed++
         rev = result.rev
         try {
           opts.onRev?.(rev)
@@ -317,6 +333,17 @@ export function createAutosave(opts: AutosaveOptions): Autosave {
     },
     setRev(next) {
       if (typeof next === 'string' && next) rev = next
+    },
+    adoptRead(next, since) {
+      if (disposed || inFlight || has(pending) || confirmed !== since) return false
+      if (typeof next === 'string' && next) rev = next
+      return true
+    },
+    get confirmed() {
+      return confirmed
+    },
+    get busy() {
+      return Boolean(inFlight) || has(pending)
     },
     async rekey(nextKey) {
       if (!nextKey || nextKey === key) return

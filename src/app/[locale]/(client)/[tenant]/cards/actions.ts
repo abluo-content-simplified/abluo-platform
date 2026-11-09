@@ -21,13 +21,16 @@ import {
   discardDigitalCardDraft,
   getDigitalCard,
   getDigitalCardStats,
+  getDigitalCardsOverview,
   openDigitalCardForEdit,
   publishDigitalCardDraft,
   runDigitalCardLifecycle,
   saveDigitalCardDraft,
   type DigitalCardLifecycleOp,
   type DigitalCardSnapshot,
+  type DigitalCardsOverview,
 } from '@/lib/api/digital-cards'
+import { getDigitalCardPreview, type DigitalCardPreviewBase } from '@/lib/api/digital-card-preview'
 import { translateDigitalCard, type DigitalCardTranslateResult } from '@/lib/api/digital-card-translate'
 import type { DigitalCardStatsRead } from '@/lib/api/digital-card-stats'
 
@@ -96,4 +99,22 @@ export async function getDigitalCardStatsAction(input: { projectSlug: string; id
 /** Translate button: fills the EMPTY languages of the description and the link labels (returned, not saved). */
 export async function translateDigitalCardAction(input: { projectSlug: string; id: string; sourceLocale: string }): Promise<Result<DigitalCardTranslateResult>> {
   return run(input?.projectSlug, (ctx, pid) => translateDigitalCard(ctx, pid, { id: input.id, sourceLocale: input.sourceLocale }))
+}
+
+/** The editor's live preview: site / person data, pages, files, background and design system in one language (digital-cards.read). */
+export async function getDigitalCardPreviewAction(input: {
+  projectSlug: string
+  id: string
+  locale: string
+  backgroundId: string | null
+  fileIds: string[]
+}): Promise<Result<{ preview: DigitalCardPreviewBase }>> {
+  return run(input?.projectSlug, async (ctx, pid) => ({
+    preview: await getDigitalCardPreview(ctx, pid, { id: input.id, locale: input.locale, backgroundId: input.backgroundId, fileIds: input.fileIds }),
+  }))
+}
+
+/** Analytics page: all cards together over 7 / 30 / 90 / 365 days (digital-cards.stats.read). */
+export async function getDigitalCardsOverviewAction(input: { projectSlug: string; days: number }): Promise<Result<{ overview: DigitalCardsOverview }>> {
+  return run(input?.projectSlug, async (ctx, pid) => ({ overview: await getDigitalCardsOverview(ctx, pid, { days: input.days }) }))
 }

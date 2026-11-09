@@ -22,6 +22,7 @@ import {
 } from '@/lib/api/post-media'
 import { GalleryError, type GalleryErrorCode } from '@/lib/api/gallery-drafts'
 import { batchUpdatePhotos, updateGalleryPhoto, type BatchPhotosInput, type UpdateGalleryPhotoInput } from '@/lib/api/gallery-photos'
+import { getPersonPhotoFocal, type PersonPhotoFocal } from '@/lib/api/persons-live'
 
 export type MediaScreenError = 'unauthenticated' | PostMediaErrorCode | GalleryErrorCode
 /** `perf` is present only when perfEnabled() (never in production). */
@@ -80,6 +81,16 @@ export async function uploadMediaImageAction(formData: FormData): Promise<Result
 /** Where background uploads are (ADR-035). */
 export async function mediaStatusAction(input: { projectSlug: string; assetIds: string[] }): Promise<Result<{ items: MediaUploadStatus[] }>> {
   return run(input?.projectSlug, (ctx, pid) => getProjectMediaStatus(ctx, pid, input?.assetIds, {}, MEDIA_MANAGE_PERMISSION), 'media.status')
+}
+
+/**
+ * One Media Library photo's original URL, revision and focus point (Media
+ * permission) — what the shared AssetFocusPanel reads before the point is
+ * moved; saving goes through updateMediaPhotoAction. (The reader lives in
+ * persons-live.ts, where People needed it first; it is not People-specific.)
+ */
+export async function getMediaPhotoFocalAction(input: { projectSlug: string; assetId: string }): Promise<Result<{ photo: PersonPhotoFocal }>> {
+  return run(input?.projectSlug, async (ctx, pid) => ({ photo: await getPersonPhotoFocal(ctx, pid, { assetId: input.assetId }) }), 'media.focal')
 }
 
 export async function updateMediaPhotoAction(

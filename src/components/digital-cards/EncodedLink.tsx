@@ -16,6 +16,7 @@ export function EncodedLink({
   hint,
   className,
   style,
+  describedBy,
   children,
 }: {
   hrefEnc: string
@@ -26,6 +27,8 @@ export function EncodedLink({
   hint: string
   className?: string
   style?: CSSProperties
+  /** id of a description of the link (aria-describedby). */
+  describedBy?: string
   children: ReactNode
 }) {
   const [href, setHref] = useState<string | null>(null)
@@ -38,6 +41,7 @@ export function EncodedLink({
     <a
       href={href ?? undefined}
       title={href ? undefined : hint}
+      aria-describedby={describedBy}
       data-card-link={linkKey}
       className={className}
       style={style}

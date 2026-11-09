@@ -187,7 +187,7 @@ describe('site card view (D7, D8, D9)', () => {
   })
 
   it('follows the switches', () => {
-    const view = siteCardView(site({ show: { phone: false, email: false, logo: false, socials: ['facebook'], locations: ['l2'], saveContact: false } }), ctx)
+    const view = siteCardView(site({ show: { phone: false, email: false, logo: false, hiddenSocials: ['instagram'], locations: ['l2'], saveContact: false } }), ctx)
     expect(view.contacts.map((c) => c.kind)).toEqual(['whatsapp'])
     expect(view.logo).toBeNull()
     expect(view.socials.map((s) => s.icon)).toEqual(['facebook'])
@@ -207,6 +207,19 @@ describe('site card view (D7, D8, D9)', () => {
     expect(withReservations.links.find((l) => l.key === 'k3')).toMatchObject({ href: '/en/prenota', label: 'Book now', external: false })
   })
 
+  it('a link one-liner is passed through trimmed, empty means none, and never reaches the vCard', () => {
+    const links = [
+      { _key: 'k1', kind: 'url' as const, label: 'Shop', description: '  Orari   e prezzi ', primary: false, url: 'https://shop.example.com' },
+      { _key: 'k2', kind: 'url' as const, label: 'Blog', description: '', primary: false, url: 'https://blog.example.com' },
+    ]
+    const v = linkViews(links, { ...ctx, enabledModules: [] })
+    expect(v.links[0]).toMatchObject({ key: 'k1', label: 'Shop', description: 'Orari e prezzi' })
+    expect(v.links[1]).not.toHaveProperty('description')
+    const card = site()
+    card.links = links
+    expect(buildVCard(siteVCardInput(card, 'https://www.studio.example'))).not.toContain('Orari')
+  })
+
   it('share preview never carries contact data', () => {
     const share = cardShareMeta(siteCardView(site(), ctx), 'Studio Rossi', messages)
     expect(share.title).toBe('Studio Rossi')
@@ -216,14 +229,14 @@ describe('site card view (D7, D8, D9)', () => {
 })
 
 describe('person card view (D2, D7)', () => {
-  it('defaults: photo, name, role on; contacts and Save contact off', () => {
+  it('defaults: photo, name, role and social profiles on; contacts and Save contact off', () => {
     const view = personCardView(personCard(), ctx)
     expect(view.name).toBe('Sofia Rossi')
     expect(view.role).toBe('Yoga teacher')
     expect(view.description).toBe('Teaches hatha.')
     expect(view.photo?.alt).toBe('Sofia Rossi')
     expect(view.contacts).toEqual([])
-    expect(view.socials).toEqual([])
+    expect(view.socials.map((x) => x.key)).toEqual(['c3', 'c4'])
     expect(view.saveContactHref).toBeNull()
     expect(view.business).toEqual({ name: 'Studio Rossi', href: '/en/link' })
     expect(view.profile).toEqual({ href: '/en/team/sofia-rossi', label: 'More about Sofia' })
@@ -232,7 +245,7 @@ describe('person card view (D2, D7)', () => {
   })
 
   it('switches on: contacts, socials, first name only, Save contact', () => {
-    const view = personCardView(personCard({ show: { phone: true, email: true, socials: ['c3', 'c4'], nameMode: 'first', saveContact: true } }), ctx)
+    const view = personCardView(personCard({ show: { phone: true, email: true, nameMode: 'first', saveContact: true } }), ctx)
     expect(view.name).toBe('Sofia')
     expect(view.contacts.map((c) => c.kind)).toEqual(['phone', 'email'])
     expect(view.socials.map((s) => s.href)).toEqual(['https://www.instagram.com/sofia.yoga/', 'https://sofia.example'])
@@ -312,5 +325,24 @@ describe('fixed-window limiter (no IP)', () => {
   it('stays bounded', () => {
     const l = createFixedWindowLimiter({ limit: 1, windowMs: 60_000, maxKeys: 3 })
     for (const k of ['a', 'b', 'c', 'd', 'e']) expect(l.take(k, 0)).toBe(true)
+  })
+})
+
+describe('Show QR code (Amendment A)', () => {
+  it('encodes the card’s canonical address with ?src=qr', () => {
+    expect(siteCardView(site(), ctx).qr).toEqual({ url: 'https://www.studio.example/link?src=qr', address: 'www.studio.example/link' })
+    expect(personCardView(personCard(), ctx).qr).toEqual({ url: 'https://www.studio.example/link/sofia-rossi?src=qr', address: 'www.studio.example/link/sofia-rossi' })
+  })
+
+  it('is absent without a domain of its own (a preview host is never printed)', () => {
+    expect(siteCardView(site({ project: { enabledModules: ['digital-cards'] } }), ctx).qr).toBeNull()
+    expect(personCardView(personCard({ project: { customDomain: null, enabledModules: ['digital-cards'] } }), ctx).qr).toBeNull()
+  })
+})
+
+describe('vCard follows hidden social profiles (Amendment A)', () => {
+  it('a hidden website contact is not in the vCard; the others are', () => {
+    const input = personVCardInput(personCard({ show: { saveContact: true, hiddenSocials: ['c3'] } }))
+    expect(input.urls).toEqual(['https://sofia.example'])
   })
 })

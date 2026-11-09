@@ -234,6 +234,9 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   // The affiliate programs live only in Connected Apps (`connections`) since 2026-10-26.
   // Never technical configuration: gated on its own content-style permission, NOT `settings.manage`.
   { kind: 'nav', id: 'settings', segment: 'settings', group: 'project', requires: { permission: 'site.details.read' } },
+  // Social Profiles (ADR-049 Amendment A, Tom 2026-11-09): the website's social profiles — the same
+  // siteConfig.socialLinks Website Settings edits — so the client adds them without asking us.
+  { kind: 'nav', id: 'socialProfiles', segment: 'settings/social-profiles', group: 'project', requires: { permission: 'site.details.read' } },
   // Billing (ADR-041 Phase 5; Tom, 2026-11-02): the Owner pays here; a member granted invoice access can look.
   // Both are TENANT permissions: the layout adds them to the grant it builds the sidebar from
   // (`billingNavPermissions`). Allowlisted in FEATURE_CONTROL_ALLOWLIST.

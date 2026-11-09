@@ -92,6 +92,7 @@ const ICONS = {
   connections: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8',
   billing: 'M2 6h20v12H2zM2 10h20M6 15h4',
   settings: 'M4 7h10M18 7h2M4 17h2M10 17h10M16 4v6M8 14v6',
+  socialProfiles: 'M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4',
   catalogue: 'M4 6h16M4 12h16M4 18h10M18 16v4M16 18h4',
   catalogueItems: 'M4 6h16M4 12h16M4 18h10M18 16v4M16 18h4',
   catalogueCollections: 'M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z',

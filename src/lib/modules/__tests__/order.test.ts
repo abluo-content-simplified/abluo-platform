@@ -85,7 +85,7 @@ describe('both surfaces use the same source', () => {
       ['forms', 'visitors'], ['members', 'visitors'], ['reservations', 'visitors'],
       ['people', 'library'], ['media', 'library'], ['taxonomy', 'library'],
       ['analytics', 'insights'],
-      ['users', 'project'], ['connections', 'project'], ['settings', 'project'],
+      ['users', 'project'], ['connections', 'project'], ['settings', 'project'], ['socialProfiles', 'project'],
       ['support', 'bottom'],
     ])
   })

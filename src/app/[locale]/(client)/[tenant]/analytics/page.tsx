@@ -9,6 +9,9 @@ import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { canReadAnalytics, getProjectAnalytics } from '@/lib/analytics/read'
 import { getProjectRequestStats } from '@/lib/analytics/requests'
+import { DIGITAL_CARD_STATS_PERMISSION, getDigitalCardsOverview, type DigitalCardsOverview } from '@/lib/api/digital-cards'
+import { DIGITAL_CARDS_MODULE_ID } from '@/lib/modules/digital-cards/model'
+import { DigitalCardsAnalytics } from '@/components/client/digital-cards/DigitalCardsAnalytics'
 
 /**
  * Client dashboard — Analytics (ADR-029 §3.4, Phase 3). How the website is
@@ -21,6 +24,11 @@ import { getProjectRequestStats } from '@/lib/analytics/requests'
  *
  * Nothing here exposes how the site is connected to Google: that is Abluo's
  * configuration (Studio). When nothing is connected yet, the page says so.
+ *
+ * Digital Cards (ADR-049 Amendment A): when the module is installed and the
+ * reader holds digital-cards.stats.read, a block with all cards together
+ * (last 30 days, our own cookieless counts) — shown whether or not Google is
+ * connected.
  */
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +40,8 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ tena
   if (!grant || !canReadAnalytics(grant)) notFound()
 
   const t = await getTranslations('clientDashboard.analytics')
-  const [view, requests] = await Promise.all([
+  const showCards = grant.enabledModuleIds.includes(DIGITAL_CARDS_MODULE_ID) && grant.permissions.includes(DIGITAL_CARD_STATS_PERMISSION)
+  const [view, requests, cards] = await Promise.all([
     getProjectAnalytics(ctx, grant.projectId).catch((e) => {
       console.warn(`[analytics] ${projectSlug}: ${e instanceof Error ? e.message : String(e)}`)
       return null
@@ -42,6 +51,12 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ tena
       console.warn(`[analytics] ${projectSlug} requests: ${e instanceof Error ? e.message : String(e)}`)
       return null
     }),
+    showCards
+      ? getDigitalCardsOverview(ctx, grant.projectId, { days: 30 }).catch((e): DigitalCardsOverview | null => {
+          console.warn(`[analytics] ${projectSlug} digital cards: ${e instanceof Error ? e.message : String(e)}`)
+          return null
+        })
+      : Promise.resolve(null),
   ])
 
   return (
@@ -54,6 +69,7 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ tena
       ) : (
         <EmptyState title={t('notConnectedTitle')} body={t('notConnectedBody')} />
       )}
+      {showCards ? <div className="mt-7"><DigitalCardsAnalytics projectSlug={projectSlug} overview={cards} /></div> : null}
     </PageShell>
   )
 }

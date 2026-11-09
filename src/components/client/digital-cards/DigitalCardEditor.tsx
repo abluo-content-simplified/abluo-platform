@@ -1,10 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useLocale } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import type { DigitalCardImage, DigitalCardLinkValue, DigitalCardMissing, DigitalCardSnapshot, DigitalCardState } from '@/lib/api/digital-cards'
-import { DIGITAL_CARD_LIMITS, isValidUrlName, primaryLinkCount, type DigitalCardShow, type PersonCardShow } from '@/lib/modules/digital-cards/model'
+import { DIGITAL_CARD_LIMITS, cardTextLength, isValidUrlName, primaryLinkCount, type DigitalCardShow, type PersonCardShow } from '@/lib/modules/digital-cards/model'
 import {
   checkDigitalCardUrlNameAction,
   digitalCardLifecycleAction,
@@ -26,7 +26,6 @@ import { AssistButton } from '@/components/app/ui/AssistButton'
 import { BackLink } from '@/components/app/ui/BackLink'
 import { Button, ButtonLink } from '@/components/app/ui/Button'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
-import { Checkbox } from '@/components/app/ui/Checkbox'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { Field } from '@/components/app/ui/Field'
 import { Notice } from '@/components/app/ui/Notice'
@@ -35,11 +34,17 @@ import { Panel } from '@/components/app/ui/Panel'
 import { SaveNotice } from '@/components/app/ui/SaveNotice'
 import { SavePill } from '@/components/app/ui/SavePill'
 import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
+import { Tabs, tabPanelProps } from '@/components/app/ui/Tabs'
+import type { FocalPoint } from '@/components/app/ui/FocalPointPicker'
+import { AssetFocusPanel, type AssetFocusPanelLabels } from '@/components/client/media/AssetFocusPanel'
 import { TextArea, TextInput } from '@/components/app/ui/TextInput'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
 import { MediaFrame } from '@/components/app/ui/list/cells'
+import { DigitalCardContents } from './DigitalCardContents'
 import { DigitalCardLinks, linkComplete, linkKindLabel, linksPayload } from './DigitalCardLinks'
+import { DigitalCardPreview } from './DigitalCardPreview'
+import type { EditorTab } from './editor-tabs'
 import { DigitalCardShare } from './DigitalCardShare'
 import { DigitalCardStats } from './DigitalCardStats'
 
@@ -52,12 +57,15 @@ type Values = {
 }
 
 type Confirm = 'discard' | 'delete' | 'deletePermanently' | null
+
 type Op = 'unpublish' | 'backOnline' | 'archive' | 'restore'
 type NameCheck = { name: string; state: 'checking' | 'available' | 'taken' | 'invalid'; suggestion?: string } | null
 
 const valuesOf = (s: DigitalCardSnapshot): Values => ({ description: s.description, links: s.links, background: s.background, show: s.show, urlName: s.urlName })
 
 const H2 = 'text-[1.0625rem] leading-7 font-semibold text-foreground'
+/** The character count shows once this close to the limit (like MessageComposer). */
+const DESCRIPTION_COUNTER_FROM = 60
 const SECTION_ID: Record<DigitalCardMissing, string> = {
   person: 'card-shown-section',
   urlName: 'card-address-section',
@@ -66,20 +74,21 @@ const SECTION_ID: Record<DigitalCardMissing, string> = {
 }
 
 /**
- * The Digital Card editor (ADR-049) — one page, autosaved to the draft (no
+ * The Digital Card editor (ADR-049, Amendment A) — autosaved to the draft (no
  * Save button; the first change of a published card opens its draft from the
- * browser, never on GET).
+ * browser, never on GET). Three tabs, like the People editor:
  *
- *   What's shown   the switches (D7), each disabled with the reason and a link
- *                  to where the data is added (Website Settings via Support /
- *                  the person in People); name as shown; per-social and
- *                  per-location; the short description per language
- *   Links          add / edit / reorder / show-hide / one Primary Action (D8)
- *   Address        person cards: URL name with a live uniqueness check (D5)
- *   Background     Media Library picture; a person card uses the site card's
- *   QR code        SVG + PNG, canonical host, ?src=qr (D12)
- *   Links to share tagged links with copy buttons (D11)
- *   Statistics     visits, clicks, click-through rate, per link, sources
+ *   Card        "What's on your card" (one grouped list: real values, one
+ *               switch each; missing data links to where it is added), the
+ *               short description, Buttons (add / edit / reorder / show-hide /
+ *               one Primary Action, D8), the address (person: URL name with a
+ *               live uniqueness check, D5), the background with its focus
+ *               point (saved on the Media Library asset) — and beside it on a
+ *               computer (below, behind a toggle, on a phone) the LIVE PREVIEW,
+ *               rendered by the website's own component.
+ *   Share       QR code for print (SVG + PNG, canonical host, ?src=qr, D12);
+ *               links to share, each saying where to use it (D11).
+ *   Statistics  visits, clicks, click-through rate, per link, sources.
  *
  * Publish · Unpublish / Back online · Archive / Restore sit at the top right,
  * disabled ones say why; a blocked publish names what is missing with links.
@@ -92,6 +101,8 @@ export function DigitalCardEditor({
   canDelete = false,
   canSeeStats = false,
   canTranslate = false,
+  canSetFocus = false,
+  initialTab = 'card',
 }: {
   projectSlug: string
   initial: DigitalCardSnapshot
@@ -103,11 +114,18 @@ export function DigitalCardEditor({
   canSeeStats?: boolean
   /** The Translate module is installed (the server re-checks). */
   canTranslate?: boolean
+  /** media.library.manage: may move the background's focus point (saved on the asset; the server re-checks). */
+  canSetFocus?: boolean
+  initialTab?: EditorTab
 }) {
   const uiLocale = useLocale()
   const m = getDigitalCardsMessages(uiLocale)
   const e = m.editor
+  const c = m.card
   const router = useRouter()
+  const idBase = useId()
+  const [tab, setTab] = useState<EditorTab>(initialTab === 'stats' && !canSeeStats ? 'card' : initialTab)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const id = initial.id
   const listHref = `/${projectSlug}/cards`
   const isPerson = initial.kind === 'person'
@@ -130,10 +148,12 @@ export function DigitalCardEditor({
   const archived = status.state === 'archived'
   const editable = canWrite && !archived
 
-  const apply = useCallback((s: DigitalCardSnapshot) => {
+  /** Shows a server snapshot. `keepValues`: the snapshot is older than what this editor already wrote — keep what is on screen. */
+  const apply = useCallback((s: DigitalCardSnapshot, keepValues = false) => {
     hasDraftRef.current = s.hasDraft
     setSnapshot(s)
     setStatus({ state: s.status, hasDraft: s.hasDraft, isPublished: s.isPublished, hasChanges: s.hasChanges })
+    if (keepValues) return
     const next = valuesOf(s)
     valuesRef.current = next
     setValues(next)
@@ -154,13 +174,17 @@ export function DigitalCardEditor({
     },
     [projectSlug, id]
   )
-  const adoptRevRef = useRef<(rev: string) => void>(() => {})
+  // A snapshot is only adopted when nothing was saved, queued or sent while it
+  // was being read (autosave.adoptRead). Before, the snapshot was applied and
+  // its revision adopted unconditionally: a save that landed during the read
+  // was rolled back on screen (the text just typed vanished) and the engine
+  // went back to the older revision, so the next save was refused as "Edited
+  // elsewhere" in a single window.
+  const readGateRef = useRef<{ since: () => number; adopt: (rev: string, since: number) => boolean }>({ since: () => 0, adopt: () => true })
   const reload = useCallback(async () => {
+    const since = readGateRef.current.since()
     const r = await getDigitalCardAction({ projectSlug, id })
-    if (r.ok) {
-      apply(r.card)
-      if (r.card.rev) adoptRevRef.current(r.card.rev)
-    }
+    if (r.ok) apply(r.card, !readGateRef.current.adopt(r.card.rev, since))
     return r.ok
   }, [projectSlug, id, apply])
   const [replayed, setReplayed] = useState(false)
@@ -168,10 +192,10 @@ export function DigitalCardEditor({
     if (r && Object.keys(r).length) setReplayed(true)
   }, [])
   const autosave = useAutosave({ draftId: `digital-card:${id}`, rev: initial.rev, send, onReady })
-  const adoptRev = autosave.adoptRev
+  const { confirmedCount, adoptRead } = autosave
   useEffect(() => {
-    adoptRevRef.current = adoptRev
-  }, [adoptRev])
+    readGateRef.current = { since: confirmedCount, adopt: adoptRead }
+  }, [confirmedCount, adoptRead])
   const flushEngine = autosave.flush
   useEffect(() => {
     if (!replayed) return
@@ -193,6 +217,15 @@ export function DigitalCardEditor({
       setStatus((s) => (s.hasDraft ? s : { ...s, hasDraft: true, hasChanges: s.isPublished, state: s.isPublished ? s.state : 'draft' }))
       autosave.set(set)
     }
+  }
+  /**
+   * The short description of one language. Over the limit it stays on screen
+   * (never cut, never sent — the server would refuse it) with the count and
+   * the reason; it saves as soon as it fits again.
+   */
+  const changeDescription = (language: string, text: string) => {
+    const description = { ...valuesRef.current.description, [language]: text }
+    change({ description }, cardTextLength(text) > DIGITAL_CARD_LIMITS.description ? undefined : { [`description.${language}`]: text })
   }
   const setSwitch = (key: string, value: unknown) => change({ show: { ...valuesRef.current.show, [key]: value } as DigitalCardShow }, { [`show.${key}`]: value })
   const setLinks = (links: DigitalCardLinkValue[]) => change({ links }, { links: linksPayload(links) })
@@ -242,7 +275,7 @@ export function DigitalCardEditor({
     if (translating || !canTranslateHere) return
     const tm = getTranslateMessages(uiLocale)
     const cur = valuesRef.current
-    const hasSource = Boolean(cur.description[d]?.trim()) || cur.links.some((l) => l.label[d]?.trim())
+    const hasSource = Boolean(cur.description[d]?.trim()) || cur.links.some((l) => l.label[d]?.trim() || l.description[d]?.trim())
     if (!hasSource) return setNotice(formatTranslateMessage(tm.nothingToTranslate, { source: d.toUpperCase() }))
     setTranslating(true)
     setNotice(null)
@@ -263,18 +296,18 @@ export function DigitalCardEditor({
         set[`description.${loc}`] = text
         filled.add(loc)
       }
-      const links = now.links.map((l) => {
-        const add = r.labels[l.key]
-        if (!add) return l
-        const label = { ...l.label }
+      const fill = (current: Record<string, string>, add: Record<string, string> | undefined) => {
+        if (!add) return current
+        const out = { ...current }
         for (const [loc, text] of Object.entries(add)) {
-          if (label[loc]?.trim()) continue
-          label[loc] = text
+          if (out[loc]?.trim()) continue
+          out[loc] = text
           filled.add(loc)
         }
-        return { ...l, label }
-      })
-      if (Object.keys(r.labels).length) set.links = linksPayload(links)
+        return out
+      }
+      const links = now.links.map((l) => ({ ...l, label: fill(l.label, r.labels[l.key]), description: fill(l.description, r.linkDescriptions?.[l.key]) }))
+      if (Object.keys(r.labels).length || Object.keys(r.linkDescriptions ?? {}).length) set.links = linksPayload(links)
       change({ description, links }, Object.keys(set).length ? set : undefined)
       show({ message: filled.size ? formatTranslateMessage(tm.translated, { targets: [...filled].map((l) => l.toUpperCase()).join(', ') }) : tm.allTargetsProtected, tone: 'status' })
     } catch {
@@ -300,15 +333,21 @@ export function DigitalCardEditor({
   const shownMissing = blocked ?? missingNow
 
   const live = status.isPublished && !archived && status.state !== 'unpublished'
-  const publishReason = !editable ? null : !status.hasDraft ? e.reasonUpToDate : null
+  const tooLong = languages.filter((l) => cardTextLength(values.description[l]) > DIGITAL_CARD_LIMITS.description)
+  const publishReason = !editable ? null : tooLong.length ? e.reasonTooLong : !status.hasDraft ? e.reasonUpToDate : null
   const publishDisabled = busy || !editable || Boolean(publishReason) || missingNow.length > 0
   const unpublishReason = archived ? e.reasonArchived : !status.isPublished ? e.reasonNeverPublished : null
   const archiveReason = !status.isPublished ? e.reasonNeverPublished : null
 
-  const goTo = (key: DigitalCardMissing) => {
-    const el = document.getElementById(SECTION_ID[key])
-    el?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  const scrollToId = (elementId: string) => {
+    // The sections live in the Card tab: open it first, then scroll once it is drawn.
+    setTab('card')
+    window.setTimeout(() => {
+      const el = document.getElementById(elementId)
+      el?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+    }, 0)
   }
+  const goTo = (key: DigitalCardMissing) => scrollToId(SECTION_ID[key])
 
   async function publish() {
     if (publishDisabled) return
@@ -427,41 +466,50 @@ export function DigitalCardEditor({
   const personName = snapshot.person?.name || e.personFallback
   const title = isPerson ? personName : av.siteName || e.siteTitle
   const personHref = snapshot.person ? `/${projectSlug}/people/${snapshot.person.id}` : null
-  const supportHref = `/${projectSlug}/support`
   // The QR code and the share links use the address that is live (old ones redirect); before the first publish, the one being typed.
   const shareName = isPerson ? (snapshot.publishedUrlName ?? (isValidUrlName(values.urlName) && nameCheck?.state !== 'taken' ? values.urlName : null)) : null
   const sharePath = shareName ? `/link/${shareName}` : '/link'
   const fileName = isPerson ? shareName || 'card' : 'link'
   const linkLabels = Object.fromEntries(values.links.map((l) => [l.key, l.label[d]?.trim() || Object.values(l.label)[0] || linkKindLabel(m, l.kind)]))
+  const descriptionCount = cardTextLength(values.description[lang])
+  const rejectedHere = autosave.rejected.find((r) => r === `description.${lang}`)
+  const descriptionError =
+    descriptionCount > DIGITAL_CARD_LIMITS.description
+      ? formatDigitalCardsMessage(e.descriptionTooLong, { count: descriptionCount, max: DIGITAL_CARD_LIMITS.description })
+      : rejectedHere
+        ? formatDigitalCardsMessage(e.descriptionRejected, { language: lang.toUpperCase() })
+        : null
+  // Refused paths keep what was typed on screen; say which, never offer a Reload that would throw it away.
+  const otherRejected = autosave.rejected.filter((r) => !r.startsWith('description.'))
+  const rejectedDescriptionElsewhere = autosave.rejected.filter((r) => r.startsWith('description.') && r !== `description.${lang}`)
+  const rejectedOther = otherRejected.includes('links')
+    ? e.linksRejected
+    : rejectedDescriptionElsewhere.length
+      ? formatDigitalCardsMessage(e.descriptionRejected, { language: rejectedDescriptionElsewhere[0].split('.')[1].toUpperCase() })
+      : otherRejected.length
+        ? e.rejectedOther
+        : null
+
+  // ── Switches (Amendment A: social profiles are on unless turned off) ───────
   const showRec = values.show as unknown as Record<string, unknown>
-  const listOf = (key: 'socials' | 'locations') => (Array.isArray(showRec[key]) ? (showRec[key] as string[]) : [])
-
-  // ── Render helpers ─────────────────────────────────────────────────────────
-  const reasonLine = (reason: string, href: string | null, linkText: string) => (
-    <span className="block text-sm leading-5 text-muted-foreground">
-      {reason}{' '}
-      {href ? (
-        <ButtonLink variant="link" className="text-sm" href={href}>
-          {linkText}
-        </ButtonLink>
-      ) : null}
-    </span>
-  )
-  const missingReason = (siteText: string, personText: string) =>
-    isPerson ? reasonLine(formatDigitalCardsMessage(personText, { name: personName }), personHref, e.openPerson) : reasonLine(siteText, supportHref, e.siteFix)
-
-  const toggleIn = (key: 'socials' | 'locations', item: string, on: boolean) => {
-    const cur = listOf(key)
+  const listOf = (key: 'hiddenSocials' | 'locations') => (Array.isArray(showRec[key]) ? (showRec[key] as string[]) : [])
+  const toggleSocial = (item: string, on: boolean) => {
+    const hidden = on ? listOf('hiddenSocials').filter((x) => x !== item) : [...listOf('hiddenSocials').filter((x) => x !== item), item]
+    const socials = av.socials.map((o) => o.key).filter((k) => !hidden.includes(k))
+    change({ show: { ...valuesRef.current.show, hiddenSocials: hidden, socials } as DigitalCardShow }, { 'show.hiddenSocials': hidden })
+  }
+  const toggleLocation = (item: string, on: boolean) => {
+    const cur = listOf('locations')
     const next = on ? [...cur.filter((x) => x !== item), item] : cur.filter((x) => x !== item)
     // Keep the order of the options (the first location is the vCard address).
-    const order = (key === 'socials' ? av.socials : av.locations).map((o) => o.key)
-    setSwitch(key, order.filter((k) => next.includes(k)))
+    setSwitch('locations', av.locations.map((o) => o.key).filter((k) => next.includes(k)))
   }
-  const rowCtx = { show: showRec, editable, onToggle: setSwitch }
-  const listCtx = { editable, selected: listOf, onToggle: toggleIn }
+  const setLinkShown = (key: string, shown: boolean) => setLinks(valuesRef.current.links.map((l) => (l.key === key ? { ...l, hidden: !shown } : l)))
 
-  // ── Background picker ──────────────────────────────────────────────────────
+  // ── Background picker + focus point (saved on the Media Library asset) ─────
   const [pickingBackground, setPickingBackground] = useState(false)
+  const [focusing, setFocusing] = useState(false)
+  const [focal, setFocal] = useState<FocalPoint | null>(null)
   const shownBackground = values.background ?? (isPerson ? snapshot.inheritedBackground : null)
 
   const removeLink = (removed: DigitalCardLinkValue, index: number) => {
@@ -521,6 +569,67 @@ export function DigitalCardEditor({
 
   const reasons = [publishReason, !archived && !status.isPublished ? unpublishReason : null].filter((r): r is string => Boolean(r))
 
+  const languageName = (code: string) => {
+    try {
+      return new Intl.DisplayNames([uiLocale], { type: 'language' }).of(code) ?? code.toUpperCase()
+    } catch {
+      return code.toUpperCase()
+    }
+  }
+  const tabItems = [
+    { id: 'card', label: c.tabCard },
+    { id: 'share', label: c.tabShare },
+    ...(canSeeStats ? [{ id: 'stats', label: c.tabStats }] : []),
+  ]
+
+  const descriptionField = (
+    <div className="space-y-2">
+      <Field label={formatDigitalCardsMessage(e.descriptionLabel, { language: lang.toUpperCase() })} hint={isPerson ? e.descriptionPersonHint : e.descriptionSiteHint} error={descriptionError}>
+        {(p) => (
+          <TextArea
+            {...p}
+            rows={4}
+            className="max-h-96 [field-sizing:content]"
+            value={values.description[lang] ?? ''}
+            readOnly={!editable}
+            placeholder={lang !== d ? values.description[d] || undefined : undefined}
+            onChange={(ev) => changeDescription(lang, ev.target.value)}
+          />
+        )}
+      </Field>
+      {descriptionCount > DIGITAL_CARD_LIMITS.description - DESCRIPTION_COUNTER_FROM && descriptionCount <= DIGITAL_CARD_LIMITS.description ? (
+        <p aria-live="polite" className="text-sm leading-5 text-muted-foreground">
+          {formatDigitalCardsMessage(e.descriptionCounter, { count: descriptionCount, max: DIGITAL_CARD_LIMITS.description })}
+        </p>
+      ) : null}
+    </div>
+  )
+  const nameModeControl = isPerson ? (
+    <SegmentedControl
+      label={e.nameMode}
+      appearance="soft"
+      value={(values.show as PersonCardShow).nameMode}
+      onChange={(v) => setSwitch('nameMode', v)}
+      options={[
+        { value: 'full', label: e.nameFull, disabled: !editable },
+        { value: 'first', label: e.nameFirst, disabled: !editable },
+      ]}
+    />
+  ) : undefined
+
+  const focusLabels: AssetFocusPanelLabels = {
+    title: c.focalTitle,
+    helper: canSetFocus && editable ? c.focalHelper : c.focalReadOnly,
+    keys: c.focalKeys,
+    label: c.focalLabel,
+    valueText: (x, y) => formatDigitalCardsMessage(c.focalValueText, { x, y }),
+    previews: c.focalPreviews,
+    preview: { wide: c.focalWide, card: c.focalCard, square: c.focalSquare, tall: c.focalTall },
+    loadFailed: c.focalLoadFailed,
+    status: { saving: c.focalSaving, saved: c.focalSaved, failed: c.focalFailed },
+    scope: c.focalScope,
+  }
+
   return (
     <div className="space-y-5">
       <BackLink href={listHref} label={e.back} />
@@ -552,7 +661,8 @@ export function DigitalCardEditor({
         </div>
       </div>
 
-      {editable ? <SaveNotice state={autosave.state} rejected={autosave.rejected} onRetry={autosave.retry} onReload={() => window.location.reload()} /> : null}
+      {editable ? <SaveNotice state={autosave.state} onRetry={autosave.retry} onReload={() => window.location.reload()} /> : null}
+      {editable && rejectedOther ? <Notice tone="error">{rejectedOther}</Notice> : null}
       {archived ? (
         <Notice tone="info" title={e.archivedTitle} action={canWrite ? <Button onClick={() => void lifecycle('restore')}>{e.restore}</Button> : undefined}>
           {e.archivedBody}
@@ -571,167 +681,172 @@ export function DigitalCardEditor({
         </Notice>
       ) : null}
 
-      {languages.length > 1 ? (
-        <div className="flex flex-wrap items-start gap-3">
-          <SegmentedControl
-            label={e.language}
-            appearance="soft"
-            value={lang}
-            onChange={setLang}
-            options={languages.map((l) => {
-              const empty = !values.description[l]?.trim() && values.links.every((x) => !x.label[l]?.trim())
-              return { value: l, label: empty && l !== d ? formatDigitalCardsMessage(e.languageMissing, { language: l.toUpperCase() }) : l.toUpperCase() }
-            })}
-          />
-          {canTranslateHere ? (
-            <AssistButton tone="outline" busy={translating} disabled={translating} onClick={() => void translate()}>
-              {translating ? getTranslateMessages(uiLocale).translating : formatTranslateMessage(getTranslateMessages(uiLocale).translateFrom, { source: d.toUpperCase() })}
-            </AssistButton>
-          ) : null}
-        </div>
-      ) : null}
+      <Tabs label={c.tabsLabel} idBase={idBase} items={tabItems} value={tab} onChange={(x) => setTab(x as EditorTab)} />
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="min-w-0 space-y-5">
-          <Panel as="section" aria-labelledby="card-shown" className="space-y-4" id="card-shown-section">
-            <div>
-              <h2 id="card-shown" className={H2}>
-                {e.shownTitle}
-              </h2>
-              <p className="text-sm leading-5 text-muted-foreground">{e.shownHint}</p>
-            </div>
-            <div className="grid items-start gap-x-6 gap-y-1 md:grid-cols-2">
-              {isPerson ? (
-                <>
-                  <ShowRow {...rowCtx} k="photo" label={e.photo} available={av.photo} reason={missingReason('', e.personMissingPhoto)} />
-                  <ShowRow {...rowCtx} k="name" label={e.name} />
-                  <ShowRow {...rowCtx} k="role" label={e.role} available={av.role} reason={missingReason('', e.personMissingRole)} />
-                  <ShowRow {...rowCtx} k="description" label={e.description} />
-                  <ShowRow {...rowCtx} k="businessName" label={e.businessName} hint={e.businessNamePersonHint} available={av.businessName} reason={reasonLine(e.siteMissingName, supportHref, e.siteFix)} />
-                  <ShowRow {...rowCtx} k="phone" label={e.phone} available={av.phone} reason={missingReason('', e.personMissingPhone)} />
-                  <ShowRow {...rowCtx} k="email" label={e.email} available={av.email} reason={missingReason('', e.personMissingEmail)} />
-                  <ShowRow {...rowCtx} k="whatsapp" label={e.whatsapp} available={av.whatsapp} reason={missingReason('', e.personMissingWhatsapp)} />
-                  <ShowRow {...rowCtx} k="saveContact" label={e.saveContact} hint={e.saveContactHint} />
-                  <ShowRow
-                    {...rowCtx}
-                    k="profileLink"
-                    label={formatDigitalCardsMessage(e.profileLink, { name: snapshot.person?.firstName || personName })}
-                    available={av.profilePage}
-                    reason={missingReason('', e.personMissingProfile)}
+      <div {...tabPanelProps(idBase, tab)}>
+        {tab === 'card' ? (
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_24rem]">
+            <div className="min-w-0 space-y-5">
+              {languages.length > 1 ? (
+                <div className="flex flex-wrap items-start gap-3">
+                  <SegmentedControl
+                    label={e.language}
+                    appearance="soft"
+                    value={lang}
+                    onChange={setLang}
+                    options={languages.map((l) => {
+                      const empty = !values.description[l]?.trim() && values.links.every((x) => !x.label[l]?.trim())
+                      return { value: l, label: empty && l !== d ? formatDigitalCardsMessage(e.languageMissing, { language: l.toUpperCase() }) : l.toUpperCase() }
+                    })}
                   />
-                </>
+                  {canTranslateHere ? (
+                    <AssistButton tone="outline" busy={translating} disabled={translating} onClick={() => void translate()}>
+                      {translating ? getTranslateMessages(uiLocale).translating : formatTranslateMessage(getTranslateMessages(uiLocale).translateFrom, { source: d.toUpperCase() })}
+                    </AssistButton>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <DigitalCardContents
+                snapshot={snapshot}
+                show={values.show}
+                links={values.links}
+                lang={lang}
+                defaultLocale={d}
+                editable={editable}
+                projectSlug={projectSlug}
+                descriptionText={values.description[lang]?.trim() || values.description[d]?.trim() || ''}
+                onSwitch={(key, on) => setSwitch(key, on)}
+                onSocial={toggleSocial}
+                onLocation={toggleLocation}
+                onLinkShown={setLinkShown}
+                onEditButtons={() => scrollToId('card-links-section')}
+                nameMode={nameModeControl}
+                descriptionField={descriptionField}
+              />
+
+              <DigitalCardLinks
+                projectSlug={projectSlug}
+                links={values.links}
+                onChange={setLinks}
+                onRemove={removeLink}
+                lang={lang}
+                defaultLocale={d}
+                editable={editable}
+                pages={snapshot.pages}
+                files={snapshot.files}
+                reservations={av.reservations}
+              />
+
+              {isPerson ? (
+                <Panel as="section" aria-labelledby="card-address" className="space-y-3" id="card-address-section">
+                  <h2 id="card-address" className={H2}>
+                    {e.addressTitle}
+                  </h2>
+                  <p className="text-sm leading-5 text-muted-foreground">{e.addressHint}</p>
+                  <Field
+                    label={e.urlName}
+                    error={nameCheck?.state === 'taken' ? e.urlNameTaken : nameCheck?.state === 'invalid' ? e.urlNameInvalid : null}
+                    hint={snapshot.origin ? `${snapshot.origin.replace(/^https:\/\//, '')}/link/${values.urlName || '…'}` : `/link/${values.urlName || '…'}`}
+                  >
+                    {(p) => <TextInput {...p} value={values.urlName} readOnly={!editable} maxLength={60} autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(ev) => changeUrlName(ev.target.value)} />}
+                  </Field>
+                  {nameCheck?.state === 'checking' ? <p className="text-sm leading-5 text-muted-foreground" role="status">{e.urlNameChecking}</p> : null}
+                  {nameCheck?.state === 'available' ? <p className="text-sm leading-5 text-success" role="status">{e.urlNameAvailable}</p> : null}
+                  {nameCheck?.state === 'taken' && nameCheck.suggestion && editable ? (
+                    <Button onClick={() => changeUrlName(nameCheck.suggestion!)}>{formatDigitalCardsMessage(e.useSuggestion, { name: nameCheck.suggestion })}</Button>
+                  ) : null}
+                  {snapshot.retiredUrlNames.length ? (
+                    <p className="text-sm leading-5 break-words text-muted-foreground">{formatDigitalCardsMessage(e.retiredNames, { names: snapshot.retiredUrlNames.map((n) => `/link/${n}`).join(', ') })}</p>
+                  ) : null}
+                </Panel>
               ) : (
-                <>
-                  <ShowRow {...rowCtx} k="logo" label={e.logo} available={av.logo} reason={missingReason(e.siteMissingLogo, '')} />
-                  <ShowRow {...rowCtx} k="businessName" label={e.businessName} available={av.businessName} reason={missingReason(e.siteMissingName, '')} />
-                  <ShowRow {...rowCtx} k="description" label={e.description} />
-                  <ShowRow {...rowCtx} k="phone" label={e.phone} available={av.phone} reason={missingReason(e.siteMissingPhone, '')} />
-                  <ShowRow {...rowCtx} k="email" label={e.email} available={av.email} reason={missingReason(e.siteMissingEmail, '')} />
-                  <ShowRow {...rowCtx} k="whatsapp" label={e.whatsapp} available={av.whatsapp} reason={missingReason(e.siteMissingWhatsapp, '')} />
-                  <ShowRow {...rowCtx} k="saveContact" label={e.saveContact} hint={e.saveContactHint} />
-                </>
+                <Panel as="section" aria-labelledby="card-address" className="space-y-2" id="card-address-section">
+                  <h2 id="card-address" className={H2}>
+                    {e.addressTitle}
+                  </h2>
+                  <p className="text-[0.9375rem] leading-6 break-all text-foreground" translate="no">
+                    {formatDigitalCardsMessage(e.addressSite, { address: snapshot.origin ? `${snapshot.origin}/link` : '/link' })}
+                  </p>
+                </Panel>
               )}
+
+              <Panel as="section" aria-labelledby="card-background" className="space-y-3">
+                <h2 id="card-background" className={H2}>
+                  {e.backgroundTitle}
+                </h2>
+                <p className="text-sm leading-5 text-muted-foreground">{e.backgroundHint}</p>
+                {shownBackground?.url ? (
+                  <MediaFrame src={shownBackground.url} alt={shownBackground.alt[d] ?? e.backgroundAlt} focal={values.background ? focal : null} size={{ width: '100%', height: '10rem' }} className="rounded-xl border border-border" />
+                ) : null}
+                {!values.background ? <p className="text-sm leading-5 text-muted-foreground">{isPerson && snapshot.inheritedBackground ? e.backgroundInherited : e.backgroundNone}</p> : null}
+                {editable ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => setPickingBackground(true)}>{values.background ? e.changeBackground : isPerson && snapshot.inheritedBackground ? e.backgroundOwn : e.chooseBackground}</Button>
+                    {values.background ? (
+                      <Button aria-expanded={focusing} onClick={() => setFocusing((x) => !x)}>
+                        {focusing ? c.focusHide : c.focusShow}
+                      </Button>
+                    ) : null}
+                    {values.background ? (
+                      <Button
+                        onClick={() => {
+                          setFocusing(false)
+                          change({ background: null }, { background: null })
+                        }}
+                      >
+                        {e.removeBackground}
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {values.background ? (
+                  <AssetFocusPanel
+                    key={values.background.assetId}
+                    projectSlug={projectSlug}
+                    assetId={values.background.assetId}
+                    alt={e.backgroundAlt}
+                    focal={focal}
+                    onFocal={setFocal}
+                    editable={editable && canSetFocus}
+                    show={focusing && editable}
+                    labels={focusLabels}
+                  />
+                ) : null}
+              </Panel>
             </div>
-            {isPerson ? (
-              <div className="space-y-2">
-                <p className="text-[0.9375rem] leading-6 font-medium text-foreground">{e.nameMode}</p>
-                <SegmentedControl
-                  label={e.nameMode}
-                  appearance="soft"
-                  value={(values.show as PersonCardShow).nameMode}
-                  onChange={(v) => setSwitch('nameMode', v)}
-                  options={[
-                    { value: 'full', label: e.nameFull, disabled: !editable },
-                    { value: 'first', label: e.nameFirst, disabled: !editable },
-                  ]}
+
+            <div className="min-w-0 space-y-3 lg:sticky lg:top-4">
+              <div className="lg:hidden">
+                <Button fullWidth aria-expanded={previewOpen} aria-controls="card-preview-frame" onClick={() => setPreviewOpen((x) => !x)}>
+                  {previewOpen ? c.previewHide : c.previewShow}
+                </Button>
+              </div>
+              <div id="card-preview-frame" className={previewOpen ? '' : 'hidden lg:block'}>
+                <DigitalCardPreview
+                  projectSlug={projectSlug}
+                  id={id}
+                  kind={initial.kind}
+                  publicId={snapshot.publicId}
+                  lang={lang}
+                  languageName={languageName(lang)}
+                  description={values.description}
+                  links={values.links}
+                  backgroundId={values.background?.assetId ?? null}
+                  focal={values.background ? focal : null}
+                  show={values.show}
+                  urlName={values.urlName}
                 />
               </div>
-            ) : null}
-            <div className="grid items-start gap-5 md:grid-cols-2">
-              <ListRows {...listCtx} k="socials" label={e.socials} options={av.socials} reason={missingReason(e.siteMissingSocials, e.personMissingSocials)} />
-              {!isPerson ? <ListRows {...listCtx} k="locations" label={e.locations} hint={e.locationsHint} options={av.locations} reason={missingReason(e.siteMissingLocations, '')} /> : null}
             </div>
-            <Field label={formatDigitalCardsMessage(e.descriptionLabel, { language: lang.toUpperCase() })} hint={isPerson ? e.descriptionPersonHint : e.descriptionSiteHint}>
-              {(p) => (
-                <TextArea
-                  {...p}
-                  rows={2}
-                  value={values.description[lang] ?? ''}
-                  readOnly={!editable}
-                  maxLength={DIGITAL_CARD_LIMITS.description}
-                  placeholder={lang !== d ? values.description[d] || undefined : undefined}
-                  onChange={(ev) => change({ description: { ...valuesRef.current.description, [lang]: ev.target.value } }, { [`description.${lang}`]: ev.target.value })}
-                />
-              )}
-            </Field>
-          </Panel>
-
-          <DigitalCardLinks
-            projectSlug={projectSlug}
-            links={values.links}
-            onChange={setLinks}
-            onRemove={removeLink}
-            lang={lang}
-            defaultLocale={d}
-            editable={editable}
-            pages={snapshot.pages}
-            files={snapshot.files}
-            reservations={av.reservations}
-          />
-
-          {canSeeStats ? <DigitalCardStats projectSlug={projectSlug} cardId={id} linkLabels={linkLabels} /> : null}
-        </div>
-
-        <div className="min-w-0 space-y-5">
-          <Panel as="section" aria-labelledby="card-address" className="space-y-3" id="card-address-section">
-            <h2 id="card-address" className={H2}>
-              {e.addressTitle}
-            </h2>
-            {isPerson ? (
-              <>
-                <p className="text-sm leading-5 text-muted-foreground">{e.addressHint}</p>
-                <Field
-                  label={e.urlName}
-                  error={nameCheck?.state === 'taken' ? e.urlNameTaken : nameCheck?.state === 'invalid' ? e.urlNameInvalid : null}
-                  hint={snapshot.origin ? `${snapshot.origin.replace(/^https:\/\//, '')}/link/${values.urlName || '…'}` : `/link/${values.urlName || '…'}`}
-                >
-                  {(p) => <TextInput {...p} value={values.urlName} readOnly={!editable} maxLength={60} autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(ev) => changeUrlName(ev.target.value)} />}
-                </Field>
-                {nameCheck?.state === 'checking' ? <p className="text-sm leading-5 text-muted-foreground" role="status">{e.urlNameChecking}</p> : null}
-                {nameCheck?.state === 'available' ? <p className="text-sm leading-5 text-success" role="status">{e.urlNameAvailable}</p> : null}
-                {nameCheck?.state === 'taken' && nameCheck.suggestion && editable ? (
-                  <Button onClick={() => changeUrlName(nameCheck.suggestion!)}>{formatDigitalCardsMessage(e.useSuggestion, { name: nameCheck.suggestion })}</Button>
-                ) : null}
-                {snapshot.retiredUrlNames.length ? (
-                  <p className="text-sm leading-5 break-words text-muted-foreground">{formatDigitalCardsMessage(e.retiredNames, { names: snapshot.retiredUrlNames.map((n) => `/link/${n}`).join(', ') })}</p>
-                ) : null}
-              </>
-            ) : (
-              <p className="text-[0.9375rem] leading-6 break-all text-foreground" translate="no">
-                {formatDigitalCardsMessage(e.addressSite, { address: snapshot.origin ? `${snapshot.origin}/link` : '/link' })}
-              </p>
-            )}
-          </Panel>
-
-          <Panel as="section" aria-labelledby="card-background" className="space-y-3">
-            <h2 id="card-background" className={H2}>
-              {e.backgroundTitle}
-            </h2>
-            <p className="text-sm leading-5 text-muted-foreground">{e.backgroundHint}</p>
-            {shownBackground?.url ? (
-              <MediaFrame src={shownBackground.url} alt={shownBackground.alt[d] ?? e.backgroundAlt} size={{ width: '100%', height: '10rem' }} className="rounded-xl border border-border" />
-            ) : null}
-            {!values.background ? <p className="text-sm leading-5 text-muted-foreground">{isPerson && snapshot.inheritedBackground ? e.backgroundInherited : e.backgroundNone}</p> : null}
-            {editable ? (
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={() => setPickingBackground(true)}>{values.background ? e.changeBackground : isPerson && snapshot.inheritedBackground ? e.backgroundOwn : e.chooseBackground}</Button>
-                {values.background ? <Button onClick={() => change({ background: null }, { background: null })}>{e.removeBackground}</Button> : null}
-              </div>
-            ) : null}
-          </Panel>
-
-          <DigitalCardShare origin={snapshot.origin} path={sharePath} fileName={fileName} ready={!isPerson || Boolean(shareName)} live={live} />
-        </div>
+          </div>
+        ) : tab === 'share' ? (
+          <div className="max-w-3xl space-y-5">
+            <DigitalCardShare origin={snapshot.origin} path={sharePath} fileName={fileName} ready={!isPerson || Boolean(shareName)} live={live} />
+          </div>
+        ) : canSeeStats ? (
+          <DigitalCardStats projectSlug={projectSlug} cardId={id} linkLabels={linkLabels} />
+        ) : null}
       </div>
 
       {pickingBackground ? (
@@ -745,7 +860,10 @@ export function DigitalCardEditor({
           onAdd={(photos) => {
             setPickingBackground(false)
             const photo = photos[0]
-            if (photo) change({ background: { assetId: photo.assetId, url: photo.url, alt: photo.alt } }, { background: photo.assetId })
+            if (photo) {
+              setFocal(null)
+              change({ background: { assetId: photo.assetId, url: photo.url, alt: photo.alt } }, { background: photo.assetId })
+            }
           }}
         />
       ) : null}
@@ -775,47 +893,5 @@ export function DigitalCardEditor({
       />
       <Toast message={toast?.message ?? null} tone={toast?.tone} action={toast?.undo ? e.undo : undefined} onAction={toast?.undo} />
     </div>
-  )
-}
-
-type Option = { key: string; label: string; detail?: string }
-
-/** One "What's shown" switch: a square checkbox, top-aligned; without data it is disabled and says why (with a link). */
-function ShowRow({ k, label, hint, available = true, reason, show, editable, onToggle }: { k: string; label: string; hint?: string; available?: boolean; reason?: ReactNode; show: Record<string, unknown>; editable: boolean; onToggle: (key: string, value: boolean) => void }) {
-  const on = available && show[k] === true
-  return (
-    <div className="flex items-start gap-1">
-      <Checkbox aria-label={label} checked={on} disabled={!editable || !available} onChange={(v) => onToggle(k, v)} />
-      <div className="min-w-0 pt-2.5">
-        <p className={`text-[0.9375rem] leading-6 ${available ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</p>
-        {hint ? <p className="text-sm leading-5 text-muted-foreground">{hint}</p> : null}
-        {!available ? reason : null}
-      </div>
-    </div>
-  )
-}
-
-/** Per-social / per-location switches (D7). */
-function ListRows({ k, label, hint, options, reason, editable, selected, onToggle }: { k: 'socials' | 'locations'; label: string; hint?: string; options: readonly Option[]; reason: ReactNode; editable: boolean; selected: (key: 'socials' | 'locations') => string[]; onToggle: (key: 'socials' | 'locations', item: string, on: boolean) => void }) {
-  return (
-    <fieldset className="space-y-1">
-      <legend className="text-[0.9375rem] leading-6 font-medium text-foreground">{label}</legend>
-      {hint && options.length ? <p className="text-sm leading-5 text-muted-foreground">{hint}</p> : null}
-      {options.length === 0
-        ? reason
-        : options.map((o) => (
-            <label key={o.key} className="flex items-start gap-1">
-              <Checkbox aria-label={o.label} checked={selected(k).includes(o.key)} disabled={!editable} onChange={(v) => onToggle(k, o.key, v)} />
-              <span className="min-w-0 pt-2.5">
-                <span className="block text-[0.9375rem] leading-6 text-foreground capitalize">{o.label}</span>
-                {o.detail ? (
-                  <span className="block text-sm leading-5 break-all text-muted-foreground" translate="no">
-                    {o.detail}
-                  </span>
-                ) : null}
-              </span>
-            </label>
-          ))}
-    </fieldset>
   )
 }

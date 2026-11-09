@@ -83,9 +83,13 @@ export function useAutosave({
   const currentRev = useCallback(() => engineRef.current?.rev ?? rev, [rev])
   const discard = useCallback(async () => engineRef.current?.discard(), [])
   const adoptRev = useCallback((next: string) => engineRef.current?.setRev(next), [])
+  /** Saves confirmed so far — take it BEFORE reading a snapshot, then pass it to adoptRead. */
+  const confirmedCount = useCallback(() => engineRef.current?.confirmed ?? 0, [])
+  /** See Autosave.adoptRead: true = the snapshot is current, show it; false = keep what is on screen. */
+  const adoptRead = useCallback((next: string, since: number) => (engineRef.current ? engineRef.current.adoptRead(next, since) : true), [])
   const currentState = useCallback((): SaveState => engineRef.current?.state ?? 'idle', [])
   const retry = useCallback(() => engineRef.current?.retryNow(), [])
   const rekey = useCallback(async (nextKey: string) => engineRef.current?.rekey(nextKey), [])
 
-  return { state, rejected, set, flush, currentRev, currentState, discard, adoptRev, retry, rekey, replayed }
+  return { state, rejected, set, flush, currentRev, currentState, discard, adoptRev, confirmedCount, adoptRead, retry, rekey, replayed }
 }

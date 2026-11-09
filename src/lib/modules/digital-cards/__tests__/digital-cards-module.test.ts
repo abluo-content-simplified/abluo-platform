@@ -55,7 +55,7 @@ describe('Digital Cards schema', () => {
     expect(field('digitalCard', 'description').type).toBe('localizedText')
     expect(field('digitalCard', 'person').weak).toBe(true)
     const show = field('digitalCard', 'show').fields.map((f: any) => f.name)
-    for (const n of ['name', 'description', 'phone', 'email', 'whatsapp', 'saveContact', 'socials', 'logo', 'businessName', 'locations', 'photo', 'role', 'nameMode', 'profileLink']) expect(show, n).toContain(n)
+    for (const n of ['name', 'description', 'phone', 'email', 'whatsapp', 'saveContact', 'socials', 'hiddenSocials', 'logo', 'businessName', 'locations', 'photo', 'role', 'nameMode', 'profileLink']) expect(show, n).toContain(n)
     const link = type('digitalCardLink').fields.map((f: any) => f.name)
     for (const n of ['kind', 'label', 'url', 'page', 'file', 'value', 'hidden', 'primary']) expect(link, n).toContain(n)
     expect(field('digitalCardLink', 'label').type).toBe('localizedString')

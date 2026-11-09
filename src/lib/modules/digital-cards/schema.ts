@@ -12,6 +12,7 @@ import {
   DIGITAL_CARD_TYPE,
   DIGITAL_CARD_URL_NAME_MAX,
   DIGITAL_CARD_URL_NAME_PATTERN,
+  cardTextLength,
   primaryLinkCount,
   takenUrlNames,
   type DigitalCardKind,
@@ -81,6 +82,16 @@ async function validateKind(value: unknown, context: Ctx): Promise<true | string
   return others.size === 0 ? true : 'This website already has a site card.'
 }
 
+/** Per-language length check of a localized text (the same count the dashboard and the server use). */
+const maxPerLanguage = (max: number) => (value: unknown) => {
+  if (!value || typeof value !== 'object') return true
+  for (const [loc, v] of Object.entries(value as Record<string, unknown>)) {
+    if (loc.startsWith('_') || typeof v !== 'string') continue
+    if (cardTextLength(v) > max) return `${loc.toUpperCase()}: at most ${max} characters.`
+  }
+  return true
+}
+
 const isSite = ({ document }: { document?: Record<string, unknown> }) => document?.kind === 'site'
 const isPerson = ({ document }: { document?: Record<string, unknown> }) => document?.kind === 'person'
 
@@ -104,6 +115,13 @@ const digitalCardLinkType = defineType({
       title: 'Label',
       type: 'localizedString',
       description: 'Left empty, the website shows a standard label for the type ("Call", "WhatsApp" …) in the visitor’s language.',
+    }),
+    defineField({
+      name: 'description',
+      title: 'One-line description',
+      type: 'localizedString',
+      description: `Optional short line under the label (e.g. "Timetable and prices"). Up to ${DIGITAL_CARD_LIMITS.linkDescription} characters.`,
+      validation: (Rule) => Rule.custom(maxPerLanguage(DIGITAL_CARD_LIMITS.linkDescription)),
     }),
     defineField({
       name: 'url',
@@ -188,11 +206,22 @@ const showField = defineField({
     defineField({ name: 'whatsapp', title: 'WhatsApp', type: 'boolean' }),
     defineField({ name: 'saveContact', title: 'Save contact', type: 'boolean' }),
     defineField({
-      name: 'socials',
-      title: 'Social profiles',
+      name: 'hiddenSocials',
+      title: 'Hidden social profiles',
       type: 'array',
       of: [defineArrayMember({ type: 'string' })],
-      description: 'Site card: the platforms of Website Settings → Social links. Person card: the keys of the person’s public contacts (Instagram, LinkedIn, website).',
+      description:
+        'Every social profile is shown unless it is listed here (ADR-049 Amendment A), so a profile added later appears on its own. Site card: platforms of Website Settings → Social links. Person card: keys of the person’s public contacts (Instagram, LinkedIn, website).',
+    }),
+    // Before Amendment A (2026-11-09) the card stored the SHOWN profiles. Kept so
+    // stored data stays valid; no longer read (every profile not hidden is shown).
+    defineField({
+      name: 'socials',
+      title: 'Social profiles (old list, no longer used)',
+      type: 'array',
+      of: [defineArrayMember({ type: 'string' })],
+      readOnly: true,
+      hidden: true,
     }),
     // Site card
     defineField({ name: 'logo', title: 'Logo', type: 'boolean', hidden: ({ document }) => !isSite({ document }) }),
@@ -284,7 +313,8 @@ const digitalCardType = defineType({
       title: 'Short description',
       type: 'localizedText',
       group: 'content',
-      description: 'Optional short line under the name. A person card left empty shows the person’s short bio.',
+      description: `Optional short text under the name (up to ${DIGITAL_CARD_LIMITS.description} characters per language). A person card left empty shows the person’s short bio.`,
+      validation: (Rule) => Rule.custom(maxPerLanguage(DIGITAL_CARD_LIMITS.description)),
     }),
     defineField({
       name: 'links',

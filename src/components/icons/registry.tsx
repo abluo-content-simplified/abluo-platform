@@ -174,6 +174,14 @@ export const ICONS = {
       <path d="M12 7v5.2l3.4 2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
+  'qr-code': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
+      <path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20h1" />
+    </svg>
+  ),
   'map-pin': (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
       <path
