@@ -885,6 +885,8 @@ export const eventSiteContextQuery = /* groq */ `
 // Precedence: siteConfig.faviconSvg → siteConfig.faviconPng → /favicon.ico.
 export const siteConfigFaviconQuery = /* groq */ `
   *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
+    // The tab title fallback for any page that sets none — the 404 page above all.
+    siteName,
     faviconSvg { asset },
     faviconPng { asset },
     openGraphImage { asset },
@@ -1020,7 +1022,7 @@ export const websiteSiteConfigQuery = /* groq */ `
     "footerSubTagline": ${loc('footerSubTagline')},
     footerCredit { ${NAV_LINK_FIELDS} },
     // Abluo's own credit line — set per project by Abluo, never by the tenant.
-    "abluoCredit": *[_type == "project" && projectSlug == $projectSlug][0].showAbluoCredit == true,
+    "abluoCredit": *[_type == "project" && projectSlug == $projectSlug][0].showAbluoCredit != false,
     footerDisplay,
     "footerCtaHeading": ${loc('footerCtaHeading')},
     "footerCtaSubtext": ${loc('footerCtaSubtext')},

@@ -564,6 +564,7 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
 
   const [siteConfigFavicon, customDomain] = await Promise.all([
     fetchForTenant<{
+      siteName?:        string
       faviconSvg?:      { asset?: { _ref: string } }
       faviconPng?:      { asset?: { _ref: string } }
       openGraphImage?:  { asset?: { _ref: string } }
@@ -605,6 +606,10 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
   const appleTouchIconSrc = homeIcon ? iconUrl(homeIcon as any, 180) : undefined
 
   return {
+    // Tab title fallback: any page without its own title (the "page not
+    // available" 404 above all) shows the site's name — never the platform's
+    // "Abluo" from the root layout. Pages with a title replace it as before.
+    ...(siteConfigFavicon?.siteName ? { title: siteConfigFavicon.siteName } : {}),
     ...(origin ? { metadataBase: new URL(origin) } : {}),
     ...(faviconSrc || appleTouchIconSrc ? {
       icons: {

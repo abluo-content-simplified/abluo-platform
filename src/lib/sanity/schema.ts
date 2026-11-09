@@ -3889,12 +3889,13 @@ const projectType = defineType({
     // ── Abluo credit (2026-11-06) ───────────────────────────────────────────
     // "Made with a little help from abluo." in the website footer. Lives on the
     // project, not on siteConfig: it is Abluo's decision per website, not the
-    // tenant's. Off by default; absent on every project that predates it.
+    // tenant's. On by default (Tom, 2026-11-09: every site shows it); only an
+    // explicit `false` hides it, so a project created without the field shows it.
     defineField({
       name: 'showAbluoCredit',
       title: 'Show the abluo credit in the footer',
       type: 'boolean',
-      initialValue: false,
+      initialValue: true,
       description: 'Adds “Made with a little help from abluo.” to the bottom of the website footer, linking to abluo.app.',
     }),
 
