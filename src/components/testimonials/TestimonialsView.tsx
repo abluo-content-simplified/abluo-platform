@@ -95,10 +95,12 @@ function Card({ t, labels, onOpen }: { t: TestimonialCardView; labels: Testimoni
   // The whole card opens the window: the "Read more" button's ::after covers
   // the card, so there is one focus target and one click target (Tom, 2026-11-09).
   // Links inside the card (source) sit above that layer and stay clickable.
+  // Tailwind v4 gives buttons the default arrow cursor, and the click layer IS
+  // the button — so the pointer cursor is set on the button and its ::after.
   return (
     <article
-      className="relative flex h-full cursor-pointer flex-col rounded-lg p-6 transition-colors md:p-7"
-      style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+      className="relative flex h-full cursor-pointer flex-col rounded-lg border border-[color:var(--color-border)] p-6 transition-colors duration-200 hover:border-[color:var(--color-primary)] has-[:focus-visible]:border-[color:var(--color-primary)] md:p-7"
+      style={{ backgroundColor: 'var(--color-surface)' }}
       lang={t.lang}
     >
       {t.title && (
@@ -117,7 +119,7 @@ function Card({ t, labels, onOpen }: { t: TestimonialCardView; labels: Testimoni
           type="button"
           aria-label={t.readMoreLabel}
           onClick={(e) => onOpen(t, e.currentTarget)}
-          className="mt-4 self-start text-sm font-medium underline underline-offset-4 after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:outline-none focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-[color:var(--color-primary)]"
+          className="mt-4 cursor-pointer self-start text-sm font-medium underline underline-offset-4 after:absolute after:cursor-pointer after:inset-0 after:rounded-lg after:content-[''] focus-visible:outline-none focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-[color:var(--color-primary)]"
           style={{ color: 'var(--color-primary)', outlineColor: 'var(--color-primary)' }}
         >
           {labels.readMore}

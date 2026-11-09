@@ -71,8 +71,9 @@ describe('TestimonialsSection', () => {
     const short = render(section([raw('a')]))
     expect(short).toContain('>Read more<')
     expect(short).not.toMatch(/<h3[^>]*>/)
-    expect(short).toContain('after:absolute after:inset-0')
-    expect(short).toContain('cursor-pointer')
+    expect(short).toContain('after:absolute')
+    expect(short).toContain('after:inset-0')
+    expect(short).toContain('after:cursor-pointer')
   })
 
   it('renders the grid layout without carousel semantics', () => {
