@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import type { TestimonialCardView } from '@/lib/modules/testimonials/view'
@@ -49,7 +49,7 @@ const noopSubscribe = () => () => {}
 function Meta({ t }: { t: TestimonialCardView }) {
   const bits = [t.context, t.age].filter(Boolean) as string[]
   return (
-    <div className="mt-auto pt-4">
+    <div className="pt-4">
       {t.name && (
         <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
           {t.name}
@@ -71,7 +71,7 @@ function Meta({ t }: { t: TestimonialCardView }) {
           {t.dateText && t.source && ' · '}
           {t.source &&
             (t.source.href ? (
-              <a href={t.source.href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+              <a href={t.source.href} target="_blank" rel="noopener noreferrer" className="relative z-10 underline underline-offset-2">
                 {t.source.text}
               </a>
             ) : (
@@ -89,43 +89,40 @@ function Meta({ t }: { t: TestimonialCardView }) {
 }
 
 function Card({ t, labels, onOpen }: { t: TestimonialCardView; labels: TestimonialsViewLabels; onOpen: (t: TestimonialCardView, opener: HTMLElement) => void }) {
-  const textRef = useRef<HTMLParagraphElement>(null)
-  // Server guess first; in the browser the real overflow of the 3-line clamp decides too.
-  const [overflows, setOverflows] = useState(false)
-  useLayoutEffect(() => {
-    const el = textRef.current
-    if (!el) return
-    const measure = () => setOverflows(el.scrollHeight > el.clientHeight + 1)
-    measure()
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
-    ro?.observe(el)
-    return () => ro?.disconnect()
-  }, [t.excerpt])
-  const showMore = t.mayNeedMore || overflows
-
+  // Every card has the same build so the cards line up: heading, three lines of
+  // the testimonial, then name and details, and "Read more" always last, so it
+  // sits on the same line in every card of a row (cards stretch to equal height).
+  // The whole card opens the window: the "Read more" button's ::after covers
+  // the card, so there is one focus target and one click target (Tom, 2026-11-09).
+  // Links inside the card (source) sit above that layer and stay clickable.
   return (
     <article
-      className="flex h-full flex-col rounded-lg p-6 md:p-7"
+      className="relative flex h-full cursor-pointer flex-col rounded-lg p-6 transition-colors md:p-7"
       style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
       lang={t.lang}
     >
+      {t.title && (
+        <h3 className="m-0 mb-2 text-base font-semibold leading-snug" style={{ color: 'var(--color-text-primary)' }}>
+          {t.title}
+        </h3>
+      )}
       <blockquote className="m-0">
-        <p ref={textRef} className="line-clamp-3 text-base leading-relaxed" style={{ color: 'var(--color-text-primary)' }}>
+        <p className="line-clamp-3 text-base leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
           {t.excerpt}
         </p>
       </blockquote>
-      {showMore && (
+      <div className="mt-auto">
+        <Meta t={t} />
         <button
           type="button"
           aria-label={t.readMoreLabel}
           onClick={(e) => onOpen(t, e.currentTarget)}
-          className="mt-3 self-start text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="mt-4 self-start text-sm font-medium underline underline-offset-4 after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:outline-none focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-[color:var(--color-primary)]"
           style={{ color: 'var(--color-primary)', outlineColor: 'var(--color-primary)' }}
         >
           {labels.readMore}
         </button>
-      )}
-      <Meta t={t} />
+      </div>
     </article>
   )
 }
@@ -290,6 +287,11 @@ function Dialog({ item, opener, labels, onClose, duration, ease }: { item: Testi
             <h3 id={titleId} className="sr-only">
               {item.name ?? labels.dialogFallback}
             </h3>
+            {item.title && (
+              <p className="m-0 mt-4 pr-8 text-lg font-semibold leading-snug">
+                {item.title}
+              </p>
+            )}
             <blockquote className="m-0 mt-4 space-y-4 pr-8 text-base leading-relaxed">
               {item.paragraphs.map((p, i) => (
                 <p key={i}>{p}</p>

@@ -61,14 +61,18 @@ describe('TestimonialsSection', () => {
     expect(html).toContain('aria-label="Next testimonials"')
   })
 
-  it('offers "Read more" only when the card can cut the text', () => {
-    const long = render(section([raw('a', { body: LONG })]))
-    expect(long).toContain('>Read more<')
+  it('builds every card the same way: heading, three lines, "Read more" last, whole card opens the window', () => {
+    const withAbstract = render(section([raw('a', { abstract: 'Gist.', body: 'First paragraph.\n\nSecond paragraph.' })]))
+    // the short version is the heading, the testimonial text follows on three lines
+    expect(withAbstract).toMatch(/<h3[^>]*>Gist\.<\/h3>/)
+    expect(withAbstract).toContain('First paragraph. Second paragraph.')
+    expect(withAbstract).toContain('line-clamp-3')
+    // "Read more" is always there, even for a short text, and its click layer covers the card
     const short = render(section([raw('a')]))
-    expect(short).not.toContain('Read more')
-    const withAbstract = render(section([raw('a', { abstract: 'Gist.', body: 'Gist, and a bit more.' })]))
-    expect(withAbstract).toContain('>Read more<')
-    expect(withAbstract).toContain('Gist.')
+    expect(short).toContain('>Read more<')
+    expect(short).not.toMatch(/<h3[^>]*>/)
+    expect(short).toContain('after:absolute after:inset-0')
+    expect(short).toContain('cursor-pointer')
   })
 
   it('renders the grid layout without carousel semantics', () => {

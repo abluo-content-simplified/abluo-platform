@@ -29,21 +29,18 @@ export interface TestimonialCardView {
   languageNote: string | null
   /** The language of the card's text, for lang="". */
   lang: string
-  /** What the card shows, cut to ~3 lines by CSS. */
+  /** The card's heading: the short version (abstract) when there is one, else null. */
+  title: string | null
+  /** The testimonial text the card shows, cut to 3 lines by CSS. */
   excerpt: string
   /** The full text, one string per paragraph. */
   paragraphs: string[]
-  /** Server guess whether the card cuts the text; the browser also checks the real overflow. */
-  mayNeedMore: boolean
   readMoreLabel: string
 }
 
 type Options = Pick<TestimonialsSection, 'showRating' | 'showDate' | 'showSource'>
 
 const SOURCE_NAMES: Record<string, string> = { google: 'Google', facebook: 'Facebook', trustpilot: 'Trustpilot' }
-
-/** Roughly three lines of a phone-width card. Beyond it (or with a separate full text) the card offers "Read more". */
-export const EXCERPT_COMFORT_CHARS = 150
 
 /** A language name in the visitor's language ("French", "francese"); the code itself when unknown. */
 export function languageName(code: string, locale: string): string {
@@ -90,7 +87,7 @@ export function toCardView(t: TestimonialPublic, opts: Options, msgs: Testimonia
   let languageNote: string | null = null
   if (t.languageNote?.kind === 'translated') languageNote = formatTestimonialMessage(msgs.translatedFrom, { language: languageName(t.languageNote.from, pageLocale) })
   else if (t.languageNote?.kind === 'other-language') languageNote = formatTestimonialMessage(msgs.inLanguage, { language: languageName(t.languageNote.language, pageLocale) })
-  const separateFull = t.excerpt !== t.body
+  const title = t.abstract && t.abstract.trim() && t.abstract.trim() !== t.body.trim() ? t.abstract.trim() : null
   return {
     id: t.id,
     name: name || null,
@@ -103,9 +100,9 @@ export function toCardView(t: TestimonialPublic, opts: Options, msgs: Testimonia
     source: opts.showSource === true ? sourceOf(t, msgs) : null,
     languageNote,
     lang: t.locale,
-    excerpt: t.excerpt,
+    title,
+    excerpt: paragraphs.join(' '),
     paragraphs,
-    mayNeedMore: separateFull || paragraphs.length > 1 || t.body.length > EXCERPT_COMFORT_CHARS,
     readMoreLabel: formatTestimonialMessage(msgs.readMoreAbout, { name: name ?? msgs.dialogFallback }),
   }
 }
