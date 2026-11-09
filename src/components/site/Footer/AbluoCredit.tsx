@@ -21,11 +21,14 @@ export function AbluoCredit({ locale, className = '' }: { locale: string; classN
       href={ABLUO_URL}
       target="_blank"
       rel="noopener"
-      className={`inline-flex items-center gap-[0.35em] text-sm hover:text-[var(--color-footer-text)] ${className}`}
+      className={`inline-flex items-baseline gap-[0.35em] text-sm hover:text-[var(--color-footer-text)] ${className}`}
       style={{ color: 'var(--color-footer-text-muted)', ['--brand' as string]: BRAND_BLUE }}
     >
       {m.before && <span>{m.before}</span>}
-      <AbluoLogo className="h-[0.95em] translate-y-[0.08em]" label="abluo" />
+      {/* Baseline-aligned: the SVG has no baseline of its own, so flexbox uses its
+          bottom edge — which is where the wordmark's letters sit. Text and logo
+          share one baseline instead of being centred against each other. */}
+      <AbluoLogo className="h-[0.95em]" label="abluo" />
       {m.after && <span>{m.after}</span>}
     </a>
   )
