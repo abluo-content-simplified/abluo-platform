@@ -889,6 +889,9 @@ export const siteConfigFaviconQuery = /* groq */ `
     faviconPng { asset },
     openGraphImage { asset },
     appleTouchIcon { asset },
+    // The sign: the source for the favicon / home-screen icon when those are empty (site-icons.ts).
+    brandMark { asset },
+    brandMarkLight { asset },
     businessType,
     "googleSiteVerification": googleSiteVerification,
     "bingSiteVerification": bingSiteVerification
@@ -922,6 +925,8 @@ export const websiteSiteConfigQuery = /* groq */ `
     "tagline": ${loc('tagline')},
     ${locImage('logo')},
     ${locImage('logoLight')},
+    ${locImage('footerLogo')},
+    ${locImage('footerLogoLight')},
     // Text wordmark — drawn in the heading font when no logo image is set.
     // Null on every tenant that has not authored one.
     "wordmarkText": ${loc('wordmarkText')},

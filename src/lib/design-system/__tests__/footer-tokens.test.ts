@@ -80,6 +80,15 @@ describe('footerThemeVars', () => {
     expect(tokenOf(withDefault, 'bg')).toBe(PALETTES.livenerDark.secondary)
   })
 
+  it('picks the logo version by how light the surface is', () => {
+    const lightCss = footerThemeVars('background', { ...PALETTES.livenerDark, bg: '#ffffff' })
+    expect(lightCss).toContain('--footer-logo-on-light: block;')
+    expect(lightCss).toContain('--footer-logo-on-dark: none;')
+    const darkCss = footerThemeVars('background', { ...PALETTES.livenerDark, bg: '#0f172a' })
+    expect(darkCss).toContain('--footer-logo-on-light: none;')
+    expect(darkCss).toContain('--footer-logo-on-dark: block;')
+  })
+
   it('passes the chosen surface through verbatim, so authored colour syntax survives', () => {
     expect(tokenOf(footerThemeVars('backgroundAlt', PALETTES.nologoDark), 'bg')).toBe('#100f14')
     expect(tokenOf(footerThemeVars('primary', PALETTES.livenerDark), 'bg')).toBe(PALETTES.livenerDark.primary)
@@ -149,6 +158,6 @@ describe('footerThemeVars', () => {
 
   it('indents every line, so the emitted stylesheet stays readable', () => {
     const css = footerThemeVars('secondary', PALETTES.nologoDark, '      ')
-    for (const line of css.split('\n')) expect(line.startsWith('      --color-footer-')).toBe(true)
+    for (const line of css.split('\n')) expect(/^ {6}--(color-footer|footer-logo)-/.test(line)).toBe(true)
   })
 })

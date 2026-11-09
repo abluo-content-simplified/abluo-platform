@@ -18,6 +18,11 @@ describe('GET /favicon.ico', () => {
     expect(res.headers.get('cache-control')).toBe('public, max-age=3600')
   })
 
+  it('a site with only a Sign: the tab icon is made from it', async () => {
+    answer = async () => ({ faviconSvg: null, faviconPng: null, brandMark: { asset: { _ref: 'image-1234567890abcdef1234567890abcdef12345678-154x103-svg' } } })
+    expect((await call('freeriders.app')).headers.get('location')).toMatch(/1234567890abcdef1234567890abcdef12345678-154x103\.svg\?.*fm=png/)
+  })
+
   it('a site without one, or a platform host: the platform icon', async () => {
     answer = async () => ({ faviconSvg: null, faviconPng: null })
     expect((await call('freeriders.app')).headers.get('location')).toBe('https://freeriders.app/favicon.ico?default=1')

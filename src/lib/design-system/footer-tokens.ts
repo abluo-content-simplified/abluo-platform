@@ -6,6 +6,7 @@ import {
   borderOn,
   mutedOn,
   parseColor,
+  relativeLuminance,
   toCssRgb,
   type Rgb,
 } from './contrast'
@@ -66,6 +67,10 @@ const SOLVE_MARGIN = 0.1
  *   --color-footer-border       a hairline, held to a decorative 1.6:1
  *   --color-footer-accent       the brand accent, nudged toward the ink only
  *                               as far as AA-large (3:1) requires
+ *   --footer-logo-on-light / --footer-logo-on-dark
+ *                               `block` / `none`: which logo version the footer
+ *                               shows — the "Light variant" on a light surface
+ *                               (dark ink), the other one on a dark surface
  *
  * The muted tier replaces the old `color: text-primary; opacity: 0.45` pattern,
  * where the opacity was picked by eye and silently destroyed the ratio. These
@@ -85,6 +90,15 @@ export function footerThemeVars(
 
   const parsed = parseColor(surfaceCss)
   const line = (name: string, value: string) => `${indent}--color-footer-${name}: ${value};`
+  // Which logo version reads on this surface: dark ink means a light surface.
+  const logoLines = (ink: Rgb | null) => {
+    if (!ink) return []
+    const lightSurface = relativeLuminance(ink) < 0.5
+    return [
+      `${indent}--footer-logo-on-light: ${lightSurface ? 'block' : 'none'};`,
+      `${indent}--footer-logo-on-dark: ${lightSurface ? 'none' : 'block'};`,
+    ]
+  }
 
   if (!parsed) {
     return [
@@ -93,6 +107,7 @@ export function footerThemeVars(
       line('text-muted', palette.textMuted),
       line('border', palette.border),
       line('accent', palette.primary),
+      ...logoLines(parseColor(palette.textPrimary)?.rgb ?? null),
     ].join('\n')
   }
 
@@ -106,5 +121,6 @@ export function footerThemeVars(
     line('text-muted', toCssRgb(mutedOn(ink, bg, AA_NORMAL + SOLVE_MARGIN))),
     line('border', toCssRgb(borderOn(bg))),
     line('accent', toCssRgb(accentOn(accentSource, bg, AA_LARGE + SOLVE_MARGIN))),
+    ...logoLines(ink),
   ].join('\n')
 }

@@ -707,6 +707,9 @@ export interface WebsiteSiteConfig {
   tagline?: string
   logo?: ResolvedImage
   logoLight?: ResolvedImage
+  /** Optional footer logo (e.g. with the tagline); empty → `logo`. "Light" = for light backgrounds. */
+  footerLogo?: ResolvedImage
+  footerLogoLight?: ResolvedImage
   /**
    * Locale-resolved by GROQ. Text wordmark drawn in the heading font when no
    * `logo` image is set. Undefined on every tenant using an image logo.

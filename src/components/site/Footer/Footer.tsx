@@ -125,7 +125,23 @@ export async function Footer({
     authoredInColumns || authoredInLinks || Boolean(autoCookieColumnKey) || autoCookieInLinks
   const authoredLinksCookieLabel = footerLinks.find(isCookieLink)?.label
 
-  const logoSrc = config.logo ? imageUrl(config.logo as never, 480) : undefined
+  // Footer logo (optional) → Logo. Two versions when the site has them: the
+  // footer shows the one that reads on its own surface (--footer-logo-on-*,
+  // set by footerThemeVars), so a light footer gets the "Light variant".
+  const footerDark = config.footerLogo ?? config.logo
+  const footerLight = config.footerLogo ? (config.footerLogoLight ?? config.footerLogo) : (config.logoLight ?? config.logo)
+  const logoSrc = footerDark ? imageUrl(footerDark as never, 480) : footerLight ? imageUrl(footerLight as never, 480) : undefined
+  const logoLightSrc = footerLight ? imageUrl(footerLight as never, 480) : undefined
+  const logoAlt = config.siteName ?? tenantId
+  const footerLogo = (height: string) =>
+    logoLightSrc && logoLightSrc !== logoSrc ? (
+      <>
+        <img src={logoSrc} alt={logoAlt} style={{ height, width: 'auto', display: 'var(--footer-logo-on-dark, block)' }} />
+        <img src={logoLightSrc} alt={logoAlt} style={{ height, width: 'auto', display: 'var(--footer-logo-on-light, none)' }} />
+      </>
+    ) : (
+      <img src={logoSrc} alt={logoAlt} style={{ height, width: 'auto' }} />
+    )
   // Precedence: image logo → text wordmark → plain site name.
   const wordmark = renderWordmark(config.wordmarkText, config.wordmarkAccent, FOOTER_WORDMARK_ACCENT_STYLE)
 
@@ -211,11 +227,7 @@ export async function Footer({
             <div className="lg:w-[30%] lg:shrink-0">
               <Link href={homeHref} className="mb-4 inline-block">
                 {logoSrc ? (
-                  <img
-                    src={logoSrc}
-                    alt={config.siteName ?? tenantId}
-                    style={{ height: 'var(--logo-height-desktop)', width: 'auto' }}
-                  />
+                  footerLogo('var(--logo-height-desktop)')
                 ) : (
                   <span
                     className="text-2xl font-extrabold tracking-[-0.03em]"
@@ -315,11 +327,7 @@ export async function Footer({
           <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             {logoSrc ? (
               <Link href={homeHref} className="hover:text-[var(--color-footer-text)]">
-                <img
-                  src={logoSrc}
-                  alt={config.siteName ?? tenantId}
-                  style={{ height: 'var(--logo-height-mobile)', width: 'auto' }}
-                />
+                {footerLogo('var(--logo-height-mobile)')}
               </Link>
             ) : (
               <Link

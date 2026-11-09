@@ -19,6 +19,7 @@ import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resol
 import { buildGoogleFontsUrl } from '@/lib/google-fonts'
 import { headingVars, fluidHeadingSize, isTypographyLegacyTenant } from '@/lib/design-system/typography'
 import { footerThemeVars } from '@/lib/design-system/footer-tokens'
+import { pickHomeScreenIcon, pickTabIcon } from '@/lib/site-icons'
 import { Footer } from '@/components/site/Footer'
 import { NavClient } from '@/components/site/Nav/NavClient'
 import { MembersStatusBar } from '@/components/site/MembersStatusBar'
@@ -566,6 +567,8 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
       faviconPng?:      { asset?: { _ref: string } }
       openGraphImage?:  { asset?: { _ref: string } }
       appleTouchIcon?:  { asset?: { _ref: string } }
+      brandMark?:       { asset?: { _ref: string } }
+      brandMarkLight?:  { asset?: { _ref: string } }
       googleSiteVerification?: string
       bingSiteVerification?:   string
     }>(siteConfigFaviconQuery, {}),
@@ -583,11 +586,9 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
 
   // ── Favicon — first available wins ──────────────────────────────────────────
   // Identity assets are owned per-site (Website Settings), never the design system.
-  // Precedence: siteConfig.faviconSvg → siteConfig.faviconPng
-  const faviconSrc =
-    (siteConfigFavicon?.faviconSvg?.asset ? iconUrl(siteConfigFavicon.faviconSvg as any, 64) : null) ??
-    (siteConfigFavicon?.faviconPng?.asset ? iconUrl(siteConfigFavicon.faviconPng as any, 64) : null) ??
-    undefined
+  // Precedence: favicon SVG → favicon PNG → the Sign (src/lib/site-icons.ts).
+  const tabIcon = pickTabIcon(siteConfigFavicon)
+  const faviconSrc = (tabIcon ? iconUrl(tabIcon as any, 64) : null) ?? undefined
 
   // ── Open Graph image ─────────────────────────────────────────────────────────
   // Owned per-site (Website Settings → openGraphImage). Forced to JPG (1200×630) —
@@ -598,9 +599,9 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
     (siteConfigFavicon?.openGraphImage?.asset ? ogImageUrl(siteConfigFavicon.openGraphImage as any) : null) ??
     undefined
 
-  const appleTouchIconSrc = siteConfigFavicon?.appleTouchIcon?.asset
-    ? iconUrl(siteConfigFavicon.appleTouchIcon as any, 180)
-    : undefined
+  // Apple touch icon → the Sign, rendered at 180 px (never an enlarged favicon).
+  const homeIcon = pickHomeScreenIcon(siteConfigFavicon)
+  const appleTouchIconSrc = homeIcon ? iconUrl(homeIcon as any, 180) : undefined
 
   return {
     ...(origin ? { metadataBase: new URL(origin) } : {}),

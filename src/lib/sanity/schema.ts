@@ -32,6 +32,7 @@ import { POST_CTA_ACTIONS, validateCtaAction, type CtaEntryInput } from '@/lib/b
 import { isReservedSlug } from '@/lib/platform/reserved-slugs'
 import { validatePageAccess, validatePageSlugNotReserved, ACCESS_GROUP_ID_RE } from '@/lib/access/page-schema-rules'
 import { AccessGroupsInput, pageAccessDocumentsWarning } from '@/lib/sanity/fields/AccessGroupsInput'
+import { signProblem } from '@/lib/site-icons'
 
 // scopedRef and projectSlugField are imported from @/lib/sanity/fields/shared.
 // They live there so module schema files can import them without creating a
@@ -5372,6 +5373,35 @@ const siteConfigType = defineType({
     }),
     defineField({ name: 'logo', title: 'Logo', type: 'localizedImage', group: 'branding' }),
     defineField({ name: 'logoLight', title: 'Logo (Light variant)', type: 'localizedImage', group: 'branding' }),
+    // ── Footer logo (2026-11-09) ─────────────────────────────────────────────
+    // Optional: a different logo for the footer, e.g. the logo with its tagline
+    // (abluo's "THE TINY CMS" lockup). Empty → the footer shows the Logo, as
+    // before. Like the header pair, "Light variant" is the version for LIGHT
+    // backgrounds; the footer picks by how light its own surface is.
+    defineField({ name: 'footerLogo', title: 'Footer Logo', type: 'localizedImage', group: 'branding', description: 'Optional. Shown in the footer instead of the Logo — e.g. the logo with its tagline. The version for dark backgrounds. Empty → the footer shows the Logo.' }),
+    defineField({ name: 'footerLogoLight', title: 'Footer Logo (Light variant)', type: 'localizedImage', group: 'branding', description: 'Optional. The footer logo for light backgrounds.' }),
+    // ── Sign (2026-11-09) ────────────────────────────────────────────────────
+    // The small square logo (abluo's "a."). The master for every small icon:
+    // when Favicon / Apple Touch Icon are empty they are rendered from it
+    // (src/lib/site-icons.ts). Must scale, so SVG — or a raster ≥ 512 px.
+    defineField({
+      name: 'brandMark',
+      title: 'Sign (small square logo)',
+      type: 'image',
+      group: 'branding',
+      options: { accept: 'image/svg+xml,image/png' },
+      description: 'The small square version of the logo (e.g. "a."), for dark backgrounds. SVG preferred; a PNG must be at least 512 × 512 px. Used for the browser tab and home-screen icons when those are not set.',
+      validation: (Rule) => Rule.custom((value: { asset?: { _ref?: string } } | undefined) => signProblem(value?.asset?._ref) ?? true).warning(),
+    }),
+    defineField({
+      name: 'brandMarkLight',
+      title: 'Sign (Light variant)',
+      type: 'image',
+      group: 'branding',
+      options: { accept: 'image/svg+xml,image/png' },
+      description: 'The sign for light backgrounds. SVG preferred; a PNG must be at least 512 × 512 px.',
+      validation: (Rule) => Rule.custom((value: { asset?: { _ref?: string } } | undefined) => signProblem(value?.asset?._ref) ?? true).warning(),
+    }),
     // ── Text wordmark ────────────────────────────────────────────────────────
     // Some brands draw their logo as TEXT in the heading font rather than as an
     // uploaded image (e.g. "No!Logo" with the "!" in the accent colour). Both
@@ -5391,10 +5421,10 @@ const siteConfigType = defineType({
       group: 'branding',
       description: 'Optional. Characters to highlight in the accent colour — e.g. "!" paints the "!" in "No!Logo". Every occurrence of each character is accented.',
     }),
-    defineField({ name: 'faviconSvg', title: 'Favicon (SVG)', type: 'image', group: 'branding' }),
-    defineField({ name: 'faviconPng', title: 'Favicon (PNG)', type: 'image', group: 'branding' }),
+    defineField({ name: 'faviconSvg', title: 'Favicon (SVG)', type: 'image', group: 'branding', description: 'Optional. Empty → the browser tab icon is made from the Sign.' }),
+    defineField({ name: 'faviconPng', title: 'Favicon (PNG)', type: 'image', group: 'branding', description: 'Optional. Used when there is no SVG favicon. Empty → made from the Sign.' }),
     defineField({ name: 'openGraphImage', title: 'Open Graph Image', type: 'image', group: 'branding', description: 'Social sharing image • 1200 × 630 px • JPG preferred. Used as the default og:image on all pages that do not have a page-specific image.' }),
-    defineField({ name: 'appleTouchIcon', title: 'Apple Touch Icon', type: 'image', group: 'branding', description: 'Shown when the site is saved to an iPhone/iPad home screen • 180 × 180 px • PNG' }),
+    defineField({ name: 'appleTouchIcon', title: 'Apple Touch Icon', type: 'image', group: 'branding', description: 'Shown when the site is saved to an iPhone/iPad home screen • 180 × 180 px • PNG. Empty → made from the Sign.' }),
     defineField({ name: 'logoHeightDesktop', title: 'Logo Height — Desktop (px)', type: 'number', group: 'branding', description: 'Max height of the logo in the header on desktop. Default: 36px.', initialValue: 36 }),
     defineField({ name: 'logoHeightMobile', title: 'Logo Height — Mobile (px)', type: 'number', group: 'branding', description: 'Max height of the logo in the header on mobile. Default: 28px.', initialValue: 28 }),
     defineField({ name: 'logoIncludesName', title: 'Logo already shows the name', type: 'boolean', group: 'branding', initialValue: false, description: 'Turn on when the logo is a wordmark that spells the site name. The header then shows the logo alone instead of repeating the Site Name beside it.' }),
