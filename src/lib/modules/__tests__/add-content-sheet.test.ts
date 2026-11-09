@@ -27,7 +27,7 @@ describe('Add-content sheet (ADR-025 D8) — derived from module create actions'
   it('order follows createOrder and is unique', () => {
     const orders = CREATE_CONTENT_TYPES.map((t) => t.createOrder)
     expect(new Set(orders).size).toBe(orders.length)
-    expect(CREATE_CONTENT_TYPES.map((t) => t.moduleId)).toEqual(['blog', 'news', 'events', 'gallery', 'catalogue', 'faq', 'courses', 'people', 'documents'])
+    expect(CREATE_CONTENT_TYPES.map((t) => t.moduleId)).toEqual(['blog', 'news', 'events', 'gallery', 'catalogue', 'faq', 'courses', 'people', 'documents', 'testimonials'])
   })
 
   it('owner: installed types (Blog ready, News coming soon) + not-installed ones under "more"', () => {
@@ -36,7 +36,7 @@ describe('Add-content sheet (ADR-025 D8) — derived from module create actions'
       { moduleId: 'blog', ready: true, iconKey: 'blog', href: '/demo/posts/write/new' },
       { moduleId: 'news', ready: false, iconKey: 'news' },
     ])
-    expect(m.more).toEqual(['events', 'gallery', 'catalogue', 'faq', 'courses', 'people', 'documents'])
+    expect(m.more).toEqual(['events', 'gallery', 'catalogue', 'faq', 'courses', 'people', 'documents', 'testimonials'])
   })
 
   it('catalogue (ADR-033 spec §10.1) and faq (ADR-037 D9): offered to writers, never to viewers', () => {

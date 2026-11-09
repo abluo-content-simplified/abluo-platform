@@ -77,6 +77,7 @@
       "media": "Media",
       "taxonomy": "Categories & Tags",
       "people": "People",
+      "testimonials": "Testimonials",
       "users": "Users",
       "connections": "Connected Apps",
       "analytics": "Analytics",
@@ -893,6 +894,7 @@
           "faq": "FAQ set",
           "courses": "Course",
           "people": "Person",
+          "testimonials": "Testimonial",
           "documents": "Document"
         },
         "desc": {
@@ -905,6 +907,7 @@
           "faq": "A set of questions and answers.",
           "courses": "A course people can join.",
           "people": "A teacher, team member or speaker.",
+          "testimonials": "What a client or visitor says about you.",
           "documents": "A file for your website, such as a PDF."
         },
         "soon": "Coming soon",
@@ -3295,7 +3298,8 @@
         "members": "Keep chosen pages or files for selected people only, behind a password.",
         "translate": "Offer your site in more languages, with a first translation ready for you to check.",
         "brand-hub": "Keep your logo, colours and fonts in one place for you and anyone who works with you.",
-        "people": "Keep your team, teachers and authors in one list, and show them wherever they belong on your site."
+        "people": "Keep your team, teachers and authors in one list, and show them wherever they belong on your site.",
+        "testimonials": "Show what people say about you, with their permission, as a carousel or grid on your site."
       }
     },
     "billing": {
@@ -4084,12 +4088,30 @@
         "conflictTitle": "Someone changed these rules first",
         "conflictBody": "We’ve loaded their version. Please make your change again.",
         "failed": {
-          "forbidden": { "title": "You can’t change these rules", "body": "Only the site owner can change booking rules." },
-          "unauthenticated": { "title": "Please sign in again", "body": "Your session has ended. Sign in and try again; nothing was changed." },
-          "invalid": { "title": "Some fields need a look", "body": "Nothing was saved. The fields to fix are marked below." },
-          "unavailable": { "title": "Bookings aren’t available right now", "body": "Nothing was saved. Please try again in a little while." },
-          "failed": { "title": "That didn’t save", "body": "Nothing was changed. Please try again." },
-          "conflict": { "title": "Someone changed these rules first", "body": "Please make your change again." }
+          "forbidden": {
+            "title": "You can’t change these rules",
+            "body": "Only the site owner can change booking rules."
+          },
+          "unauthenticated": {
+            "title": "Please sign in again",
+            "body": "Your session has ended. Sign in and try again; nothing was changed."
+          },
+          "invalid": {
+            "title": "Some fields need a look",
+            "body": "Nothing was saved. The fields to fix are marked below."
+          },
+          "unavailable": {
+            "title": "Bookings aren’t available right now",
+            "body": "Nothing was saved. Please try again in a little while."
+          },
+          "failed": {
+            "title": "That didn’t save",
+            "body": "Nothing was changed. Please try again."
+          },
+          "conflict": {
+            "title": "Someone changed these rules first",
+            "body": "Please make your change again."
+          }
         },
         "errors": {
           "invalid": "This doesn’t look right. Please check it.",
@@ -4220,25 +4242,33 @@
         },
         "columns": {
           "title": "Course",
-          "classes": "Weekly classes",
-          "teachers": "Teachers",
           "next": "Next class",
           "status": "Status",
-          "updated": "Updated",
-          "actions": "Actions"
+          "actions": "Actions",
+          "when": "When",
+          "until": "Runs until"
         },
         "actions": {
           "edit": "Edit",
-          "activity": "Activity"
+          "activity": "Activity",
+          "viewOnWebsite": "View on website",
+          "cancelNext": "Cancel next class",
+          "substituteNext": "Set substitute for next class",
+          "unpublishOn": "Unpublish on…",
+          "changeUnpublishOn": "Change unpublish date"
         },
         "done": {
           "archived": "{name} is archived. It’s no longer on your website.",
-          "restored": "{name} is restored."
+          "restored": "{name} is restored. It’s unpublished: publish it again to put it back on your website.",
+          "unpublished": "{name} is unpublished. It’s no longer on your website.",
+          "publishedAgain": "{name} is back on your website.",
+          "unpublishDate": "{name} leaves your website on {date}.",
+          "unpublishDateRemoved": "{name} no longer has an unpublish date."
         },
         "filters": {
           "label": "Filter courses",
           "search": "Search courses",
-          "searchPlaceholder": "Search by title or teacher",
+          "searchPlaceholder": "Search by title, teacher or place",
           "status": "Status",
           "statusAll": "All",
           "sort": "Sort by",
@@ -4248,7 +4278,20 @@
           "sort_title_desc": "Title, Z to A",
           "showing": "{shown} of {total} courses",
           "clear": "Clear filters",
-          "noMatch": "No course matches these filters."
+          "noMatch": "No course matches these filters.",
+          "teacher": "Teacher",
+          "teacherAll": "All teachers",
+          "place": "Place",
+          "placeAll": "All places",
+          "language": "Language",
+          "languageAll": "All languages",
+          "day": "Day",
+          "dayAll": "All days",
+          "term": "Term",
+          "termAll": "All terms",
+          "changed": "Changed this week",
+          "incomplete": "No image or description",
+          "toggles": "Quick filters"
         },
         "timetable": "Timetable",
         "bulk": {
@@ -4265,15 +4308,19 @@
             "lastDateLong": "Change last date of classes",
             "delete": "Delete",
             "more": "More",
-            "clear": "Clear"
+            "clear": "Clear",
+            "unpublish": "Unpublish",
+            "unpublishOn": "Unpublish on…"
           },
           "moreTitle": "More for {count, plural, one {# course} other {# courses}}",
           "done": {
             "publish": "{count, plural, one {# course is} other {# courses are}} published.",
             "archive": "{count, plural, one {# course is} other {# courses are}} archived. They’re no longer on your website.",
-            "restore": "{count, plural, one {# course is} other {# courses are}} restored.",
+            "restore": "{count, plural, one {# course is restored. It’s unpublished until you publish it again.} other {# courses are restored. They’re unpublished until you publish them again.}}",
             "delete": "{count, plural, one {# course is} other {# courses are}} deleted.",
-            "deleteClasses": "{count, plural, one {# class} other {# classes}} ended with them."
+            "deleteClasses": "{count, plural, one {# class} other {# classes}} ended with them.",
+            "unpublish": "{count, plural, one {# course is unpublished. It’s no longer on your website.} other {# courses are unpublished. They’re no longer on your website.}}",
+            "unpublishOn": "{count, plural, one {# course has} other {# courses have}} an unpublish date."
           },
           "detail": "{name} ({reason})",
           "skipped": "{count, plural, one {# left as it was: {details}.} other {# left as they were: {details}.}}",
@@ -4287,7 +4334,8 @@
             "missing_text": "texts missing",
             "not_published": "not published",
             "not_archived": "not archived",
-            "has_been_published": "published, archive it first"
+            "has_been_published": "published, archive it first",
+            "unpublished": "already unpublished"
           },
           "delete": {
             "title": "{count, plural, one {Delete “{name}”?} other {Delete # courses?}}",
@@ -4318,6 +4366,60 @@
               "before_first": "{count, plural, one {# class starts} other {# classes start}} after that day"
             }
           }
+        },
+        "teachersMore": "{names} +{count}",
+        "when": {
+          "label": "Classes of {name}",
+          "online": "Online",
+          "showAll": "Show all {count} classes",
+          "showFewer": "Show fewer classes",
+          "less": "Less"
+        },
+        "exception": {
+          "cancelled": "Cancelled {day}",
+          "substitute": "Substitute {day}",
+          "timeChanged": "Time changed {day}",
+          "moved": "At {place} on {date}",
+          "otherPlace": "another place"
+        },
+        "until": {
+          "open": "No end date"
+        },
+        "status": {
+          "live": "Live",
+          "noClasses": "No classes",
+          "noAddress": "No page address",
+          "endsSoon": "{count, plural, =0 {Ends today} one {Ends tomorrow} other {Ends in # days}}",
+          "scheduledFor": "Scheduled for {date}",
+          "unpublishOn": "Unpublishes {date}"
+        },
+        "attention": {
+          "title": "Needs attention",
+          "termEnding": "The schedule ends on {date} — nothing is set up after it.",
+          "weekChanges": "{onlyCancelled, select, yes {This week: {cancelled, plural, one {# class cancelled} other {# classes cancelled}}} other {This week: {changes, plural, one {# change} other {# changes}}{cancelled, plural, =0 {} other {, # cancelled}}}}",
+          "incomplete": "{count, plural, one {# course has no image or description} other {# courses have no image or description}}"
+        },
+        "unpublish": {
+          "title": "{count, plural, one {Unpublish “{name}”?} other {Unpublish # courses?}}",
+          "body": "{count, plural, one {It leaves your website: its classes disappear from the timetable on your website and its course page goes away. Its classes stay here in the dashboard. Publish it again to put it back.} other {They leave your website: their classes disappear from the timetable on your website and their course pages go away. Their classes stay here in the dashboard. Publish them again to put them back.}}",
+          "skipped": "{count, plural, one {# selected course isn’t changed: it isn’t on your website.} other {# selected courses aren’t changed: they aren’t on your website.}}",
+          "list": "Courses to unpublish",
+          "confirm": "Unpublish",
+          "cancel": "Keep online"
+        },
+        "unpublishSheet": {
+          "helper": "On this date the course leaves your website by itself: its classes disappear from the website timetable and its page goes away. Nothing is archived — publish it again any time."
+        },
+        "cancelNext": {
+          "title": "Cancel {name} on {date}, {time}?",
+          "body": "The class shows as cancelled in the timetable on your website. You can restore it in the Timetable.",
+          "confirm": "Cancel class",
+          "keep": "Keep class",
+          "done": "The class on {date} is cancelled."
+        },
+        "substituteNext": {
+          "title": "Substitute for {name} on {date}",
+          "done": "Substitute saved for {date}."
         }
       },
       "newCourse": {
@@ -4354,7 +4456,7 @@
         "shortDescriptionLabel": "Short description",
         "shortDescriptionHint": "One or two sentences, shown on the timetable and in lists.",
         "colorLabel": "Colour",
-        "colorHint": "How this course is marked in the timetable.",
+        "colorHint": "How this course is marked in the timetable on your website. The colours come from your website’s design; the course name is always shown next to them.",
         "imageLabel": "Image",
         "imageHint": "Optional. Shown in the class details on your website. Choose it from the Media Library.",
         "imageChoose": "Choose image",
@@ -4366,9 +4468,13 @@
         "noPageAskAdmin": "Ask your website administrator to add one.",
         "opensInNewTab": "opens in a new tab",
         "color": {
-          "none": "None",
-          "accent": "Accent",
-          "muted": "Muted"
+          "none": "No colour",
+          "c1": "Colour 1",
+          "c2": "Colour 2",
+          "c3": "Colour 3",
+          "c4": "Colour 4",
+          "c5": "Colour 5",
+          "c6": "Colour 6"
         },
         "classesTitle": "Classes",
         "archivedTitle": "This course is archived",
@@ -4416,7 +4522,9 @@
           "autoNote": "Until you publish, the address follows the title. Leave it empty and it is made from the title when you publish.",
           "redirectNote": "If you change the address later, the old one keeps working and leads to the new one.",
           "pagesOff": "Course pages aren’t switched on for your website yet. Your website administrator can turn them on; the address is kept until then."
-        }
+        },
+        "unpublishedBody": "This course is unpublished: it isn’t on your website and its classes don’t show in the website timetable. Publish it again to put it back.",
+        "unpublishedToast": "Unpublished. The course is no longer on your website."
       },
       "classes": {
         "add": "Add class",
@@ -4624,6 +4732,263 @@
           "saved": "Room saved."
         }
       }
+    },
+    "testimonials": {
+      "screen": {
+        "loadFailed": "Couldn’t load the testimonials.",
+        "retry": "Try again"
+      },
+      "tabs": {
+        "label": "Testimonials sections",
+        "testimonials": "Testimonials",
+        "submissions": "Submissions"
+      },
+      "list": {
+        "title": "Testimonials",
+        "untitled": "Untitled testimonial",
+        "anonymous": "Anonymous",
+        "new": "New Testimonial",
+        "emptyTitle": "No testimonials yet",
+        "emptyBody": "Add what your clients say about you. Nothing goes on your website until you publish it, and only with the person’s permission.",
+        "undo": "Undo",
+        "missing": "Missing {languages}",
+        "allLanguages": "All languages",
+        "noText": "No text yet",
+        "featured": "Featured",
+        "ratingLabel": "Rated {rating} out of 5",
+        "menu": "Actions for {name}",
+        "columns": {
+          "name": "Name",
+          "excerpt": "Excerpt",
+          "rating": "Rating",
+          "languages": "Languages",
+          "featured": "Featured",
+          "status": "Status",
+          "updated": "Updated",
+          "actions": "Actions"
+        },
+        "view": {
+          "label": "View",
+          "list": "List",
+          "cards": "Cards"
+        },
+        "actions": {
+          "edit": "Edit",
+          "backOnline": "Back online"
+        },
+        "done": {
+          "archived": "“{name}” archived.",
+          "unpublished": "“{name}” taken off your website.",
+          "restored": "“{name}” restored. It stays offline until you put it back online.",
+          "backOnline": "“{name}” is back on your website.",
+          "deleted": "“{name}” deleted."
+        },
+        "confirmDelete": {
+          "title": "Delete “{name}”?",
+          "body": "This draft was never published. It is deleted together with the private details kept with it."
+        },
+        "filters": {
+          "label": "Filter testimonials",
+          "search": "Search testimonials",
+          "searchPlaceholder": "Search names and texts…",
+          "status": "Status",
+          "statusAll": "All (not archived)",
+          "sort": "Sort",
+          "sort_updated_desc": "Recently updated",
+          "sort_updated_asc": "Least recently updated",
+          "sort_name_asc": "Name A–Z",
+          "sort_name_desc": "Name Z–A",
+          "sort_rating_desc": "Highest rating",
+          "sort_rating_asc": "Lowest rating",
+          "showing": "{shown} of {total} testimonials",
+          "clear": "Clear filters",
+          "noMatch": "No testimonials match these filters."
+        }
+      },
+      "errors": {
+        "forbidden": "You don’t have permission to do this.",
+        "unauthenticated": "Your session has ended. Sign in again to continue.",
+        "not_found": "This testimonial no longer exists.",
+        "invalid_field": "Something couldn’t be saved. Reload and try again.",
+        "invalid_value": "Something couldn’t be saved. Check what you entered and try again.",
+        "too_large": "This is too large to save. Shorten it and try again.",
+        "conflict": "This testimonial was changed somewhere else. Reload to see the latest version.",
+        "in_use": "It is still in use. Remove it there first.",
+        "archive_first": "Archive the testimonial first, then delete it permanently.",
+        "archived": "This testimonial is archived. Restore it to make changes.",
+        "permission_required": "It can’t go online yet: tick “Permission to publish” first.",
+        "permission_required_list": "“{name}” can’t go online yet: open it and tick “Permission to publish” first.",
+        "submission_not_found": "This submission no longer exists.",
+        "private_unavailable": "The private details can’t be stored yet. Please contact us.",
+        "failed": "Something went wrong. Please try again.",
+        "offline": "Not saved yet — check your connection and try again."
+      },
+      "editor": {
+        "back": "Testimonials",
+        "untitled": "Untitled testimonial",
+        "anonymous": "Anonymous",
+        "dismiss": "Dismiss",
+        "undo": "Undo",
+        "publish": "Publish",
+        "publishing": "Publishing…",
+        "published": "Published. It can now appear on your website.",
+        "discarded": "Changes discarded.",
+        "publishReason": {
+          "upToDate": "Everything is already published.",
+          "noText": "Write the testimonial text first.",
+          "permission": "To publish, tick “Permission to publish”.",
+          "goToPermission": "Go to Permission to publish"
+        },
+        "archivedTitle": "This testimonial is archived",
+        "archivedBody": "It isn’t on your website. Restore it to make changes.",
+        "readOnly": "You can view this testimonial. Ask the site owner if you need to change it.",
+        "fromSubmission": {
+          "title": "Created from a submission",
+          "body": "The text and the contact details came from the form. The person ticked the consent box, so “Permission to publish” is already set. Check everything, then publish.",
+          "noConsent": "The text and the contact details came from the form. The person did not tick the consent box, so “Permission to publish” still needs ticking — once you have their permission."
+        },
+        "menu": {
+          "label": "More actions",
+          "discard": "Discard changes",
+          "activity": "Activity",
+          "backOnline": "Back online"
+        },
+        "done": {
+          "unpublish": "Taken off your website.",
+          "backOnline": "Back on your website.",
+          "archive": "Archived.",
+          "restore": "Restored. It stays offline until you put it back online."
+        },
+        "language": "Language",
+        "languageMissing": "{language} · missing",
+        "textTitle": "The testimonial",
+        "textHint": "Write it in each language of your website, or write one and use Translate.",
+        "body": "Full text ({language})",
+        "bodyHint": "What the person said, in their own words.",
+        "abstract": "Short version ({language})",
+        "abstractHint": "Optional. Shown on the card; if empty, the first lines of the full text are used.",
+        "context": "Context ({language})",
+        "contextHint": "Optional. For example “Member since 2019” or “Hatha course”.",
+        "whoTitle": "Who said it",
+        "displayName": "Name to show",
+        "displayNameHint": "As the person wants it shown: full name, first name or initials.",
+        "anonymousLabel": "Show as anonymous",
+        "anonymousHint": "The name is kept here but not shown on your website.",
+        "age": "Age",
+        "ageHint": "Optional.",
+        "rating": "Rating",
+        "ratingHint": "Optional. Never required of anyone.",
+        "noRating": "No rating",
+        "ratingOption": "{count, plural, one {# star} other {# stars}}",
+        "givenOn": "Date given",
+        "givenOnHint": "When the person said it.",
+        "writtenIn": "Written in",
+        "writtenInHint": "Used for “Translated from …”.",
+        "writtenInUnknown": "Not set",
+        "source": "Where it came from",
+        "sourceHint": "Only shown as attribution.",
+        "sources": {
+          "website": "Your website",
+          "google": "Google",
+          "facebook": "Facebook",
+          "trustpilot": "Trustpilot",
+          "other": "Other"
+        },
+        "sourceUrl": "Link to the original",
+        "sourceUrlHint": "Optional. Starts with https://",
+        "tagsTitle": "Tags",
+        "tagsHint": "Use tags to show only some testimonials in a section, for example one per service.",
+        "publishingTitle": "Publishing",
+        "permission": "Permission to publish",
+        "permissionHint": "Tick this once the person has said you may show their words on your website. Nothing goes online without it.",
+        "featured": "Featured",
+        "featuredHint": "Sections can show your featured testimonials first.",
+        "privateTitle": "Private details",
+        "privateHint": "Who gave it and how to reach them. Only you and your team see this, never your visitors.",
+        "privateState": {
+          "saving": "Saving…",
+          "saved": "Saved",
+          "error": "Not saved"
+        },
+        "privateUnavailableTitle": "Private details aren’t available yet",
+        "privateUnavailable": "They will be here soon. The testimonial itself works as usual.",
+        "fullName": "Full name",
+        "email": "Email",
+        "phone": "Phone",
+        "note": "Note",
+        "noteHint": "For you only.",
+        "confirm": {
+          "discardTitle": "Discard your changes?",
+          "discardBody": "The published version stays as it is. Your unpublished changes are lost.",
+          "discard": "Discard changes",
+          "deleteTitle": "Delete “{name}”?",
+          "deleteBody": "This draft was never published. It is deleted together with the private details kept with it."
+        }
+      },
+      "submissions": {
+        "title": "Submissions",
+        "loadFailed": "Couldn’t load the submissions.",
+        "noName": "No name",
+        "noText": "No text",
+        "noRating": "No rating",
+        "alreadyCreated": "A testimonial was already created from this submission.",
+        "undo": "Undo",
+        "menu": "Actions for {name}",
+        "offTitle": "The testimonial form is switched off",
+        "offBody": "Visitors can’t send you testimonials yet. Ask the Abluo team to switch on the testimonial form.",
+        "offNotice": "The testimonial form is switched off, so no new submissions arrive. Ask the Abluo team to switch it on.",
+        "emptyTitle": "No submissions yet",
+        "emptyBody": "When a visitor sends a testimonial through the form, it appears here. Nothing is published without you.",
+        "columns": {
+          "received": "Received",
+          "name": "Name",
+          "text": "Testimonial",
+          "rating": "Rating",
+          "consent": "Consent",
+          "status": "Status",
+          "actions": "Actions"
+        },
+        "status": {
+          "new": "New",
+          "created": "Created",
+          "rejected": "Rejected"
+        },
+        "consent": {
+          "yes": "Consent given",
+          "no": "No consent"
+        },
+        "actions": {
+          "view": "View",
+          "openTestimonial": "Open testimonial",
+          "create": "Create testimonial",
+          "reject": "Reject"
+        },
+        "done": {
+          "rejected": "Submission from “{name}” rejected."
+        },
+        "confirmReject": {
+          "title": "Reject the submission from “{name}”?",
+          "body": "It is marked as rejected and nothing is published. You can undo this for a few seconds."
+        },
+        "filters": {
+          "label": "Filter submissions",
+          "search": "Search submissions",
+          "searchPlaceholder": "Search names and texts…",
+          "status": "Status",
+          "statusAll": "All",
+          "showing": "{shown} of {total} submissions",
+          "clear": "Clear filters",
+          "noMatch": "No submissions match these filters."
+        },
+        "detail": {
+          "title": "Submission from {name}",
+          "received": "Received",
+          "fullName": "Full name",
+          "email": "Email",
+          "phone": "Phone",
+          "noConsent": "The person did not tick the consent box. If you create a testimonial from this, “Permission to publish” still needs ticking once you have their permission."
+        }
+      }
     }
   },
   "app": {
@@ -4803,6 +5168,7 @@
         "media": "photos, images, pictures, files, videos",
         "taxonomy": "tags, categories, labels, topics",
         "people": "team, staff, teachers, authors, speakers",
+        "testimonials": "reviews, quotes, feedback, recommendations, ratings, references",
         "users": "members, accounts, access, invite, roles",
         "connections": "integrations, apps, partners",
         "analytics": "statistics, stats, traffic, visitors, reports",

@@ -37,7 +37,7 @@ export type ModuleGroupDef = {
 export const MODULE_GROUPS: readonly ModuleGroupDef[] = [
   { id: 'publish', label: 'Publish', modules: ['blog', 'news', 'events', 'courses', 'faq', 'live'] },
   // ADR-043: People (a shared list other modules pick from) closes Show.
-  { id: 'show', label: 'Show', modules: ['gallery', 'catalogue', 'documents', 'people'] },
+  { id: 'show', label: 'Show', modules: ['gallery', 'catalogue', 'documents', 'people', 'testimonials'] },
   // `members` is the Access module (label "Access").
   { id: 'visitors', label: 'Visitors', modules: ['forms', 'whatsapp', 'members'] },
   { id: 'tools', label: 'Tools', modules: ['translate', 'brand-hub'] },

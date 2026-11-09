@@ -513,6 +513,14 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       // inline items above; the section's own subtitle is the shared key.
       ${FAQ_SETS},
       showSetTitles,
+      // testimonialsSection (ADR-048 D5) — the section's own settings only; the
+      // testimonials themselves are read by hydrateTestimonialsSection with
+      // TESTIMONIAL_FIELDS. title/eyebrow/subtitle/layout are shared keys above.
+      selectionMode,
+      limit,
+      tagKey,
+      "testimonialIds": testimonials[]._ref,
+      showRating, showDate, showSource, showDisclosure,
       showMap, mapHeight, mapTheme,
       // contactSection message button (overlay) — reuses the form projection
       // TENANT-SCOPED — see scopedFormDefinition above.
@@ -2121,6 +2129,14 @@ export const homePageQuery = /* groq */ `
       // inline items above; the section's own subtitle is the shared key.
       ${FAQ_SETS},
       showSetTitles,
+      // testimonialsSection (ADR-048 D5) — the section's own settings only; the
+      // testimonials themselves are read by hydrateTestimonialsSection with
+      // TESTIMONIAL_FIELDS. title/eyebrow/subtitle/layout are shared keys above.
+      selectionMode,
+      limit,
+      tagKey,
+      "testimonialIds": testimonials[]._ref,
+      showRating, showDate, showSource, showDisclosure,
       showMap, mapHeight, mapTheme,
       // contactSection message button (overlay) — reuses the form projection
       // TENANT-SCOPED — see scopedFormDefinition above.

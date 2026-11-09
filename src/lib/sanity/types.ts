@@ -9,6 +9,7 @@ export type { SupportedLocale } from '@/lib/i18n/locales'
 import type { IconName } from '@/components/icons/registry'
 import type { CatalogueNavTarget } from '@/lib/modules/catalogue/nav-target'
 import type { PersonPublic } from '@/lib/modules/people/projection'
+import type { TestimonialPublic } from '@/lib/modules/testimonials/projection'
 // Local alias so references later in this file resolve correctly.
 type SupportedLocale = _SupportedLocale
 
@@ -2426,6 +2427,39 @@ export interface CourseListSection {
   courseList?: CourseListCourse[]
 }
 
+/**
+ * Testimonials module (ADR-048 D5) — a row or grid of testimonials. Presentation
+ * only: the testimonials belong to the module and are read through
+ * TESTIMONIAL_FIELDS (src/lib/modules/testimonials/projection.ts).
+ */
+export interface TestimonialsSection {
+  _type: 'testimonialsSection'
+  _key: string
+  background?: FAQSection['background']
+  anchorId?: string
+  eyebrow?: string
+  title?: string
+  headlineAccent?: FAQSection['headlineAccent']
+  subtitle?: string | null
+  /** featured (default) · latest · tag · selected. */
+  selectionMode?: 'featured' | 'latest' | 'tag' | 'selected' | null
+  /** How many (1-24); ignored when hand-picked. */
+  limit?: number | null
+  /** The Testimonials tag key, for selectionMode "tag". */
+  tagKey?: string | null
+  /** Sanity ids of the picked testimonials, in the editor's order (selectionMode "selected"). */
+  testimonialIds?: (string | null)[] | null
+  /** carousel (default) · grid. */
+  layout?: 'carousel' | 'grid' | null
+  showRating?: boolean | null
+  showDate?: boolean | null
+  showSource?: boolean | null
+  /** The "selected, published with permission" line. Default on: only an explicit false hides it. */
+  showDisclosure?: boolean | null
+  /** Set by hydrateSections (hydrateTestimonialsSection); undefined = not hydrated (renders nothing). */
+  testimonialItems?: TestimonialPublic[]
+}
+
 // ─── Price List Section (platform) ───────────────────────────────────────────
 // Prices are numbers; the renderer formats them per locale with the section
 // currency (src/lib/price-list/format.ts). Localized fields arrive resolved.
@@ -2616,6 +2650,7 @@ export type PageSection =
   | DownloadSection
   | TimetableSection
   | CourseListSection
+  | TestimonialsSection
 
 export interface WebsiteHomePage {
   tenantSlug: string

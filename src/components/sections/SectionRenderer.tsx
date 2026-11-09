@@ -15,6 +15,7 @@ import { withSchedule, withSchedules } from '@/lib/scheduling/read.server'
 import { hydrateDownloadSections, type DownloadHydration } from '@/lib/access/download-section.server'
 import { hydrateTimetableSection } from '@/lib/modules/courses/timetable-section.server'
 import { hydrateCourseListSection } from '@/lib/modules/courses/course-list-section'
+import { hydrateTestimonialsSection } from '@/lib/modules/testimonials/website'
 import type { tenantClient } from '@/lib/sanity/client'
 import { HeroSection } from '@/components/sections/HeroSection'
 import { HeroLiveCaptureSection } from '@/components/sections/HeroLiveCaptureSection'
@@ -55,6 +56,7 @@ import type {
   LiveLatestSection as LiveLatestSectionType,
   TimetableSection as TimetableSectionType,
   CourseListSection as CourseListSectionType,
+  TestimonialsSection as TestimonialsSectionType,
   FormSection as FormSectionType,
   FormOverlayButtonSection as FormOverlayButtonSectionType,
   HeroLiveCaptureSection as HeroLiveCaptureSectionType,
@@ -420,6 +422,20 @@ export async function hydrateSections(
           })
         } catch (err) {
           console.error('[courses] course list section hydration failed; section omitted', err)
+        }
+        return
+      }
+      if (section._type === 'testimonialsSection') {
+        // ADR-048 D5 — published testimonials with permission, selected per the section.
+        // A failure leaves `testimonialItems` unset and the section renders nothing.
+        try {
+          await hydrateTestimonialsSection(section as TestimonialsSectionType, {
+            locale: ctx.locale,
+            defaultLocale: ctx.defaultLocale,
+            fetchForTenant: ctx.fetchForTenant,
+          })
+        } catch (err) {
+          console.error('[testimonials] section hydration failed; section omitted', err)
         }
         return
       }

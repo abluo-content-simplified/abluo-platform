@@ -135,7 +135,8 @@ describe('MODULE_PERMISSION_MAP', () => {
     // Catalogue V2 R2 (C8 §8.2) added setup.manage, import.use, export.use, allergen.update, readiness.update — now 53.
     // Courses (timetable build spec §3) added courses.course.read / write / delete, courses.schedule.write, courses.meeting.manage — now 58.
     // Reservations (ADR-044 D12) added reservations.booking.read / write / delete, payment.update, refund.manage, capacity.manage, export.use, settings.manage — now 66.
-    expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(66)
+    // Testimonials (ADR-048 D8) added testimonials.read / write / private.read / delete, testimonials.taxonomy.write — now 71.
+    expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(71)
   })
 
   it('has the same shape as buildModulePermissions()', () => {

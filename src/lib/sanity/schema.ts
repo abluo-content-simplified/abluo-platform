@@ -6198,6 +6198,23 @@ export const initialValueTemplates = [
     }),
   },
   {
+    // Testimonials module (ADR-048) — Content → Testimonials. A template
+    // replaces field initialValues, so they are repeated here. Permission to
+    // publish starts OFF: nothing goes live without it (D1).
+    id: 'testimonialProjectOwned',
+    title: 'Testimonial',
+    schemaType: 'testimonial',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+      publicId: globalThis.crypto.randomUUID(),
+      permissionToPublish: false,
+      anonymous: false,
+      featured: false,
+      source: 'website',
+    }),
+  },
+  {
     id: 'postAuthorProjectOwned',
     title: 'Author',
     schemaType: 'postAuthor',

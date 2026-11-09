@@ -12,6 +12,7 @@ import { catalogueSchemaTypes } from './catalogue/schema'
 import { CATALOGUE_TAXONOMY_SCHEMA_TYPE_NAMES } from './catalogue/schema-taxonomy'
 import { brandHubSchemaTypes } from './brand-hub/schema'
 import { peopleSchemaTypes } from './people/schema'
+import { testimonialsSchemaTypes } from './testimonials/schema'
 import { coursesSchemaTypes } from './courses/schema'
 import { SEGMENT_REGEX_SOURCE } from './catalogue/segment'
 import { personDisplayName } from './people/model'
@@ -2036,6 +2037,147 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     changelog: 'V1.0.0 — ADR-043 foundation. person documents (public), person_private (Supabase, migration 063), peopleRefsField on team section / posts / events, PERSON_PUBLIC_FIELDS, Groups taxonomy.',
   },
 
+
+  // ── Testimonials ───────────────────────────────────────────────────────────
+  // ADR-048 — what customers said, shown on the website with their permission.
+  //
+  // The module owns `testimonial` documents (public text and the one
+  // "permission to publish" tick; Sanity) and the server-only
+  // `testimonial_private` rows (full name, email, phone, note; Supabase,
+  // migration 067). The website `testimonialsSection` only PRESENTS them and
+  // reads them through TESTIMONIAL_FIELDS (src/lib/modules/testimonials/projection.ts);
+  // it is module-gated like every module section.
+  //
+  // Phase 2 (D4/D10): submissions reuse Forms. The module OWNS a Testimonial
+  // form definition (src/lib/modules/testimonials/form.ts), switched on by
+  // `acceptSubmissions`; "Create testimonial" copies a submission into a DRAFT.
+  //
+  // Clients edit in the dashboard (Content → Testimonials); Studio edits are
+  // for staff. Tags are this module's vocabulary in Categories & Tags (kind "tag").
+  {
+    id: 'testimonials',
+    createAction: { createOrder: 100, permission: 'testimonials.write', ready: true, href: (slug) => `/${slug}/testimonials?new=1` },
+    // Public fields only — testimonial_private (full name, email, phone, notes) is never searched (ADR-048 D3).
+    search: {
+      kind: 'testimonials',
+      permission: 'testimonials.read',
+      href: (slug, id) => `/${slug}/testimonials/${id}`,
+      listHref: (slug) => `/${slug}/testimonials`,
+      source: {
+        type: 'sanity',
+        docType: 'testimonial',
+        projection: 'displayName, body, abstract',
+        fields: [
+          { name: 'displayName', kind: 'string', weight: 3 },
+          { name: 'abstract', kind: 'localizedText', weight: 2 },
+          { name: 'body', kind: 'localizedText', weight: 2 },
+          { name: 'context', kind: 'localizedString', weight: 1 },
+        ],
+        titleOf: (row, r) => (typeof row.displayName === 'string' && row.displayName.trim() ? row.displayName.trim() : r.text(row.body).slice(0, 60)),
+        subtitleOf: (row, r) => r.text(row.abstract) || r.text(row.body),
+      },
+    },
+    label: 'Testimonials',
+    version: '1.0.0',
+    status: 'released',
+    category: 'content',
+
+    platformContract: {
+      collections: [
+        {
+          id: 'testimonials-module',
+          label: 'Testimonials',
+          items: [
+            {
+              id: 'testimonials',
+              label: 'Testimonials',
+              schemaType: 'testimonial',
+              filter: `_type == "testimonial" && projectSlug == $slug`,
+              ordering: [{ field: '_updatedAt', direction: 'desc' as const }],
+              initialValueTemplate: 'testimonialProjectOwned',
+            },
+          ],
+        },
+      ],
+
+      sectionTypes: ['testimonialsSection'],
+
+      schemaTypes: ['testimonial', 'testimonialsSection'],
+
+      schemaDefinitions: () => testimonialsSchemaTypes,
+
+      permissions: [
+        {
+          id: 'testimonials.read',
+          label: 'View testimonials',
+          description: 'View and list testimonials and where they are shown.',
+          defaultRoles: ['owner', 'editor', 'viewer'],
+        },
+        {
+          id: 'testimonials.write',
+          label: 'Create and edit testimonials',
+          description: 'Create, edit, translate, publish, unpublish, archive and restore testimonials, tick permission to publish, and create testimonials from submissions.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'testimonials.private.read',
+          label: 'See who gave a testimonial',
+          description: 'See and edit the private contact details kept with a testimonial (full name, email, phone), and read testimonial submissions.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'testimonials.delete',
+          label: 'Delete testimonials',
+          description: 'Permanently delete a testimonial, together with its private contact details.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'testimonials.taxonomy.write',
+          label: 'Manage testimonial tags',
+          description: 'Create, rename, reorder and delete the tags testimonials are filed under.',
+          defaultRoles: ['owner', 'editor'],
+        },
+      ],
+
+      configSchema: [
+        {
+          // ADR-048 D10 — the one setting. The Testimonial form itself is
+          // module-owned (derived id, no picker): see testimonials/form.ts.
+          id: 'acceptSubmissions',
+          label: 'Accept testimonials from visitors',
+          type: 'boolean',
+          initialValue: false,
+          description:
+            'Visitors can send a testimonial through the Testimonial form (put it on a page with a Form section). Each one arrives under Testimonials → Submissions; nothing is ever published without you.',
+        },
+      ],
+
+      placement: {
+        surfaces: [
+          { kind: 'sections', description: 'Testimonials section — featured, latest, by tag or hand-picked testimonials, as a carousel or a grid, with a full-text window.' },
+        ],
+        note: 'Only published testimonials whose person gave permission are shown. Testimonials have no pages of their own.',
+      },
+    },
+
+    // ADR-048 D2 — tags ("Couples therapy", "Hatha") are this module's vocabulary in
+    // Categories & Tags (kind "tag"), stored on the testimonial as stable keys.
+    taxonomies: [{ kind: 'tag', usedBy: [{ type: 'testimonial', field: 'tags' }] }],
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [],
+      integratesWith: ['translate', 'forms', 'categories'],
+    },
+
+    dataStore: {
+      // Public text in Sanity, private contact details in Supabase (testimonial_private).
+      primary: 'hybrid',
+    },
+
+    changelog: 'V1.0.0 — ADR-048. testimonial documents (public), testimonial_private (Supabase, migration 067), testimonialsSection, Testimonial form, Testimonials tag vocabulary.',
+  },
 
   // ── Courses ────────────────────────────────────────────────────────────────
   // ADR-045 + timetable build spec — weekly classes that generate a calendar.

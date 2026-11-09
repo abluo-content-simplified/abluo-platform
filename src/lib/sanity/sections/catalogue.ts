@@ -78,6 +78,7 @@ export const SECTION_CATALOGUE: Record<string, SectionCatalogueEntry> = {
   downloadSection: { group: 'modules', description: 'Documents to view or download — the ones the site placed on this page in the dashboard.' },
   timetableSection: { group: 'modules', description: 'Weekly classes as a week or month timetable, with a print-ready month sheet.' },
   courseListSection: { group: 'modules', description: 'Your courses as cards with image and short description, each leading to its own page.' },
+  testimonialsSection: { group: 'modules', description: 'What people say about you — featured, latest, one tag or hand-picked — as a carousel or grid.' },
 
   // Get in touch
   contactSection: { group: 'contact', description: 'Phone, email and address, with an optional map and message button.' },

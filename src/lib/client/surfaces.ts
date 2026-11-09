@@ -133,6 +133,14 @@ export const CATALOGUE_OWN_ROUTES: readonly string[] = ['collections', 'option-l
 /** Flip with the `catalogue/setup` route (a test refuses the flag when the folder is missing, or the folder when the flag is off). */
 export const CATALOGUE_SETUP_ROUTE_EXISTS = true
 
+/**
+ * Flip with the `testimonials` dashboard route (ADR-048). The core slice ships the nav entry, the module
+ * and the API; the page is built next. While false the sidebar does not show "Testimonials" (no dead link);
+ * the route-folder test skips it. After flipping, add `['testimonials', 'content']` to the Owner nav
+ * expectation in `modules/__tests__/order.test.ts` and 'testimonials' to the content group in `surfaces.test.ts`.
+ */
+export const TESTIMONIALS_ROUTE_EXISTS = true
+
 /** The Setup permission. Flip `CATALOGUE_SETUP_PERMISSION_DEFINED` when it is added to the catalogue manifest (a test keeps the two in step). */
 export const CATALOGUE_SETUP_PERMISSION = 'catalogue.setup.manage'
 export const CATALOGUE_SETUP_PERMISSION_DEFINED = true
@@ -157,6 +165,8 @@ const MODULE_NAV: readonly NavSurface[] = sortByModuleOrder(
     // ADR-037 D9: the FAQ Sets library (list + editor).
     moduleNav('faq', 'faq-sets', 'faq', 'faq.set.read', 'content'),
     moduleNav('gallery', 'galleries', 'gallery', 'gallery.gallery.read', 'content'),
+    // ADR-048: Testimonials (what people say), in Content. Hidden until the dashboard page exists.
+    { ...moduleNav('testimonials', 'testimonials', 'testimonials', 'testimonials.read', 'content'), available: TESTIMONIALS_ROUTE_EXISTS },
     // ADR-033 D12 / C11 (K-2): every Catalogue entry is labelled by the interface dictionary ("Catalogue" group).
     // ADR-042 N2 / N2a: the Catalogue group — Items · Collections · Options · Setup, each a real route.
     // `/catalogue` redirects to Items; an item's editor and the new-item flow light Items.
@@ -198,7 +208,7 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
     requires: {
       anyOf: [
         // Catalogue V2 R2 (K-4, C8 §8.3): no Catalogue here — its categories and tags are edited in Catalogue → Setup.
-        { anyModule: ['blog', 'documents', 'events', 'news', 'people'], anyPermission: ['blog.taxonomy.write', 'blog.post.read', 'documents.taxonomy.write', 'documents.document.read', 'events.taxonomy.write', 'events.event.read', 'news.taxonomy.write', 'news.article.read', 'people.taxonomy.write', 'people.person.read'] },
+        { anyModule: ['blog', 'documents', 'events', 'news', 'people', 'testimonials'], anyPermission: ['testimonials.taxonomy.write', 'testimonials.read', 'blog.taxonomy.write', 'blog.post.read', 'documents.taxonomy.write', 'documents.document.read', 'events.taxonomy.write', 'events.event.read', 'news.taxonomy.write', 'news.article.read', 'people.taxonomy.write', 'people.person.read'] },
         // Internal tags of the media library and of galleries (Media and Galleries tabs).
         { permission: 'media.library.manage' },
         { module: 'gallery', anyPermission: ['gallery.gallery.read', 'gallery.gallery.write'] },

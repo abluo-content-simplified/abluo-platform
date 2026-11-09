@@ -8,7 +8,7 @@
  */
 
 /** One content kind that can appear in results. Module ids, plus the platform Media Library. */
-export type SearchKind = 'blog' | 'events' | 'courses' | 'catalogue' | 'people' | 'media' | 'forms'
+export type SearchKind = 'blog' | 'events' | 'courses' | 'catalogue' | 'people' | 'testimonials' | 'media' | 'forms'
 
 /** A hit found through a related item. `name` is the related item's title (the part that matched). */
 export type SearchReason = { kind: 'teacher'; name: string }
@@ -74,4 +74,4 @@ export const SEARCH_MIN_CHARS = 2
 export const SEARCH_GROUP_LIMIT = 5
 export const SEARCH_MAX_QUERY_LENGTH = 100
 /** Display order of the content groups. */
-export const SEARCH_KIND_ORDER: SearchKind[] = ['blog', 'events', 'courses', 'catalogue', 'people', 'media', 'forms']
+export const SEARCH_KIND_ORDER: SearchKind[] = ['blog', 'events', 'courses', 'catalogue', 'people', 'testimonials', 'media', 'forms']

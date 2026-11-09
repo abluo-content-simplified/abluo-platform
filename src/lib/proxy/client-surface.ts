@@ -65,6 +65,8 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   'bookings',
   'media',
   'people',
+  // ADR-048: Testimonials (`/{project}/testimonials`, `/{project}/testimonials/{id}`).
+  'testimonials',
   'users',
   'analytics',
   'apps',

@@ -4,6 +4,7 @@ import { FORMS_SUBMISSION_READ_PERMISSION } from '@/lib/api/client-dashboard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { projectDataClient } from '@/lib/support/data-client'
 import { requestStats, type RequestRow, type RequestStats } from './request-stats'
+import { TESTIMONIAL_FORM_ID } from '@/lib/modules/testimonials/model'
 
 /**
  * Contact requests on the Analytics page: how many in the last 28 days vs the
@@ -30,6 +31,7 @@ export async function readRequestRows(db: Reader, projectId: string, since: stri
     .eq('project_id', projectId)
     .eq('completion_state', 'complete')
     .neq('status', 'spam')
+    .neq('form_id', TESTIMONIAL_FORM_ID) // ADR-048: testimonials are not contact requests
     .gte('created_at', `${since}T00:00:00Z`)
     .order('created_at', { ascending: false })
     .limit(MAX_ROWS)

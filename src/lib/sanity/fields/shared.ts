@@ -149,6 +149,8 @@ export const PAGE_SECTIONS_OF = [
   // ADR-045 — Courses module sections (module-gated at render time).
   defineArrayMember({ type: 'timetableSection' }),
   defineArrayMember({ type: 'courseListSection' }),
+  // ADR-048 — Testimonials module section (module-gated at render time).
+  defineArrayMember({ type: 'testimonialsSection' }),
 ]
 
 // ── Icon picker field ────────────────────────────────────────────────────────

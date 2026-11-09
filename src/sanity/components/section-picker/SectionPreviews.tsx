@@ -372,6 +372,20 @@ export const SECTION_PREVIEWS: Record<string, () => ReactNode> = {
       ))}
     </>
   ),
+  testimonialsSection: () => (
+    <>
+      <Title />
+      {[10, 43, 76].map((x) => (
+        <g key={x}>
+          <rect x={x} y={28} width={34} height={36} rx={2} fill="none" stroke="currentColor" strokeWidth={1} opacity={0.75} />
+          <rect x={x + 3} y={32} width={8} height={5} rx={1} fill="currentColor" opacity={HEAD} />
+          <rect x={x + 3} y={41} width={26} height={1.8} rx={0.9} fill="currentColor" opacity={BODY} />
+          <rect x={x + 3} y={46} width={22} height={1.8} rx={0.9} fill="currentColor" opacity={BODY} />
+          <rect x={x + 3} y={56} width={14} height={2.4} rx={1.2} fill="currentColor" opacity={HEAD} />
+        </g>
+      ))}
+    </>
+  ),
   downloadSection: () => (
     <>
       <Title />

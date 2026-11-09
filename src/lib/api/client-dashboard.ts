@@ -39,6 +39,7 @@ import { projectDataClient } from '@/lib/support/data-client'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import { coverCropUrl, coverThumbUrl } from '@/lib/api/post-drafts'
 import { postSearchText } from '@/lib/client/posts-filter'
+import { TESTIMONIAL_FORM_ID } from '@/lib/modules/testimonials/model'
 
 /** A single post row as the client dashboard needs it. Minimal by design. */
 export type DashboardPost = {
@@ -406,6 +407,8 @@ export async function getDashboardSubmissions(
     .eq('project_id', projectId)
     .eq('completion_state', 'complete')
     .neq('status', 'spam')
+    // ADR-048 D4: testimonial submissions are not contact requests — they have their own inbox in the Testimonials area.
+    .neq('form_id', TESTIMONIAL_FORM_ID)
     .order('created_at', { ascending: false })
     .limit(params.limit ?? 500)
 

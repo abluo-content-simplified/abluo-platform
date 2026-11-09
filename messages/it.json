@@ -77,6 +77,7 @@
       "media": "Media",
       "taxonomy": "Categorie e tag",
       "people": "Persone",
+      "testimonials": "Testimonianze",
       "users": "Utenti",
       "connections": "App collegate",
       "analytics": "Statistiche",
@@ -893,6 +894,7 @@
           "faq": "Set di FAQ",
           "courses": "Corso",
           "people": "Persona",
+          "testimonials": "Testimonianza",
           "documents": "Documento"
         },
         "desc": {
@@ -905,6 +907,7 @@
           "faq": "Una serie di domande e risposte.",
           "courses": "Un corso a cui le persone possono iscriversi.",
           "people": "Un insegnante, un membro di una squadra o un relatore.",
+          "testimonials": "Cosa dice di te un cliente o un visitatore.",
           "documents": "Un file per il tuo sito web, ad esempio un PDF."
         },
         "soon": "In arrivo",
@@ -3295,7 +3298,8 @@
         "members": "Riserva pagine o file scelti solo a determinate persone, protetti da password.",
         "translate": "Offri il tuo sito in più lingue, con una prima traduzione pronta da controllare.",
         "brand-hub": "Tieni logo, colori e font in un unico posto, per te e per chi lavora con te.",
-        "people": "Tieni il tuo team, gli insegnanti e gli autori in un unico elenco e mostrali dove servono sul tuo sito."
+        "people": "Tieni il tuo team, gli insegnanti e gli autori in un unico elenco e mostrali dove servono sul tuo sito.",
+        "testimonials": "Mostra sul tuo sito cosa dicono di te le persone, con il loro permesso, in un carosello o in una griglia."
       }
     },
     "billing": {
@@ -4235,26 +4239,34 @@
         },
         "columns": {
           "title": "Corso",
-          "classes": "Lezioni settimanali",
-          "teachers": "Insegnanti",
           "next": "Prossima lezione",
           "status": "Stato",
-          "updated": "Aggiornato",
-          "actions": "Azioni"
+          "actions": "Azioni",
+          "when": "Quando",
+          "until": "Fino al"
         },
         "actions": {
           "edit": "Modifica",
-          "activity": "Attività"
+          "activity": "Attività",
+          "viewOnWebsite": "Vedi sul sito",
+          "cancelNext": "Annulla la prossima lezione",
+          "substituteNext": "Sostituto per la prossima lezione",
+          "unpublishOn": "Fine pubblicazione il…",
+          "changeUnpublishOn": "Cambia la fine pubblicazione"
         },
         "done": {
           "archived": "{name} è archiviato. Non è più sul tuo sito.",
-          "restored": "{name} è stato ripristinato.",
-          "deleted": "{name} è stato eliminato."
+          "restored": "{name} è stato ripristinato. Non è pubblicato: pubblicalo di nuovo per rimetterlo sul sito.",
+          "deleted": "{name} è stato eliminato.",
+          "unpublished": "{name} non è più pubblicato. Non è più sul tuo sito.",
+          "publishedAgain": "{name} è di nuovo sul tuo sito.",
+          "unpublishDate": "{name} lascia il tuo sito il {date}.",
+          "unpublishDateRemoved": "{name} non ha più una fine pubblicazione."
         },
         "filters": {
           "label": "Filtra i corsi",
           "search": "Cerca corsi",
-          "searchPlaceholder": "Cerca per titolo o insegnante",
+          "searchPlaceholder": "Cerca per titolo, insegnante o luogo",
           "status": "Stato",
           "statusAll": "Tutti",
           "sort": "Ordina per",
@@ -4264,7 +4276,20 @@
           "sort_title_desc": "Titolo, dalla Z alla A",
           "showing": "{shown} di {total} corsi",
           "clear": "Cancella i filtri",
-          "noMatch": "Nessun corso corrisponde a questi filtri."
+          "noMatch": "Nessun corso corrisponde a questi filtri.",
+          "teacher": "Insegnante",
+          "teacherAll": "Tutti gli insegnanti",
+          "place": "Luogo",
+          "placeAll": "Tutti i luoghi",
+          "language": "Lingua",
+          "languageAll": "Tutte le lingue",
+          "day": "Giorno",
+          "dayAll": "Tutti i giorni",
+          "term": "Periodo",
+          "termAll": "Tutti i periodi",
+          "changed": "Modificati questa settimana",
+          "incomplete": "Senza immagine o descrizione",
+          "toggles": "Filtri rapidi"
         },
         "timetable": "Orario",
         "bulk": {
@@ -4280,7 +4305,9 @@
             "lastDateLong": "Modificare la data di fine delle lezioni",
             "delete": "Eliminare",
             "more": "Di più",
-            "clear": "Chiaro"
+            "clear": "Chiaro",
+            "unpublish": "Annulla pubblicazione",
+            "unpublishOn": "Fine pubblicazione il…"
           },
           "detail": "{name} ( {reason} )",
           "nothing": "Nulla da modificare: {details} .",
@@ -4292,7 +4319,8 @@
             "missing_text": "testi mancanti",
             "not_published": "non pubblicato",
             "not_archived": "non archiviato",
-            "has_been_published": "pubblicato, archivialo prima"
+            "has_been_published": "pubblicato, archivialo prima",
+            "unpublished": "già non pubblicato"
           },
           "delete": {
             "body": "Questa operazione è irreversibile.",
@@ -4308,7 +4336,66 @@
             "confirm": "Modifica la data di scadenza",
             "changing": "Cambiamento…",
             "nothing": "Non è stata modificata alcuna classe."
+          },
+          "done": {
+            "restore": "{count, plural, one {# corso è stato ripristinato. Non è pubblicato finché non lo pubblichi di nuovo.} other {# corsi sono stati ripristinati. Non sono pubblicati finché non li pubblichi di nuovo.}}",
+            "unpublish": "{count, plural, one {# corso non è più pubblicato. Non è più sul tuo sito.} other {# corsi non sono più pubblicati. Non sono più sul tuo sito.}}",
+            "unpublishOn": "{count, plural, one {# corso ha} other {# corsi hanno}} una fine pubblicazione."
           }
+        },
+        "teachersMore": "{names} +{count}",
+        "when": {
+          "label": "Lezioni di {name}",
+          "online": "Online",
+          "showAll": "Mostra tutte le {count} lezioni",
+          "showFewer": "Mostra meno lezioni",
+          "less": "Meno"
+        },
+        "exception": {
+          "cancelled": "Annullata {day}",
+          "substitute": "Sostituzione {day}",
+          "timeChanged": "Orario cambiato {day}",
+          "moved": "A {place} il {date}",
+          "otherPlace": "un altro luogo"
+        },
+        "until": {
+          "open": "Senza data di fine"
+        },
+        "status": {
+          "live": "Online",
+          "noClasses": "Nessuna lezione",
+          "noAddress": "Senza indirizzo della pagina",
+          "endsSoon": "{count, plural, =0 {Finisce oggi} one {Finisce domani} other {Finisce tra # giorni}}",
+          "scheduledFor": "Programmato per il {date}",
+          "unpublishOn": "Fine pubblicazione {date}"
+        },
+        "attention": {
+          "title": "Da controllare",
+          "termEnding": "Il calendario finisce il {date} — dopo non è previsto nulla.",
+          "weekChanges": "{onlyCancelled, select, yes {Questa settimana: {cancelled, plural, one {# lezione annullata} other {# lezioni annullate}}} other {Questa settimana: {changes, plural, one {# modifica} other {# modifiche}}{cancelled, plural, =0 {} one {, # annullata} other {, # annullate}}}}",
+          "incomplete": "{count, plural, one {# corso non ha immagine o descrizione} other {# corsi non hanno immagine o descrizione}}"
+        },
+        "unpublish": {
+          "title": "{count, plural, one {Annullare la pubblicazione di “{name}”?} other {Annullare la pubblicazione di # corsi?}}",
+          "body": "{count, plural, one {Lascia il tuo sito: le sue lezioni spariscono dal calendario del sito e la pagina del corso non c’è più. Le lezioni restano qui nella dashboard. Pubblicalo di nuovo per rimetterlo.} other {Lasciano il tuo sito: le loro lezioni spariscono dal calendario del sito e le pagine dei corsi non ci sono più. Le lezioni restano qui nella dashboard. Pubblicali di nuovo per rimetterli.}}",
+          "skipped": "{count, plural, one {# corso selezionato resta com’è: non è sul tuo sito.} other {# corsi selezionati restano come sono: non sono sul tuo sito.}}",
+          "list": "Corsi da ritirare",
+          "confirm": "Annulla pubblicazione",
+          "cancel": "Lascia online"
+        },
+        "unpublishSheet": {
+          "helper": "In questa data il corso lascia da solo il tuo sito: le sue lezioni spariscono dal calendario del sito e la sua pagina non c’è più. Non viene archiviato — puoi pubblicarlo di nuovo quando vuoi."
+        },
+        "cancelNext": {
+          "title": "Annullare {name} di {date}, {time}?",
+          "body": "Nel calendario del tuo sito la lezione appare come annullata. Puoi ripristinarla nel Calendario.",
+          "confirm": "Annulla lezione",
+          "keep": "Mantieni lezione",
+          "done": "La lezione di {date} è annullata."
+        },
+        "substituteNext": {
+          "title": "Sostituto per {name}, {date}",
+          "done": "Sostituto salvato per {date}."
         }
       },
       "newCourse": {
@@ -4345,7 +4432,7 @@
         "shortDescriptionLabel": "Descrizione breve",
         "shortDescriptionHint": "Una o due frasi, mostrate nell’orario e negli elenchi.",
         "colorLabel": "Colore",
-        "colorHint": "Come viene segnato questo corso nell’orario.",
+        "colorHint": "Come questo corso è segnato nel calendario del tuo sito. I colori vengono dal design del tuo sito; il nome del corso è sempre mostrato accanto.",
         "imageLabel": "Immagine",
         "imageHint": "Facoltativa. Appare nei dettagli della lezione sul tuo sito. Scegli dalla Libreria multimediale.",
         "imageChoose": "Scegli immagine",
@@ -4357,9 +4444,13 @@
         "noPageAskAdmin": "Chiedi all’amministratore del tuo sito di aggiungerne uno.",
         "opensInNewTab": "si apre in una nuova scheda",
         "color": {
-          "none": "Nessuno",
-          "accent": "Accento",
-          "muted": "Tenue"
+          "none": "Nessun colore",
+          "c1": "Colore 1",
+          "c2": "Colore 2",
+          "c3": "Colore 3",
+          "c4": "Colore 4",
+          "c5": "Colore 5",
+          "c6": "Colore 6"
         },
         "classesTitle": "Lezioni",
         "archivedTitle": "Questo corso è archiviato",
@@ -4407,7 +4498,9 @@
           "autoNote": "Finché non pubblichi, l’indirizzo segue il titolo. Se lo lasci vuoto, viene creato dal titolo quando pubblichi.",
           "redirectNote": "Se cambi l’indirizzo più avanti, quello vecchio continua a funzionare e porta al nuovo.",
           "pagesOff": "Le pagine dei corsi non sono ancora attive sul tuo sito. Può attivarle chi amministra il sito; l’indirizzo resta salvato fino ad allora."
-        }
+        },
+        "unpublishedBody": "Questo corso non è pubblicato: non è sul tuo sito e le sue lezioni non appaiono nel calendario del sito. Pubblicalo di nuovo per rimetterlo.",
+        "unpublishedToast": "Pubblicazione annullata. Il corso non è più sul tuo sito."
       },
       "classes": {
         "add": "Aggiungi lezione",
@@ -4640,6 +4733,263 @@
           "deleted": "Periodo eliminato."
         }
       }
+    },
+    "testimonials": {
+      "screen": {
+        "loadFailed": "Impossibile caricare le testimonianze.",
+        "retry": "Riprova"
+      },
+      "tabs": {
+        "label": "Sezioni delle testimonianze",
+        "testimonials": "Testimonianze",
+        "submissions": "Invii"
+      },
+      "list": {
+        "title": "Testimonianze",
+        "untitled": "Testimonianza senza titolo",
+        "anonymous": "Anonimo",
+        "new": "Nuova testimonianza",
+        "emptyTitle": "Ancora nessuna testimonianza",
+        "emptyBody": "Aggiungi ciò che i tuoi clienti dicono di te. Nulla va sul tuo sito finché non lo pubblichi, e solo con il permesso della persona.",
+        "undo": "Annulla",
+        "missing": "Manca {languages}",
+        "allLanguages": "Tutte le lingue",
+        "noText": "Ancora nessun testo",
+        "featured": "In evidenza",
+        "ratingLabel": "Valutazione {rating} su 5",
+        "menu": "Azioni per {name}",
+        "columns": {
+          "name": "Nome",
+          "excerpt": "Estratto",
+          "rating": "Valutazione",
+          "languages": "Lingue",
+          "featured": "In evidenza",
+          "status": "Stato",
+          "updated": "Aggiornata",
+          "actions": "Azioni"
+        },
+        "view": {
+          "label": "Vista",
+          "list": "Elenco",
+          "cards": "Schede"
+        },
+        "actions": {
+          "edit": "Modifica",
+          "backOnline": "Rimetti online"
+        },
+        "done": {
+          "archived": "“{name}” archiviata.",
+          "unpublished": "“{name}” tolta dal tuo sito.",
+          "restored": "“{name}” ripristinata. Resta offline finché non la rimetti online.",
+          "backOnline": "“{name}” è di nuovo sul tuo sito.",
+          "deleted": "“{name}” eliminata."
+        },
+        "confirmDelete": {
+          "title": "Eliminare “{name}”?",
+          "body": "Questa bozza non è mai stata pubblicata. Viene eliminata insieme ai dati privati conservati con essa."
+        },
+        "filters": {
+          "label": "Filtra le testimonianze",
+          "search": "Cerca testimonianze",
+          "searchPlaceholder": "Cerca nomi e testi…",
+          "status": "Stato",
+          "statusAll": "Tutte (non archiviate)",
+          "sort": "Ordina",
+          "sort_updated_desc": "Aggiornate di recente",
+          "sort_updated_asc": "Aggiornate meno di recente",
+          "sort_name_asc": "Nome A–Z",
+          "sort_name_desc": "Nome Z–A",
+          "sort_rating_desc": "Valutazione più alta",
+          "sort_rating_asc": "Valutazione più bassa",
+          "showing": "{shown} di {total} testimonianze",
+          "clear": "Cancella i filtri",
+          "noMatch": "Nessuna testimonianza corrisponde a questi filtri."
+        }
+      },
+      "errors": {
+        "forbidden": "Non hai i permessi per farlo.",
+        "unauthenticated": "La sessione è scaduta. Accedi di nuovo per continuare.",
+        "not_found": "Questa testimonianza non esiste più.",
+        "invalid_field": "Qualcosa non è stato salvato. Ricarica e riprova.",
+        "invalid_value": "Qualcosa non è stato salvato. Controlla ciò che hai inserito e riprova.",
+        "too_large": "È troppo grande per essere salvato. Accorcialo e riprova.",
+        "conflict": "Questa testimonianza è stata modificata altrove. Ricarica per vedere la versione più recente.",
+        "in_use": "È ancora in uso. Toglila prima da lì.",
+        "archive_first": "Prima archivia la testimonianza, poi eliminala definitivamente.",
+        "archived": "Questa testimonianza è archiviata. Ripristinala per modificarla.",
+        "permission_required": "Non può ancora andare online: spunta prima “Permesso di pubblicazione”.",
+        "permission_required_list": "“{name}” non può ancora andare online: aprila e spunta prima “Permesso di pubblicazione”.",
+        "submission_not_found": "Questo invio non esiste più.",
+        "private_unavailable": "I dati privati non possono ancora essere salvati. Contattaci.",
+        "failed": "Qualcosa è andato storto. Riprova.",
+        "offline": "Non ancora salvato: controlla la connessione e riprova."
+      },
+      "editor": {
+        "back": "Testimonianze",
+        "untitled": "Testimonianza senza titolo",
+        "anonymous": "Anonimo",
+        "dismiss": "Chiudi",
+        "undo": "Annulla",
+        "publish": "Pubblica",
+        "publishing": "Pubblicazione…",
+        "published": "Pubblicata. Ora può comparire sul tuo sito.",
+        "discarded": "Modifiche annullate.",
+        "publishReason": {
+          "upToDate": "Tutto è già pubblicato.",
+          "noText": "Scrivi prima il testo della testimonianza.",
+          "permission": "Per pubblicare, spunta “Permesso di pubblicazione”.",
+          "goToPermission": "Vai a Permesso di pubblicazione"
+        },
+        "archivedTitle": "Questa testimonianza è archiviata",
+        "archivedBody": "Non è sul tuo sito. Ripristinala per modificarla.",
+        "readOnly": "Puoi vedere questa testimonianza. Chiedi al titolare del sito se devi modificarla.",
+        "fromSubmission": {
+          "title": "Creata da un invio",
+          "body": "Il testo e i recapiti arrivano dal modulo. La persona ha spuntato la casella del consenso, quindi “Permesso di pubblicazione” è già attivo. Controlla tutto, poi pubblica.",
+          "noConsent": "Il testo e i recapiti arrivano dal modulo. La persona non ha spuntato la casella del consenso, quindi “Permesso di pubblicazione” va ancora spuntato, una volta ottenuto il suo permesso."
+        },
+        "menu": {
+          "label": "Altre azioni",
+          "discard": "Annulla le modifiche",
+          "activity": "Attività",
+          "backOnline": "Rimetti online"
+        },
+        "done": {
+          "unpublish": "Tolta dal tuo sito.",
+          "backOnline": "Di nuovo sul tuo sito.",
+          "archive": "Archiviata.",
+          "restore": "Ripristinata. Resta offline finché non la rimetti online."
+        },
+        "language": "Lingua",
+        "languageMissing": "{language} · manca",
+        "textTitle": "La testimonianza",
+        "textHint": "Scrivila in ogni lingua del tuo sito, oppure scrivine una e usa Traduci.",
+        "body": "Testo completo ({language})",
+        "bodyHint": "Ciò che la persona ha detto, con le sue parole.",
+        "abstract": "Versione breve ({language})",
+        "abstractHint": "Facoltativa. Appare sulla scheda; se vuota si usano le prime righe del testo completo.",
+        "context": "Contesto ({language})",
+        "contextHint": "Facoltativo. Per esempio “Socia dal 2019” o “Corso di Hatha”.",
+        "whoTitle": "Chi l’ha detto",
+        "displayName": "Nome da mostrare",
+        "displayNameHint": "Come la persona vuole che appaia: nome completo, solo nome o iniziali.",
+        "anonymousLabel": "Mostra come anonimo",
+        "anonymousHint": "Il nome resta qui ma non viene mostrato sul tuo sito.",
+        "age": "Età",
+        "ageHint": "Facoltativa.",
+        "rating": "Valutazione",
+        "ratingHint": "Facoltativa. Non si chiede mai a nessuno.",
+        "noRating": "Nessuna valutazione",
+        "ratingOption": "{count, plural, one {# stella} other {# stelle}}",
+        "givenOn": "Data",
+        "givenOnHint": "Quando la persona l’ha detto.",
+        "writtenIn": "Scritta in",
+        "writtenInHint": "Serve per “Tradotto da …”.",
+        "writtenInUnknown": "Non indicata",
+        "source": "Da dove arriva",
+        "sourceHint": "Mostrato solo come attribuzione.",
+        "sources": {
+          "website": "Il tuo sito",
+          "google": "Google",
+          "facebook": "Facebook",
+          "trustpilot": "Trustpilot",
+          "other": "Altro"
+        },
+        "sourceUrl": "Link all’originale",
+        "sourceUrlHint": "Facoltativo. Inizia con https://",
+        "tagsTitle": "Tag",
+        "tagsHint": "Usa i tag per mostrare solo alcune testimonianze in una sezione, per esempio una per servizio.",
+        "publishingTitle": "Pubblicazione",
+        "permission": "Permesso di pubblicazione",
+        "permissionHint": "Spunta quando la persona ha detto che puoi mostrare le sue parole sul tuo sito. Senza, nulla va online.",
+        "featured": "In evidenza",
+        "featuredHint": "Le sezioni possono mostrare prima le testimonianze in evidenza.",
+        "privateTitle": "Dati privati",
+        "privateHint": "Chi l’ha data e come contattarla. Lo vedono solo tu e il tuo team, mai i visitatori.",
+        "privateState": {
+          "saving": "Salvataggio…",
+          "saved": "Salvato",
+          "error": "Non salvato"
+        },
+        "privateUnavailableTitle": "I dati privati non sono ancora disponibili",
+        "privateUnavailable": "Saranno qui a breve. La testimonianza funziona come sempre.",
+        "fullName": "Nome e cognome",
+        "email": "Email",
+        "phone": "Telefono",
+        "note": "Nota",
+        "noteHint": "Solo per te.",
+        "confirm": {
+          "discardTitle": "Annullare le modifiche?",
+          "discardBody": "La versione pubblicata resta com’è. Le modifiche non pubblicate andranno perse.",
+          "discard": "Annulla le modifiche",
+          "deleteTitle": "Eliminare “{name}”?",
+          "deleteBody": "Questa bozza non è mai stata pubblicata. Viene eliminata insieme ai dati privati conservati con essa."
+        }
+      },
+      "submissions": {
+        "title": "Invii",
+        "loadFailed": "Impossibile caricare gli invii.",
+        "noName": "Senza nome",
+        "noText": "Nessun testo",
+        "noRating": "Nessuna valutazione",
+        "alreadyCreated": "Da questo invio è già stata creata una testimonianza.",
+        "undo": "Annulla",
+        "menu": "Azioni per {name}",
+        "offTitle": "Il modulo per le testimonianze è disattivato",
+        "offBody": "I visitatori non possono ancora inviarti testimonianze. Chiedi al team di Abluo di attivare il modulo per le testimonianze.",
+        "offNotice": "Il modulo per le testimonianze è disattivato, quindi non arrivano nuovi invii. Chiedi al team di Abluo di attivarlo.",
+        "emptyTitle": "Ancora nessun invio",
+        "emptyBody": "Quando un visitatore invia una testimonianza dal modulo, compare qui. Nulla viene pubblicato senza di te.",
+        "columns": {
+          "received": "Ricevuto",
+          "name": "Nome",
+          "text": "Testimonianza",
+          "rating": "Valutazione",
+          "consent": "Consenso",
+          "status": "Stato",
+          "actions": "Azioni"
+        },
+        "status": {
+          "new": "Nuovo",
+          "created": "Creata",
+          "rejected": "Rifiutato"
+        },
+        "consent": {
+          "yes": "Consenso dato",
+          "no": "Nessun consenso"
+        },
+        "actions": {
+          "view": "Vedi",
+          "openTestimonial": "Apri la testimonianza",
+          "create": "Crea testimonianza",
+          "reject": "Rifiuta"
+        },
+        "done": {
+          "rejected": "Invio di “{name}” rifiutato."
+        },
+        "confirmReject": {
+          "title": "Rifiutare l’invio di “{name}”?",
+          "body": "Viene segnato come rifiutato e nulla viene pubblicato. Puoi annullare per qualche secondo."
+        },
+        "filters": {
+          "label": "Filtra gli invii",
+          "search": "Cerca negli invii",
+          "searchPlaceholder": "Cerca nomi e testi…",
+          "status": "Stato",
+          "statusAll": "Tutti",
+          "showing": "{shown} di {total} invii",
+          "clear": "Cancella i filtri",
+          "noMatch": "Nessun invio corrisponde a questi filtri."
+        },
+        "detail": {
+          "title": "Invio di {name}",
+          "received": "Ricevuto",
+          "fullName": "Nome e cognome",
+          "email": "Email",
+          "phone": "Telefono",
+          "noConsent": "La persona non ha spuntato la casella del consenso. Se crei una testimonianza da questo invio, “Permesso di pubblicazione” va ancora spuntato quando avrai il suo permesso."
+        }
+      }
     }
   },
   "app": {
@@ -4819,6 +5169,7 @@
         "media": "foto, immagini, file, video, libreria",
         "taxonomy": "tag, categorie, etichette, argomenti",
         "people": "team, staff, persone, insegnanti, autori, relatori",
+        "testimonials": "recensioni, citazioni, opinioni, feedback, valutazioni, referenze, testimonianze",
         "users": "utenti, membri, account, inviti, ruoli",
         "connections": "integrazioni, app, partner, collegamenti",
         "analytics": "statistiche, traffico, visitatori, rapporti",

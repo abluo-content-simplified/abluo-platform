@@ -30,7 +30,7 @@ describe('the approved table', () => {
   it('Publish · Show · Visitors · Tools, with Documents after Catalogue and Live at the end of Publish', () => {
     expect(MODULE_GROUPS.map((g) => [g.label, [...g.modules]])).toEqual([
       ['Publish', ['blog', 'news', 'events', 'courses', 'faq', 'live']],
-      ['Show', ['gallery', 'catalogue', 'documents', 'people']],
+      ['Show', ['gallery', 'catalogue', 'documents', 'people', 'testimonials']],
       ['Visitors', ['forms', 'whatsapp', 'members']],
       ['Tools', ['translate', 'brand-hub']],
     ])
@@ -52,7 +52,7 @@ describe('the approved table', () => {
 describe('deterministic regardless of registry or install order', () => {
   it('the Studio list order is the same for any registry order', () => {
     const expected = groupModules(MODULE_REGISTRY, []).flatMap((g) => g.modules.map((m) => m.module.id))
-    expect(expected).toEqual(['blog', 'news', 'events', 'courses', 'faq', 'live', 'gallery', 'catalogue', 'documents', 'people', 'forms', 'whatsapp', 'members', 'translate', 'brand-hub', 'reservations'])
+    expect(expected).toEqual(['blog', 'news', 'events', 'courses', 'faq', 'live', 'gallery', 'catalogue', 'documents', 'people', 'testimonials', 'forms', 'whatsapp', 'members', 'translate', 'brand-hub', 'reservations'])
     for (const seed of [1, 7, 42, 1234]) {
       expect(groupModules(shuffled(MODULE_REGISTRY, seed), shuffled(MODULE_REGISTRY, seed + 1).map((m) => m.id)).flatMap((g) => g.modules.map((m) => m.module.id))).toEqual(expected)
     }
@@ -80,7 +80,7 @@ describe('both surfaces use the same source', () => {
     const all = MODULE_REGISTRY.map((m) => m.id)
     const nav = buildTenantSurfaces({ permissions: grantPermissions('owner', all), enabledModuleIds: all }).nav
     expect(nav.map((n) => [n.id, n.group])).toEqual([
-      ['blog', 'content'], ['events', 'content'], ['courses', 'content'], ['faq', 'content'], ['gallery', 'content'], ['documents', 'content'],
+      ['blog', 'content'], ['events', 'content'], ['courses', 'content'], ['faq', 'content'], ['gallery', 'content'], ['documents', 'content'], ['testimonials', 'content'],
       ['catalogueItems', 'catalogue'], ['catalogueCollections', 'catalogue'], ['catalogueOptions', 'catalogue'], ['catalogueSetup', 'catalogue'],
       ['forms', 'visitors'], ['members', 'visitors'], ['reservations', 'visitors'],
       ['people', 'library'], ['media', 'library'], ['taxonomy', 'library'],

@@ -20,6 +20,7 @@ import * as sitemapQueries from '@/lib/seo/sitemap-queries'
 import * as llms from '@/lib/seo/llms'
 import * as postPreview from '@/lib/sanity/post-preview-query'
 import * as partnerEvents from '@/lib/connections/api/event-queries'
+import * as testimonialQueries from '@/lib/modules/testimonials/queries'
 
 const ROOT = join(__dirname, '../../../..')
 
@@ -31,6 +32,8 @@ const DELIVERY_MODULES: Record<string, Record<string, unknown>> = {
   'src/lib/seo/llms.ts': llms,
   'src/lib/sanity/post-preview-query.ts': postPreview,
   'src/lib/connections/api/event-queries.ts': partnerEvents,
+  // ADR-048 — the testimonials section's selection queries (featured / latest / tag / hand-picked).
+  'src/lib/modules/testimonials/queries.ts': testimonialQueries,
 }
 
 /** Exported strings that read lifecycle content but are NOT public delivery. */
@@ -262,6 +265,8 @@ const OTHER_READERS: Record<string, string> = {
   'src/lib/api/catalogue-lifecycle.ts': 'catalogue lifecycle descriptors — referrer checks before archive/delete (authenticated dashboard)',
   'src/lib/api/faq-sets.ts': 'client dashboard FAQ set editor and library (authenticated, project-scoped after assertModuleAction) — lists every state on purpose',
   'src/lib/api/faq-lifecycle.ts': 'FAQ set lifecycle descriptor — referrer checks before archive/delete (authenticated dashboard)',
+  'src/lib/api/testimonials.ts': 'client dashboard testimonial editor and library (authenticated, project-scoped after assertModuleAction) — lists every state on purpose (ADR-048)',
+  'src/lib/api/testimonial-submissions.ts': 'testimonial submissions inbox (authenticated, testimonials.private.read) — resolves which testimonial was created from a submission, every state (ADR-048)',
   'src/lib/api/persons-lifecycle.ts': 'People usage and delete-referrer checks (ADR-043) — which pages, posts and events name a person; authenticated dashboard, never content',
   'src/lib/modules/catalogue/validation.ts': 'catalogue save-time validation — slug namespace and currency-change counts (authenticated Studio/dashboard)',
   'src/lib/modules/catalogue/taxonomy/profile-applicability-docs.ts': 'D-22 Studio critical validation (the item\'s attached option lists and the taxonomy document, read through the editor\'s own Studio client) and the read-only report script; never delivery',

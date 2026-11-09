@@ -92,6 +92,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'posts',
   'submissions',
   'taxonomy',
+  'testimonials', // Testimonials (ADR-048)
 
   // ── Public website — tenant level (/<tenant>/…) ───────────────────────────
   'blog',

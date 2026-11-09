@@ -49,6 +49,8 @@ const KIND: Record<string, [Kind, string]> = {
   'src/components/client/persons/PeopleBrowser.tsx': ['content', 'people the site shows, with a photo'],
   'src/components/client/courses/CoursesBrowser.tsx': ['content', 'courses the site offers, with their weekly classes; cards carry the course colour'],
   'src/components/client/faq/FaqSetsBrowser.tsx': ['content', 'FAQ sets the site publishes; cards preview the first questions'],
+  'src/components/client/testimonials/TestimonialsBrowser.tsx': ['content', 'testimonials the site shows; cards preview the quote (no pictures by design, ADR-048)'],
+  'src/components/client/testimonials/TestimonialSubmissionsBrowser.tsx': ['records', 'testimonial form submissions: date, name, text, consent, status; no pictures'],
   'src/components/client/media/MediaLibraryScreen.tsx': ['library', 'the picture library: grid first'],
   'src/components/client/forms/SubmissionsBrowser.tsx': ['records', 'contact requests: no pictures'],
   'src/components/client/users/UsersBrowser.tsx': ['records', 'people with access: no pictures'],

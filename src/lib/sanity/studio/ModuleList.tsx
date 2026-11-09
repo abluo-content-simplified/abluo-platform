@@ -21,6 +21,7 @@ import {
   slugifySubjectValue,
   whatsAppFormId,
 } from '../../modules/whatsapp/form-sync'
+import { acceptsTestimonialSubmissions, syncTestimonialForm } from '../../modules/testimonials/form-sync'
 import { formFromTemplate, uniqueFormId } from '../../modules/forms/template-clone'
 import { deriveTenantSlug } from '../../tenancy/project-scope'
 import {
@@ -773,6 +774,19 @@ function ModuleDetail({
         await client.patch(formDocId).set(buildWhatsAppFormPatch(formInput)).commit()
 
         config.internalFormRef = { _type: 'reference', _ref: formDocId }
+      }
+
+      // ── Testimonials: the module-owned form (ADR-048 D4) ───────────────
+      // Switching "accept submissions" on makes sure the module's own form
+      // exists (WhatsApp pattern). Needs the Forms module; off = nothing is
+      // deleted, the website just stops offering it.
+      if (manifest.id === 'testimonials' && enabled && tenantSlug && acceptsTestimonialSubmissions(config)) {
+        if (!installedModuleIds.includes('forms')) {
+          setSaving(false)
+          setSaveError('Accepting testimonials from visitors needs the Forms module. Activate Forms first.')
+          return
+        }
+        await syncTestimonialForm(client, { tenantSlug })
       }
 
       const entry: FetchedInstallation = {

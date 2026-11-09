@@ -33,6 +33,9 @@ export const LIFECYCLE_PUBLIC_RULES = {
   cataloguePage: 'optional',
   // ADR-037 D6/D8 — FAQ sets: published and not archived. No window (D2).
   faqSet: 'optional',
+  // ADR-048 — testimonials: published, not archived, no window. The public
+  // query adds permissionToPublish == true on top of this rule.
+  testimonial: 'optional',
 } as const satisfies Record<string, PublishedAtRule>
 
 export type LifecycleType = keyof typeof LIFECYCLE_PUBLIC_RULES
