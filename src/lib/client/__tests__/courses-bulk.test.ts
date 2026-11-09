@@ -30,6 +30,20 @@ describe('courseBulkSkip', () => {
     expect(courseBulkSkip(c('archived', { isPublished: true }), 'delete')).toBeNull()
     for (const state of ['published', 'changes', 'scheduled'] as const) expect(courseBulkSkip(c(state), 'delete')).toBe('has_been_published')
   })
+  it('publish includes unpublished courses ("Publish again")', () => {
+    expect(courseBulkSkip(c('unpublished', { isPublished: true }), 'publish')).toBeNull()
+    expect(courseBulkSkip(c('unpublished', { isPublished: true, missingLanguages: ['it'] }), 'publish')).toBe('missing_text')
+  })
+  it('unpublish / unpublish on…: courses that are (or will be) on the website', () => {
+    for (const op of ['unpublish', 'unpublishOn'] as const) {
+      expect(courseBulkSkip(c('published'), op)).toBeNull()
+      expect(courseBulkSkip(c('changes'), op)).toBeNull()
+      expect(courseBulkSkip(c('scheduled'), op)).toBeNull()
+      expect(courseBulkSkip(c('unpublished', { isPublished: true }), op)).toBe('unpublished')
+      expect(courseBulkSkip(c('draft'), op)).toBe('not_published')
+      expect(courseBulkSkip(c('archived'), op)).toBe('archived')
+    }
+  })
   it('targets and skipped count', () => {
     const rows = [c('draft'), c('published'), c('archived')]
     const r = courseBulkTargets(rows, 'delete')

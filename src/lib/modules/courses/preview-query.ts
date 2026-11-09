@@ -1,5 +1,5 @@
 import type { TimetableCourseInput } from './timetable'
-import { isCourseColor } from './model'
+import { normalizeCourseColor } from './model'
 
 /**
  * The course PREVIEW projection — same public fields the timetable uses
@@ -29,7 +29,7 @@ export function previewCourseFrom(raw: Record<string, unknown> | null | undefine
   return {
     publicId: raw.publicId,
     title: str(raw.title),
-    color: isCourseColor(raw.color) ? raw.color : 'none',
+    color: normalizeCourseColor(raw.color),
     shortDescription: str(raw.shortDescription),
     image: raw.image && typeof raw.image === 'object' ? (raw.image as TimetableCourseInput['image']) : null,
   }

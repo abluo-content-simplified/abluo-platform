@@ -136,9 +136,11 @@ export function CellChips({ items, max, empty = '—' }: { items: string[]; max?
   return items.length ? <Chips items={items} max={max} /> : <span className={`${LINE} text-sm text-muted-foreground`}>{empty}</span>
 }
 
-export type PillTone = 'success' | 'highlight' | 'outline' | 'muted'
+export type PillTone = 'success' | 'highlight' | 'outline' | 'muted' | 'warning'
 const PILL_TONE: Record<PillTone, string> = {
   success: 'bg-success/15 text-foreground',
+  // Needs a look, not alarming (amber tint, readable text): "No classes", "Ends in 5 days".
+  warning: 'bg-attention/15 text-foreground',
   highlight: 'bg-accent text-accent-foreground',
   outline: 'border border-border text-muted-foreground',
   muted: 'bg-muted text-muted-foreground',

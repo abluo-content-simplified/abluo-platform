@@ -71,7 +71,7 @@ export function ClassPanel({ occ, data, seriesById, locale, msg, profile, course
       variant="sheet"
       title={
         course ? (
-          <span className="block" style={{ ...courseTint(course.color), paddingLeft: course.color === 'none' ? 0 : '0.75rem' }}>
+          <span className="block" style={{ ...courseTint(course.color, { background: false }), paddingLeft: course.color === 'none' ? 0 : '0.75rem' }}>
             {course.title}
           </span>
         ) : null

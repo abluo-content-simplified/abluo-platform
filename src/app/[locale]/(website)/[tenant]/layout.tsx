@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { brandPaletteCssVars } from '@/lib/design-system/brand-palette'
+import { coursePalette, coursePaletteCssVars, coursePalettePrintCss } from '@/lib/modules/courses/palette'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
@@ -321,7 +322,8 @@ function buildCssVars(
       --color-success: ${RC.light.success!.value};
       --color-warning: ${RC.light.warning!.value};
       --color-danger: ${RC.light.danger!.value};
-      --background: ${L.bg};
+      /* ── Course colours (light theme): derived from the primary, on the surface (palette.ts) ── */
+${coursePaletteCssVars(coursePalette({ primary: L.primary, surface: L.surface, theme: 'light' }))}      --background: ${L.bg};
       --foreground: ${L.textPrimary};
       /* ── Form tokens (light theme) ── */
 ${lightFormVars}
@@ -388,7 +390,8 @@ ${D.accentFont ? `      --font-accent: '${D.accentFont}', Georgia, serif;
       --color-success: ${RC.dark.success!.value};
       --color-warning: ${RC.dark.warning!.value};
       --color-danger: ${RC.dark.danger!.value};
-      /* --radius-full is a constant, not a design-system token: it exists so
+      /* ── Course colours (dark theme): derived from the primary, on the surface (palette.ts) ── */
+${coursePaletteCssVars(coursePalette({ primary: D.primary, surface: D.surface, theme: 'dark' }))}      /* --radius-full is a constant, not a design-system token: it exists so
          genuinely-circular/pill geometry can be expressed through the same
          --radius-* vocabulary as everything else. The eyebrow pill already
          referenced it but nothing emitted it, so it silently computed to 0. */
@@ -438,6 +441,7 @@ ${pageGradientCssVars(sectionSurfaces, 'darkTheme')}
 ${footerThemeVars(ds?.footer?.surface, D, '      ')}
     }
 ${lightThemeBlock}
+    ${coursePalettePrintCss()}
 ${hasPageGradient(ds) ? PAGE_GRADIENT_BODY_RULE : ''}
 ${D.accentRail ? `
     /* Every section clears the rail. Scoped to the attribute rather than applied

@@ -12,6 +12,7 @@
 // owns it, never these queries.
 
 import { pageIsOpen } from '@/lib/access/groq'
+import { isPublicFilter } from '@/lib/lifecycle/visibility'
 
 /** The public fields of a course, locale-resolved with the usual fallback. */
 export const COURSE_PUBLIC_FIELDS = /* groq */ `
@@ -32,12 +33,17 @@ export const COURSE_PUBLIC_FIELDS = /* groq */ `
 
 /**
  * A course is on the website when it exists as a published document, is not
- * archived and its go-live date (if it has one) has passed. Courses published
+ * archived, its go-live date (if it has one) has passed and its unpublish date
+ * (if it has one) has not — the platform's one public-visibility rule
+ * (`isPublicFilter`, ADR-032 D3, publishedAt optional). Courses published
  * before dates existed have no publishedAt and stay visible; a "Publish on…"
  * course is a published document with a future publishedAt, so it appears by
- * itself on the date (the website is rendered per request, no cache to flush).
+ * itself on the date, and an "Unpublish on…" one leaves by itself (the website
+ * is rendered per request, no cache to flush). Every website reader of courses
+ * — timetable data, course pages and their redirects, the course list section,
+ * the sitemap, the dashboard search's "on the website" — goes through this.
  */
-export const COURSE_VISIBLE = /* groq */ `!(_id in path("drafts.**")) && !defined(archivedAt) && (!defined(publishedAt) || publishedAt <= now())`
+export const COURSE_VISIBLE = /* groq */ `!(_id in path("drafts.**")) && ${isPublicFilter('optional')}`
 
 /** Courses named by publicId (the timetable section's courses). Order is the caller's. */
 export const COURSES_BY_PUBLIC_IDS_QUERY = /* groq */ `

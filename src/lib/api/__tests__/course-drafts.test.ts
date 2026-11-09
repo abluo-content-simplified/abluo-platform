@@ -21,6 +21,7 @@ import {
   runCourseLifecycle,
   saveCourseDraft,
   setCoursePublishDate,
+  setCourseUnpublishDate,
   unscheduleCourse,
 } from '../course-drafts'
 import type { PlacementInfo } from '@/lib/modules/courses/placement'
@@ -146,7 +147,7 @@ describe('gates — refused before any I/O', () => {
   const writeCalls = (c: TenantAuthorizationContext, f: ReturnType<typeof fake>, pid = PID) => [
     () => createCourse(c, pid, { title: 'Yoga' }, f.deps),
     () => openCourseForEdit(c, pid, { id: 'iyengar' }, f.deps),
-    () => saveCourseDraft(c, pid, { id: 'iyengar', rev: 'd1', set: { color: 'muted' } }, f.deps),
+    () => saveCourseDraft(c, pid, { id: 'iyengar', rev: 'd1', set: { color: 'c6' } }, f.deps),
     () => publishCourseDraft(c, pid, { id: 'iyengar', rev: 'd1' }, f.deps),
     () => discardCourseDraft(c, pid, { id: 'iyengar', rev: 'd1' }, f.deps),
     () => runCourseLifecycle(c, pid, { id: 'iyengar', op: 'archive' }, f.deps),
@@ -212,7 +213,8 @@ describe('list and get', () => {
     const { courses, site } = await listCourses(ctx(viewer()), PID, fake().deps)
     expect(site).toEqual({ defaultLocale: 'fr', languages: ['fr', 'en', 'de'], timeZone: null })
     const iy = courses.find((x) => x.id === 'iyengar')!
-    expect(iy).toMatchObject({ title: 'Yoga Iyengar', shortDescription: 'Pour tous', state: 'changes', hasDraft: true, isPublished: true, color: 'accent', schedule: null, publicId: PUB })
+    expect(iy).toMatchObject({ title: 'Yoga Iyengar', shortDescription: 'Pour tous', state: 'changes', hasDraft: true, isPublished: true, color: 'c1', schedule: null, publicId: PUB })
+    // The stored legacy 'accent' reads as palette key c1 (no data migration).
     expect(iy.missingLanguages).toEqual(['en', 'de'])
     expect(courses.find((x) => x.id === 'draftonly')).toMatchObject({ state: 'draft', isPublished: false })
     expect(courses.find((x) => x.id === 'archived')).toMatchObject({ state: 'archived' })
@@ -230,7 +232,7 @@ describe('list and get', () => {
 
   it('get returns the draft over the published course', async () => {
     const s = await getCourseForEdit(ctx(viewer()), PID, 'iyengar', fake().deps)
-    expect(s).toMatchObject({ id: 'iyengar', rev: 'd1', state: 'changes', title: { fr: 'Yoga Iyengar' }, color: 'accent' })
+    expect(s).toMatchObject({ id: 'iyengar', rev: 'd1', state: 'changes', title: { fr: 'Yoga Iyengar' }, color: 'c1' })
   })
 })
 
@@ -276,11 +278,11 @@ describe('open and save a draft', () => {
 
   it('save sets localized text and colour, guarded by the revision', async () => {
     const f = fake()
-    const r = await saveCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', set: { 'title.en': ' Iyengar  Yoga ', 'shortDescription.de': 'Für alle', color: 'muted' } }, f.deps)
+    const r = await saveCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', set: { 'title.en': ' Iyengar  Yoga ', 'shortDescription.de': 'Für alle', color: 'c6' } }, f.deps)
     expect(r).toEqual({ rev: 'd2' })
     expect(f.client.patch).toHaveBeenCalledWith('drafts.iyengar')
     expect(f.patchOps).toContainEqual(['ifRevisionId', 'd1'])
-    expect(f.patchOps).toContainEqual(['set', { 'title.en': 'Iyengar Yoga', 'shortDescription.de': 'Für alle', color: 'muted' }])
+    expect(f.patchOps).toContainEqual(['set', { 'title.en': 'Iyengar Yoga', 'shortDescription.de': 'Für alle', color: 'c6' }])
     expect(f.patchOps).toContainEqual(['setIfMissing', { title: { _type: 'localizedString' }, shortDescription: { _type: 'localizedText' } }])
   })
 
@@ -556,7 +558,7 @@ describe('archive and delete', () => {
     expect(patched).toEqual(['iyengar', 'drafts.iyengar'])
   })
 
-  it('restore removes the archive fields and the stray end date', async () => {
+  it('restore removes the archive fields', async () => {
     const f = fake()
     await runCourseLifecycle(ctx(editor()), PID, { id: 'archived', op: 'restore' }, f.deps)
     expect(f.txOps.filter(([k]) => k === 'patch').length).toBeGreaterThan(0)
@@ -694,5 +696,118 @@ describe('page address (slug) — publish', () => {
     const f = fake({ docs })
     await publishCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1' }, f.deps)
     expect(replacedDoc(f).redirectFrom).toEqual({ _type: 'redirectFrom', fr: ['yoga-iyengar'] })
+  })
+})
+
+// ── Unpublish (Tom, 2026-11-08: as posts) ─────────────────────────────────────
+
+const PAST = '2026-11-01T09:00:00.000Z'
+const LATER = '2026-12-24T09:00:00.000Z'
+/** The published Iyengar course, unpublished on PAST (and without its draft when `withDraft` is false). */
+const unpublishedDocs = (withDraft = false): Docs => {
+  const d = docsWithDraftOnly()
+  d.iyengar = { ...d.iyengar, publishedAt: '2026-09-01T08:00:00Z', expiresAt: PAST }
+  if (!withDraft) delete d['drafts.iyengar']
+  return d
+}
+
+describe('unpublish now, publish again, unpublish on…', () => {
+  it('unpublish sets the unpublish date to now on the published course only (never Sanity’s Unpublish), with an Activity row', async () => {
+    const f = fake()
+    await runCourseLifecycle(ctx(editor()), PID, { id: 'iyengar', op: 'unpublish' }, f.deps)
+    expect(f.client.patch).toHaveBeenCalledWith('iyengar')
+    expect(f.patchOps).toContainEqual(['ifRevisionId', 'p1'])
+    expect(f.patchOps).toContainEqual(['set', { expiresAt: '2026-11-04T10:00:00.000Z' }])
+    expect(f.txOps.some(([k]) => k === 'delete')).toBe(false)
+    expect(f.audit).toHaveBeenCalledWith(expect.objectContaining({ action: 'unpublished', contentType: 'course', contentId: 'iyengar' }))
+  })
+
+  it('the list and the editor show it as Unpublished — it never archives', async () => {
+    const { courses } = await listCourses(ctx(viewer()), PID, fake({ docs: unpublishedDocs() }).deps)
+    expect(courses.find((c) => c.id === 'iyengar')).toMatchObject({ state: 'unpublished', archivedAt: null, unpublishOn: null, liveUrl: null })
+    const s = await getCourseForEdit(ctx(viewer()), PID, 'iyengar', fake({ docs: unpublishedDocs(true) }).deps)
+    expect(s.state).toBe('unpublished')
+  })
+
+  it('unpublish is refused for a draft, an archived and an already unpublished course; viewers cannot', async () => {
+    await expect(runCourseLifecycle(ctx(editor()), PID, { id: 'draftonly', op: 'unpublish' }, fake().deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(runCourseLifecycle(ctx(editor()), PID, { id: 'archived', op: 'unpublish' }, fake().deps)).rejects.toMatchObject({ code: 'archived' })
+    await expect(runCourseLifecycle(ctx(editor()), PID, { id: 'iyengar', op: 'unpublish' }, fake({ docs: unpublishedDocs() }).deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    const f = fake()
+    await expect(runCourseLifecycle(ctx(viewer()), PID, { id: 'iyengar', op: 'unpublish' }, f.deps)).rejects.toBeInstanceOf(TenantAuthorizationError)
+    expect(f.writes).toEqual([])
+  })
+
+  it('publish again removes the unpublish date — only when a timetable or course page would show it', async () => {
+    const f = fake({ docs: unpublishedDocs() })
+    await runCourseLifecycle(ctx(editor()), PID, { id: 'iyengar', op: 'publishAgain' }, f.deps)
+    expect(f.patchOps).toContainEqual(['unset', ['expiresAt']])
+    expect(f.audit).toHaveBeenCalledWith(expect.objectContaining({ action: 'published' }))
+    const nowhere = fake({ docs: unpublishedDocs(), placement: NO_PAGE })
+    await expect(runCourseLifecycle(ctx(editor()), PID, { id: 'iyengar', op: 'publishAgain' }, nowhere.deps)).rejects.toMatchObject({ code: 'no_timetable_page' })
+    expect(nowhere.writes).toEqual([])
+    await expect(runCourseLifecycle(ctx(editor()), PID, { id: 'iyengar', op: 'publishAgain' }, fake().deps)).rejects.toMatchObject({ code: 'invalid_value' })
+  })
+
+  it('publishing the changes of an unpublished course puts it back (the passed date is dropped, the website check runs)', async () => {
+    const f = fake({ docs: unpublishedDocs(true) })
+    await publishCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', mode: 'keep' }, f.deps)
+    const doc = f.txOps.find(([k]) => k === 'createOrReplace')![1] as Record<string, unknown>
+    expect(doc).not.toHaveProperty('expiresAt')
+    expect(f.deps.placement).toHaveBeenCalled()
+    await expect(publishCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', mode: 'keep' }, fake({ docs: unpublishedDocs(true), placement: NO_PAGE }).deps)).rejects.toMatchObject({ code: 'no_timetable_page' })
+  })
+
+  it('an update keeps a future unpublish date', async () => {
+    const docs = docsWithDraftOnly()
+    docs.iyengar = { ...docs.iyengar, publishedAt: '2026-09-01T08:00:00Z', expiresAt: LATER }
+    const f = fake({ docs })
+    await publishCourseDraft(ctx(editor()), PID, { id: 'iyengar', rev: 'd1', mode: 'keep' }, f.deps)
+    const doc = f.txOps.find(([k]) => k === 'createOrReplace')![1] as Record<string, unknown>
+    expect(doc.expiresAt).toBe(LATER)
+    const { courses } = await listCourses(ctx(viewer()), PID, fake({ docs }).deps)
+    expect(courses.find((c) => c.id === 'iyengar')).toMatchObject({ state: 'changes', unpublishOn: LATER })
+  })
+
+  it('unpublish on… sets a future date on both versions (never archives); null removes it', async () => {
+    const f = fake()
+    const r = await setCourseUnpublishDate(ctx(editor()), PID, { id: 'iyengar', unpublishAt: LATER }, f.deps)
+    expect(r).toEqual({ unpublishOn: LATER })
+    const patches = f.txOps.filter(([k]) => k === 'patch').map(([, v]) => v as [string, Record<string, unknown>])
+    expect(patches.map(([id]) => id)).toEqual(['iyengar', 'drafts.iyengar'])
+    for (const [, change] of patches) {
+      expect(change).toMatchObject({ set: { expiresAt: LATER } })
+      expect(JSON.stringify(change)).not.toContain('archivedAt')
+    }
+    expect(f.audit).toHaveBeenCalledWith(expect.objectContaining({ action: 'schedule_changed' }))
+    const g = fake()
+    expect(await setCourseUnpublishDate(ctx(editor()), PID, { id: 'iyengar', unpublishAt: null }, g.deps)).toEqual({ unpublishOn: null })
+    expect(g.txOps.filter(([k]) => k === 'patch').every(([, v]) => JSON.stringify(v).includes('"unset":["expiresAt"]'))).toBe(true)
+  })
+
+  it('unpublish on… is refused in the past, for drafts, archived and unpublished courses, and for viewers', async () => {
+    for (const [id, docs, at, code] of [
+      ['iyengar', undefined, PAST, 'invalid_schedule'],
+      ['iyengar', undefined, 'tomorrow', 'invalid_schedule'],
+      ['draftonly', undefined, LATER, 'invalid_value'],
+      ['archived', undefined, LATER, 'archived'],
+      ['iyengar', unpublishedDocs(), LATER, 'invalid_value'],
+    ] as const) {
+      const f = fake({ docs })
+      await expect(setCourseUnpublishDate(ctx(editor()), PID, { id, unpublishAt: at }, f.deps)).rejects.toMatchObject({ code })
+      expect(f.writes).toEqual([])
+    }
+    await expect(setCourseUnpublishDate(ctx(viewer()), PID, { id: 'iyengar', unpublishAt: LATER }, fake().deps)).rejects.toBeInstanceOf(TenantAuthorizationError)
+  })
+
+  it('restore lands on Unpublished: the archive’s unpublish date is kept', async () => {
+    const docs = docsWithDraftOnly()
+    docs.archived = { ...docs.archived, expiresAt: '2026-10-01T00:00:00Z' }
+    const f = fake({ docs })
+    await runCourseLifecycle(ctx(editor()), PID, { id: 'archived', op: 'restore' }, f.deps)
+    const changes = f.txOps.filter(([k]) => k === 'patch').map(([, v]) => JSON.stringify(v))
+    expect(changes.some((c) => c.includes('archivedAt'))).toBe(true)
+    expect(changes.some((c) => c.includes('"unset":["expiresAt"]'))).toBe(false)
+    expect(f.audit).toHaveBeenCalledWith(expect.objectContaining({ action: 'restored' }))
   })
 })

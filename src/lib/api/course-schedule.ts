@@ -25,7 +25,8 @@
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { CourseError, COURSE_READ_PERMISSION, UUID_RE, type CourseErrorCode } from '@/lib/api/course-lifecycle'
-import type { CourseScheduleSummary } from '@/lib/api/course-drafts'
+import type { CourseException, CourseExceptionKind, CourseNextClass, CourseScheduleOverview, CourseScheduleSummary } from '@/lib/api/course-drafts'
+import { seriesLastDate } from '@/lib/modules/courses/list-overview'
 import { PERSON_PICKER_QUERY } from '@/lib/api/persons'
 import type { assertPeopleBelongToProject } from '@/lib/api/persons-guard'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
@@ -41,8 +42,8 @@ import {
   saveEditionGuarded,
   updateOccurrenceGuarded,
 } from '@/lib/scheduling/course-guarded.server'
-import { coerceClassRule, parseClassRule, type ClassRule } from '@/lib/scheduling/recurrence'
-import { ScheduleError, type AttendanceMode, type ClassOccurrence, type ClassSeries, type MeetingRoom, type SchedulePlace } from '@/lib/scheduling/types'
+import { coerceClassRule, parseClassRule, ruleWeekdays, type ClassRule } from '@/lib/scheduling/recurrence'
+import { ScheduleError, type AttendanceMode, type ClassOccurrence, type ClassSeries, type MeetingRoom, type ScheduleEdition, type SchedulePlace } from '@/lib/scheduling/types'
 
 export const SCHEDULE_WRITE_PERMISSION = COURSES_PERMISSIONS.scheduleWrite
 export const MEETING_MANAGE_PERMISSION = COURSES_PERMISSIONS.meetingManage
@@ -64,6 +65,8 @@ export type PlaceOption = {
   token: string
   name: string
   kind: 'location' | 'venue'
+  /** A location's short name ("MERO", Website Settings → Locations), null when it has none. */
+  short?: string | null
 }
 
 export type ClassView = {
@@ -244,7 +247,7 @@ async function readSite(deps: CourseScheduleDeps, projectSlug: string): Promise<
 
 /** Locations and saved venues (venues by their permanent publicId — what a class stores). */
 export const PLACE_OPTIONS_QUERY = /* groq */ `{
-  "locations": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].locations[]{ key, name },
+  "locations": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].locations[]{ key, name, shortName },
   "venues": *[_type == "eventVenue" && projectSlug == $projectSlug && !(_id in path("drafts.**"))] | order(_createdAt asc){ publicId, name }
 }`
 
@@ -255,8 +258,8 @@ async function readPlaces(deps: CourseScheduleDeps, projectSlug: string, default
     return l[defaultLocale] ?? l.en ?? Object.values(l)[0] ?? ''
   }
   const locations = (Array.isArray(row?.locations) ? row.locations : [])
-    .filter((l): l is { key: string; name?: unknown } => typeof (l as { key?: unknown })?.key === 'string')
-    .map((l): PlaceOption => ({ token: `location:${l.key}`, name: name(l.name) || l.key, kind: 'location' }))
+    .filter((l): l is { key: string; name?: unknown; shortName?: unknown } => typeof (l as { key?: unknown })?.key === 'string')
+    .map((l): PlaceOption => ({ token: `location:${l.key}`, name: name(l.name) || l.key, kind: 'location', short: typeof l.shortName === 'string' && l.shortName.trim() ? l.shortName.trim() : null }))
   const venues = (Array.isArray(row?.venues) ? row.venues : [])
     .filter((v): v is { publicId: string; name?: unknown } => typeof (v as { publicId?: unknown })?.publicId === 'string' && UUID_RE.test((v as { publicId: string }).publicId))
     .map((v): PlaceOption => ({ token: `venue:${v.publicId.toLowerCase()}`, name: name(v.name) || v.publicId, kind: 'venue' }))
@@ -842,13 +845,32 @@ export async function removeMeetingRoom(ctx: TenantAuthorizationContext, project
 
 // ── Hooks for the Courses list and the lifecycle ──────────────────────────────
 
+/** How far back and ahead the list reads a course's dates: this week (in any zone) and the next two weeks. */
+const LIST_BACK_DAYS = 8
+const LIST_AHEAD_DAYS = 16
+const DAY_MS = 86_400_000
+
+/** The most important way a date differs from its class (cancelled > another teacher > another time > another place), or null. */
+export function exceptionKindOf(o: ClassOccurrence, series: ClassSeries): CourseExceptionKind | null {
+  if (o.status === 'cancelled') return 'cancelled'
+  const v = occurrenceView(o, series, new Map())
+  if (v.substituted) return 'substitute'
+  if (v.timeChanged) return 'timeChanged'
+  if (v.moved) return 'moved'
+  return null
+}
+
 /**
- * `CourseDeps.scheduleSummary` / `hasSchedule` backed by the course store, for
- * one project (the slug comes from the grant). The list shows classes, teachers
- * and the next class; delete is refused while a course has a live class.
+ * `CourseDeps.scheduleSummary` / `scheduleOverview` / `hasSchedule` backed by
+ * the course store, for one project (the slug comes from the grant). The list
+ * shows each course's weekly classes, teachers, next class, last class date and
+ * the dates that differ from their class; delete is refused while a course has
+ * a live class. The project's classes and terms are read once per request.
  */
 export function courseScheduleDeps(projectSlug: string, deps: CourseScheduleDeps = {}) {
   const store = () => storeOf(deps)
+  let editions: Promise<ScheduleEdition[]> | null = null
+  const allEditions = (projectId: string) => (editions ??= store().listEditions(projectId).catch(() => [] as ScheduleEdition[]))
   return {
     hasSchedule: async (publicId: string, projectId: string): Promise<boolean> => {
       if (!UUID_RE.test(publicId)) return false
@@ -857,19 +879,83 @@ export function courseScheduleDeps(projectSlug: string, deps: CourseScheduleDeps
     scheduleSummary: async (projectId: string, publicIds: string[]): Promise<Map<string, CourseScheduleSummary> | null> => {
       const ids = publicIds.filter((x) => UUID_RE.test(x)).map((x) => x.toLowerCase())
       if (!ids.length) return new Map()
-      const [series, next] = await Promise.all([
+      const now = (deps.now ?? (() => new Date()))()
+      const [series, dates, terms] = await Promise.all([
         store().listSeries(projectId, { ownerPublicIds: ids }),
-        store().occurrencesInWindow(projectId, { from: (deps.now ?? (() => new Date()))().toISOString(), ownerPublicIds: ids, limit: 1000 }),
+        store().occurrencesInWindow(projectId, { from: new Date(now.getTime() - LIST_BACK_DAYS * DAY_MS).toISOString(), ownerPublicIds: ids, limit: 1500 }),
+        allEditions(projectId),
       ])
-      const names = await readPeople(deps, projectSlug, series.flatMap((s) => s.instructorPublicIds))
+      const names = await readPeople(deps, projectSlug, [...series.flatMap((s) => s.instructorPublicIds), ...dates.flatMap((o) => o.instructorPublicIds)])
+      const termEnd = new Map(terms.map((t) => [t.id, t.endsOn]))
+      const bySeries = new Map(series.map((s) => [s.id, s]))
+      const horizon = now.getTime() + LIST_AHEAD_DAYS * DAY_MS
       const out = new Map<string, CourseScheduleSummary>()
       for (const id of ids) {
         const mine = series.filter((s) => s.ownerPublicId.toLowerCase() === id)
-        const teachers = [...new Set(mine.flatMap((s) => s.instructorPublicIds).map((p) => names.get(p.toLowerCase()) ?? ''))].filter(Boolean)
-        const first = next.find((o) => o.ownerPublicId.toLowerCase() === id && o.status === 'scheduled')
-        out.set(id, { classes: mine.length, teachers, nextClassAt: first?.startsAt ?? null })
+        const teacherIds = [...new Set(mine.flatMap((s) => s.instructorPublicIds).map((p) => p.toLowerCase()))]
+        const teacherRefs = teacherIds.map((p) => ({ publicId: p, name: names.get(p) ?? '' })).filter((p) => p.name)
+        // Only dates of live classes count (an ended class's past dates stay in the store).
+        const myDates = dates.filter((o) => o.ownerPublicId.toLowerCase() === id && bySeries.has(o.seriesId))
+        const upcoming = myDates.filter((o) => Date.parse(o.endsAt ?? o.startsAt) >= now.getTime())
+        const first = upcoming.find((o) => o.status === 'scheduled')
+        const exceptions: CourseException[] = []
+        for (const o of myDates) {
+          if (Date.parse(o.startsAt) > horizon) break
+          const kind = exceptionKindOf(o, bySeries.get(o.seriesId)!)
+          if (kind) exceptions.push({ date: o.startLocal.slice(0, 10), startTime: o.startLocal.slice(11, 16), kind, placeToken: placeTokenOf(o.place) })
+        }
+        let next: CourseNextClass | null = null
+        if (first) {
+          const s = bySeries.get(first.seriesId)!
+          const v = occurrenceView(first, s, names)
+          next = {
+            seriesId: s.id,
+            occurrenceId: first.id,
+            version: first.version,
+            date: v.date,
+            startTime: v.startTime,
+            endTime: v.endTime,
+            startsAt: first.startsAt,
+            instructors: v.instructors,
+            seriesInstructors: refsOf(s.instructorPublicIds, names),
+            substituted: v.substituted,
+            placeToken: v.placeToken,
+            seriesPlaceToken: placeTokenOf(s.place),
+          }
+        }
+        const ends = mine.map((s) => seriesLastDate(s, s.editionId ? (termEnd.get(s.editionId) ?? null) : null))
+        const dated = ends.map((e) => e.date).filter((d): d is string => !!d)
+        out.set(id, {
+          classes: mine.length,
+          teachers: teacherRefs.map((p) => p.name),
+          nextClassAt: first?.startsAt ?? null,
+          slots: mine
+            .flatMap((s) => {
+              const rule = parseClassRule(s.rule)
+              const days = rule ? ruleWeekdays(rule, s.startsOn ?? s.startLocal.slice(0, 10)) : s.weekdays?.length ? s.weekdays : [s.weekday ?? 1]
+              return days.map((weekday) => ({ seriesId: s.id, weekday, startTime: s.startLocal.slice(11, 16), placeToken: placeTokenOf(s.place), mode: s.attendanceMode }))
+            })
+            .sort((a, b) => a.weekday - b.weekday || a.startTime.localeCompare(b.startTime)),
+          teacherRefs,
+          languages: [...new Set(mine.flatMap((s) => s.languages))],
+          termIds: [...new Set(mine.map((s) => s.editionId).filter((x): x is string => !!x))],
+          lastDate: dated.length ? dated.reduce((a, b) => (a > b ? a : b)) : null,
+          openEnded: ends.some((e) => e.open),
+          exceptions,
+          next,
+        })
       }
       return out
+    },
+    scheduleOverview: async (projectId: string): Promise<CourseScheduleOverview> => {
+      const site = await readSite(deps, projectSlug)
+      const [places, terms] = await Promise.all([readPlaces(deps, projectSlug, site.defaultLocale), allEditions(projectId)])
+      return {
+        places: places.map((p) => ({ token: p.token, name: p.name, short: p.short ?? null })),
+        terms: terms
+          .filter((t) => t.ownerType === null)
+          .map((t) => ({ id: t.id, label: firstOf(t.label, site.defaultLocale), startsOn: t.startsOn, endsOn: t.endsOn })),
+      }
     },
   }
 }

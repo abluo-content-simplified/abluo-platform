@@ -27,11 +27,13 @@ import {
   runCourseLifecycle,
   saveCourseDraft,
   setCoursePublishDate,
+  setCourseUnpublishDate,
   unscheduleCourse,
   CourseError,
   type CourseErrorCode,
   type CourseLifecycleOp,
   type CourseListItem,
+  type CourseListOverview,
   type CourseSite,
   type CourseSnapshot,
   type CourseUsage,
@@ -64,7 +66,7 @@ function scheduleDeps(ctx: TenantAuthorizationContext, projectId: string) {
   return courseScheduleDeps(slug)
 }
 
-export async function listCoursesAction(input: { projectSlug: string }): Promise<Result<{ courses: CourseListItem[]; site: CourseSite }>> {
+export async function listCoursesAction(input: { projectSlug: string }): Promise<Result<{ courses: CourseListItem[]; site: CourseSite; overview: CourseListOverview }>> {
   return run(input?.projectSlug, (ctx, pid) => listCourses(ctx, pid, scheduleDeps(ctx, pid)))
 }
 
@@ -108,19 +110,27 @@ export async function discardCourseDraftAction(input: { projectSlug: string; id:
   })
 }
 
-/** Archive / restore (write), delete a never-published draft or an archived course for good (owner; refused while the course is used or has classes). */
+/**
+ * Archive / restore / unpublish / publish again (write), delete a never-published draft or an archived
+ * course for good (owner; refused while the course is used or has classes).
+ */
 export async function courseLifecycleAction(input: { projectSlug: string; id: string; op: CourseLifecycleOp }): Promise<Result<{ rev: string | null }>> {
   return run(input?.projectSlug, (ctx, pid) => runCourseLifecycle(ctx, pid, { id: input.id, op: input.op }, scheduleDeps(ctx, pid)))
 }
 
+/** "Unpublish on…" (an ISO moment in the future) or null to remove the date. The course is never archived by it. */
+export async function setCourseUnpublishDateAction(input: { projectSlug: string; id: string; unpublishAt: string | null }): Promise<Result<{ unpublishOn: string | null }>> {
+  return run(input?.projectSlug, (ctx, pid) => setCourseUnpublishDate(ctx, pid, { id: input.id, unpublishAt: input.unpublishAt }))
+}
+
 /**
- * Publish / archive / restore / delete several courses (the list's selection bar).
+ * Publish / archive / restore / unpublish / unpublish on… / delete several courses (the list's selection bar).
  * Applied one by one with the single-course rules and permissions; the result says
  * per course what changed, what was left as it was and what failed. Deleting also
  * ends the courses' classes (the list asks first, naming them).
  */
-export async function bulkUpdateCoursesAction(input: { projectSlug: string; ids: string[]; op: CourseBulkOp }): Promise<Result<CourseBulkResult>> {
-  return run(input?.projectSlug, (ctx, pid) => bulkUpdateCourses(ctx, pid, { ids: input.ids, op: input.op }, scheduleDeps(ctx, pid)))
+export async function bulkUpdateCoursesAction(input: { projectSlug: string; ids: string[]; op: CourseBulkOp; at?: string | null }): Promise<Result<CourseBulkResult>> {
+  return run(input?.projectSlug, (ctx, pid) => bulkUpdateCourses(ctx, pid, { ids: input.ids, op: input.op, at: input.at }, scheduleDeps(ctx, pid)))
 }
 
 /** "Change last date of classes": every active repeating class of the chosen courses ends on the last class day on or before `endsOn` (YYYY-MM-DD). */

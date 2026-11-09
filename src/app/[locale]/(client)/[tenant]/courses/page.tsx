@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { landingListQuery } from '@/lib/client/search-landing'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
-import { COURSE_DELETE_PERMISSION, COURSE_READ_PERMISSION, COURSE_WRITE_PERMISSION, listCourses, type CourseListItem, type CourseSite } from '@/lib/api/course-drafts'
+import { COURSE_DELETE_PERMISSION, COURSE_READ_PERMISSION, COURSE_WRITE_PERMISSION, listCourses, type CourseListItem, type CourseListOverview, type CourseSite } from '@/lib/api/course-drafts'
 import { courseScheduleDeps, SCHEDULE_WRITE_PERMISSION } from '@/lib/api/course-schedule'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { CoursesBrowser } from '@/components/client/courses/CoursesBrowser'
@@ -36,10 +36,12 @@ export default async function CoursesPage({
 
   let courses: CourseListItem[]
   let site: CourseSite
+  let overview: CourseListOverview
   try {
     const result = await listCourses(ctx, grant.projectId, courseScheduleDeps(grant.projectSlug))
     courses = result.courses
     site = result.site
+    overview = result.overview
   } catch (error) {
     if (error instanceof TenantAuthorizationError) notFound()
     throw error
@@ -50,6 +52,7 @@ export default async function CoursesPage({
       <CoursesBrowser
         projectSlug={projectSlug}
         courses={courses}
+        overview={overview}
         defaultLocale={site.defaultLocale}
         timeZone={site.timeZone}
         canWrite={grant.permissions.includes(COURSE_WRITE_PERMISSION)}

@@ -37,8 +37,9 @@ import * as lifecycle from '@/lib/lifecycle/service'
 import { lifecycleAction, snapshotOf } from '@/lib/lifecycle/transition'
 import { deriveStatus } from '@/lib/lifecycle/status'
 import { readPlacementInfo } from '@/lib/api/course-placement'
+import { readCoursePaletteSource, type CoursePaletteSource } from '@/lib/api/course-palette'
 import { coursePlacement, type PlacementInfo } from '@/lib/modules/courses/placement'
-import { DEFAULT_COURSE_COLOR, isCourseColor, type CourseColor } from '@/lib/modules/courses/model'
+import { DEFAULT_COURSE_COLOR, isCourseColor, normalizeCourseColor, type CourseColor } from '@/lib/modules/courses/model'
 import { COURSE_SLUG_PATTERN, courseSlugFrom, uniqueCourseSlug } from '@/lib/modules/courses/slug'
 import { cleanCourseSegments } from '@/lib/modules/courses/website'
 import {
@@ -65,8 +66,11 @@ export const COURSE_LIMITS = {
   patchBytes: 50_000,
 } as const
 
-/** `scheduled` = published with a go-live date in the future (not on the website yet). `changes` = live + unpublished edits. */
-export type CourseState = 'draft' | 'scheduled' | 'published' | 'changes' | 'archived'
+/**
+ * `scheduled` = published with a go-live date in the future (not on the website yet). `changes` = live + unpublished edits.
+ * `unpublished` = published once, taken off the website (its unpublish date has passed); "Publish again" puts it back.
+ */
+export type CourseState = 'draft' | 'scheduled' | 'published' | 'changes' | 'unpublished' | 'archived'
 
 /** languages[0] = the default language. */
 export interface CourseSite {
@@ -74,6 +78,55 @@ export interface CourseSite {
   languages: string[]
   /** The site's IANA time zone (dates are entered in it), or null. */
   timeZone: string | null
+}
+
+/** A person a class names (People publicId + display name). */
+export interface CoursePersonRef {
+  publicId: string
+  name: string
+}
+
+/** One weekday of one class ("Mon 12:30 · MERO"). A class that meets on two weekdays gives two slots. */
+export interface CourseClassSlot {
+  seriesId: string
+  /** 1 = Monday … 7 = Sunday. */
+  weekday: number
+  /** 'HH:mm' (24-hour, the class's own zone = the site's). */
+  startTime: string
+  /** `location:<key>` / `venue:<id>`, '' = no place. */
+  placeToken: string
+  mode: 'inPerson' | 'online' | 'mixed'
+}
+
+/** A date of the course that differs from its class: the most important difference only. */
+export type CourseExceptionKind = 'cancelled' | 'substitute' | 'timeChanged' | 'moved'
+export interface CourseException {
+  /** 'YYYY-MM-DD' (site zone). */
+  date: string
+  startTime: string
+  kind: CourseExceptionKind
+  /** The date's place (for `moved`). */
+  placeToken: string
+}
+
+/** The course's next class that takes place (for the list's quick actions). */
+export interface CourseNextClass {
+  seriesId: string
+  occurrenceId: string
+  version: number
+  /** 'YYYY-MM-DD' (site zone). */
+  date: string
+  startTime: string
+  endTime: string | null
+  /** UTC ISO instant. */
+  startsAt: string
+  /** Who teaches this date. */
+  instructors: CoursePersonRef[]
+  /** Who teaches the class normally. */
+  seriesInstructors: CoursePersonRef[]
+  substituted: boolean
+  placeToken: string
+  seriesPlaceToken: string
 }
 
 /** What scheduling knows about a course; null per course (or overall) = not available yet. */
@@ -84,6 +137,37 @@ export interface CourseScheduleSummary {
   teachers: string[]
   /** ISO instant of the next class, or null. */
   nextClassAt: string | null
+  /** Every weekday of every class, Monday first, then by time. */
+  slots?: CourseClassSlot[]
+  /** The classes' regular teachers (for the teacher filter). */
+  teacherRefs?: CoursePersonRef[]
+  /** Languages the classes are taught in. */
+  languages?: string[]
+  /** The terms the classes belong to (edition ids). */
+  termIds?: string[]
+  /** The course's last class date ('YYYY-MM-DD'); null when it has none or keeps going. */
+  lastDate?: string | null
+  /** At least one class repeats with no last date (no term end, no end date). */
+  openEnded?: boolean
+  /** Dates that differ from their class, from about a week ago to about two weeks ahead (the list narrows them down). */
+  exceptions?: CourseException[]
+  /** The next class that takes place. */
+  next?: CourseNextClass | null
+}
+
+/** The site's places and terms for the list's filters and lines (from scheduling + Website Settings). */
+export interface CourseScheduleOverview {
+  places: Array<{ token: string; name: string; short: string | null }>
+  /** Site-wide terms, earliest first. */
+  terms: Array<{ id: string; label: string; startsOn: string; endsOn: string }>
+}
+
+/** Everything the Courses list needs beyond the courses themselves. */
+export interface CourseListOverview extends CourseScheduleOverview {
+  /** The design system's primary colours (the course palette is derived from them, palette.ts). */
+  palette: CoursePaletteSource
+  /** The Courses module's page segment per language; {} = no course pages on this site. */
+  pageSegments: Record<string, string>
 }
 
 export interface CourseListItem {
@@ -101,8 +185,16 @@ export interface CourseListItem {
   archivedAt: string | null
   /** The published version's go-live date (ISO), null when it has none (live since before dates existed, or never published). */
   publishedAt: string | null
+  /** The published version's future unpublish date (ISO), or null. */
+  unpublishOn: string | null
   /** From scheduling; null while it is not available. */
   schedule: CourseScheduleSummary | null
+  /** The course has an image (draft or published, whichever is newer). */
+  hasImage: boolean
+  /** The PUBLISHED course has a page address in the site's main language. */
+  hasPageAddress: boolean
+  /** Where it is on the website (its course page, else a timetable page) — only while it is online. */
+  liveUrl: string | null
   updatedAt: string
   createdAt: string
   /** Lower-cased titles, descriptions and teachers (every language), for search. */
@@ -121,6 +213,8 @@ export interface CourseSnapshot {
   archivedAt: string | null
   /** The published version's go-live date (ISO), or null. */
   publishedAt: string | null
+  /** The published version's future unpublish date (ISO), or null. */
+  unpublishOn: string | null
   state: CourseState
   title: Record<string, string>
   shortDescription: Record<string, string>
@@ -131,6 +225,8 @@ export interface CourseSnapshot {
   slug: Record<string, string>
   /** The Courses module's page segment per language (`courses` → /courses/<slug>); {} = no course pages on this site yet. */
   pageSegments: Record<string, string>
+  /** The design system's primary colours: the editor's colour swatches are derived from them (palette.ts). */
+  palette: CoursePaletteSource
   site: CourseSite
 }
 
@@ -157,6 +253,10 @@ export type CourseDeps = {
   hasSchedule?: HasScheduleFn
   /** Classes / teachers / next class per course publicId. Default: not available. */
   scheduleSummary?: (projectId: string, publicIds: string[]) => Promise<Map<string, CourseScheduleSummary> | null>
+  /** The site's places and terms (the list's filters). Default: none. */
+  scheduleOverview?: (projectId: string) => Promise<CourseScheduleOverview | null>
+  /** The design system's primary colours. Default: read from Sanity. */
+  paletteSource?: (projectSlug: string) => Promise<CoursePaletteSource>
 }
 
 type Doc = Record<string, unknown> & { _id?: string; _type?: string; _rev?: string; projectSlug?: string }
@@ -203,7 +303,8 @@ async function commit(client: Client, projectSlug: string, run: () => Promise<un
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
 const objectOf = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null)
 const archivedAtOf = (doc: Doc | undefined): string | null => (typeof doc?.archivedAt === 'string' && doc.archivedAt ? doc.archivedAt : null)
-const colorOf = (v: unknown): CourseColor => (isCourseColor(v) ? v : DEFAULT_COURSE_COLOR)
+/** Current keys; legacy 'accent' / 'muted' read as c1 / c6 (no data migration). */
+const colorOf = (v: unknown): CourseColor => normalizeCourseColor(v)
 /** Media Library asset ids (document ids): letters, digits, dashes, underscores. */
 const ASSET_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
 
@@ -230,15 +331,34 @@ function localized(value: unknown): Record<string, string> {
 const firstOf = (map: Record<string, string>, defaultLocale: string): string => map[defaultLocale] ?? Object.values(map)[0] ?? ''
 
 const publishedAtOf = (doc: Doc | undefined): string | null => (typeof doc?.publishedAt === 'string' && doc.publishedAt ? doc.publishedAt : null)
+const expiresAtOf = (doc: Doc | undefined): string | null => (typeof doc?.expiresAt === 'string' && doc.expiresAt ? doc.expiresAt : null)
+
+/** ADR-032 status of the published version (publication window + archive marker; courses: no publish date = public). */
+function windowStatus(published: Doc | undefined, now: Date) {
+  return deriveStatus({ published: published ? { publishedAt: publishedAtOf(published), expiresAt: expiresAtOf(published), archivedAt: archivedAtOf(published) } : null, rule: 'optional' }, now)
+}
 
 /** The published course is waiting for a future go-live date (ADR-032 status 'scheduled'). */
 function isScheduled(published: Doc | undefined, now: Date): boolean {
-  return Boolean(published) && deriveStatus({ published: { publishedAt: publishedAtOf(published), archivedAt: archivedAtOf(published) }, rule: 'optional' }, now).status === 'scheduled'
+  return Boolean(published) && windowStatus(published, now).status === 'scheduled'
+}
+
+/** The published course is off the website: its unpublish date has passed (ADR-032 status 'unpublished'). */
+function isUnpublished(published: Doc | undefined, now: Date): boolean {
+  return Boolean(published) && !archivedAtOf(published) && windowStatus(published, now).status === 'unpublished'
+}
+
+/** A future unpublish date of the published version, else null. */
+function unpublishOnOf(published: Doc | undefined, now: Date): string | null {
+  if (!published) return null
+  const s = windowStatus(published, now)
+  return s.status === 'published' || s.status === 'scheduled' ? s.unpublishOn : null
 }
 
 function stateOf(published: Doc | undefined, draft: Doc | undefined, now: Date): CourseState {
   if (archivedAtOf(published ?? draft)) return 'archived'
   if (isScheduled(published, now)) return 'scheduled'
+  if (isUnpublished(published, now)) return 'unpublished'
   if (published && draft) return 'changes'
   return published ? 'published' : 'draft'
 }
@@ -259,13 +379,27 @@ async function readSite(client: Client, projectSlug: string): Promise<CourseSite
 /** Exported so tests assert exactly what runs. Raw perspective: drafts and published. */
 export const COURSE_LIST_QUERY = /* groq */ `*[_type == "course" && projectSlug == $projectSlug && !(_id in path("versions.**"))]
       | order(_updatedAt desc)[0...${COURSE_LIMITS.courses * 2}]{
-        _id, _createdAt, _updatedAt, publicId, title, shortDescription, color, archivedAt, publishedAt
+        _id, _createdAt, _updatedAt, publicId, title, shortDescription, color, archivedAt, publishedAt, expiresAt, slug, "hasImage": defined(image._ref)
       }`
 
-type ListRow = Doc & { _createdAt?: string; _updatedAt?: string }
+type ListRow = Doc & { _createdAt?: string; _updatedAt?: string; hasImage?: boolean }
 
-/** This project's courses, newest change first. Read permission. */
-export async function listCourses(ctx: TenantAuthorizationContext, projectId: string, deps: CourseDeps = {}): Promise<{ courses: CourseListItem[]; site: CourseSite }> {
+/** A read whose failure only leaves something out of the list (never the list itself). */
+async function soft<T>(read: (() => Promise<T>) | undefined, fallback: T): Promise<T> {
+  if (!read) return fallback
+  try {
+    return await read()
+  } catch {
+    return fallback
+  }
+}
+
+/** This project's courses, newest change first, and what the list shows around them. Read permission. */
+export async function listCourses(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  deps: CourseDeps = {}
+): Promise<{ courses: CourseListItem[]; site: CourseSite; overview: CourseListOverview }> {
   const grant = grantFor(ctx, projectId, COURSE_READ_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   const site = await readSite(client, grant.projectSlug)
@@ -282,12 +416,14 @@ export async function listCourses(ctx: TenantAuthorizationContext, projectId: st
     byId.set(id, entry)
   }
   const publicIds = [...byId.values()].map((e) => str((e.draft ?? e.published)?.publicId)).filter((x) => UUID_RE.test(x))
-  let summaries: Map<string, CourseScheduleSummary> | null = null
-  try {
-    summaries = deps.scheduleSummary ? await deps.scheduleSummary(projectId, publicIds) : null
-  } catch {
-    summaries = null
-  }
+  // Decoration: each read may fail on its own and only leaves its part out.
+  const [summaries, scheduleOverview, placement, palette] = await Promise.all([
+    soft(deps.scheduleSummary ? () => deps.scheduleSummary!(projectId, publicIds) : undefined, null),
+    soft(deps.scheduleOverview ? () => deps.scheduleOverview!(projectId) : undefined, null),
+    soft<PlacementInfo | null>(() => (deps.placement ? deps.placement(grant.projectSlug) : readPlacementInfo(client, grant.projectSlug, '')), null),
+    soft<CoursePaletteSource>(() => (deps.paletteSource ?? ((slug: string) => readCoursePaletteSource(client, slug)))(grant.projectSlug), { light: null, dark: null }),
+  ])
+  const segments = placement?.courseSegments ?? {}
   const now = (deps.now ?? (() => new Date()))()
   const courses = [...byId].map(([id, e]): CourseListItem => {
     const row = (e.draft ?? e.published)!
@@ -298,6 +434,9 @@ export async function listCourses(ctx: TenantAuthorizationContext, projectId: st
     const schedule = summaries?.get(publicId.toLowerCase()) ?? summaries?.get(publicId) ?? null
     const archivedAt = archivedAtOf(base)
     const state = stateOf(e.published, e.draft, now)
+    const publishedSlugs = slugsOf(e.published)
+    const online = state === 'published' || state === 'changes'
+    const liveUrl = online && placement ? coursePlacement({ ...placement, courseSlugs: publishedSlugs }, id).url : null
     return {
       id,
       publicId,
@@ -309,14 +448,22 @@ export async function listCourses(ctx: TenantAuthorizationContext, projectId: st
       isPublished: Boolean(e.published),
       archivedAt,
       publishedAt: publishedAtOf(e.published),
+      unpublishOn: unpublishOnOf(e.published, now),
       schedule,
+      hasImage: row.hasImage === true,
+      hasPageAddress: Boolean(publishedSlugs[site.defaultLocale]),
+      liveUrl,
       updatedAt: row._updatedAt ?? '',
       createdAt: e.createdAt || row._updatedAt || '',
       searchText: [...Object.values(titles), ...Object.values(descriptions), ...(schedule?.teachers ?? [])].join(' ').toLowerCase(),
       missingLanguages: site.languages.filter((l) => l !== site.defaultLocale && !titles[l]),
     }
   })
-  return { courses, site }
+  return {
+    courses,
+    site,
+    overview: { places: scheduleOverview?.places ?? [], terms: scheduleOverview?.terms ?? [], palette, pageSegments: segments },
+  }
 }
 
 // ── Get ───────────────────────────────────────────────────────────────────────
@@ -338,6 +485,7 @@ export async function getCourseForEdit(ctx: TenantAuthorizationContext, projectI
     isPublished: Boolean(published),
     archivedAt: archivedAtOf(published ?? draft),
     publishedAt: publishedAtOf(published),
+    unpublishOn: unpublishOnOf(published, (deps.now ?? (() => new Date()))()),
     state: stateOf(published, draft, (deps.now ?? (() => new Date()))()),
     title: localized(doc.title),
     shortDescription: localized(doc.shortDescription),
@@ -345,6 +493,7 @@ export async function getCourseForEdit(ctx: TenantAuthorizationContext, projectI
     image: await readImage(client, objectOf(doc.image)?._ref, grant.projectSlug),
     slug: slugsOf(doc),
     pageSegments: await readPageSegments(client, grant.projectSlug),
+    palette: await soft<CoursePaletteSource>(() => (deps.paletteSource ?? ((slug: string) => readCoursePaletteSource(client, slug)))(grant.projectSlug), { light: null, dark: null }),
     site,
   }
 }
@@ -651,13 +800,15 @@ export async function publishCourseDraft(
       if (!localized(draft.title)[site.defaultLocale]) throw new CourseError('missing_title', 'A title in the main language is required.')
 
       // A live course keeps its date unless it is scheduled to a new one; a scheduled course published "now" goes live now.
-      const live = Boolean(published) && deriveStatus({ published: { publishedAt: publishedAtOf(published), archivedAt: null }, rule: 'optional' }, now).status === 'published'
+      const live = Boolean(published) && windowStatus(published, now).status === 'published'
+      // An unpublished course goes back on the website: publishing it again is like a first publish (the website check runs).
+      const wasUnpublished = isUnpublished(published, now)
       // A live course is never moved into the future (that would take it offline).
       if (live && mode === 'schedule') throw new CourseError('invalid_value', 'This course is already online.')
       const keepDate = Boolean(published) && (mode === 'keep' || (mode === 'now' && live))
       const publishedAt: string | null = keepDate ? publishedAtOf(published) : (scheduledAt ?? now).toISOString()
-      // Only an update of a course that is already published can skip the check.
-      if (!(published && mode === 'keep')) await assertWillAppear(client, grant.projectSlug, input.id, deps)
+      // Only an update of a course that is already published (and on the website) can skip the check.
+      if (!(published && mode === 'keep') || wasUnpublished) await assertWillAppear(client, grant.projectSlug, input.id, deps)
 
       const doc: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(draft)) if (!SYSTEM_FIELDS.has(k) && !WINDOW_FIELDS.has(k)) doc[k] = v
@@ -665,6 +816,10 @@ export async function publishCourseDraft(
       doc._type = 'course'
       doc.projectSlug = grant.projectSlug
       if (publishedAt) doc.publishedAt = publishedAt
+      // A future unpublish date survives an update ("Unpublish on…" stays set); a passed one is dropped —
+      // publishing an unpublished course puts it back on the website.
+      const unpublishOn = unpublishOnOf(published, now)
+      if (unpublishOn && (!publishedAt || Date.parse(unpublishOn) > Date.parse(publishedAt))) doc.expiresAt = unpublishOn
       // The publicId never changes once published (class schedules key on it).
       if (published && typeof published.publicId === 'string' && published.publicId) doc.publicId = published.publicId
       if (typeof doc.publicId !== 'string' || !UUID_RE.test(doc.publicId)) doc.publicId = (deps.publicUuid ?? randomUUID)()
@@ -808,12 +963,15 @@ export async function discardCourseDraft(ctx: TenantAuthorizationContext, projec
 
 // ── Archive / restore / delete ────────────────────────────────────────────────
 
-export const COURSE_LIFECYCLE_OPS = ['archive', 'restore', 'deleteDraft', 'deletePermanently'] as const
+export const COURSE_LIFECYCLE_OPS = ['archive', 'restore', 'deleteDraft', 'deletePermanently', 'unpublish', 'publishAgain'] as const
 export type CourseLifecycleOp = (typeof COURSE_LIFECYCLE_OPS)[number]
 
 /**
- * Archive / restore (courses.course.write) and delete (courses.course.delete)
- * through the lifecycle service. Delete is refused while anything references
+ * Archive / restore / unpublish / publish again (courses.course.write) and
+ * delete (courses.course.delete) through the lifecycle service, which writes
+ * the Activity row. Unpublish sets the unpublish date to now (the website hides
+ * the course, its classes and its page at once); restore lands on Unpublished;
+ * "Publish again" removes the date (refused when nothing would show the course). Delete is refused while anything references
  * the course OR it still has classes (`in_use`, `detail.usedIn`). Returns the
  * DRAFT's new revision (archive / restore also touch the draft).
  */
@@ -845,17 +1003,24 @@ export async function runCourseLifecycle(
         return { rev: r.draftRev }
       }
       case 'restore': {
+        // Restore lands on "Unpublished" (ADR-032 D6, as posts): the service keeps the archive's
+        // unpublish date, so the course comes back off the website; "Publish again" puts it back.
         const r = await lifecycle.restore(d, ctx, projectId, args, sdeps)
-        // A course has no publication window: restore puts it straight back
-        // (the service leaves expiresAt = archive time, which means nothing
-        // here; it is removed so no reader mistakes it for an end date).
-        const raw = (deps.client ?? sanityWriteClient) as Client
-        const tx = (await commit(raw, grant.projectSlug, () => {
-          let t = raw.transaction().patch(input.id, { unset: ['expiresAt'] })
-          if (draft) t = t.patch(`drafts.${input.id}`, { unset: ['expiresAt'] })
-          return t.commit()
-        })) as { transactionId?: string } | undefined
-        return { rev: draft ? (tx?.transactionId ?? r.draftRev) : r.draftRev }
+        return { rev: r.draftRev }
+      }
+      case 'unpublish': {
+        // Off the website now: unpublish date = now (D2 — never Sanity's Unpublish). Its classes stay.
+        if (!published) throw new CourseError('invalid_value', 'This course is not published.')
+        if (isUnpublished(published, (deps.now ?? (() => new Date()))())) throw new CourseError('invalid_value', 'This course is already unpublished.')
+        await lifecycle.unpublishNow(d, ctx, projectId, args, sdeps)
+        return { rev: null }
+      }
+      case 'publishAgain': {
+        // Back on the website: the unpublish date is removed — if anything on the website would show it.
+        if (!published || !isUnpublished(published, (deps.now ?? (() => new Date()))())) throw new CourseError('invalid_value', 'This course is not unpublished.')
+        await assertWillAppear(client as Client, grant.projectSlug, input.id, deps)
+        await lifecycle.backOnline(d, ctx, projectId, args, sdeps)
+        return { rev: null }
       }
       case 'deleteDraft':
         await lifecycle.deleteDraft(d, ctx, projectId, args, sdeps)
@@ -876,6 +1041,50 @@ export async function runCourseLifecycle(
     }
     throw error
   }
+}
+
+// ── Unpublish on… ─────────────────────────────────────────────────────────────
+
+/**
+ * "Unpublish on…": the date a published course leaves the website by itself
+ * (`expiresAt`, ADR-032 D5) — or null to remove it. Never archives: when the
+ * date passes the course is Unpublished, its classes stay in the dashboard.
+ * Refused for a course that is not published, archived, or already
+ * unpublished (a future date would quietly put it back online). The date must
+ * be in the future and after the go-live date. Write permission; Activity row
+ * via the lifecycle service.
+ */
+export async function setCourseUnpublishDate(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { id: string; unpublishAt: string | null },
+  deps: CourseDeps = {}
+): Promise<{ unpublishOn: string | null }> {
+  const grant = grantFor(ctx, projectId, COURSE_WRITE_PERMISSION)
+  const client = (deps.client ?? sanityWriteClient) as lifecycle.LifecycleClient
+  const now = (deps.now ?? (() => new Date()))()
+  if (!isCourseId(input?.id)) notFound()
+  if (input.unpublishAt !== null && (typeof input.unpublishAt !== 'string' || !ISO.test(input.unpublishAt))) throw new CourseError('invalid_schedule', 'Pick a date and time in the future.')
+  const { published } = await readPair(client as Client, input.id, grant.projectSlug)
+  if (!published) throw new CourseError('invalid_value', 'Publish this course first.')
+  if (archivedAtOf(published)) throw new CourseError('archived', 'Restore this course first.')
+  if (isUnpublished(published, now)) throw new CourseError('invalid_value', 'This course is already unpublished.')
+  if (input.unpublishAt !== null) {
+    const at = Date.parse(input.unpublishAt)
+    const goLive = publishedAtOf(published)
+    if (at <= now.getTime() || at - now.getTime() > COURSE_MAX_SCHEDULE_MS || (goLive && at <= Date.parse(goLive))) {
+      throw new CourseError('invalid_schedule', 'Pick a date and time in the future, after the go-live date.')
+    }
+  }
+  const d = courseLifecycle({ projectId, publicId: null, hasSchedule: noSchedule })
+  const r = await lifecycle.setEndDate(
+    d,
+    ctx,
+    projectId,
+    { id: input.id, rev: str(published._rev), expiresAt: input.unpublishAt === null ? null : new Date(Date.parse(input.unpublishAt)).toISOString() },
+    { client, now: deps.now, audit: deps.audit }
+  )
+  return { unpublishOn: typeof r.doc.expiresAt === 'string' ? r.doc.expiresAt : null }
 }
 
 // ── Activity ──────────────────────────────────────────────────────────────────

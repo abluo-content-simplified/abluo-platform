@@ -6,8 +6,9 @@ import { DemoBlock, DemoStack } from '../demo-kit'
 export default function PillDemo() {
   return (
     <DemoStack>
-      <DemoBlock title="Tones" note="tone: success | highlight | outline | muted (default)">
+      <DemoBlock title="Tones" note="tone: success | highlight | outline | warning | muted (default)">
         <Pill tone="success">Published</Pill>
+        <Pill tone="warning">Ends in 5 days</Pill>
         <Pill tone="highlight">Scheduled</Pill>
         <Pill tone="outline">Draft</Pill>
         <Pill>Archived</Pill>

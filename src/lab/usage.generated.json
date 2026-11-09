@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-08T11:28:09.325Z",
+  "generatedAt": "2026-11-08T20:52:18.534Z",
   "usage": {
     "button": [
       "src/app/(platform)/(auth)/forgot-password/page.tsx",
@@ -99,6 +99,7 @@
       "src/components/client/courses/CourseClasses.tsx",
       "src/components/client/courses/CourseEditor.tsx",
       "src/components/client/courses/CoursePreviewButton.tsx",
+      "src/components/client/courses/CoursesAttention.tsx",
       "src/components/client/courses/CoursesBrowser.tsx",
       "src/components/client/courses/CoursesLastDateDialog.tsx",
       "src/components/client/courses/NewCourseDialog.tsx",
@@ -361,7 +362,6 @@
       "src/components/client/connections/AffiliatePrograms.tsx",
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
       "src/components/client/courses/CourseClasses.tsx",
-      "src/components/client/courses/CoursesTable.tsx",
       "src/components/client/courses/TimetableClassSheet.tsx",
       "src/components/client/courses/TimetableGrid.tsx",
       "src/components/client/courses/course-bits.tsx",
@@ -763,7 +763,9 @@
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
       "src/components/client/courses/CourseClasses.tsx",
       "src/components/client/courses/CourseEditor.tsx",
+      "src/components/client/courses/CoursesBrowser.tsx",
       "src/components/client/courses/CoursesDeleteDialog.tsx",
+      "src/components/client/courses/CoursesUnpublishDialog.tsx",
       "src/components/client/create/WizardShell.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
       "src/components/client/documents/DocumentsBrowser.tsx",
@@ -983,8 +985,7 @@
       "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
       "src/components/client/courses/CourseEditor.tsx",
-      "src/components/client/courses/CoursesCards.tsx",
-      "src/components/client/courses/CoursesTable.tsx",
+      "src/components/client/courses/course-bits.tsx",
       "src/components/client/documents/DocumentsBrowser.tsx",
       "src/components/client/events/EventEditor.tsx",
       "src/components/client/events/EventList.tsx",
@@ -1203,15 +1204,22 @@
       "src/components/client/gallery/wizard/PhotoAddStep.tsx",
       "src/components/client/media/AddPhotos.tsx"
     ],
+    "color-swatches": [
+      "src/components/client/courses/CourseEditor.tsx"
+    ],
     "toggle-chips": [
       "src/components/app/ui/LanguagePicker.tsx",
       "src/components/app/ui/WeeklyScheduleEditor.tsx",
       "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/courses/CourseClassSheet.tsx",
+      "src/components/client/courses/CoursesFilters.tsx",
       "src/components/client/create/steps/CategoryStep.tsx",
       "src/components/client/documents/DocumentEditor.tsx",
       "src/components/client/persons/PersonEditorTabs.tsx",
       "src/components/client/taxonomy/TermPicker.tsx"
+    ],
+    "more-toggle": [
+      "src/components/client/courses/course-bits.tsx"
     ],
     "text-marker": [
       "src/components/admin/tickets/RedactPartsDialog.tsx"
@@ -1252,6 +1260,7 @@
     ],
     "unpublish-date-sheet": [
       "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/courses/CoursesBrowser.tsx",
       "src/components/client/posts/PostsBrowser.tsx"
     ],
     "publication-dates": [
@@ -1405,6 +1414,7 @@
     ],
     "chip": [
       "src/components/app/ui/CategoryPicker.tsx",
+      "src/components/app/ui/SearchPalette.tsx",
       "src/components/client/connections/AffiliatePrograms.tsx",
       "src/components/client/create/AddContentSheet.tsx",
       "src/components/client/create/steps/CoverStep.tsx",
@@ -1524,6 +1534,7 @@
       "src/components/client/courses/CourseClassSheet.tsx",
       "src/components/client/courses/CourseClasses.tsx",
       "src/components/client/courses/CourseEditor.tsx",
+      "src/components/client/courses/CoursesAttention.tsx",
       "src/components/client/courses/CoursesLastDateDialog.tsx",
       "src/components/client/courses/Timetable.tsx",
       "src/components/client/courses/TimetableClassSheet.tsx",

@@ -29,6 +29,7 @@ export function ListRow({
   menu,
   trailing,
   rowProps,
+  after,
   children,
 }: {
   /** Opens the item (a button). Pass `href` instead when the item has its own page (a real link: new tab, copy link). */
@@ -44,6 +45,12 @@ export function ListRow({
   trailing?: ReactNode
   /** Extra attributes for the row, e.g. `{ 'data-drag-key': key, className: dropEdgeClass(edge) }` for drag-to-reorder. */
   rowProps?: { 'data-drag-key'?: string; className?: string }
+  /**
+   * Controls under the row's text that must NOT open the item (e.g. a "+3"
+   * MoreToggle that expands the row). Rendered outside the tappable body, so
+   * it is never a button inside a link.
+   */
+  after?: ReactNode
   children: ReactNode
 }) {
   const selected = select?.checked ?? false
@@ -60,15 +67,25 @@ export function ListRow({
       className={`flex items-start gap-1 rounded-xl border bg-card py-2 pr-1 ${select ? 'pl-1' : 'pl-3'} ${selected ? 'border-action ring-1 ring-action' : 'border-border'} ${rowProps?.className ?? ''}`}
     >
       {select ? <Checkbox checked={select.checked} aria-label={select.label} onChange={select.onChange} /> : null}
-      {href ? (
-        <Link href={href} aria-label={label} className={bodyClass}>
-          {body}
-        </Link>
-      ) : (
-        <button type="button" onClick={onOpen} aria-label={label} className={bodyClass}>
-          {body}
-        </button>
-      )}
+      {(() => {
+        const open = href ? (
+          <Link href={href} aria-label={label} className={after ? `${bodyClass} w-full` : bodyClass}>
+            {body}
+          </Link>
+        ) : (
+          <button type="button" onClick={onOpen} aria-label={label} className={after ? `${bodyClass} w-full` : bodyClass}>
+            {body}
+          </button>
+        )
+        return after ? (
+          <div className="flex min-w-0 flex-1 flex-col">
+            {open}
+            <div className="flex min-w-0 flex-col items-start gap-1.5 pb-1">{after}</div>
+          </div>
+        ) : (
+          open
+        )
+      })()}
       {trailing ? <span className="flex shrink-0 items-center pt-0.5">{trailing}</span> : null}
       {menu ? (
         <span className="shrink-0">

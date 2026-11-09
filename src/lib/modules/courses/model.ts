@@ -5,16 +5,11 @@
 export const COURSES_MODULE_ID = 'courses'
 
 /**
- * A course's colour: only design-system-safe keys, never a free colour.
- * `none` = no colour. The website maps `accent` / `muted` to design-system tokens.
+ * A course's colour: a stable, meaning-free palette key ('c1' … 'c6') or 'none'.
+ * The colours themselves are derived from the site's design system
+ * (`palette.ts`); legacy 'accent' / 'muted' are read as c1 / c6.
  */
-export const COURSE_COLORS = ['none', 'accent', 'muted'] as const
-export type CourseColor = (typeof COURSE_COLORS)[number]
-export const DEFAULT_COURSE_COLOR: CourseColor = 'none'
-
-export function isCourseColor(value: unknown): value is CourseColor {
-  return typeof value === 'string' && (COURSE_COLORS as readonly string[]).includes(value)
-}
+export { COURSE_COLORS, DEFAULT_COURSE_COLOR, isCourseColor, normalizeCourseColor, type CourseColor } from './palette'
 
 /** Permissions (build spec §3). */
 export const COURSES_PERMISSIONS = {

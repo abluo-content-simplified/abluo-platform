@@ -47,7 +47,7 @@ describe('previewCourse seam', () => {
     const data = await timetableForSection('cyce', { ...opts, previewCourse: { publicId: NEW, title: 'Draft yoga', color: 'accent' } }, d)
     expect(owners[0]).toContain(NEW)
     expect(owners[0]).toContain(COURSE_A)
-    expect(data.courses[NEW]).toMatchObject({ title: 'Draft yoga', color: 'accent' })
+    expect(data.courses[NEW]).toMatchObject({ title: 'Draft yoga', color: 'c1' }) // legacy 'accent' reads as c1
     expect(data.series.some((s) => s.courseId === NEW || (s as never as { ownerPublicId?: string }).ownerPublicId === NEW) || Object.keys(data.courses).includes(NEW)).toBe(true)
     expect(data.courses[COURSE_A]).toBeTruthy()
   })

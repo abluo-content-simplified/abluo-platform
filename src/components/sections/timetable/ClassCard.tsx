@@ -131,7 +131,7 @@ export function ClassCard({ occ, data, series, variant, locale, msg, profile, on
         <span style={strike}>{timeRange(occ.start, occ.end)}</span>
         {hasStatus && variant !== 'mobile' && status}
       </p>
-      <p className={s.title} style={{ ...TITLE_FONT, color: 'var(--color-text-primary)', ...strike }}>
+      <p className={s.title} style={{ ...TITLE_FONT, color: course && course.color !== 'none' ? `var(--course-${course.color}-fg, var(--color-text-primary))` : 'var(--color-text-primary)', ...strike }}>
         {course?.title}
       </p>
       {hasStatus && variant === 'mobile' && <span className="flex flex-wrap gap-1.5">{status}</span>}

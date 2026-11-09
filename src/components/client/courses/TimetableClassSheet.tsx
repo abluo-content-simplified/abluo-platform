@@ -22,7 +22,10 @@ const PAGE = 8
 /** What one action changes on a date. */
 type Patch = Partial<Omit<UpdateOccurrenceRequest, 'seriesId' | 'occurrenceId' | 'expectedVersion'>>
 
-type Edit = { kind: 'substitute' | 'time' | 'place' | 'note'; key: number; occurrence: OccurrenceView }
+export type OccurrenceEdit = { kind: 'substitute' | 'time' | 'place' | 'note'; key: number; occurrence: OccurrenceView }
+type Edit = OccurrenceEdit
+/** What one action changes on a date (for callers of OccurrenceEditor). */
+export type OccurrencePatch = Patch
 
 /**
  * One class's upcoming dates (8 at a time, "Show more"), each with Cancel /
@@ -184,7 +187,7 @@ export function TimetableClassSheet({
         onClose={() => setEdit(null)}
       >
         {edit ? (
-          <DateEditor
+          <OccurrenceEditor
             key={edit.key}
             edit={edit}
             cls={cls}
@@ -204,7 +207,12 @@ export function TimetableClassSheet({
   )
 }
 
-function DateEditor({
+/**
+ * The form for one change of one date (substitute, time, place, note) — used
+ * here and by the Courses list's "Set substitute for next class". `cls` = the
+ * class's own teachers and place (for the hints and "back to the class's").
+ */
+export function OccurrenceEditor({
   edit,
   cls,
   places,
@@ -214,7 +222,7 @@ function DateEditor({
   onSave,
 }: {
   edit: Edit
-  cls: ClassView | null
+  cls: Pick<ClassView, 'instructors' | 'placeToken'> | null
   places: PlaceOption[]
   placeLine: string
   projectSlug: string

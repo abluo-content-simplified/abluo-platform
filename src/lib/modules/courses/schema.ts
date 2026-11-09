@@ -73,8 +73,8 @@ const courseType = defineType({
       type: 'string',
       group: 'meta',
       initialValue: DEFAULT_COURSE_COLOR,
-      options: { list: COURSE_COLORS.map((c) => ({ title: c === 'none' ? 'None' : c === 'accent' ? 'Accent' : 'Muted', value: c })), layout: 'radio' },
-      description: 'How the course is marked in the timetable. Only design-system colours.',
+      options: { list: COURSE_COLORS.map((c) => ({ title: c === 'none' ? 'None' : `Colour ${c.slice(1)}`, value: c })), layout: 'radio' },
+      description: 'How the course is marked in the timetable: one of six colours derived from the design system (or none). Older courses may still hold "accent" (read as colour 1) or "muted" (colour 6).',
     }),
     defineField({
       name: 'image',

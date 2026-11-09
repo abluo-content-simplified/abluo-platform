@@ -19,6 +19,7 @@ import { focalObjectPosition } from '@/lib/gallery/focal'
 import { addDays, dayNumber, parseClassRule, ruleOccursOn, ruleWeekdays, weekdayOf, type ClassRule } from '@/lib/scheduling/recurrence'
 import type { AttendanceMode, ClassOccurrence, ClassSeries, MeetingRoom, ScheduleClosure } from '@/lib/scheduling/types'
 import { personDisplayName } from '@/lib/modules/people/model'
+import { normalizeCourseColor, type CourseColor } from './palette'
 import type { ResolvedImage, SiteLocation } from '@/lib/sanity/types'
 
 // ── The one privacy rule ─────────────────────────────────────────────────────
@@ -40,7 +41,8 @@ export type TimetableImage = { src: string; alt: string; position: string }
 export type TimetableCourse = {
   id: string
   title: string
-  color: 'none' | 'accent' | 'muted'
+  /** Palette key (palette.ts); legacy values are normalised when shaped. */
+  color: CourseColor
   /** The course's description (page language), for the class panel and the printed "About the courses" page. */
   description: string | null
   /** The course's optional image (Media Library). */
@@ -220,8 +222,9 @@ export function placeKeyOf(place: ClassOccurrence['place']): string | null {
   return place.kind === 'location' ? place.key : `venue:${place.venuePublicId}`
 }
 
+/** Current keys, and the legacy 'accent' / 'muted' read as c1 / c6 (no data migration). */
 function courseColor(v: unknown): TimetableCourse['color'] {
-  return v === 'accent' || v === 'muted' ? v : 'none'
+  return normalizeCourseColor(v)
 }
 
 export function shapeTimetable(input: ShapeInput): TimetableData {

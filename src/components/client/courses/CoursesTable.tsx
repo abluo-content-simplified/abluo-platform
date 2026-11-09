@@ -3,75 +3,52 @@
 import { useTranslations } from 'next-intl'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { DataTable, type DataTableColumn, type DataTableSelection } from '@/components/app/ui/list/DataTable'
-import { CellDate, CellPill, CellText, LocalDate } from '@/components/app/ui/list/cells'
 import type { CourseSort, CourseSortColumn } from '@/lib/client/courses-filter'
-import { CourseStateBadge, MissingPills, useClassesText, type CourseRow } from './course-bits'
+import { CourseNextClass, CourseRunsUntil, CourseStatusPill, CourseTitleCell, CourseWhen, type CourseListContext, type CourseRow } from './course-bits'
 
 /**
  * Desktop Courses table (md and up): the generic DataTable configured for
- * courses. Columns: Title (+ short description) · Weekly classes · Teachers ·
- * Next class · Status · Updated · ⋯. Title and Updated sort. The whole row
- * opens the editor; ⋯ doesn't. Classes, teachers and next class come from the
- * schedule and show "—" until scheduling is connected.
+ * courses (Tom, 2026-11-08). Columns: Course (colour dot, title, teachers) ·
+ * When (the weekly classes, "+N" expands the row in place) · Next class (+ the
+ * nearest change) · Runs until · Status (one pill) · ⋯. Title sorts; "Recently
+ * updated" stays a sort option of the toolbar. The whole row opens the editor —
+ * except the When cell's "+N" and the ⋯ menu.
  */
 export function CoursesTable({
   rows,
+  ctx,
   sort,
   onSort,
   onOpen,
   menuFor,
   selection,
+  expandedId,
+  onToggleExpanded,
 }: {
   rows: CourseRow[]
+  ctx: CourseListContext
   sort: CourseSort
   onSort: (column: CourseSortColumn) => void
   onOpen: (row: CourseRow, newTab: boolean) => void
   menuFor: (row: CourseRow) => CardMenuItem[]
   /** Square checkboxes + select all (bulk bar); absent when the person can't change anything. */
   selection?: DataTableSelection<CourseRow>
+  /** The one row whose classes are all shown. */
+  expandedId: string | null
+  onToggleExpanded: (id: string) => void
 }) {
   const t = useTranslations('clientDashboard.courses.list')
-  const classesText = useClassesText()
   const columns: DataTableColumn<CourseRow>[] = [
+    { key: 'title', header: t('columns.title'), sortable: true, width: 'min-w-56', render: (c) => <CourseTitleCell row={c} /> },
     {
-      key: 'title',
-      header: t('columns.title'),
-      sortable: true,
-      width: 'min-w-64',
-      render: (c) => <CellText clamp={1} primary={c.title || t('untitled')} secondary={c.shortDescription || null} secondaryLines={1} href={c.href} />,
-    },
-    {
-      key: 'classes',
-      header: t('columns.classes'),
-      width: 'w-36',
-      render: (c) => <span className="flex min-h-6 items-center text-sm leading-6 text-foreground">{classesText(c.schedule)}</span>,
-    },
-    {
-      key: 'teachers',
-      header: t('columns.teachers'),
-      width: 'w-52',
-      render: (c) => <span className="line-clamp-2 text-sm leading-6 text-foreground">{c.schedule?.teachers.length ? c.schedule.teachers.join(', ') : '—'}</span>,
-    },
-    {
-      key: 'next',
-      header: t('columns.next'),
-      width: 'w-36',
-      render: (c) => <LocalDate iso={c.schedule?.nextClassAt} empty="—" className="text-sm leading-6 text-foreground tabular-nums" />,
-    },
-    {
-      key: 'status',
-      header: t('columns.status'),
+      key: 'when',
+      header: t('columns.when'),
       width: 'w-48',
-      render: (c) => (
-        <div className="flex flex-col items-start gap-1.5">
-          <CellPill>
-            <CourseStateBadge state={c.state} publishedAt={c.publishedAt} zone={c.zone} />
-          </CellPill>
-          <MissingPills languages={c.missingLanguages} state={c.state} />
-        </div>
-      ),
+      render: (c) => <CourseWhen row={c} ctx={ctx} expanded={expandedId === c.id} onToggle={() => onToggleExpanded(c.id)} />,
     },
-    { key: 'updated', header: t('columns.updated'), sortable: true, width: 'w-28', render: (c) => <CellDate iso={c.updatedAt} /> },
+    { key: 'next', header: t('columns.next'), width: 'w-40', render: (c) => <CourseNextClass row={c} ctx={ctx} /> },
+    { key: 'until', header: t('columns.until'), width: 'w-36', render: (c) => <CourseRunsUntil row={c} ctx={ctx} /> },
+    { key: 'status', header: t('columns.status'), width: 'w-48', render: (c) => <CourseStatusPill row={c} ctx={ctx} /> },
     {
       key: 'actions',
       header: <span className="sr-only">{t('columns.actions')}</span>,

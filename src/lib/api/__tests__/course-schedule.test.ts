@@ -237,7 +237,7 @@ describe('the Classes panel', () => {
     })
     expect(r.site).toEqual({ defaultLocale: 'fr', languages: ['fr', 'en'], timeZone: 'Europe/Brussels' })
     expect(r.places).toEqual([
-      { token: 'location:brey', name: 'Brey', kind: 'location' },
+      { token: 'location:brey', name: 'Brey', kind: 'location', short: null },
       { token: `venue:${VENUE}`, name: 'Hall', kind: 'venue' },
     ])
     expect(r.editions[0].label.en).toBe('Autumn')
@@ -519,8 +519,43 @@ describe('hooks for the Courses list and delete', () => {
     })
     const h = courseScheduleDeps('cyce', { store, client: fakeClient(), now: () => new Date('2026-12-01T00:00:00Z') })
     const m = (await h.scheduleSummary(PID, [COURSE, OTHER_COURSE, 'x']))!
-    expect(m.get(COURSE)).toEqual({ classes: 1, teachers: ['Sabrina Rossi'], nextClassAt: '2026-12-15T17:00:00.000Z' })
-    expect(m.get(OTHER_COURSE)).toEqual({ classes: 1, teachers: ['Sabrina Rossi'], nextClassAt: null })
+    expect(m.get(COURSE)).toMatchObject({ classes: 1, teachers: ['Sabrina Rossi'], nextClassAt: '2026-12-15T17:00:00.000Z' })
+    expect(m.get(OTHER_COURSE)).toMatchObject({ classes: 1, teachers: ['Sabrina Rossi'], nextClassAt: null })
     expect((await h.scheduleSummary(PID, []))!.size).toBe(0)
+  })
+
+  it('scheduleSummary for the list: weekly lines, the dates that differ, the last class date and the next class', async () => {
+    const store = fakeStore({
+      occurrencesInWindow: vi.fn(async () => [
+        occurrence({ id: 'o1', status: 'cancelled', startLocal: '2026-12-08T18:00', originalStartLocal: '2026-12-08T18:00', startsAt: '2026-12-08T17:00:00.000Z', endsAt: '2026-12-08T18:15:00.000Z' }),
+        occurrence({ id: 'o2', startLocal: '2026-12-15T18:00', instructorPublicIds: [PERSON2], version: 4 }),
+        occurrence({ id: 'o3', startLocal: '2026-12-22T18:00', originalStartLocal: '2026-12-22T18:00', startsAt: '2026-12-22T17:00:00.000Z', place: { kind: 'location', key: 'l51' } }),
+      ]),
+    })
+    const h = courseScheduleDeps('cyce', { store, client: fakeClient(), now: () => new Date('2026-12-10T00:00:00Z') })
+    const m = (await h.scheduleSummary(PID, [COURSE]))!.get(COURSE)!
+    // Tuesdays 18:00 at Brey; the class's term ends 17 Dec → the last Tuesday on or before it.
+    expect(m.slots).toEqual([{ seriesId: SERIES, weekday: 2, startTime: '18:00', placeToken: 'location:brey', mode: 'mixed' }])
+    expect(m.lastDate).toBe('2026-12-15')
+    expect(m.openEnded).toBe(false)
+    expect(m.termIds).toEqual([EDITION])
+    expect(m.languages).toEqual(['fr', 'en'])
+    expect(m.teacherRefs).toEqual([{ publicId: PERSON, name: 'Sabrina Rossi' }])
+    expect(m.exceptions).toEqual([
+      { date: '2026-12-08', startTime: '18:00', kind: 'cancelled', placeToken: 'location:brey' },
+      { date: '2026-12-15', startTime: '18:00', kind: 'substitute', placeToken: 'location:brey' },
+      { date: '2026-12-22', startTime: '18:00', kind: 'moved', placeToken: 'location:l51' },
+    ])
+    expect(m.next).toMatchObject({ seriesId: SERIES, occurrenceId: 'o2', version: 4, date: '2026-12-15', startTime: '18:00', substituted: true, seriesPlaceToken: 'location:brey' })
+    expect(m.next!.seriesInstructors).toEqual([{ publicId: PERSON, name: 'Sabrina Rossi' }])
+    // From about a week back (this week's changes), project-scoped.
+    expect(store.occurrencesInWindow).toHaveBeenCalledWith(PID, expect.objectContaining({ from: '2026-12-02T00:00:00.000Z', ownerPublicIds: [COURSE] }))
+  })
+
+  it('scheduleOverview: the site’s places with short names, and its site-wide terms', async () => {
+    const h = courseScheduleDeps('cyce', { store: fakeStore(), client: fakeClient() })
+    const o = await h.scheduleOverview(PID)
+    expect(o.terms).toEqual([{ id: EDITION, label: 'Automne', startsOn: '2026-09-01', endsOn: '2026-12-17' }])
+    expect(o.places[0]).toMatchObject({ token: 'location:brey', name: 'Brey' })
   })
 })

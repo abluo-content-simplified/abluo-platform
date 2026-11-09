@@ -3,10 +3,15 @@
 import type { TimetableData, TimetableOccurrence } from '@/lib/modules/courses/timetable'
 import type { TimetableMessages } from '@/lib/i18n/timetable-messages'
 import { safeHttps } from './format'
+import { courseTintStyle, type CourseColor } from '@/lib/modules/courses/palette'
 
-/** The course colour as a left marker — design-system tokens only. */
-export const courseTint = (color: 'none' | 'accent' | 'muted') =>
-  color === 'accent' ? { borderLeft: '3px solid var(--color-primary)' } : color === 'muted' ? { borderLeft: '3px solid var(--color-border)' } : {}
+/**
+ * The course colour: a soft tint of the card plus a left marker. The colours
+ * are the site's course palette (derived from its design system, palette.ts),
+ * emitted as CSS variables by the tenant layout per theme — and switched off
+ * for print. `background: false` → the marker only (the class panel's title).
+ */
+export const courseTint = (color: CourseColor, opts: { background?: boolean } = {}): React.CSSProperties => courseTintStyle(color, opts)
 
 /**
  * Join details of an online / hybrid session. `data.rooms` is null unless the

@@ -17,6 +17,8 @@ import {
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
 import type { PendingSet } from '@/lib/client/autosave/journal'
 import { COURSE_COLORS, type CourseColor } from '@/lib/modules/courses/model'
+import { courseColorVar } from '@/lib/modules/courses/palette'
+import { ColorSwatches } from '@/components/app/ui/ColorSwatches'
 import { COURSE_SLUG_MAX, courseSlugFrom, slugFollowingTitle } from '@/lib/modules/courses/slug'
 import type { CoursePlacement } from '@/lib/modules/courses/placement'
 import { useDateLocale } from '@/lib/i18n/date-locale-context'
@@ -44,13 +46,14 @@ import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
 import { CourseActivitySheet } from './CourseActivitySheet'
 import { CoursePreviewButton } from './CoursePreviewButton'
-import { COURSE_UI_LIMITS, CourseStateBadge } from './course-bits'
+import { COURSE_UI_LIMITS, CoursePaletteStyle, CourseStateBadge } from './course-bits'
+import { CoursesUnpublishDialog } from './CoursesUnpublishDialog'
 
 type Values = { title: Record<string, string>; shortDescription: Record<string, string>; slug: Record<string, string>; color: CourseColor; image: CourseImage | null }
 
 const valuesOf = (s: CourseSnapshot): Values => ({ title: s.title, shortDescription: s.shortDescription, slug: s.slug ?? {}, color: s.color, image: s.image })
 
-type Confirm = 'discard' | 'delete' | 'deletePermanently' | null
+type Confirm = 'discard' | 'delete' | 'deletePermanently' | 'unpublish' | null
 
 const H2 = 'text-[1.0625rem] leading-7 font-semibold text-foreground'
 
@@ -242,11 +245,13 @@ export function CourseEditor({
   const displayName = (values.title[d] ?? '').trim() || Object.values(values.title).find((x) => x.trim()) || t('untitled')
   const missingTitle = !(values.title[d] ?? '').trim()
   const scheduled = status.state === 'scheduled'
+  /** Taken off the website (its unpublish date passed); "Publish" puts it back. */
+  const unpublished = status.state === 'unpublished'
   /** Online now (published, its date passed or none). */
-  const live = status.isPublished && !scheduled && !archived
+  const live = status.isPublished && !scheduled && !archived && !unpublished
   /** Nothing on the website would show this course: it cannot go online (a live course being updated is not affected). */
   const noPage = placement !== null && !placement.onWebsite && !live
-  const publishReason = !editable ? null : !status.hasDraft && !scheduled ? t('publishReason.upToDate') : null
+  const publishReason = !editable ? null : !status.hasDraft && !scheduled && !unpublished ? t('publishReason.upToDate') : null
   const viewUrl = live ? (placement?.url ?? null) : null
   const viewOnWebsite = () => {
     if (viewUrl) window.open(viewUrl, '_blank', 'noopener,noreferrer')
@@ -267,8 +272,15 @@ export function CourseEditor({
     setNotice(null)
     try {
       if (!(await flushed())) return
+      // An unpublished course with nothing new: "Publish again" puts it back as it was.
+      if (unpublished && !status.hasDraft) {
+        const again = await courseLifecycleAction({ projectSlug, id, op: 'publishAgain' })
+        if (!again.ok) return setNotice(errorText(again.error, again.detail?.usedIn))
+        landed({ publishedAt: status.publishedAt }, t('publishedNowToast'), 'published')
+        return
+      }
       // Online already → an update keeps its date. A scheduled course published "now" goes online now.
-      const update = status.isPublished && !scheduled
+      const update = status.isPublished && !scheduled && !unpublished
       const r =
         scheduled && !status.hasDraft
           ? await setCoursePublishDateAction({ projectSlug, id, mode: 'now' })
@@ -375,6 +387,16 @@ export function CourseEditor({
         show({ message: t('discarded'), tone: 'status' })
         return
       }
+      if (confirm === 'unpublish') {
+        if (!(await flushed())) return
+        const u = await courseLifecycleAction({ projectSlug, id, op: 'unpublish' })
+        if (!u.ok) return setConfirmError(errorText(u.error, u.detail?.usedIn))
+        setStatus((x) => ({ ...x, state: 'unpublished' }))
+        setConfirm(null)
+        show({ message: t('unpublishedToast'), tone: 'status' })
+        router.refresh()
+        return
+      }
       const op = confirm === 'delete' ? 'deleteDraft' : 'deletePermanently'
       const r = await courseLifecycleAction({ projectSlug, id, op })
       if (!r.ok) return setConfirmError(errorText(r.error, r.detail?.usedIn))
@@ -438,7 +460,10 @@ export function CourseEditor({
   menu.push({ key: 'activity', label: t('menu.activity'), onSelect: () => setActivity(true) })
   if (canWrite) {
     if (archived) menu.push({ key: 'restore', label: tl('actions.restore'), onSelect: () => void restore() })
-    else if (status.isPublished && !scheduled) menu.push({ key: 'archive', label: tl('actions.archive'), onSelect: () => void archiveWithUndo() })
+    else if (status.isPublished && !scheduled) {
+      if (live) menu.push({ key: 'unpublish', label: tl('actions.unpublish'), onSelect: () => setConfirm('unpublish') })
+      menu.push({ key: 'archive', label: tl('actions.archive'), onSelect: () => void archiveWithUndo() })
+    }
   }
   if (canDelete) {
     if (archived) menu.push({ key: 'deletePermanently', label: tl('actions.deletePermanently'), onSelect: () => setConfirm('deletePermanently'), destructive: true, separated: true })
@@ -567,12 +592,16 @@ export function CourseEditor({
         </div>
         <div className="space-y-2">
           <p className="text-[0.9375rem] font-medium text-foreground">{t('colorLabel')}</p>
-          <SegmentedControl
+          <CoursePaletteStyle source={initial.palette} />
+          <ColorSwatches
             label={t('colorLabel')}
-            appearance="soft"
             value={values.color}
-            onChange={(c: CourseColor) => change({ color: c }, { color: c })}
-            options={COURSE_COLORS.map((c) => ({ value: c, label: colorLabel(c), disabled: !editable }))}
+            disabled={!editable}
+            onChange={(v) => {
+              const c = v as CourseColor
+              change({ color: c }, { color: c })
+            }}
+            options={COURSE_COLORS.map((c) => ({ value: c, label: colorLabel(c), color: c === 'none' ? null : `var(${courseColorVar(c, 'dot')})` }))}
           />
           <p className="text-sm leading-5 text-muted-foreground">{t('colorHint')}</p>
         </div>
@@ -626,6 +655,15 @@ export function CourseEditor({
               {viewUrl ? (
                 <Button variant="secondary" onClick={viewOnWebsite}>
                   {t('viewOnWebsite')}
+                </Button>
+              ) : null}
+            </div>
+          ) : unpublished ? (
+            <div className="space-y-3">
+              <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('unpublishedBody')}</p>
+              {editable ? (
+                <Button variant="secondary" disabled={busy || missingTitle || noPage} onClick={() => void publish()}>
+                  {tl('actions.publishAgain')}
                 </Button>
               ) : null}
             </div>
@@ -684,6 +722,16 @@ export function CourseEditor({
         title={confirm === 'discard' ? t('confirm.discardTitle') : t('confirm.deleteTitle', { name: displayName })}
         body={confirm === 'discard' ? t('confirm.discardBody') : t('confirm.deleteBody')}
         confirmLabel={confirm === 'discard' ? t('confirm.discard') : tl('actions.delete')}
+        busy={busy}
+        error={confirmError}
+        onConfirm={() => void runConfirm()}
+        onCancel={() => {
+          setConfirm(null)
+          setConfirmError(null)
+        }}
+      />
+      <CoursesUnpublishDialog
+        courses={confirm === 'unpublish' ? [{ id, title: displayName }] : []}
         busy={busy}
         error={confirmError}
         onConfirm={() => void runConfirm()}

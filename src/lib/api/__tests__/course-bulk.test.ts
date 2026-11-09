@@ -248,3 +248,47 @@ describe('setClassesLastDate', () => {
     ])
   })
 })
+
+describe('bulkUpdateCourses — unpublish, unpublish on… and publish again (Tom, 2026-11-08)', () => {
+  const MIXED = [course('live', 3, 'published'), course('edited', 5, 'changes'), course('off', 6, 'unpublished', { isPublished: true }), course('draft1', 1, 'draft'), course('old', 4, 'archived')]
+
+  it('unpublish: only courses on the website, through the single-course lifecycle (one by one)', async () => {
+    const f = fake({ courses: MIXED })
+    const r = await bulkUpdateCourses(ctx(), PID, { ids: ['live', 'edited', 'off', 'draft1', 'old'], op: 'unpublish' }, f.deps)
+    expect(f.lifecycle.mock.calls.map((c) => c[2])).toEqual([
+      { id: 'live', op: 'unpublish' },
+      { id: 'edited', op: 'unpublish' },
+    ])
+    expect(r.changed).toEqual(['live', 'edited'])
+    expect(r.skipped).toEqual([
+      { id: 'off', reason: 'unpublished' },
+      { id: 'draft1', reason: 'not_published' },
+      { id: 'old', reason: 'archived' },
+    ])
+  })
+
+  it('unpublish on…: the same courses get the date (never archived); a date is required', async () => {
+    const f = fake({ courses: MIXED })
+    const unpublishDate = vi.fn(async () => ({ unpublishOn: '2026-12-24T09:00:00.000Z' }))
+    const deps = { ...f.deps, impl: { ...(f.deps as { impl: object }).impl, unpublishDate } } as unknown as CourseBulkDeps
+    const r = await bulkUpdateCourses(ctx(), PID, { ids: ['live', 'off', 'old'], op: 'unpublishOn', at: '2026-12-24T09:00:00.000Z' }, deps)
+    expect(unpublishDate.mock.calls.map((c) => (c as unknown[])[2])).toEqual([{ id: 'live', unpublishAt: '2026-12-24T09:00:00.000Z' }])
+    expect(r.changed).toEqual(['live'])
+    expect(f.lifecycle).not.toHaveBeenCalled()
+    await expect(bulkUpdateCourses(ctx(), PID, { ids: ['live'], op: 'unpublishOn' }, deps)).rejects.toMatchObject({ code: 'invalid_schedule' })
+  })
+
+  it('publish on an unpublished course without changes is "Publish again"; with changes it publishes them', async () => {
+    const f = fake({ courses: [course('off', 6, 'unpublished', { isPublished: true }), course('offEdited', 7, 'unpublished', { isPublished: true, hasDraft: true })] })
+    const r = await bulkUpdateCourses(ctx(), PID, { ids: ['off', 'offEdited'], op: 'publish' }, f.deps)
+    expect(f.lifecycle.mock.calls.map((c) => c[2])).toEqual([{ id: 'off', op: 'publishAgain' }])
+    expect(f.publish.mock.calls.map((c) => c[2])).toEqual([{ id: 'offEdited', rev: 'rev-offEdited', mode: 'keep' }])
+    expect(r.changed).toEqual(['off', 'offEdited'])
+  })
+
+  it('unpublish needs write permission (refused before any read)', async () => {
+    const f = fake({ courses: MIXED })
+    await expect(bulkUpdateCourses(ctx(['courses.course.read']), PID, { ids: ['live'], op: 'unpublish' }, f.deps)).rejects.toBeInstanceOf(TenantAuthorizationError)
+    expect(f.list).not.toHaveBeenCalled()
+  })
+})

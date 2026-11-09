@@ -61,7 +61,7 @@ describe('course preview route', () => {
     await call(token())
     expect(hydrate).toHaveBeenCalledOnce()
     const [section, ctx] = hydrate.mock.calls[0] as unknown as [{ showOnlineDetails: boolean }, { previewCourse: unknown; pageProtected: boolean; projectSlug: string }]
-    expect(ctx.previewCourse).toMatchObject({ publicId: 'pub-1', title: 'Yoga', color: 'accent' })
+    expect(ctx.previewCourse).toMatchObject({ publicId: 'pub-1', title: 'Yoga', color: 'c1' }) // legacy 'accent' → c1
     expect(ctx.projectSlug).toBe('hoffmann')
     expect(ctx.pageProtected).toBe(false)
     expect(section.showOnlineDetails).toBe(false)

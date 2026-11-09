@@ -5,7 +5,10 @@
  * single action has; this file only chooses who is eligible (the shared rule in
  * `@/lib/client/courses-bulk`) and reports a result per course.
  *
- *   publish / archive / restore   courses.course.write
+ *   publish / archive / restore   courses.course.write ("publish" of an unpublished
+ *                                 course without changes is "Publish again")
+ *   unpublish / unpublishOn       courses.course.write — off the website now, or
+ *                                 on a date (`at`, never archives)
  *   delete                        courses.course.delete (Owner). Deleting a
  *                                 course ends its classes too; that part also
  *                                 needs courses.schedule.write, else the course
@@ -22,7 +25,7 @@ import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { CourseError, COURSE_DELETE_PERMISSION, COURSE_WRITE_PERMISSION, isCourseId, UUID_RE, type CourseErrorCode, type CourseUsage } from '@/lib/api/course-lifecycle'
-import { listCourses, publishCourseDraft, runCourseLifecycle, type CourseDeps, type CourseListItem } from '@/lib/api/course-drafts'
+import { listCourses, publishCourseDraft, runCourseLifecycle, setCourseUnpublishDate, type CourseDeps, type CourseListItem } from '@/lib/api/course-drafts'
 import { SCHEDULE_WRITE_PERMISSION } from '@/lib/api/course-schedule'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { COURSE_BULK_OPS, courseBulkSkip, courseDeleteOp, type CourseBulkOp, type CourseBulkSkipReason } from '@/lib/client/courses-bulk'
@@ -64,6 +67,7 @@ export type CourseBulkDeps = CourseDeps & {
     lifecycle?: typeof runCourseLifecycle
     draftRev?: (id: string) => Promise<string | null>
     saveClass?: SaveClassFn
+    unpublishDate?: typeof setCourseUnpublishDate
   }
 }
 
@@ -79,7 +83,14 @@ function checkIds(ids: unknown): string[] {
 }
 
 async function listFor(ctx: TenantAuthorizationContext, projectId: string, ids: string[], deps: CourseBulkDeps): Promise<Map<string, CourseListItem>> {
-  const { courses } = await (deps.impl?.list ?? listCourses)(ctx, projectId, { ...deps, scheduleSummary: undefined })
+  // Only the courses themselves: no schedule, places or colours (nothing here shows them).
+  const { courses } = await (deps.impl?.list ?? listCourses)(ctx, projectId, {
+    ...deps,
+    scheduleSummary: undefined,
+    scheduleOverview: undefined,
+    paletteSource: async () => ({ light: null, dark: null }),
+    placement: deps.placement ?? (async () => ({ origin: null, defaultLocale: '', pages: [] })),
+  })
   const byId = new Map(courses.map((c) => [c.id, c]))
   // One unknown id (or another website's) refuses the whole call before anything is written.
   if (!ids.every((id) => byId.has(id))) throw new CourseError('not_found', 'Unknown course.')
@@ -97,11 +108,12 @@ const codeOf = (error: unknown): CourseErrorCode => {
 export async function bulkUpdateCourses(
   ctx: TenantAuthorizationContext,
   projectId: string,
-  input: { ids: string[]; op: CourseBulkOp },
+  input: { ids: string[]; op: CourseBulkOp; at?: string | null },
   deps: CourseBulkDeps = {}
 ): Promise<CourseBulkResult> {
   const op = input?.op
   if (!(COURSE_BULK_OPS as readonly unknown[]).includes(op)) throw new CourseError('invalid_value', 'Unknown action.')
+  if (op === 'unpublishOn' && (typeof input.at !== 'string' || !input.at)) throw new CourseError('invalid_schedule', 'Pick a date and time.')
   const grant = grantFor(ctx, projectId, op === 'delete' ? COURSE_DELETE_PERMISSION : COURSE_WRITE_PERMISSION)
   const ids = checkIds(input.ids)
   const byId = await listFor(ctx, projectId, ids, deps)
@@ -117,12 +129,17 @@ export async function bulkUpdateCourses(
       continue
     }
     try {
-      if (op === 'publish') {
+      if (op === 'publish' && course.state === 'unpublished' && !course.hasDraft) {
+        // Nothing new to publish: "Publish again" puts the course back as it was.
+        await (deps.impl?.lifecycle ?? runCourseLifecycle)(ctx, projectId, { id, op: 'publishAgain' }, deps)
+      } else if (op === 'publish') {
         const rev = await (deps.impl?.draftRev ?? ((x: string) => draftRevOf(deps, x)))(id)
         if (!rev) throw new CourseError('not_found', 'No draft to publish.')
         await (deps.impl?.publish ?? publishCourseDraft)(ctx, projectId, { id, rev, mode: 'keep' }, deps)
-      } else if (op === 'archive' || op === 'restore') {
+      } else if (op === 'archive' || op === 'restore' || op === 'unpublish') {
         await (deps.impl?.lifecycle ?? runCourseLifecycle)(ctx, projectId, { id, op }, deps)
+      } else if (op === 'unpublishOn') {
+        await (deps.impl?.unpublishDate ?? setCourseUnpublishDate)(ctx, projectId, { id, unpublishAt: input.at ?? null }, deps)
       } else {
         // Deleting ends the course's classes too. The delete itself still refuses when anything else uses the course.
         const classes = course.publicId && UUID_RE.test(course.publicId) ? await store().listSeries(projectId, { ownerPublicIds: [course.publicId.toLowerCase()] }) : []
