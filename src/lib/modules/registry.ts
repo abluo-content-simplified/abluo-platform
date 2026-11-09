@@ -13,6 +13,7 @@ import { CATALOGUE_TAXONOMY_SCHEMA_TYPE_NAMES } from './catalogue/schema-taxonom
 import { brandHubSchemaTypes } from './brand-hub/schema'
 import { peopleSchemaTypes } from './people/schema'
 import { testimonialsSchemaTypes } from './testimonials/schema'
+import { digitalCardsSchemaTypes } from './digital-cards/schema'
 import { coursesSchemaTypes } from './courses/schema'
 import { SEGMENT_REGEX_SOURCE } from './catalogue/segment'
 import { personDisplayName } from './people/model'
@@ -2177,6 +2178,104 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     },
 
     changelog: 'V1.0.0 — ADR-048. testimonial documents (public), testimonial_private (Supabase, migration 067), testimonialsSection, Testimonial form, Testimonials tag vocabulary.',
+  },
+
+  // ── Digital Cards ──────────────────────────────────────────────────────────
+  // ADR-049 — a Linktree-like digital business card: one branded mobile page
+  // per website (/link) and one per person (/link/<name>), a QR code to print,
+  // and privacy-first visit statistics.
+  //
+  // The module owns `digitalCard` documents (Sanity: links, background and
+  // visibility switches only — logo, name, contacts and socials are READ from
+  // Website Settings and People, D3) and the aggregate statistics rows in
+  // Supabase (digital_card_daily, migration 068, service role only, D11). Not a
+  // section: the /link routes present the module's data and 404 when the
+  // module is not installed (D1). Website reads go through
+  // src/lib/modules/digital-cards/projection.ts.
+  //
+  // Clients edit in the dashboard (Content → Digital Cards, /{project}/cards);
+  // Studio edits are for staff.
+  {
+    id: 'digital-cards',
+    label: 'Digital Cards',
+    version: '1.0.0',
+    status: 'released',
+    category: 'content',
+
+    platformContract: {
+      collections: [
+        {
+          id: 'digital-cards-module',
+          label: 'Digital Cards',
+          items: [
+            {
+              id: 'digital-cards',
+              label: 'Digital Cards',
+              schemaType: 'digitalCard',
+              filter: `_type == "digitalCard" && projectSlug == $slug`,
+              ordering: [{ field: '_updatedAt', direction: 'desc' as const }],
+              initialValueTemplate: 'digitalCardProjectOwned',
+            },
+          ],
+        },
+      ],
+
+      sectionTypes: [],
+
+      schemaTypes: ['digitalCard', 'digitalCardLink'],
+
+      schemaDefinitions: () => digitalCardsSchemaTypes,
+
+      permissions: [
+        {
+          id: 'digital-cards.read',
+          label: 'View digital cards',
+          description: 'View and list the website’s digital cards and their QR codes.',
+          defaultRoles: ['owner', 'editor', 'viewer'],
+        },
+        {
+          id: 'digital-cards.write',
+          label: 'Create and edit digital cards',
+          description: 'Create and edit digital cards (links, what is shown, URL name, background), and publish, unpublish, archive and restore them.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'digital-cards.delete',
+          label: 'Delete digital cards',
+          description: 'Permanently delete a digital card. Its address stops working.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'digital-cards.stats.read',
+          label: 'See digital card statistics',
+          description: 'See how many visits and link clicks the digital cards had, and where visits came from.',
+          defaultRoles: ['owner', 'editor'],
+        },
+      ],
+
+      configSchema: [],
+
+      placement: {
+        surfaces: [
+          { kind: 'siteWide', description: 'Digital cards at /link (the website) and /link/<name> (one per person), outside the normal page layout: no header, footer, cookie banner or tracking.' },
+        ],
+        note: 'Cards are not sections and have no place in the navigation. They are never in search engines or the sitemap.',
+      },
+    },
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [],
+      integratesWith: ['people', 'whatsapp', 'reservations', 'forms'],
+    },
+
+    dataStore: {
+      // Cards in Sanity; aggregate visit statistics in Supabase (digital_card_daily, migration 068).
+      primary: 'hybrid',
+    },
+
+    changelog: 'V1.0.0 — ADR-049. digitalCard documents (site and person cards, links, switches, background), digital_card_daily statistics (Supabase, migration 068), /link website routes, QR codes.',
   },
 
   // ── Courses ────────────────────────────────────────────────────────────────

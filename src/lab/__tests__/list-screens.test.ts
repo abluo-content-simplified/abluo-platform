@@ -67,6 +67,7 @@ const KIND: Record<string, [Kind, string]> = {
   'src/components/client/documents/DocumentsBrowser.tsx': ['records', 'documents (files) with who can open them and where they show; no pictures'],
   'src/components/client/reservations/BookingsBrowser.tsx': ['records', 'bookings: reference, name, what, amount, status; no pictures'],
   'src/components/client/access/AccessGroupsBrowser.tsx': ['records', 'Access groups: name, password, who is signed in; no pictures'],
+  'src/components/client/digital-cards/DigitalCardsBrowser.tsx': ['records', 'digital cards: the site card and person cards, address, status, links; no pictures (ADR-049)'],
 }
 
 /** Declared, but not yet built exactly to their kind — may only shrink. */

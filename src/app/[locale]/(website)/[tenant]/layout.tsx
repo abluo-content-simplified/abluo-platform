@@ -6,6 +6,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { DRAFT_PREVIEW_HEADER } from '@/lib/proxy/draft-preview'
+import { DIGITAL_CARD_HEADER } from '@/lib/proxy/digital-card'
 import { tenantClient, fetchDesignSystemById } from '@/lib/sanity/client'
 import { isKnownProjectSegment } from '@/lib/tenancy/host-scope'
 import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery, projectIntegrationsQuery, projectModuleConfigQuery, projectConsentQuery, projectDomainQuery } from '@/lib/sanity/queries'
@@ -698,7 +699,10 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   // Private draft preview (proxy-marked, see src/lib/proxy/draft-preview.ts):
   // the same chrome, but no tracking scripts, no first-touch attribution and no
   // consent banner — a client checking a draft is not a visitor.
-  const draftPreview = (await headers()).get(DRAFT_PREVIEW_HEADER) === '1'
+  const requestHeaders = await headers()
+  const draftPreview = requestHeaders.get(DRAFT_PREVIEW_HEADER) === '1'
+  // Digital Cards (ADR-049 D10, proxy-marked, see src/lib/proxy/digital-card.ts).
+  const digitalCard = requestHeaders.get(DIGITAL_CARD_HEADER) === '1'
 
   // On the site's own host, links carry no project segment (see siteBasePath).
   const hostScoped = await isHostScopedRequest(tenantId)
@@ -713,6 +717,26 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const accentFont = getFontName(designSystem?.typography?.accentFont, '')
   const accentRail = designSystem?.layout?.accentRail === true
   const fontsUrl = buildGoogleFontsUrl(headingFont, bodyFont, accentFont)
+
+  // ── Digital Cards — the bare card layout (ADR-049 D10) ───────────────────────
+  // A card is a one-screen page of its own: the design system's CSS and fonts
+  // (+ its page gradient), and nothing else. No header, footer, consent banner,
+  // tracking scripts, first-touch recorder or WhatsApp button — the card sets
+  // no cookies and loads no third-party script, which is why it needs no
+  // banner. ConsentProvider is not mounted: nothing on a card reads it. Every
+  // tenant (Livener included) takes this branch, before the per-tenant ones.
+  if (digitalCard) {
+    const cardConfig = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
+    const cardCssVars = buildCssVars(designSystem, { desktop: cardConfig?.logoHeightDesktop, mobile: cardConfig?.logoHeightMobile }, tenantId, cardConfig?.themeMode)
+    return (
+      <SiteLinkScopeProvider hostScoped={hostScoped}>
+        <DesignSystemHead cssVars={cardCssVars} fontsUrl={fontsUrl} />
+        {hasPageGradient(designSystem) && <PageGradientBackdrop motion={pageGradientMotion(designSystem)} />}
+        <main>{children}</main>
+        <DevBadge />
+      </SiteLinkScopeProvider>
+    )
+  }
 
   // ── Livener — header appearance system + nav client + footer ─────────────────
   if (tenantId === 'livener') {

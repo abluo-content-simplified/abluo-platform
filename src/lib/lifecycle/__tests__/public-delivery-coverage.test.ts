@@ -21,6 +21,7 @@ import * as llms from '@/lib/seo/llms'
 import * as postPreview from '@/lib/sanity/post-preview-query'
 import * as partnerEvents from '@/lib/connections/api/event-queries'
 import * as testimonialQueries from '@/lib/modules/testimonials/queries'
+import * as digitalCardQueries from '@/lib/modules/digital-cards/queries'
 
 const ROOT = join(__dirname, '../../../..')
 
@@ -34,6 +35,8 @@ const DELIVERY_MODULES: Record<string, Record<string, unknown>> = {
   'src/lib/connections/api/event-queries.ts': partnerEvents,
   // ADR-048 — the testimonials section's selection queries (featured / latest / tag / hand-picked).
   'src/lib/modules/testimonials/queries.ts': testimonialQueries,
+  // ADR-049 — the /link pages, the vCard routes and the hit endpoint's id check.
+  'src/lib/modules/digital-cards/queries.ts': digitalCardQueries,
 }
 
 /** Exported strings that read lifecycle content but are NOT public delivery. */
@@ -45,6 +48,8 @@ const NON_PUBLIC: Record<string, string> = {
     'partner API sync (ADR-032 D11, slice 5) — reads every state on purpose: visibility is evaluated at the window end in code (partnerRemovalReason) and non-public events leave only as removals { id, deleted: true, reason }, never with content',
   'src/lib/connections/api/event-queries.ts#PARTNER_EVENTS_EXISTING_QUERY':
     'partner API tombstone suppression (ADR-032 D11) — returns only which public ids still exist, never content',
+  'src/lib/modules/digital-cards/queries.ts#DIGITAL_CARD_ROUTE_STATE_QUERY':
+    'digital card routing (ADR-049 D6) — whether a card exists for an address in ANY state, returning only kind, urlName and a live flag (computed with the public rule) so an offline card redirects instead of 404ing; never content',
 }
 
 /** Reference fields that point at a lifecycle type, and that type. */
@@ -182,6 +187,11 @@ describe('ADR-032 D3 — public delivery paths carry the visibility rule', () =>
       // ADR-033 Amendment G — header/footer navigation links to catalogue targets.
       'src/lib/sanity/queries.ts#websiteSiteConfigQuery',
       'src/lib/sanity/queries.ts#NAV_LINK_FIELDS',
+      // ADR-049 — digital cards.
+      'src/lib/modules/digital-cards/queries.ts#DIGITAL_CARD_SITE_QUERY',
+      'src/lib/modules/digital-cards/queries.ts#DIGITAL_CARD_PERSON_QUERY',
+      'src/lib/modules/digital-cards/queries.ts#DIGITAL_CARD_BY_RETIRED_NAME_QUERY',
+      'src/lib/modules/digital-cards/queries.ts#DIGITAL_CARD_KNOWN_IDS_QUERY',
     ]) expect(ids).toContain(expected)
   })
 

@@ -316,7 +316,7 @@ describe('navigation groups (ADR-042 N1, section 3)', () => {
 
   it('places every destination as Tom confirmed (2026-11-02)', () => {
     const by = (g: string) => ids(buildTenantSurfaces(owner).nav.filter((n) => n.group === g))
-    expect(by('content')).toEqual(['blog', 'events', 'courses', 'faq', 'gallery', 'documents', 'testimonials'])
+    expect(by('content')).toEqual(['blog', 'events', 'courses', 'faq', 'gallery', 'documents', 'testimonials', 'digital-cards'])
     expect(by('catalogue')).toEqual(['catalogueItems', 'catalogueCollections', 'catalogueOptions', 'catalogueSetup'])
     expect(by('visitors')).toEqual(['forms', 'members', 'reservations'])
     expect(by('library')).toEqual(['people', 'media', 'taxonomy'])

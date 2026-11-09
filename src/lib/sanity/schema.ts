@@ -6245,6 +6245,20 @@ export const initialValueTemplates = [
     }),
   },
   {
+    // Digital Cards module (ADR-049) — Content → Digital Cards (staff; clients
+    // use the dashboard). A person card by default; switches unset = the
+    // module defaults (resolveShow).
+    id: 'digitalCardProjectOwned',
+    title: 'Digital Card',
+    schemaType: 'digitalCard',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+      publicId: globalThis.crypto.randomUUID(),
+      kind: 'person',
+    }),
+  },
+  {
     id: 'postAuthorProjectOwned',
     title: 'Author',
     schemaType: 'postAuthor',

@@ -955,6 +955,7 @@ describe('cron / webhook routes require their shared secret', () => {
     { name: 'GET /api/cron/media-sweep', run: async (h = {}) => (await import('@/app/api/cron/media-sweep/route')).GET(req('/api/cron/media-sweep', { headers: h })) },
     { name: 'GET /api/cron/support-tickets-sweep', run: async (h = {}) => (await import('@/app/api/cron/support-tickets-sweep/route')).GET(req('/api/cron/support-tickets-sweep', { headers: h })) },
     { name: 'GET /api/cron/reservations-sweep', run: async (h = {}) => (await import('@/app/api/cron/reservations-sweep/route')).GET(req('/api/cron/reservations-sweep', { headers: h })) },
+    { name: 'GET /api/cron/digital-cards-sweep', run: async (h = {}) => (await import('@/app/api/cron/digital-cards-sweep/route')).GET(req('/api/cron/digital-cards-sweep', { headers: h })) },
   ]
   for (const c of cases) {
     it(`${c.name}: no / wrong secret → 401, nothing runs; even for an admin session`, async () => {
@@ -1013,6 +1014,7 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   'webhooks/stripe': 'machine', // Stripe webhook signature (ADR-041 D11)
   'cron/billing-sync': 'machine', // CRON_SECRET bearer (ADR-041 D11)
   'cron/reservations-sweep': 'machine', // CRON_SECRET bearer, called by pg_cron (ADR-044 D10)
+  'cron/digital-cards-sweep': 'machine', // CRON_SECRET bearer (ADR-049 D11)
   // ADR-031: partner apps authenticate with client id + secret (src/lib/connections; own suites).
   'oauth/token': 'machine',
   'oauth/revoke': 'machine',
@@ -1027,6 +1029,10 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   'fonts/file/[...path]': 'public-read',
   'forms/[projectSlug]/[formId]/submissions': 'public-write',
   'forms/[projectSlug]/[formId]/submissions/[id]/steps': 'public-write',
+  // ADR-049 D11: the Digital Cards visit/click beacon. Writes only an aggregate
+  // +1, always 204; counts only on production, on the project's OWN domain
+  // (host checked against the body's project), for a published card/link id.
+  'cards/hit': 'public-write',
 }
 
 describe('API route inventory', () => {
@@ -1062,7 +1068,11 @@ describe('API route inventory', () => {
  * src/lib/access/__tests__/visitor-routes.test.ts (cross-tenant, shared
  * preview host, CSRF, cookie attributes, revocation).
  */
-const WEBSITE_ROUTES: Record<string, 'public-write (site access)' | 'public-read (site access)'> = {
+const WEBSITE_ROUTES: Record<string, 'public-write (site access)' | 'public-read (site access)' | 'public-read (digital card)'> = {
+  // ADR-049 D9: Save contact — GET only, the vCard of a published card whose
+  // Save contact switch is on; bots refused, rate-limited (website.ts).
+  '[tenant]/link/contact.vcf': 'public-read (digital card)',
+  '[tenant]/link/[name]/contact.vcf': 'public-read (digital card)',
   '[tenant]/site-access/unlock': 'public-write (site access)',
   '[tenant]/site-access/sign-out': 'public-write (site access)',
   // B2.4: GET/HEAD only. Anonymous by nature; every request re-checks the

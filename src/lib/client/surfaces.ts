@@ -167,6 +167,9 @@ const MODULE_NAV: readonly NavSurface[] = sortByModuleOrder(
     moduleNav('gallery', 'galleries', 'gallery', 'gallery.gallery.read', 'content'),
     // ADR-048: Testimonials (what people say), in Content. Hidden until the dashboard page exists.
     { ...moduleNav('testimonials', 'testimonials', 'testimonials', 'testimonials.read', 'content'), available: TESTIMONIALS_ROUTE_EXISTS },
+    // ADR-049: Digital Cards (site card + person cards, QR codes, visit counts), in Content after Testimonials.
+    // `cards`, not `link`: `/{project}/link` is the public card on the website.
+    moduleNav('digital-cards', 'cards', 'digital-cards', 'digital-cards.read', 'content'),
     // ADR-033 D12 / C11 (K-2): every Catalogue entry is labelled by the interface dictionary ("Catalogue" group).
     // ADR-042 N2 / N2a: the Catalogue group — Items · Collections · Options · Setup, each a real route.
     // `/catalogue` redirects to Items; an item's editor and the new-item flow light Items.

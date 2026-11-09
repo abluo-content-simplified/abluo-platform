@@ -14,6 +14,7 @@ import * as postPreview from '@/lib/sanity/post-preview-query'
 import * as peopleQueries from '../queries'
 import * as peopleWebsite from '../website'
 import * as peopleRoute from '../route'
+import * as digitalCardQueries from '@/lib/modules/digital-cards/queries'
 import { PERSON_LISTABLE, PERSON_PUBLIC_FIELDS, PERSON_PUBLIC_KEYS, PERSON_RENDERABLE } from '../projection'
 import { personDisplayName, personFullName, personInitials } from '../model'
 
@@ -25,6 +26,8 @@ const MODULES: Record<string, Record<string, unknown>> = {
   'src/lib/modules/people/queries.ts': peopleQueries,
   'src/lib/modules/people/website.ts': peopleWebsite,
   'src/lib/modules/people/route.ts': peopleRoute,
+  // ADR-049 D2 — a person card reads its person through PERSON_PUBLIC_FIELDS only.
+  'src/lib/modules/digital-cards/queries.ts': digitalCardQueries,
 }
 
 /** Fields that hold references to person documents. */
@@ -180,6 +183,7 @@ describe('ADR-043 D5 — website queries project people only through PERSON_PUBL
       'src/lib/modules/people/queries.ts#PERSON_BY_SLUG_QUERY',
       'src/lib/modules/people/queries.ts#PEOPLE_BY_GROUP_QUERY',
       'src/lib/modules/people/queries.ts#TEAM_SECTION_PEOPLE_FIELDS',
+      'src/lib/modules/digital-cards/queries.ts#DIGITAL_CARD_PERSON_QUERY',
     ]) expect(ids).toContain(expected)
   })
 

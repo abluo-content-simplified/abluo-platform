@@ -67,6 +67,8 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   'people',
   // ADR-048: Testimonials (`/{project}/testimonials`, `/{project}/testimonials/{id}`).
   'testimonials',
+  // ADR-049: Digital Cards (`/{project}/cards`, `/{project}/cards/{id}`). Not `link` — that is the public card.
+  'cards',
   'users',
   'analytics',
   'apps',

@@ -16,6 +16,7 @@ import {
 } from '@/lib/tenancy/host-scope'
 import { unbrand } from '@/lib/tenancy/ids'
 import { DRAFT_PREVIEW_HEADER, isDraftPreviewPath, isPrivateLinkPath } from '@/lib/proxy/draft-preview'
+import { DIGITAL_CARD_HEADER, isDigitalCardPath } from '@/lib/proxy/digital-card'
 
 const intlMiddleware = createMiddleware(routing)
 
@@ -503,7 +504,10 @@ async function routeRequest(request: NextRequest) {
     const defaultLocale = hostScope?.defaultLocale ?? 'en'
     let locale = defaultLocale
 
-    if (path === '/') {
+    // Digital Cards (ADR-049 D5): /link and /link/<name> are "the same in
+    // every language, landing in the visitor's language" — printed on QR codes
+    // and business cards without a locale, so they negotiate like the root.
+    if (path === '/' || isDigitalCardPath(path)) {
       locale = negotiateLocale({
         cookieLocale: request.cookies.get('NEXT_LOCALE')?.value,
         acceptLanguage: request.headers.get('accept-language'),
@@ -568,19 +572,49 @@ async function routeRequest(request: NextRequest) {
 // tracking, records no first touch and shows no consent banner.
 export async function proxy(request: NextRequest) {
   const response = await routeRequest(request)
-  if (!isDraftPreviewPath(request.nextUrl.pathname) && !isPrivateLinkPath(request.nextUrl.pathname)) return response
+  const { pathname } = request.nextUrl
+
+  // ─── Digital Cards (ADR-049 D10) ────────────────────────────────────────────
+  // `/link…` routes like any website path above. On top of the routing the
+  // response is kept out of search engines and the layout is told to render the
+  // bare card layout. Deliberately NO no-store: a card is a public page (the
+  // visit counter is a browser beacon precisely so caching never matters).
+  if (isDigitalCardPath(pathname)) {
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow')
+    return forwardRequestHeader(request, response, DIGITAL_CARD_HEADER, '1')
+  }
+
+  if (!isDraftPreviewPath(pathname) && !isPrivateLinkPath(pathname)) {
+    // The two layout markers are set ONLY here. A browser sending one itself
+    // would just get a stripped-down page for itself — still, never pass a
+    // client-supplied marker through to the layout.
+    if (request.headers.has(DIGITAL_CARD_HEADER) || request.headers.has(DRAFT_PREVIEW_HEADER)) {
+      return forwardRequestHeader(request, response, null, null)
+    }
+    return response
+  }
   response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive')
   response.headers.set('Cache-Control', 'private, no-store, max-age=0')
   response.headers.set('Referrer-Policy', 'no-referrer')
-  // Forward a request header to the page/layout. NextResponse encodes request
-  // header overrides as response headers; build them with the public API and
-  // copy them onto whatever response routing produced (next or rewrite).
+  return forwardRequestHeader(request, response, DRAFT_PREVIEW_HEADER, '1')
+}
+
+/**
+ * Forward a request header to the page/layout (or, with `name` null, only drop
+ * the client-supplied markers). NextResponse encodes request-header overrides
+ * as response headers; build them with the public API and copy them onto
+ * whatever response routing produced (next or rewrite). The markers a request
+ * must not carry on its own are always removed first.
+ */
+function forwardRequestHeader(request: NextRequest, response: NextResponse, name: string | null, value: string | null): NextResponse {
   const forwarded = new Headers(request.headers)
-  forwarded.set(DRAFT_PREVIEW_HEADER, '1')
+  forwarded.delete(DIGITAL_CARD_HEADER)
+  forwarded.delete(DRAFT_PREVIEW_HEADER)
+  if (name && value !== null) forwarded.set(name, value)
   const carrier = NextResponse.next({ request: { headers: forwarded } })
-  carrier.headers.forEach((value, key) => {
+  carrier.headers.forEach((v, key) => {
     if (key === 'x-middleware-override-headers' || key.startsWith('x-middleware-request-')) {
-      response.headers.set(key, value)
+      response.headers.set(key, v)
     }
   })
   return response

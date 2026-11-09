@@ -36,6 +36,9 @@ export const LIFECYCLE_PUBLIC_RULES = {
   // ADR-048 — testimonials: published, not archived, no window. The public
   // query adds permissionToPublish == true on top of this rule.
   testimonial: 'optional',
+  // ADR-049 D6 — digital cards: Publish / Unpublish / Archive like all content,
+  // no window. The public query adds kind / urlName on top of this rule.
+  digitalCard: 'optional',
 } as const satisfies Record<string, PublishedAtRule>
 
 export type LifecycleType = keyof typeof LIFECYCLE_PUBLIC_RULES

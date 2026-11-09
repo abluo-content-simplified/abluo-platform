@@ -78,6 +78,7 @@
       "taxonomy": "Categories & Tags",
       "people": "People",
       "testimonials": "Testimonials",
+      "digital-cards": "Digital Cards",
       "users": "Users",
       "connections": "Connected Apps",
       "analytics": "Analytics",
@@ -3299,7 +3300,8 @@
         "translate": "Offer your site in more languages, with a first translation ready for you to check.",
         "brand-hub": "Keep your logo, colours and fonts in one place for you and anyone who works with you.",
         "people": "Keep your team, teachers and authors in one list, and show them wherever they belong on your site.",
-        "testimonials": "Show what people say about you, with their permission, as a carousel or grid on your site."
+        "testimonials": "Show what people say about you, with their permission, as a carousel or grid on your site.",
+        "digital-cards": "One branded mobile page with your links and contacts, a card per person, a QR code to print and simple visit counts."
       }
     },
     "billing": {

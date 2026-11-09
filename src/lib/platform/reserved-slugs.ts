@@ -82,6 +82,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'agenda',
   'apps',
   'bookings',  // Bookings (ADR-044)
+  'cards',     // Digital Cards (ADR-049)
   'catalogue',
   'courses',   // Courses (ADR-045)
   'discover',  // More You Can Add
@@ -100,6 +101,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'brand',     // Brand Hub (ADR-036)
   'category',
   'events',
+  'link',      // Digital Cards /<tenant>/link, /<tenant>/link/<name> (ADR-049)
   'live',
   'my-pass',   // My pass link /<tenant>/my-pass/<token> (Reservations, ADR-044 D11)
   'news',

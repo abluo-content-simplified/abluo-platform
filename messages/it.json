@@ -78,6 +78,7 @@
       "taxonomy": "Categorie e tag",
       "people": "Persone",
       "testimonials": "Testimonianze",
+      "digital-cards": "Biglietti digitali",
       "users": "Utenti",
       "connections": "App collegate",
       "analytics": "Statistiche",
@@ -3299,7 +3300,8 @@
         "translate": "Offri il tuo sito in più lingue, con una prima traduzione pronta da controllare.",
         "brand-hub": "Tieni logo, colori e font in un unico posto, per te e per chi lavora con te.",
         "people": "Tieni il tuo team, gli insegnanti e gli autori in un unico elenco e mostrali dove servono sul tuo sito.",
-        "testimonials": "Mostra sul tuo sito cosa dicono di te le persone, con il loro permesso, in un carosello o in una griglia."
+        "testimonials": "Mostra sul tuo sito cosa dicono di te le persone, con il loro permesso, in un carosello o in una griglia.",
+        "digital-cards": "Una pagina per smartphone con i tuoi link e contatti, un biglietto per ogni persona, un codice QR da stampare e un semplice conteggio delle visite."
       }
     },
     "billing": {
