@@ -192,6 +192,8 @@ export interface NavLink {
   pageSlug?: string
   /** True when a page reference is set — with no pageSlug it points at an unpublished page. */
   hasPageRef?: boolean
+  /** The target page's `pageType` (set by GROQ for a page link) — 'legal' marks the footer's legal links. */
+  pageType?: string | null
   /** ADR-040 — the target page's access rule and menu mode; null/absent = public. */
   pageAccess?: { visibility?: string | null; navigation?: string | null } | null
   /** ADR-040 — true when the target page sits under a closed page (it is restricted too). */

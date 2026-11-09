@@ -103,10 +103,27 @@ export async function Footer({
     ) : null
 
   const hasBrandRow = variant === 'full' && columns.length > 0
-  // ADR-021 — when a column carries an authored "Cookie settings" link (e.g.
-  // under Legal), the automatic one in the bottom bar is not repeated.
+  // ADR-021 — "Cookie settings" belongs with the legal links (Privacy, Cookie
+  // policy…), never on its own. Where it goes, first match wins:
+  //  1. an authored `cookieSettings` link — exactly where the editor put it;
+  //  2. otherwise appended to the first column holding a link to a Legal page;
+  //  3. otherwise appended to the bottom-bar links when they hold a Legal link;
+  //  4. otherwise (a site with no legal links in its footer) on its own,
+  //     beside the language switcher — the withdrawal path must always exist.
+  const footerLinks = config.footerLinks ?? []
+  const isCookieLink = (l: { linkType?: string }) => l.linkType === 'cookieSettings'
+  const isLegalLink = (l: { pageType?: string | null }) => l.pageType === 'legal'
+  const authoredInColumns = hasBrandRow && columns.some((c) => c.links?.some(isCookieLink))
+  const authoredInLinks = footerLinks.some(isCookieLink)
+  const autoCookieColumnKey =
+    !authoredInColumns && !authoredInLinks && hasBrandRow
+      ? columns.find((c) => c.links?.some(isLegalLink))?._key
+      : undefined
+  const autoCookieInLinks =
+    !authoredInColumns && !authoredInLinks && !autoCookieColumnKey && footerLinks.some(isLegalLink)
   const hasAuthoredCookieLink =
-    hasBrandRow && columns.some((c) => c.links?.some((l) => l.linkType === 'cookieSettings'))
+    authoredInColumns || authoredInLinks || Boolean(autoCookieColumnKey) || autoCookieInLinks
+  const authoredLinksCookieLabel = footerLinks.find(isCookieLink)?.label
 
   const logoSrc = config.logo ? imageUrl(config.logo as never, 480) : undefined
   // Precedence: image logo → text wordmark → plain site name.
@@ -270,6 +287,14 @@ export async function Footer({
                           />
                         </li>
                       ))}
+                    {column._key === autoCookieColumnKey && (
+                      <li>
+                        <CookieSettingsLink
+                          className="text-left text-sm hover:text-[var(--color-footer-text)]"
+                          style={{ fontFamily: 'var(--font-body)', color: 'var(--color-footer-text-muted)' }}
+                        />
+                      </li>
+                    )}
                   </ul>
                 </div>
               ))}
@@ -366,9 +391,9 @@ export async function Footer({
               © {copyrightYears} {config.legalName ?? config.siteName}
             </span>
 
-            {config.footerLinks && config.footerLinks.length > 0 && (
+            {footerLinks.length > 0 && (
               <ul className="flex flex-wrap gap-5 list-none">
-                {resolveNavLinks(config.footerLinks, locale, tenantId, undefined, hostScoped).map((link, i) => (
+                {resolveNavLinks(footerLinks, locale, tenantId, undefined, hostScoped).map((link, i) => (
                   <li key={`${link.href}-${i}`}>
                     <Link
                       href={link.href}
@@ -381,6 +406,15 @@ export async function Footer({
                     </Link>
                   </li>
                 ))}
+                {(authoredInLinks || autoCookieInLinks) && (
+                  <li>
+                    <CookieSettingsLink
+                      label={authoredLinksCookieLabel}
+                      className="text-sm font-medium hover:text-[var(--color-footer-text)]"
+                      style={{ color: 'var(--color-footer-text-muted)' }}
+                    />
+                  </li>
+                )}
               </ul>
             )}
 
@@ -412,12 +446,9 @@ export async function Footer({
                 </p>
               )}
 
-              {/* ADR-021 — permanent consent withdrawal path; absent when the
-                  site authors its own "Cookie settings" link in a column.
-                  It sits on this row rather than the copyright row above
-                  because it belongs with the other site control the visitor
-                  operates — the language switcher opposite it — not with the
-                  legal text. Left here, languages right. */}
+              {/* ADR-021 — last-resort place for the consent withdrawal path:
+                  only for a footer with no legal links to sit beside (see the
+                  placement rules above). */}
               {!hasAuthoredCookieLink && (
                 <CookieSettingsLink
                   className={`text-sm font-medium hover:text-[var(--color-footer-text)] ${

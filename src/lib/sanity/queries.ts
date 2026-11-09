@@ -166,6 +166,9 @@ export const NAV_LINK_FIELDS = /* groq */ `
   "pageUnderClosed": select(pageRef->_type == "page" => count(*[_type == "page" && projectSlug == $projectSlug && !${pageIsOpen()}
     && string::startsWith(coalesce(^.pageRef->slug[$locale].current, ^.pageRef->slug[$defaultLocale].current, ""), coalesce(slug[$locale].current, slug[$defaultLocale].current, "@@none@@") + "/")]) > 0),
   "hasPageRef": defined(pageRef),
+  // ADR-021 — the footer puts the automatic "Cookie settings" link beside the
+  // site's legal links; a link to a Legal page is how it finds them.
+  "pageType": select(pageRef->_type == "page" => pageRef->pageType),
   internalPage,
   externalUrl,
   anchorId,
