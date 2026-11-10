@@ -20,7 +20,10 @@ import type { PersonPublic } from '@/lib/modules/people/projection'
 import type { DigitalCardSiteMessages } from '@/lib/i18n/digital-cards-site-messages'
 import { formatDigitalCardSiteMessage } from '@/lib/i18n/digital-cards-site-messages'
 import { canonicalOrigin } from '@/lib/seo/canonical'
+import { logoImageUrl } from '@/lib/sanity/image'
 import { socialPlatformLabel } from '@/lib/settings/social-links'
+import { isRenderableNavLink, resolveNavLink, NAV_INTERNAL_PAGES, NAV_INTERNAL_PAGE_MODULE, type NavInternalPage } from '@/lib/sanity/nav-links'
+import type { NavLink, SupportedLocale } from '@/lib/sanity/types'
 import {
   DIGITAL_CARD_PERSON_SOCIAL_KINDS,
   DIGITAL_CARD_SEGMENT,
@@ -44,6 +47,8 @@ import {
 } from './queries'
 import type {
   DigitalCardImage,
+  DigitalCardProjectPublic,
+  DigitalCardLinkLogo,
   DigitalCardLinkPublic,
   DigitalCardPersonResult,
   DigitalCardRetiredResult,
@@ -188,6 +193,18 @@ export interface CardContactView {
   hrefEnc: string
 }
 
+/** A link's logo ready to render (Amendment A, 10): 24 px high, up to 48 px wide, contained, on a neutral tile; decorative. */
+export interface CardLinkLogoView {
+  src: string
+  /** The rendered width in px (≤ LOGO_MAX_WIDTH), from the image's proportions; undefined when unknown. */
+  width?: number
+}
+
+/** Rendered logo box: height 24, width up to 48 (px). Source is requested at 3x the height. */
+export const LOGO_HEIGHT = 24
+export const LOGO_MAX_WIDTH = 48
+export const LOGO_SOURCE_HEIGHT = LOGO_HEIGHT * 3
+
 export interface CardLinkView {
   key: string
   kind: DigitalCardLinkKind
@@ -201,6 +218,8 @@ export interface CardLinkView {
   hrefEnc?: string
   /** Opens in a new tab. */
   external: boolean
+  /** Optional small logo at the start of the button (decorative). */
+  logo?: CardLinkLogoView
 }
 
 export interface CardSocialView {
@@ -303,6 +322,93 @@ export function pageHref(page: DigitalCardLinkPublic['page'], siteBase: string):
   return `${siteBase.replace(/\/+$/, '')}/${slug}`
 }
 
+// ── "Page on this website" links (Amendment B) ───────────────────────────────
+
+/** The visible name of a built-in section in the visitor's language (the site dictionary); null when unknown. */
+export function cardSectionLabel(section: string | null | undefined, m: DigitalCardSiteMessages): string | null {
+  switch (section) {
+    case 'homepage':
+      return m.sectionHome
+    case 'blog':
+      return m.sectionBlog
+    case 'news':
+      return m.sectionNews
+    case 'events':
+      return m.sectionEvents
+    case 'live':
+      return m.sectionLive
+    default:
+      return null
+  }
+}
+
+/** The visible name of a module's public page; null when unknown. */
+export function cardModuleLabel(moduleId: string | null | undefined, m: DigitalCardSiteMessages): string | null {
+  return moduleId === 'catalogue' ? m.sectionCatalogue : null
+}
+
+/** Is this built-in section on the website now (its module installed and on; the home page always)? */
+export function cardSectionAvailable(section: string | null | undefined, enabledModules: readonly string[]): section is NavInternalPage {
+  if (!section || !(NAV_INTERNAL_PAGES as readonly string[]).includes(section)) return false
+  const mod = NAV_INTERNAL_PAGE_MODULE[section as NavInternalPage]
+  return mod === null || enabledModules.includes(mod)
+}
+
+/**
+ * A `page` link as the navigation's link-target model (NavLink), so it is
+ * resolved by nav-links.ts exactly like a menu link: a page by its slug (the
+ * home page as the home section, as before), a catalogue landing page /
+ * collection / item through catalogueTarget (ADR-033 Amendment G), a built-in
+ * section by internalPage, a module page by its installation's segment.
+ * null when no target is chosen, or a section whose module is off.
+ */
+export function cardPageNavLink(
+  link: Pick<DigitalCardLinkPublic, 'page' | 'hasPageRef' | 'catalogue' | 'internalPage' | 'moduleId'>,
+  project: { enabledModules?: readonly string[] | null; moduleSegments?: DigitalCardProjectPublic['moduleSegments'] } | null | undefined,
+): NavLink | null {
+  const label = ''
+  if (link.page) {
+    if (link.page.pageType === 'home') return { label, linkType: 'internal', internalPage: 'homepage' }
+    return { label, linkType: 'internal', pageSlug: text(link.page.slug).replace(/^\/+|\/+$/g, '') || undefined, hasPageRef: true, pageAccess: link.page.access ?? null }
+  }
+  if (link.catalogue || link.hasPageRef) return { label, linkType: 'internal', hasPageRef: true, catalogueTarget: link.catalogue ?? null }
+  if (link.internalPage) {
+    return cardSectionAvailable(link.internalPage, project?.enabledModules ?? []) ? { label, linkType: 'internal', internalPage: link.internalPage } : null
+  }
+  if (link.moduleId) return { label, linkType: 'module', moduleId: link.moduleId, moduleSegments: project?.moduleSegments ?? [] }
+  return null
+}
+
+const NAV_TENANT = '_card'
+
+/**
+ * The href of a navigation link on the card: resolved by resolveNavLink() and
+ * re-based from `/{locale}/{tenant}` onto the card's site base — which is
+ * siteBasePath(locale, tenant, hostScoped), the same base toPublicNavLink()
+ * produces (`/it/hoffmann/x` on a path-based surface, `/it/x` on the site's own
+ * host). null when the nav would leave the link out (isRenderableNavLink).
+ */
+export function cardNavHref(nav: NavLink | null, locale: string, siteBase: string): string | null {
+  if (!nav || !isRenderableNavLink(nav)) return null
+  const href = resolveNavLink(nav, locale as SupportedLocale, NAV_TENANT).href
+  const prefix = `/${locale}/${NAV_TENANT}`
+  if (href !== prefix && !href.startsWith(`${prefix}/`) && !href.startsWith(`${prefix}#`)) return null
+  const rest = href.slice(prefix.length)
+  return rest && rest !== '/' ? `${siteBase.replace(/\/+$/, '')}${rest}` : homeHref(siteBase)
+}
+
+/** The title a `page` link shows when it has no label: the page's, the catalogue target's, the section's or module page's name. */
+export function cardPageTargetTitle(
+  link: Pick<DigitalCardLinkPublic, 'page' | 'catalogue' | 'internalPage' | 'moduleId'>,
+  m: DigitalCardSiteMessages,
+): string | null {
+  if (link.page) return text(link.page.title) || null
+  if (link.catalogue) return text(link.catalogue.title) || (link.catalogue.type === 'cataloguePage' ? m.sectionCatalogue : null)
+  if (link.internalPage) return cardSectionLabel(link.internalPage, m)
+  if (link.moduleId) return cardModuleLabel(link.moduleId, m)
+  return null
+}
+
 /**
  * The label a link shows when none was typed for the language (D8): the page's
  * or file's title, else the standard label of the kind. One function for the
@@ -332,10 +438,43 @@ export function linkDefaultLabel(kind: DigitalCardLinkKind, target: { pageTitle?
   }
 }
 
+/**
+ * A link's logo → its image URL: raster images through the image helper at 3x
+ * the rendered height (72 px); SVG as stored (vector). null when there is no
+ * usable image.
+ */
+export function cardLogoView(logo: DigitalCardLinkLogo | null | undefined): CardLinkLogoView | null {
+  if (!logo) return null
+  const url = text(logo.url)
+  const svg = /svg/i.test(text(logo.mime)) || /\.svg(\?|$)/i.test(url)
+  const src = svg ? (/^https:\/\//i.test(url) ? url : undefined) : logoImageUrl(logo.asset ? { asset: logo.asset } : undefined, LOGO_SOURCE_HEIGHT)
+  if (!src) return null
+  const w = Number(logo.dimensions?.width)
+  const h = Number(logo.dimensions?.height)
+  const width = w > 0 && h > 0 ? Math.min(LOGO_MAX_WIDTH, Math.max(1, Math.round((LOGO_HEIGHT * w) / h))) : undefined
+  return { src, ...(width && { width }) }
+}
+
+/** What resolving a link needs besides the view context: the project's enabled modules and their public segments. */
+export type CardLinkContext = CardViewContext & {
+  enabledModules: readonly string[]
+  moduleSegments?: DigitalCardProjectPublic['moduleSegments']
+}
+
 /** One shown link → what renders, or null when its target is missing / not allowed (D8). */
 export function linkView(
   link: DigitalCardLinkPublic,
-  ctx: CardViewContext & { enabledModules: readonly string[] },
+  ctx: CardLinkContext,
+): CardLinkView | null {
+  const view = linkViewBase(link, ctx)
+  if (!view) return null
+  const logo = cardLogoView(link.logo)
+  return logo ? { ...view, logo } : view
+}
+
+function linkViewBase(
+  link: DigitalCardLinkPublic,
+  ctx: CardLinkContext,
 ): CardLinkView | null {
   if (!link || typeof link._key !== 'string' || !link._key) return null
   const m = ctx.messages
@@ -347,7 +486,12 @@ export function linkView(
       const href = /^https?:\/\//i.test(text(link.url)) ? safeLinkHref(text(link.url)) : null
       return href ? { ...base, label: label || linkDefaultLabel('url', {}, m), href, external: true } : null
     }
-    case 'page':
+    case 'page': {
+      // Amendment B — resolved through the navigation's resolver (nav-links.ts).
+      const href = cardNavHref(cardPageNavLink(link, { enabledModules: ctx.enabledModules, moduleSegments: ctx.moduleSegments }), ctx.locale, ctx.siteBase)
+      if (!href) return null
+      return { ...base, label: label || linkDefaultLabel('page', { pageTitle: cardPageTargetTitle(link, m) }, m), href, external: false }
+    }
     case 'form':
     case 'booking': {
       if (link.kind === 'booking' && !ctx.enabledModules.includes(RESERVATIONS_MODULE_ID)) return null
@@ -375,7 +519,7 @@ export function linkView(
 /** The rendered links: the first shown Primary Action apart, the rest in order. */
 export function linkViews(
   links: readonly DigitalCardLinkPublic[] | null | undefined,
-  ctx: CardViewContext & { enabledModules: readonly string[] },
+  ctx: CardLinkContext,
 ): { primary: CardLinkView | null; links: CardLinkView[] } {
   const views = (links ?? []).map((l) => linkView(l, ctx)).filter((v): v is CardLinkView => v !== null)
   const primaryIndex = views.findIndex((v) => v.primary)
@@ -428,7 +572,7 @@ export function siteCardView(card: DigitalCardSiteResult, ctx: CardViewContext):
   const locationsAvailable = siteLocations(site).map((l) => l?._key).filter((k): k is string => !!k)
   const show = resolveShow('site', card.show, { socials: socialsAvailable, locations: locationsAvailable })
   const siteName = orNull(site.siteName)
-  const { primary, links } = linkViews(card.links, { ...ctx, enabledModules: card.project?.enabledModules ?? [] })
+  const { primary, links } = linkViews(card.links, { ...ctx, enabledModules: card.project?.enabledModules ?? [], moduleSegments: card.project?.moduleSegments ?? null })
 
   const contacts = [
     show.phone ? contactRow('phone', site.phone, m.phone) : null,
@@ -492,7 +636,7 @@ export function personCardView(card: DigitalCardPersonResult & { person: PersonP
   const socialContacts = orderedContacts(person.contacts).filter((c) => (DIGITAL_CARD_PERSON_SOCIAL_KINDS as readonly string[]).includes(c.kind))
   const show = resolveShow('person', card.show, { socials: socialContacts.map((c) => c._key) })
   const name = show.name ? personName(person, show.nameMode) : null
-  const { primary, links } = linkViews(card.links, { ...ctx, enabledModules: card.project?.enabledModules ?? [] })
+  const { primary, links } = linkViews(card.links, { ...ctx, enabledModules: card.project?.enabledModules ?? [], moduleSegments: card.project?.moduleSegments ?? null })
 
   const contacts = [
     show.phone ? contactRow('phone', firstOfKind(person, 'phone')?.value, m.phone) : null,

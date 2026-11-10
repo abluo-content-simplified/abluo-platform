@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useLocale } from 'next-intl'
 import { getDigitalCardSiteMessages } from '@/lib/i18n/digital-cards-site-messages'
 import type { DigitalCardLinkValue, DigitalCardSnapshot } from '@/lib/api/digital-cards'
-import { DIGITAL_CARD_LIMITS, DIGITAL_CARD_LINK_KINDS, DIGITAL_CARD_LINK_TARGET, defaultNewLinkKind, type DigitalCardLinkKind } from '@/lib/modules/digital-cards/model'
+import { DIGITAL_CARD_LIMITS, DIGITAL_CARD_LINK_KINDS, DIGITAL_CARD_LINK_TARGET, cardLinkTargetFields, defaultNewLinkKind, type DigitalCardLinkKind } from '@/lib/modules/digital-cards/model'
 import { formatDigitalCardsMessage, getDigitalCardsMessages, type DigitalCardsMessages } from '@/lib/i18n/digital-cards-messages'
 import { MediaLibraryPicker } from '@/components/client/media/MediaLibraryPicker'
 import { Button } from '@/components/app/ui/Button'
@@ -13,10 +13,11 @@ import { DragGrip, DropLine } from '@/components/app/ui/DragGrip'
 import { Field } from '@/components/app/ui/Field'
 import { Panel } from '@/components/app/ui/Panel'
 import { Select } from '@/components/app/ui/Select'
+import { DigitalCardPagePicker } from './DigitalCardPagePicker'
 import { TextInput } from '@/components/app/ui/TextInput'
 import { Pill } from '@/components/app/ui/list/cells'
 import { usePointerDrag } from '@/components/app/ui/use-pointer-drag'
-import { dropLink, linkDisplay, linkFallbackLabel, moveIndex } from './links-model'
+import { dropLink, linkDisplay, linkFallbackLabel, linkTargetIdOf, moveIndex } from './links-model'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_RE = /^\+?[0-9 ()./-]{6,}$/
@@ -55,7 +56,7 @@ export function linkComplete(l: DigitalCardLinkValue): boolean {
     case 'url':
       return Boolean(urlForServer(l.url))
     case 'page':
-      return Boolean(l.page)
+      return Boolean(l.page || (l.kind === 'page' && (l.internalPage || l.moduleId)))
     case 'file':
       return Boolean(l.file)
     case 'value':
@@ -98,12 +99,26 @@ export function linksPayload(links: readonly DigitalCardLinkValue[]): Array<Reco
       description: fitAll(l.description, DIGITAL_CARD_LIMITS.linkDescription),
       url: target === 'url' ? urlForServer(l.url) : '',
       page: target === 'page' ? l.page : null,
+      // Amendment B — a page link may hold a built-in section or a module page instead.
+      internalPage: l.kind === 'page' && !l.page ? (l.internalPage ?? null) : null,
+      moduleId: l.kind === 'page' && !l.page && !l.internalPage ? (l.moduleId ?? null) : null,
       file: target === 'file' ? l.file : null,
+      logo: l.logo,
       value: target === 'value' && valueOk ? value.slice(0, DIGITAL_CARD_LIMITS.value) : '',
       hidden: l.hidden,
       primary: l.primary,
     }
   })
+}
+
+/**
+ * Changing a link's type: form / booking point at a PAGE, so a section, module
+ * page or catalogue target chosen for a page link is cleared (Amendment B).
+ */
+export function kindPatch(l: DigitalCardLinkValue, kind: DigitalCardLinkKind, pages: DigitalCardSnapshot['pages']): Partial<DigitalCardLinkValue> {
+  if (kind === 'page') return { kind }
+  const isPage = l.page ? pages.some((p) => p.id === l.page && (p.group ?? 'pages') === 'pages') : false
+  return { kind, internalPage: null, moduleId: null, ...(l.page && !isPage ? { page: null } : {}) }
 }
 
 function newKey(): string {
@@ -116,7 +131,7 @@ function newKey(): string {
 
 /** A new link: "a page of this website" — or a web address when the site has no pages yet. */
 export function newLink(key: string, sitePages: boolean): DigitalCardLinkValue {
-  return { key, kind: defaultNewLinkKind(sitePages), label: {}, description: {}, url: '', page: null, file: null, value: '', hidden: false, primary: false }
+  return { key, kind: defaultNewLinkKind(sitePages), label: {}, description: {}, url: '', page: null, file: null, logo: null, value: '', hidden: false, primary: false }
 }
 
 const H2 = 'text-[1.0625rem] leading-7 font-semibold text-foreground'
@@ -165,8 +180,11 @@ export function DigitalCardLinks({
   const e = m.editor
   const siteMessages = getDigitalCardSiteMessages(lang)
   const [pickingFor, setPickingFor] = useState<string | null>(null)
+  const [pickingLogoFor, setPickingLogoFor] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
   const [fileNames, setFileNames] = useState<Record<string, string>>({})
+  /** Logos chosen in this session (asset id → image URL) until the next read of the card. */
+  const [logoUrls, setLogoUrls] = useState<Record<string, string>>({})
   const kinds = DIGITAL_CARD_LINK_KINDS.filter((k) => k !== 'booking' || reservations || links.some((l) => l.kind === 'booking'))
   const targets = { pages, files: { ...files, ...Object.fromEntries(Object.entries(fileNames).map(([id, title]) => [id, { url: files[id]?.url ?? null, title }])) } as DigitalCardSnapshot['files'] }
 
@@ -186,7 +204,7 @@ export function DigitalCardLinks({
   })
   const add = () => {
     if (links.length >= DIGITAL_CARD_LIMITS.links) return
-    const link = newLink(newKey(), pages.length > 0)
+    const link = newLink(newKey(), pages.some((p) => (p.group ?? 'pages') === 'pages'))
     onChange([...links, link])
     setEditing(link.key)
   }
@@ -269,7 +287,7 @@ export function DigitalCardLinks({
                 <div className="space-y-3 border-t border-border-subtle pt-3">
                   <Field label={e.linkKind} hint={e.linkKindHint}>
                     {(p) => (
-                      <Select {...p} value={l.kind} onChange={(ev) => update(l.key, { kind: ev.target.value as DigitalCardLinkKind })}>
+                      <Select {...p} value={l.kind} onChange={(ev) => update(l.key, kindPatch(l, ev.target.value as DigitalCardLinkKind, pages))}>
                         {kinds.map((k) => (
                           <option key={k} value={k}>
                             {linkKindLabel(m, k)}
@@ -281,14 +299,14 @@ export function DigitalCardLinks({
                   {target === 'page' ? (
                     <Field label={e.linkPage} hint={l.kind === 'form' ? e.linkFormHint : l.kind === 'booking' ? e.linkBookingHint : undefined}>
                       {(p) => (
-                        <Select {...p} value={l.page ?? ''} onChange={(ev) => update(l.key, { page: ev.target.value || null })}>
-                          <option value="">{e.linkPageNone}</option>
-                          {pages.map((pg) => (
-                            <option key={pg.id} value={pg.id}>
-                              {pg.title}
-                            </option>
-                          ))}
-                        </Select>
+                        <DigitalCardPagePicker
+                          control={p}
+                          value={linkTargetIdOf(l)}
+                          options={pages}
+                          pagesOnly={l.kind !== 'page'}
+                          onChange={(id) => update(l.key, l.kind === 'page' ? cardLinkTargetFields(id) : { page: id, internalPage: null, moduleId: null })}
+                          e={e}
+                        />
                       )}
                     </Field>
                   ) : null}
@@ -342,6 +360,18 @@ export function DigitalCardLinks({
                       />
                     )}
                   </Field>
+                  <div className="space-y-2">
+                    <p className="text-[0.9375rem] font-medium text-foreground">{e.linkLogo}</p>
+                    <p className="text-sm leading-5 text-muted-foreground">{e.linkLogoHint}</p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      {l.logo && (logoUrls[l.logo] ?? files[l.logo]?.url) ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- Media Library thumbnail, decorative
+                        <img src={`${logoUrls[l.logo] ?? files[l.logo]?.url}?h=96&fit=max`} alt="" className="h-8 max-w-24 rounded-md bg-muted object-contain p-1" />
+                      ) : null}
+                      <Button onClick={() => setPickingLogoFor(l.key)}>{l.logo ? e.changeLogo : e.chooseLogo}</Button>
+                      {l.logo ? <Button onClick={() => update(l.key, { logo: null })}>{e.removeLogo}</Button> : null}
+                    </div>
+                  </div>
                   <div className="flex justify-end">
                     <Button onClick={() => setEditing(null)}>{e.linkDone}</Button>
                   </div>
@@ -366,6 +396,24 @@ export function DigitalCardLinks({
             if (!photo || !key) return
             setFileNames((n) => ({ ...n, [photo.assetId]: photo.name || photo.alt[defaultLocale] || photo.assetId }))
             update(key, { file: photo.assetId })
+          }}
+        />
+      ) : null}
+      {pickingLogoFor ? (
+        <MediaLibraryPicker
+          projectSlug={projectSlug}
+          scope="media"
+          defaultLocale={defaultLocale}
+          exclude={[]}
+          room={1}
+          onClose={() => setPickingLogoFor(null)}
+          onAdd={(photos) => {
+            const photo = photos[0]
+            const key = pickingLogoFor
+            setPickingLogoFor(null)
+            if (!photo || !key) return
+            setLogoUrls((n) => ({ ...n, [photo.assetId]: photo.url }))
+            update(key, { logo: photo.assetId })
           }}
         />
       ) : null}

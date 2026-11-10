@@ -14,6 +14,9 @@ export interface FormSectionMessages {
   submitLabel: string
   submitting: string
   successMessage: string
+  /** Default body under a success title — the same sentence without its own
+   * "Thank you!", so a visitor greeted by name is not thanked twice. */
+  successMessageSent: string
   /** Default success title when the visitor gave a name and the form has no
    * own successTitle. `{first_name}` = first word of the `name` field. */
   successTitleNamed: string
@@ -43,6 +46,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     submitLabel:    'Submit',
     submitting:     'Sending…',
     successMessage: 'Your message has been sent. Thank you!',
+    successMessageSent: 'Your message has been sent.',
     successTitleNamed: 'Thank you, {first_name}!',
     errorMessage:   'Something went wrong. Please try again.',
     continueLabel:  'Continue',
@@ -60,6 +64,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     submitLabel:    'Invia',
     submitting:     'Invio in corso…',
     successMessage: 'Il tuo messaggio è stato inviato. Grazie!',
+    successMessageSent: 'Il tuo messaggio è stato inviato.',
     successTitleNamed: 'Grazie, {first_name}!',
     errorMessage:   'Si è verificato un problema. Riprova.',
     continueLabel:  'Continua',
@@ -77,6 +82,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     submitLabel:    'Absenden',
     submitting:     'Wird gesendet…',
     successMessage: 'Ihre Nachricht wurde gesendet. Vielen Dank!',
+    successMessageSent: 'Ihre Nachricht wurde gesendet.',
     successTitleNamed: 'Vielen Dank, {first_name}!',
     errorMessage:   'Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.',
     continueLabel:  'Weiter',
@@ -94,6 +100,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     submitLabel:    'Envoyer',
     submitting:     'Envoi en cours…',
     successMessage: 'Votre message a été envoyé. Merci !',
+    successMessageSent: 'Votre message a été envoyé.',
     successTitleNamed: 'Merci, {first_name} !',
     errorMessage:   'Une erreur est survenue. Veuillez réessayer.',
     continueLabel:  'Continuer',
@@ -111,6 +118,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     submitLabel:    'Enviar',
     submitting:     'Enviando…',
     successMessage: '¡Tu mensaje ha sido enviado. Gracias!',
+    successMessageSent: 'Tu mensaje ha sido enviado.',
     successTitleNamed: '¡Gracias, {first_name}!',
     errorMessage:   'Algo salió mal. Por favor, inténtalo de nuevo.',
     continueLabel:  'Continuar',
@@ -128,6 +136,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     submitLabel:    'Bericht verzenden',
     submitting:     'Bezig met verzenden…',
     successMessage: 'Uw bericht is verzonden. Bedankt!',
+    successMessageSent: 'Uw bericht is verzonden.',
     successTitleNamed: 'Bedankt, {first_name}!',
     errorMessage:   'Er is iets misgegaan — probeer het opnieuw.',
     continueLabel:  'Volgende',
@@ -145,6 +154,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     submitLabel:    'Enviar mensagem',
     submitting:     'A enviar…',
     successMessage: 'A sua mensagem foi enviada. Obrigado!',
+    successMessageSent: 'A sua mensagem foi enviada.',
     successTitleNamed: 'Obrigado, {first_name}!',
     errorMessage:   'Algo correu mal — por favor, tente novamente.',
     continueLabel:  'Seguinte',

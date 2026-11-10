@@ -12,7 +12,7 @@ import { dropLink, linkDisplay, linkFallbackLabel, linkTargetText, moveIndex } f
 import { getDigitalCardSiteMessages } from '@/lib/i18n/digital-cards-site-messages'
 import { linkView } from '../website'
 
-const link = (over: Partial<DigitalCardLinkValue>): DigitalCardLinkValue => ({ key: 'k', kind: 'page', label: {}, description: {}, url: '', page: null, file: null, value: '', hidden: false, primary: false, ...over })
+const link = (over: Partial<DigitalCardLinkValue>): DigitalCardLinkValue => ({ key: 'k', kind: 'page', label: {}, description: {}, url: '', page: null, file: null, logo: null, value: '', hidden: false, primary: false, ...over })
 const HOME = link({ key: 'cbfdf6bf94e1', page: 'hoffmann-page-home', label: { de: 'Homepage' } })
 const CONTATTI = link({ key: 'b6791e1598d8', page: 'hoffmann-page-contatti' })
 const targets = {

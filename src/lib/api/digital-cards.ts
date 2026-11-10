@@ -44,6 +44,9 @@ import { deriveStatus, type LifecycleStatus } from '@/lib/lifecycle/status'
 import { LOCALE_CODES } from '@/lib/i18n/locales'
 import { canonicalOrigin } from '@/lib/seo/canonical'
 import { personDisplayName } from '@/lib/modules/people/model'
+import { cardModuleLabel, cardSectionAvailable, cardSectionLabel } from '@/lib/modules/digital-cards/website'
+import { getDigitalCardSiteMessages } from '@/lib/i18n/digital-cards-site-messages'
+import { NAV_CATALOGUE_TARGET_FILTER } from '@/lib/modules/catalogue/nav-target-groq'
 import {
   DIGITAL_CARD_LIMITS,
   DIGITAL_CARD_LINK_KINDS,
@@ -53,7 +56,12 @@ import {
   DIGITAL_CARD_STATS_RANGES,
   DIGITAL_CARD_TYPE,
   DIGITAL_CARD_LINK_TYPE,
+  DIGITAL_CARD_MODULE_TARGETS,
+  DIGITAL_CARD_PAGE_REF_TYPES,
+  DIGITAL_CARD_SECTIONS,
   SITE_LOCATION_FALLBACK_KEY,
+  cardModuleTargetId,
+  cardSectionTargetId,
   cardAddressLine,
   cardPath,
   cardTextLength,
@@ -153,14 +161,36 @@ export interface DigitalCardLinkValue {
   /** Optional one-liner under the label, per language (≤ DIGITAL_CARD_LIMITS.linkDescription). */
   description: Record<string, string>
   url: string
-  /** kind page / form / booking: the page id. */
+  /**
+   * kind page / form / booking: the referenced document id. form / booking: a
+   * `page`; page (Amendment B): a page, the catalogue landing page, a catalogue
+   * collection or item — like navigationLink.pageRef.
+   */
   page: string | null
+  /** kind page only (Amendment B): a built-in section instead (homepage, blog, news, events, live). Absent = none. */
+  internalPage?: string | null
+  /** kind page only (Amendment B): an installed module's public page instead (e.g. catalogue). Absent = none. */
+  moduleId?: string | null
   /** kind file: the Media Library asset id. */
   file: string | null
+  /** Optional small logo shown on the button (Amendment A, 10): a Media Library image id. */
+  logo: string | null
   /** kind phone / email / whatsapp. */
   value: string
   hidden: boolean
   primary: boolean
+}
+
+/** One target in the page picker. `id`: a document id, or `section:<internalPage>` / `module:<moduleId>` (cardLinkTargetFields). */
+export interface DigitalCardTargetOption {
+  id: string
+  title: string
+  /** Picker group; absent = pages. */
+  group?: 'pages' | 'catalogue' | 'sections'
+  /** What it is: page, cataloguePage, catalogueCollection, catalogueItem, section, module. Absent = page. */
+  type?: string
+  /** Site-relative path in the default language, for display ('' = home); absent when unknown. */
+  path?: string
 }
 
 export interface DigitalCardOption {
@@ -230,8 +260,14 @@ export interface DigitalCardSnapshot {
   /** Resolved switches (stored over the defaults). */
   show: DigitalCardShow
   availability: DigitalCardAvailability
-  /** Published pages for page / form / booking links. */
-  pages: Array<{ id: string; title: string }>
+  /**
+   * What a page link can point at (Amendment B), in picker order: published
+   * pages, then — while the Catalogue is on — its landing page, collections and
+   * items with a page of their own, then the built-in sections and module pages
+   * whose module is on. form / booking links use the `pages` group only.
+   * Titles in the site's default language.
+   */
+  pages: DigitalCardTargetOption[]
   /** Files the links point at (asset id → name). */
   files: Record<string, { title: string; url: string | null }>
   site: DigitalCardSite
@@ -634,7 +670,10 @@ function linksOf(value: unknown): DigitalCardLinkValue[] {
       description: localized(l.description),
       url: str(l.url),
       page: refOf(l.page),
+      ...(kind === 'page' && !refOf(l.page) && str(l.internalPage) && { internalPage: str(l.internalPage) }),
+      ...(kind === 'page' && !refOf(l.page) && !str(l.internalPage) && str(l.moduleId) && { moduleId: str(l.moduleId) }),
       file: refOf(l.file),
+      logo: refOf(l.logo),
       value: str(l.value),
       hidden: l.hidden === true,
       primary: l.primary === true,
@@ -653,14 +692,73 @@ async function readImage(client: Client, assetId: string | null, projectSlug: st
   return { assetId, url: typeof row.url === 'string' ? row.url : null, alt: localized(row.alt) }
 }
 
-async function readPages(client: Client, projectSlug: string, defaultLocale: string): Promise<Array<{ id: string; title: string }>> {
-  const rows = await client.fetch<Array<{ _id?: unknown; title?: unknown; slug?: unknown }> | null>(
-    `*[_type == "page" && projectSlug == $projectSlug && ${PUBLISHED}] | order(_createdAt asc)[0...300]{ _id, "title": coalesce(title[$defaultLocale], title.en, select(!defined(title._type) => title)), "slug": coalesce(slug[$defaultLocale].current, slug.current) }`,
-    { projectSlug, defaultLocale }
+const CATALOGUE_TARGET_TYPES = DIGITAL_CARD_PAGE_REF_TYPES.filter((t) => t !== 'page')
+const CATALOGUE_TYPE_ORDER: Record<string, number> = { cataloguePage: 0, catalogueCollection: 1, catalogueItem: 2 }
+
+type TargetRows = {
+  pages?: Array<{ _id?: unknown; title?: unknown; slug?: unknown; pageType?: unknown }> | null
+  catalogue?: Array<{ _id?: unknown; _type?: unknown; title?: unknown; slug?: unknown }> | null
+  modules?: Array<{ moduleId?: unknown; segment?: unknown }> | null
+}
+
+/**
+ * What a page link can point at (Amendment B) — the navigation picker's reach
+ * (navigationLink: pageRef, internalPage, module) on this website, titled in
+ * the default language: published pages; while the Catalogue is on, its
+ * landing page and the collections / items with a page of their own that the
+ * website would link (NAV_CATALOGUE_TARGET_FILTER: this project's, public,
+ * linkable by explicit reference); the built-in sections whose module is on
+ * (the home section only when no Home page exists); and the module pages of
+ * enabled modules with a public segment (the catalogue one only when it has no
+ * landing page document — that one is offered instead).
+ */
+async function readLinkTargets(client: Client, projectSlug: string, defaultLocale: string, enabledModuleIds: readonly string[]): Promise<DigitalCardTargetOption[]> {
+  const catalogueOn = enabledModuleIds.includes('catalogue')
+  const rows = await client.fetch<TargetRows | null>(
+    `{
+      "pages": *[_type == "page" && projectSlug == $projectSlug && ${PUBLISHED}] | order(_createdAt asc)[0...300]{ _id, pageType, "title": coalesce(title[$defaultLocale], title.en, select(!defined(title._type) => title)), "slug": coalesce(slug[$defaultLocale].current, slug.current) },
+      "catalogue": select($catalogue => *[_type in $catalogueTypes && ${PUBLISHED} && ${NAV_CATALOGUE_TARGET_FILTER} && (_type == "cataloguePage" || hasPage == true)] | order(_type asc, coalesce(name[$defaultLocale], name.en) asc)[0...300]{ _id, _type, "title": coalesce(heroTitle[$defaultLocale], name[$defaultLocale], heroTitle.en, name.en), "slug": slug[$defaultLocale].current }),
+      "modules": *[_type == "project" && projectSlug == $projectSlug && ${PUBLISHED}][0].moduleInstallations[enabled != false]{ moduleId, "segment": config.publicSegment }
+    }`,
+    { projectSlug, defaultLocale, locale: defaultLocale, catalogue: catalogueOn, catalogueTypes: [...CATALOGUE_TARGET_TYPES] }
   )
-  return (Array.isArray(rows) ? rows : [])
-    .filter((r) => DOC_ID.test(str(r._id)))
-    .map((r) => ({ id: str(r._id), title: (typeof r.title === 'string' && r.title.trim()) || str(r.slug) || str(r._id) }))
+  const m = getDigitalCardSiteMessages(defaultLocale)
+  const segments = new Map<string, string>()
+  for (const r of Array.isArray(rows?.modules) ? rows!.modules : []) {
+    const seg = str(r?.segment).replace(/^\/+|\/+$/g, '')
+    if (str(r?.moduleId) && seg && enabledModuleIds.includes(str(r?.moduleId))) segments.set(str(r?.moduleId), seg)
+  }
+  const out: DigitalCardTargetOption[] = []
+  let hasHome = false
+  for (const r of Array.isArray(rows?.pages) ? rows!.pages : []) {
+    if (!DOC_ID.test(str(r._id))) continue
+    const home = r.pageType === 'home'
+    hasHome ||= home
+    out.push({ id: str(r._id), title: (typeof r.title === 'string' && r.title.trim()) || str(r.slug) || str(r._id), group: 'pages', type: 'page', path: home ? '' : str(r.slug) })
+  }
+  const catalogueSegment = segments.get('catalogue') ?? ''
+  let hasLanding = false
+  if (catalogueOn && catalogueSegment) {
+    const rowsCat = (Array.isArray(rows?.catalogue) ? rows!.catalogue : [])
+      .filter((r) => DOC_ID.test(str(r._id)) && (CATALOGUE_TARGET_TYPES as readonly unknown[]).includes(r._type))
+      .sort((a, b) => (CATALOGUE_TYPE_ORDER[str(a._type)] ?? 9) - (CATALOGUE_TYPE_ORDER[str(b._type)] ?? 9))
+    for (const r of rowsCat) {
+      const landing = r._type === 'cataloguePage'
+      hasLanding ||= landing
+      const title = (typeof r.title === 'string' && r.title.trim()) || (landing ? m.sectionCatalogue : str(r.slug) || str(r._id))
+      out.push({ id: str(r._id), title, group: 'catalogue', type: str(r._type), path: landing ? catalogueSegment : str(r.slug) ? `${catalogueSegment}/${str(r.slug)}` : undefined })
+    }
+  }
+  for (const section of DIGITAL_CARD_SECTIONS) {
+    if (!cardSectionAvailable(section, enabledModuleIds) || (section === 'homepage' && hasHome)) continue
+    out.push({ id: cardSectionTargetId(section), title: cardSectionLabel(section, m) ?? section, group: 'sections', type: 'section' })
+  }
+  for (const moduleId of DIGITAL_CARD_MODULE_TARGETS) {
+    const seg = segments.get(moduleId)
+    if (!seg || (moduleId === 'catalogue' && hasLanding)) continue
+    out.push({ id: cardModuleTargetId(moduleId), title: cardModuleLabel(moduleId, m) ?? moduleId, group: moduleId === 'catalogue' ? 'catalogue' : 'sections', type: 'module', path: seg })
+  }
+  return out
 }
 
 async function readFiles(client: Client, projectSlug: string, ids: string[], languages: readonly string[]): Promise<DigitalCardSnapshot['files']> {
@@ -690,7 +788,7 @@ export async function getDigitalCard(ctx: TenantAuthorizationContext, projectId:
   const reservations = grant.enabledModuleIds.includes('reservations')
   const personId = kind === 'person' ? refOf(doc.person) : null
   const links = linksOf(doc.links)
-  const [people, background, inherited, pages, files] = await readsInOrder<[PersonRow[], DigitalCardImage | null, DigitalCardImage | null, Array<{ id: string; title: string }>, DigitalCardSnapshot['files']]>([
+  const [people, background, inherited, pages, files] = await readsInOrder<[PersonRow[], DigitalCardImage | null, DigitalCardImage | null, DigitalCardTargetOption[], DigitalCardSnapshot['files']]>([
     personId ? readPeople(client, grant.projectSlug, [personId]) : Promise.resolve([]),
     readImage(client, refOf(doc.background), grant.projectSlug),
     kind === 'person'
@@ -698,8 +796,8 @@ export async function getDigitalCard(ctx: TenantAuthorizationContext, projectId:
           .fetch<string | null>(`*[_type == "${DIGITAL_CARD_TYPE}" && projectSlug == $projectSlug && kind == "site" && ${PUBLISHED} && !defined(archivedAt)][0].background._ref`, { projectSlug: grant.projectSlug })
           .then((ref) => readImage(client, typeof ref === 'string' && DOC_ID.test(ref) ? ref : null, grant.projectSlug))
       : Promise.resolve(null),
-    readPages(client, grant.projectSlug, facts.site.defaultLocale),
-    readFiles(client, grant.projectSlug, [...new Set(links.map((l) => l.file).filter((f): f is string => Boolean(f)))], facts.site.languages),
+    readLinkTargets(client, grant.projectSlug, facts.site.defaultLocale, grant.enabledModuleIds),
+    readFiles(client, grant.projectSlug, [...new Set(links.flatMap((l) => [l.file, l.logo]).filter((f): f is string => Boolean(f)))], facts.site.languages),
   ])
   const person = people[0]
   const availability = kind === 'person' ? personAvailability(person, facts, reservations) : siteAvailability(facts, reservations)
@@ -780,7 +878,7 @@ function linkComplete(l: DigitalCardLinkValue): boolean {
     case 'url':
       return Boolean(l.url)
     case 'page':
-      return Boolean(l.page)
+      return Boolean(l.page || (l.kind === 'page' && (l.internalPage || l.moduleId)))
     case 'file':
       return Boolean(l.file)
     case 'value':
@@ -801,13 +899,21 @@ function cleanLabel(value: unknown, allowed: ReadonlySet<string>, max: number = 
   return out
 }
 
-/** Validates the whole links array; returns the stored shape plus the referenced page / file ids to check. */
-function cleanLinks(value: unknown, allowed: ReadonlySet<string>, reservations: boolean) {
+/**
+ * Validates the whole links array; returns the stored shape plus the referenced
+ * ids to check: `pages` (form / booking — a `page`), `targets` (page links —
+ * any type the page picker offers), files and logos. A page link's section or
+ * module page must be on (Amendment B).
+ */
+function cleanLinks(value: unknown, allowed: ReadonlySet<string>, enabledModuleIds: readonly string[]) {
+  const reservations = enabledModuleIds.includes('reservations')
   if (!Array.isArray(value)) throw new DigitalCardError('invalid_value', 'Links must be a list.')
   if (value.length > DIGITAL_CARD_LIMITS.links) throw new DigitalCardError('too_large', `A card has up to ${DIGITAL_CARD_LIMITS.links} links.`)
   const keys = new Set<string>()
   const pages = new Set<string>()
+  const targets = new Set<string>()
   const files = new Set<string>()
+  const logos = new Set<string>()
   const stored: Array<Record<string, unknown>> = []
   const values: DigitalCardLinkValue[] = []
   for (const raw of value) {
@@ -824,17 +930,36 @@ function cleanLinks(value: unknown, allowed: ReadonlySet<string>, reservations: 
     const hidden = l.hidden === undefined ? false : cleanBool(l.hidden, 'Hidden')
     const primary = l.primary === undefined ? false : cleanBool(l.primary, 'Primary Action')
     const target = DIGITAL_CARD_LINK_TARGET[kind]
-    const v: DigitalCardLinkValue = { key, kind, label, description, url: '', page: null, file: null, value: '', hidden, primary }
+    const v: DigitalCardLinkValue = { key, kind, label, description, url: '', page: null, file: null, logo: null, value: '', hidden, primary }
     if (target === 'url') v.url = cleanUrl(l.url)
-    if (target === 'page' && l.page !== null && l.page !== undefined && l.page !== '') {
+    const given = (x: unknown) => x !== null && x !== undefined && x !== ''
+    if (target === 'page' && given(l.page)) {
       if (typeof l.page !== 'string' || !DOC_ID.test(l.page) || l.page.startsWith('drafts.')) throw new DigitalCardError('invalid_value', 'Unknown page.')
       v.page = l.page
-      pages.add(l.page)
+      ;(kind === 'page' ? targets : pages).add(l.page)
+    }
+    if (given(l.internalPage) || given(l.moduleId)) {
+      // Amendment B — a page link may point at a built-in section or a module page instead (one target only).
+      if (kind !== 'page' || v.page || (given(l.internalPage) && given(l.moduleId))) throw new DigitalCardError('invalid_value', 'Choose one page.')
+      if (given(l.internalPage)) {
+        if (typeof l.internalPage !== 'string' || !(DIGITAL_CARD_SECTIONS as readonly string[]).includes(l.internalPage)) throw new DigitalCardError('invalid_value', 'Unknown page.')
+        if (!cardSectionAvailable(l.internalPage, enabledModuleIds)) throw new DigitalCardError('invalid_value', 'That section is not on this website.')
+        v.internalPage = l.internalPage
+      } else {
+        if (typeof l.moduleId !== 'string' || !(DIGITAL_CARD_MODULE_TARGETS as readonly string[]).includes(l.moduleId)) throw new DigitalCardError('invalid_value', 'Unknown page.')
+        if (!enabledModuleIds.includes(l.moduleId)) throw new DigitalCardError('invalid_value', 'That section is not on this website.')
+        v.moduleId = l.moduleId
+      }
     }
     if (target === 'file' && l.file !== null && l.file !== undefined && l.file !== '') {
       if (typeof l.file !== 'string' || !DOC_ID.test(l.file) || l.file.startsWith('drafts.')) throw new DigitalCardError('invalid_value', 'Unknown file.')
       v.file = l.file
       files.add(l.file)
+    }
+    if (l.logo !== null && l.logo !== undefined && l.logo !== '') {
+      if (typeof l.logo !== 'string' || !DOC_ID.test(l.logo) || l.logo.startsWith('drafts.')) throw new DigitalCardError('invalid_value', 'Unknown logo.')
+      v.logo = l.logo
+      logos.add(l.logo)
     }
     if (target === 'value') {
       const t = cleanLine(l.value ?? '', DIGITAL_CARD_LIMITS.value, 'The number or address')
@@ -851,27 +976,53 @@ function cleanLinks(value: unknown, allowed: ReadonlySet<string>, reservations: 
       ...(Object.keys(description).length && { description: { _type: 'localizedString', ...description } }),
       ...(v.url && { url: v.url }),
       ...(v.page && { page: { _type: 'reference', _ref: v.page, _weak: true } }),
+      ...(v.internalPage && { internalPage: v.internalPage }),
+      ...(v.moduleId && { moduleId: v.moduleId }),
       ...(v.file && { file: { _type: 'reference', _ref: v.file } }),
+      ...(v.logo && { logo: { _type: 'reference', _ref: v.logo } }),
       ...(v.value && { value: v.value }),
       hidden,
       primary,
     })
   }
   if (primaryLinkCount(values) > 1) throw new DigitalCardError('invalid_value', 'Only one shown link can be the Primary Action.', { field: 'links' })
-  return { stored, pages: [...pages], files: [...files] }
+  return { stored, pages: [...pages], targets: [...targets], files: [...files], logos: [...logos] }
 }
 
-/** Page and file references must be this project's (published pages; Media Library assets). */
-async function assertTargetsExist(client: Client, projectSlug: string, pages: string[], files: string[]) {
+/**
+ * References must be this project's: form / booking → a page; page links → a
+ * page, or (while the Catalogue is on) the catalogue landing page, a
+ * collection or an item (Amendment B); files / logos → Media Library assets.
+ */
+async function assertTargetsExist(
+  client: Client,
+  projectSlug: string,
+  refs: { pages: string[]; targets?: string[]; files: string[]; logos?: string[]; catalogue?: boolean },
+) {
+  const { pages, files } = refs
+  const targets = refs.targets ?? []
+  const logos = refs.logos ?? []
   if (pages.length) {
     const found = await client.fetch<string[] | null>(`*[_type == "page" && projectSlug == $projectSlug && _id in $ids]._id`, { projectSlug, ids: pages })
     const ok = new Set(Array.isArray(found) ? found : [])
     if (!pages.every((p) => ok.has(p))) throw new DigitalCardError('invalid_value', 'That page is not on this website.')
   }
+  if (targets.length) {
+    const types = refs.catalogue ? [...DIGITAL_CARD_PAGE_REF_TYPES] : ['page']
+    const found = await client.fetch<string[] | null>(`*[_type in $types && projectSlug == $projectSlug && _id in $ids]._id`, { projectSlug, ids: targets, types })
+    const ok = new Set(Array.isArray(found) ? found : [])
+    if (!targets.every((p) => ok.has(p))) throw new DigitalCardError('invalid_value', 'That page is not on this website.')
+  }
   if (files.length) {
     const found = await client.fetch<string[] | null>(`*[_type == "mediaAsset" && projectSlug == $projectSlug && _id in $ids]._id`, { projectSlug, ids: files })
     const ok = new Set(Array.isArray(found) ? found : [])
     if (!files.every((f) => ok.has(f))) throw new DigitalCardError('invalid_value', 'That file is not in this website’s Media Library.')
+  }
+  if (logos.length) {
+    // A logo is an IMAGE of this project's Media Library (same check as the background).
+    const found = await client.fetch<string[] | null>(`*[_type == "mediaAsset" && projectSlug == $projectSlug && _id in $ids && defined(image.asset)]._id`, { projectSlug, ids: logos })
+    const ok = new Set(Array.isArray(found) ? found : [])
+    if (!logos.every((f) => ok.has(f))) throw new DigitalCardError('invalid_value', 'That logo is not an image of this website’s Media Library.')
   }
 }
 
@@ -1079,7 +1230,7 @@ export async function saveDigitalCardDraft(
   const set: Record<string, unknown> = {}
   const unset: string[] = []
   const ensure: Record<string, unknown> = {}
-  let targets: { pages: string[]; files: string[] } = { pages: [], files: [] }
+  let targets: { pages: string[]; targets: string[]; files: string[]; logos: string[] } = { pages: [], targets: [], files: [], logos: [] }
   let backgroundId: string | null = null
 
   for (const [path, value] of Object.entries(input.set)) {
@@ -1100,9 +1251,9 @@ export async function saveDigitalCardDraft(
       continue
     }
     if (path === 'links') {
-      const r = cleanLinks(value, allowedLocales, grant.enabledModuleIds.includes('reservations'))
+      const r = cleanLinks(value, allowedLocales, grant.enabledModuleIds)
       set.links = r.stored
-      targets = { pages: r.pages, files: r.files }
+      targets = { pages: r.pages, targets: r.targets, files: r.files, logos: r.logos }
       continue
     }
     if (path === 'background') {
@@ -1132,7 +1283,7 @@ export async function saveDigitalCardDraft(
     throw new DigitalCardError('conflict', 'This card was edited elsewhere.')
   }
 
-  await assertTargetsExist(client, grant.projectSlug, targets.pages, targets.files)
+  await assertTargetsExist(client, grant.projectSlug, { ...targets, catalogue: grant.enabledModuleIds.includes('catalogue') })
   if (backgroundId) {
     const ok = await client.fetch<string | null>(`*[_id == $id && _type == "mediaAsset" && projectSlug == $projectSlug && defined(image.asset)][0]._id`, { id: backgroundId, projectSlug: grant.projectSlug })
     if (ok !== backgroundId) throw new DigitalCardError('invalid_value', 'That image is not in this website’s Media Library.')
@@ -1230,9 +1381,10 @@ export async function publishDigitalCardDraft(
         throw new DigitalCardError('url_name_taken', 'Another card of this website uses (or used) this URL name.', { field: 'urlName' })
       }
       const links = linksOf(draft.links)
-      const pages = [...new Set(links.filter((l) => !l.hidden && l.page).map((l) => l.page!))]
+      const pages = [...new Set(links.filter((l) => !l.hidden && l.page && l.kind !== 'page').map((l) => l.page!))]
+      const targets = [...new Set(links.filter((l) => !l.hidden && l.page && l.kind === 'page').map((l) => l.page!))]
       const files = [...new Set(links.filter((l) => !l.hidden && l.file).map((l) => l.file!))]
-      await assertTargetsExist(client, grant.projectSlug, pages, files)
+      await assertTargetsExist(client, grant.projectSlug, { pages, targets, files, catalogue: grant.enabledModuleIds.includes('catalogue') })
 
       const doc: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(draft)) if (!SYSTEM_FIELDS.has(k) && !WINDOW_FIELDS.has(k)) doc[k] = v

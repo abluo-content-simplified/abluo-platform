@@ -41,6 +41,51 @@ export const DIGITAL_CARD_LINK_TARGET: Record<DigitalCardLinkKind, 'url' | 'page
   file: 'file',
 }
 
+// ── "Page on this website" targets (ADR-049 Amendment B, 2026-11-10) ──────────
+//
+// A link of kind `page` reaches everything the navigation picker reaches that
+// is a page of this website — the SAME link-target model as `navigationLink`
+// (src/lib/sanity/schema.ts) and the same resolver (src/lib/sanity/nav-links.ts):
+//   page            — a reference to a `page`, the catalogue landing page
+//                     (`cataloguePage`), a catalogue collection or item
+//                     (ADR-033 Amendment G: navigationLink.pageRef);
+//   internalPage    — a built-in section: home, blog, news, events, live
+//                     (navigationLink.internalPage), only while its module is on;
+//   moduleId        — an installed module's public page (navigationLink linkType
+//                     'module'), only while the module is on.
+// Exactly one is set. `form` and `booking` links still point at a `page` only
+// (the page that has the form / the booking). Stored `page` references from
+// before (all to `page` documents) keep working unchanged.
+
+/** Document types a `page` link may reference (navigationLink.pageRef's types). */
+export const DIGITAL_CARD_PAGE_REF_TYPES = ['page', 'cataloguePage', 'catalogueCollection', 'catalogueItem'] as const
+/** Built-in sections a `page` link may point at (navigationLink.internalPage). */
+export { NAV_INTERNAL_PAGES as DIGITAL_CARD_SECTIONS, NAV_INTERNAL_PAGE_MODULE as DIGITAL_CARD_SECTION_MODULE, NAV_MODULE_TARGETS as DIGITAL_CARD_MODULE_TARGETS } from '@/lib/sanity/nav-links'
+export type { NavInternalPage as DigitalCardSection } from '@/lib/sanity/nav-links'
+
+/** Prefixes of the picker's option ids for a section / a module (a document id never contains ':'). */
+const SECTION_PREFIX = 'section:'
+const MODULE_PREFIX = 'module:'
+
+/** The picker's option id of a link's target, or null when none is chosen. */
+export function cardLinkTargetId(l: { page?: string | null; internalPage?: string | null; moduleId?: string | null }): string | null {
+  if (l.page) return l.page
+  if (l.internalPage) return `${SECTION_PREFIX}${l.internalPage}`
+  if (l.moduleId) return `${MODULE_PREFIX}${l.moduleId}`
+  return null
+}
+
+/** A picker option id → the link fields it sets (the other two cleared). */
+export function cardLinkTargetFields(id: string | null): { page: string | null; internalPage: string | null; moduleId: string | null } {
+  if (id?.startsWith(SECTION_PREFIX)) return { page: null, internalPage: id.slice(SECTION_PREFIX.length) || null, moduleId: null }
+  if (id?.startsWith(MODULE_PREFIX)) return { page: null, internalPage: null, moduleId: id.slice(MODULE_PREFIX.length) || null }
+  return { page: id || null, internalPage: null, moduleId: null }
+}
+
+/** Option id of a built-in section / of a module's public page. */
+export const cardSectionTargetId = (section: string): string => `${SECTION_PREFIX}${section}`
+export const cardModuleTargetId = (moduleId: string): string => `${MODULE_PREFIX}${moduleId}`
+
 /** People contact kinds a person card may show as socials (D7). */
 export const DIGITAL_CARD_PERSON_SOCIAL_KINDS = ['instagram', 'linkedin', 'website', 'url'] as const
 

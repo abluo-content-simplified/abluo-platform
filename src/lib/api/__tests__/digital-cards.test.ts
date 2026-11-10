@@ -111,7 +111,36 @@ const PEOPLE = [
   { _id: 'person-off', firstName: 'Off', lastName: 'Person', visibility: 'off', anonymised: false, archived: false },
 ]
 
-function fake(opts: { docs?: Docs; people?: any[]; site?: any; commitError?: unknown; pages?: string[]; files?: string[] } = {}) {
+/** Documents a link may reference, by id → type (this project's only). */
+const TARGET_TYPES: Record<string, string> = {
+  'page-1': 'page',
+  'tmz-catalogue-page': 'cataloguePage',
+  'tmz-collection-douglas-adams': 'catalogueCollection',
+  'tmz-item-good-omens': 'catalogueItem',
+}
+
+/** The page picker's read for a tmz-shaped project (Amendment B): pages, the catalogue, module installations. */
+const TMZ_TARGET_ROWS = (catalogue: boolean) => ({
+  pages: [
+    { _id: 'tmz-page-home', pageType: 'home', title: 'Home', slug: 'home' },
+    { _id: 'tmz-page-downloads', pageType: 'standard', title: 'Downloads', slug: 'downloads' },
+    { _id: 'tmz-page-privacy', pageType: 'legal', title: 'Privacy', slug: 'privacy' },
+  ],
+  catalogue: catalogue
+    ? [
+        { _id: 'tmz-collection-douglas-adams', _type: 'catalogueCollection', title: 'Douglas Adams', slug: 'douglas-adams' },
+        { _id: 'tmz-item-good-omens', _type: 'catalogueItem', title: 'Good Omens', slug: 'good-omens' },
+        { _id: 'tmz-catalogue-page', _type: 'cataloguePage', title: 'Between the Lines', slug: null },
+      ]
+    : null,
+  modules: [
+    { moduleId: 'catalogue', segment: 'books' },
+    { moduleId: 'blog', segment: null },
+    { moduleId: 'events', segment: null },
+  ],
+})
+
+function fake(opts: { docs?: Docs; people?: any[]; site?: any; commitError?: unknown; pages?: string[]; files?: string[]; targetRows?: (p: Record<string, unknown>) => unknown } = {}) {
   const docs = opts.docs ?? baseDocs()
   const people = opts.people ?? PEOPLE
   const patchOps: Array<[string, unknown]> = []
@@ -175,10 +204,13 @@ function fake(opts: { docs?: Docs; people?: any[]; site?: any; commitError?: unk
       const ids = p.ids as string[] | undefined
       return people.filter((x) => !ids || ids.includes(x._id))
     }
+    if (q.includes('_type == "mediaAsset"') && q.includes('_id in $ids && defined(image.asset)]._id')) return (p.ids as string[]).filter((i) => (opts.files ?? ['img-1', 'img-2']).includes(i))
     if (q.includes('_type == "mediaAsset"') && q.includes('[0]{ "url"')) return p.id === 'img-1' ? { url: 'https://cdn/bg.jpg', alt: { it: 'Sfondo' } } : null
     if (q.includes('_type == "mediaAsset"') && q.includes('defined(image.asset)][0]._id')) return (opts.files ?? ['img-1', 'img-2']).includes(p.id as string) ? p.id : null
     if (q.includes('_type == "mediaAsset"') && q.includes('_id in $ids]._id')) return (p.ids as string[]).filter((i) => (opts.files ?? ['img-1', 'file-1']).includes(i))
     if (q.includes('_type == "mediaAsset"') && q.includes('_id in $ids]{')) return (p.ids as string[]).map((i) => ({ _id: i, name: `${i}.pdf` }))
+    if (q.includes('"catalogue": select($catalogue')) return opts.targetRows ? opts.targetRows(p) : { pages: [{ _id: 'page-1', title: 'Contatti', pageType: 'standard', slug: 'contatti' }], catalogue: null, modules: [] }
+    if (q.includes('_type in $types') && q.includes('_id in $ids]._id')) return (p.ids as string[]).filter((i) => (p.types as string[]).includes(TARGET_TYPES[i]))
     if (q.includes('_type == "page"') && q.includes('_id in $ids]._id')) return (p.ids as string[]).filter((i) => (opts.pages ?? ['page-1']).includes(i))
     if (q.includes('_type == "page"')) return [{ _id: 'page-1', title: 'Contatti' }]
     throw new Error(`unexpected query ${q}`)
@@ -306,7 +338,29 @@ describe('list and read', () => {
     // D4 — a person card without its own background shows the site card's.
     expect(card.background).toBeNull()
     expect(card.inheritedBackground).toMatchObject({ assetId: 'img-1', url: 'https://cdn/bg.jpg' })
-    expect(card.links).toEqual([{ key: 'l1', kind: 'url', label: {}, description: {}, url: 'https://example.com/', page: null, file: null, value: '', hidden: false, primary: true }])
+    expect(card.links).toEqual([{ key: 'l1', kind: 'url', label: {}, description: {}, url: 'https://example.com/', page: null, file: null, logo: null, value: '', hidden: false, primary: true }])
+  })
+
+  it('Amendment B — the page picker lists pages, the Catalogue (Between the Lines, collections, items) and the sections that are on, titled in the default language', async () => {
+    const seen: Record<string, unknown>[] = []
+    const f = fake({ targetRows: (p) => (seen.push(p), TMZ_TARGET_ROWS(p.catalogue === true)) })
+    const card = await getDigitalCard(ctx(grant({ enabledModuleIds: ['digital-cards', 'catalogue', 'blog', 'events'] })), PROJECT, SITE, f.deps)
+    expect(seen[0]).toMatchObject({ projectSlug: 'cyce', defaultLocale: 'it', catalogue: true, catalogueTypes: ['cataloguePage', 'catalogueCollection', 'catalogueItem'] })
+    expect(card.pages).toEqual([
+      { id: 'tmz-page-home', title: 'Home', group: 'pages', type: 'page', path: '' },
+      { id: 'tmz-page-downloads', title: 'Downloads', group: 'pages', type: 'page', path: 'downloads' },
+      { id: 'tmz-page-privacy', title: 'Privacy', group: 'pages', type: 'page', path: 'privacy' },
+      // the landing page first, then collections, then items
+      { id: 'tmz-catalogue-page', title: 'Between the Lines', group: 'catalogue', type: 'cataloguePage', path: 'books' },
+      { id: 'tmz-collection-douglas-adams', title: 'Douglas Adams', group: 'catalogue', type: 'catalogueCollection', path: 'books/douglas-adams' },
+      { id: 'tmz-item-good-omens', title: 'Good Omens', group: 'catalogue', type: 'catalogueItem', path: 'books/good-omens' },
+      // sections whose module is on (Home is a page already; no News / Live), in the site's default language (it)
+      { id: 'section:blog', title: 'Blog', group: 'sections', type: 'section' },
+      { id: 'section:events', title: 'Eventi', group: 'sections', type: 'section' },
+    ])
+    // Catalogue off → no catalogue targets are read or offered.
+    const off = await getDigitalCard(ctx(grant({ enabledModuleIds: ['digital-cards'] })), PROJECT, SITE, fake({ targetRows: (p) => TMZ_TARGET_ROWS(p.catalogue === true) }).deps)
+    expect(off.pages.map((o) => o.id)).toEqual(['tmz-page-home', 'tmz-page-downloads', 'tmz-page-privacy'])
   })
 
   it('the site card switches start with everything that exists on', async () => {
@@ -434,6 +488,21 @@ describe('saveDigitalCardDraft', () => {
     ])
   })
 
+  it('a link may carry a logo: a Media Library image of this project, stored as a reference on any kind', async () => {
+    const f = fake()
+    await save({ links: [{ key: 'a', kind: 'url', url: 'https://cyce.info/x', logo: 'img-2' }, { key: 'b', kind: 'phone', value: '+39 333 1234567', logo: null }, { key: 'c', kind: 'email', value: '', logo: '' }] }, f)
+    const set = f.patchOps.find((o) => o[0] === 'set')![1] as { links: any[] }
+    expect(set.links[0]).toEqual({ _key: 'a', _type: 'digitalCardLink', kind: 'url', url: 'https://cyce.info/x', logo: { _type: 'reference', _ref: 'img-2' }, hidden: false, primary: false })
+    expect(set.links[1]).not.toHaveProperty('logo')
+    expect(set.links[2]).not.toHaveProperty('logo')
+  })
+
+  it('refuses a logo that is not an image of this project, a draft id or a non-text value', async () => {
+    await expect(save({ links: [{ key: 'a', kind: 'url', url: 'https://a.example', logo: 'img-foreign' }] })).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(save({ links: [{ key: 'a', kind: 'url', url: 'https://a.example', logo: 'drafts.img-2' }] })).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(save({ links: [{ key: 'a', kind: 'url', url: 'https://a.example', logo: { _ref: 'img-2' } }] })).rejects.toMatchObject({ code: 'invalid_value' })
+  })
+
   it('refuses two shown Primary Actions, booking without Reservations, foreign pages and bad values', async () => {
     const two = [
       { key: 'a', kind: 'url', primary: true },
@@ -452,6 +521,62 @@ describe('saveDigitalCardDraft', () => {
     await expect(save({ links: [{ key: 'a', kind: 'url' }, { key: 'a', kind: 'url' }] })).rejects.toMatchObject({ code: 'invalid_value' })
     await expect(save({ links: [{ key: 'a', kind: 'sms' }] })).rejects.toMatchObject({ code: 'invalid_value' })
     await expect(save({ links: Array.from({ length: 31 }, (_, i) => ({ key: `k${i}`, kind: 'url' })) })).rejects.toMatchObject({ code: 'too_large' })
+  })
+
+  it('Amendment B — a page link reaches the catalogue landing page, collections, items, sections and module pages (navigationLink-shaped)', async () => {
+    const f = fake()
+    const tmz = ctx({ ...editor(), enabledModuleIds: ['digital-cards', 'catalogue', 'blog'] })
+    await save(
+      {
+        links: [
+          { key: 'a', kind: 'page', page: 'tmz-catalogue-page' },
+          { key: 'b', kind: 'page', page: 'tmz-collection-douglas-adams', internalPage: null, moduleId: null },
+          { key: 'c', kind: 'page', page: 'tmz-item-good-omens' },
+          { key: 'd', kind: 'page', page: null, internalPage: 'blog' },
+          { key: 'e', kind: 'page', internalPage: 'homepage' },
+          { key: 'f', kind: 'page', moduleId: 'catalogue' },
+          // A page reference stored before Amendment B works as before.
+          { key: 'g', kind: 'page', page: 'page-1' },
+        ],
+      },
+      f,
+      tmz
+    )
+    const set = f.patchOps.find((o) => o[0] === 'set')![1] as { links: any[] }
+    const ref = (id: string) => ({ _type: 'reference', _ref: id, _weak: true })
+    expect(set.links.map((l) => ({ page: l.page, internalPage: l.internalPage, moduleId: l.moduleId }))).toEqual([
+      { page: ref('tmz-catalogue-page'), internalPage: undefined, moduleId: undefined },
+      { page: ref('tmz-collection-douglas-adams'), internalPage: undefined, moduleId: undefined },
+      { page: ref('tmz-item-good-omens'), internalPage: undefined, moduleId: undefined },
+      { page: undefined, internalPage: 'blog', moduleId: undefined },
+      { page: undefined, internalPage: 'homepage', moduleId: undefined },
+      { page: undefined, internalPage: undefined, moduleId: 'catalogue' },
+      { page: ref('page-1'), internalPage: undefined, moduleId: undefined },
+    ])
+    // The references are checked against this project with the catalogue types allowed.
+    const check = f.client.fetch.mock.calls.find((c) => String(c[0]).includes('_type in $types'))!
+    expect(check[1]).toMatchObject({ projectSlug: 'cyce', types: ['page', 'cataloguePage', 'catalogueCollection', 'catalogueItem'] })
+  })
+
+  it('Amendment B — refuses a foreign or unknown target, the catalogue while it is off, a section whose module is off, two targets, and non-pages on form / booking links', async () => {
+    const tmz = ctx({ ...editor(), enabledModuleIds: ['digital-cards', 'catalogue', 'blog', 'reservations'] })
+    const refused = (links: unknown[], c = tmz) => expect(save({ links }, fake(), c)).rejects.toMatchObject({ code: 'invalid_value' })
+    // another project's catalogue page (not found under this projectSlug)
+    await refused([{ key: 'a', kind: 'page', page: 'other-catalogue-page' }])
+    // the Catalogue switched off: only pages may be referenced
+    await refused([{ key: 'a', kind: 'page', page: 'tmz-catalogue-page' }], ctx(editor()))
+    await refused([{ key: 'a', kind: 'page', moduleId: 'catalogue' }], ctx(editor()))
+    // sections need their module; unknown sections / modules are refused
+    await refused([{ key: 'a', kind: 'page', internalPage: 'events' }])
+    await refused([{ key: 'a', kind: 'page', internalPage: 'shop' }])
+    await refused([{ key: 'a', kind: 'page', moduleId: 'people' }])
+    // one target only
+    await refused([{ key: 'a', kind: 'page', page: 'page-1', internalPage: 'blog' }])
+    await refused([{ key: 'a', kind: 'page', internalPage: 'blog', moduleId: 'catalogue' }])
+    // form / booking point at a page
+    await refused([{ key: 'a', kind: 'form', page: 'tmz-catalogue-page' }])
+    await refused([{ key: 'a', kind: 'booking', internalPage: 'homepage' }])
+    await expect(save({ links: [{ key: 'a', kind: 'form', page: 'page-1' }] }, fake(), tmz)).resolves.toEqual({ rev: 'd2' })
   })
 
   it('refuses a stale revision, a missing draft and an archived card', async () => {

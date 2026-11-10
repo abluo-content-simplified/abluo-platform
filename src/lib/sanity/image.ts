@@ -33,6 +33,15 @@ export function imageUrl(
 }
 
 /**
+ * A small logo at a given pixel HEIGHT (width follows, never cropped:
+ * fit 'max'). Used at 3x for sharp phones (Digital Card link logos).
+ */
+export function logoImageUrl(source: { asset: { _ref: string } } | null | undefined, height: number): string | undefined {
+  if (!source?.asset) return undefined
+  return urlFor(source).height(height).fit('max').quality(90).auto('format').url()
+}
+
+/**
  * A site icon (favicon, Apple touch icon) as a square PNG.
  *
  * Never auto('format'): that hands WebP/AVIF to browsers that accept them in

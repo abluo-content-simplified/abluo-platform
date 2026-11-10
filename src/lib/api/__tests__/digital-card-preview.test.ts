@@ -38,6 +38,7 @@ function fake() {
         person: p.personId === 'person-anna' ? { publicId: 'x', firstName: 'Anna' } : null,
         siteCard: null,
         pages: [{ _id: 'page-1', pageType: 'standard', slug: 'orari', title: 'Orari' }],
+        catalogue: [{ _id: 'tmz-catalogue-page', type: 'cataloguePage', hasPage: null, slug: null, segment: 'books', title: 'Between the Lines' }],
         files: [],
         background: p.backgroundId ? { asset: { _ref: 'image-1' }, hotspot: { x: 0.2, y: 0.4 } } : null,
         themeMode: 'darkOnly',
@@ -63,12 +64,15 @@ describe('getDigitalCardPreview', () => {
 
   it('reads the site, the PUBLIC person, pages and the chosen background, scoped by the grant; the theme is scoped CSS', async () => {
     const f = fake()
-    const r = await getDigitalCardPreview(ctx(grant()), 'p1', { id: 'card', locale: 'en', backgroundId: 'img-1', fileIds: ['bad id!', 'file-1'] }, { client: f.client as never, designSystem: async () => null })
+    const r = await getDigitalCardPreview(ctx(grant()), 'p1', { id: 'card', locale: 'en', backgroundId: 'img-1', fileIds: ['bad id!', 'file-1'], targetIds: ['tmz-catalogue-page', 'drafts.x', 'bad id!'] }, { client: f.client as never, designSystem: async () => null })
     const call = f.fetch.mock.calls.find((c) => c[0] === DIGITAL_CARD_PREVIEW_QUERY)!
-    expect(call[1]).toEqual({ projectSlug: 'cyce', locale: 'en', defaultLocale: 'it', personId: 'person-anna', fileIds: ['file-1'], backgroundId: 'img-1' })
+    expect(call[1]).toEqual({ projectSlug: 'cyce', locale: 'en', defaultLocale: 'it', personId: 'person-anna', fileIds: ['file-1'], targetIds: ['tmz-catalogue-page'], backgroundId: 'img-1' })
     expect(DIGITAL_CARD_PREVIEW_QUERY).not.toContain('person_private')
     expect(r.person).toMatchObject({ firstName: 'Anna' })
-    expect(r.pages).toEqual({ 'page-1': { pageType: 'standard', slug: 'orari', title: 'Orari' } })
+    expect(r.pages).toEqual({ 'page-1': { pageType: 'standard', slug: 'orari', title: 'Orari', access: null } })
+    // Amendment B — the page links' catalogue targets, read with the navigation's own rule.
+    expect(r.catalogue).toEqual({ 'tmz-catalogue-page': { type: 'cataloguePage', hasPage: null, slug: null, segment: 'books', title: 'Between the Lines' } })
+    expect(DIGITAL_CARD_PREVIEW_QUERY).toContain('_id in $targetIds && projectSlug == $projectSlug && string::startsWith(_type, "catalogue")')
     expect(r.background).toMatchObject({ hotspot: { x: 0.2, y: 0.4 } })
     expect(r.theme.css).toContain('[data-card-preview="card"]')
     expect(r.theme.css).not.toContain('html.light')

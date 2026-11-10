@@ -8,7 +8,10 @@ import {
   DIGITAL_CARD_LINK_KINDS,
   DIGITAL_CARD_LINK_TARGET,
   DIGITAL_CARD_LINK_TYPE,
+  DIGITAL_CARD_MODULE_TARGETS,
   DIGITAL_CARD_NAME_MODES,
+  DIGITAL_CARD_PAGE_REF_TYPES,
+  DIGITAL_CARD_SECTIONS,
   DIGITAL_CARD_TYPE,
   DIGITAL_CARD_URL_NAME_MAX,
   DIGITAL_CARD_URL_NAME_PATTERN,
@@ -17,6 +20,7 @@ import {
   takenUrlNames,
   type DigitalCardKind,
   type DigitalCardLinkKind,
+  type DigitalCardSection,
 } from './model'
 
 // ── Digital Cards module — Sanity schema types (ADR-049) ──────────────────────
@@ -31,6 +35,8 @@ import {
 //
 // Studio is staff-only; clients edit cards in the dashboard (Content → Digital
 // Cards). Statistics live in Supabase (migration 068), never here.
+
+const SECTION_TITLES: Record<DigitalCardSection, string> = { homepage: 'Homepage', blog: 'Blog', news: 'News (module)', events: 'Events', live: 'Live' }
 
 const KIND_TITLES: Record<DigitalCardKind, string> = { site: 'Site card (/link)', person: 'Person card (/link/<name>)' }
 
@@ -134,19 +140,45 @@ const digitalCardLinkType = defineType({
           return kind && DIGITAL_CARD_LINK_TARGET[kind] === 'url' && !value ? 'Enter the web address.' : true
         }),
     }),
+    // Amendment B (2026-11-10) — a `page` link reaches what navigationLink.pageRef
+    // reaches: a page, the catalogue landing page, a catalogue collection or item.
+    // `form` / `booking` links point at a `page` only (enforced by the dashboard
+    // service). Existing references (all to `page`) are unchanged.
     defineField({
       name: 'page',
       title: 'Page',
       type: 'reference',
-      to: [{ type: 'page' }],
+      to: DIGITAL_CARD_PAGE_REF_TYPES.map((type) => ({ type })),
       weak: true,
-      options: { filter: scopedRef },
-      hidden: ({ parent }) => DIGITAL_CARD_LINK_TARGET[(parent?.kind ?? 'url') as DigitalCardLinkKind] !== 'page',
+      options: { filter: scopedRef, disableNew: true },
+      description: 'A page of this website — or (page links only) the catalogue page, a catalogue collection or a catalogue item.',
+      hidden: ({ parent }) =>
+        DIGITAL_CARD_LINK_TARGET[(parent?.kind ?? 'url') as DigitalCardLinkKind] !== 'page' || (parent?.kind === 'page' && Boolean(parent?.internalPage || parent?.moduleId)),
       validation: (Rule) =>
         Rule.custom((value, context) => {
-          const kind = (context.parent as { kind?: DigitalCardLinkKind } | undefined)?.kind
-          return kind && DIGITAL_CARD_LINK_TARGET[kind] === 'page' && !value ? 'Choose the page.' : true
+          const parent = context.parent as { kind?: DigitalCardLinkKind; internalPage?: string; moduleId?: string } | undefined
+          const kind = parent?.kind
+          if (!kind || DIGITAL_CARD_LINK_TARGET[kind] !== 'page' || value) return true
+          return kind === 'page' && (parent?.internalPage || parent?.moduleId) ? true : 'Choose the page.'
         }),
+    }),
+    // Amendment B — a built-in section (navigationLink.internalPage), page links only.
+    defineField({
+      name: 'internalPage',
+      title: 'Special section',
+      type: 'string',
+      options: { list: DIGITAL_CARD_SECTIONS.map((value) => ({ title: SECTION_TITLES[value], value })) },
+      hidden: ({ parent }) => parent?.kind !== 'page' || Boolean(parent?.page),
+      description: 'Instead of a page: a built-in section of the website. Not shown on the card while its module is off.',
+    }),
+    // Amendment B — an installed module's public page (navigationLink linkType "module"), page links only.
+    defineField({
+      name: 'moduleId',
+      title: 'Module page',
+      type: 'string',
+      options: { list: DIGITAL_CARD_MODULE_TARGETS.map((value) => ({ title: value === 'catalogue' ? 'Catalogue' : value, value })) },
+      hidden: ({ parent }) => parent?.kind !== 'page' || Boolean(parent?.page || parent?.internalPage),
+      description: 'Instead of a page: the public page of a module. Not shown on the card while the module is off.',
     }),
     defineField({
       name: 'file',
@@ -157,6 +189,14 @@ const digitalCardLinkType = defineType({
       hidden: ({ parent }) => parent?.kind !== 'file',
       validation: (Rule) =>
         Rule.custom((value, context) => ((context.parent as { kind?: string } | undefined)?.kind === 'file' && !value ? 'Choose the file.' : true)),
+    }),
+    defineField({
+      name: 'logo',
+      title: 'Logo',
+      type: 'reference',
+      to: [{ type: 'mediaAsset' }],
+      options: { filter: scopedRef },
+      description: 'Optional small logo shown on the button, on a neutral tile (24 px high, up to 48 px wide, never cropped). Best: SVG or a PNG with a transparent background, at least 96 px high.',
     }),
     defineField({
       name: 'value',
@@ -178,11 +218,16 @@ const digitalCardLinkType = defineType({
     defineField({ name: 'primary', title: 'Primary Action', type: 'boolean', initialValue: false, description: 'Shown first and larger. One per card.' }),
   ],
   preview: {
-    select: { kind: 'kind', label: 'label.en', labelIt: 'label.it', url: 'url', value: 'value', page: 'page.title', hidden: 'hidden', primary: 'primary' },
+    select: { kind: 'kind', label: 'label.en', labelIt: 'label.it', url: 'url', value: 'value', page: 'page.title', pageEn: 'page.title.en', pageName: 'page.name.en', pageHero: 'page.heroTitle.en', internalPage: 'internalPage', moduleId: 'moduleId', hidden: 'hidden', primary: 'primary' },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    prepare: ({ kind, label, labelIt, url, value, page, hidden, primary }: Record<string, any>) => ({
+    prepare: ({ kind, label, labelIt, url, value, page, pageEn, pageName, pageHero, internalPage, moduleId, hidden, primary }: Record<string, any>) => ({
       title: label || labelIt || LINK_KIND_TITLES[kind as DigitalCardLinkKind] || 'Link',
-      subtitle: [LINK_KIND_TITLES[kind as DigitalCardLinkKind], url || value || (typeof page === 'string' ? page : undefined), primary ? 'Primary Action' : undefined, hidden ? 'Hidden' : undefined]
+      subtitle: [
+        LINK_KIND_TITLES[kind as DigitalCardLinkKind],
+        url || value || (typeof page === 'string' ? page : undefined) || pageEn || pageName || pageHero || (internalPage ? SECTION_TITLES[internalPage as DigitalCardSection] ?? internalPage : undefined) || moduleId,
+        primary ? 'Primary Action' : undefined,
+        hidden ? 'Hidden' : undefined,
+      ]
         .filter(Boolean)
         .join(' · '),
     }),

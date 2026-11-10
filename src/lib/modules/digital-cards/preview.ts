@@ -23,7 +23,11 @@ export interface PreviewLinkValue {
   description: Record<string, string>
   url: string
   page: string | null
+  /** kind page (Amendment B): a built-in section / a module page instead of a page reference. */
+  internalPage?: string | null
+  moduleId?: string | null
   file: string | null
+  logo: string | null
   value: string
   hidden: boolean
   primary: boolean
@@ -48,7 +52,18 @@ const pick = (v: Record<string, string> | undefined, locale: string, fallback: s
 /** One editor link → the public projection of it (null target when it does not resolve). */
 export function previewLink(l: PreviewLinkValue, base: DigitalCardPreviewBase): DigitalCardLinkPublic {
   const target = l.kind === 'page' || l.kind === 'form' || l.kind === 'booking' ? (l.page ? base.pages[l.page] ?? null : null) : null
+  // Amendment B — a page link may also point at a catalogue target, a section or a module page.
+  const pageLink =
+    l.kind === 'page'
+      ? {
+          hasPageRef: Boolean(l.page),
+          catalogue: l.page ? base.catalogue?.[l.page] ?? null : null,
+          internalPage: l.page ? null : l.internalPage || null,
+          moduleId: l.page || l.internalPage ? null : l.moduleId || null,
+        }
+      : {}
   return {
+    ...pageLink,
     _key: l.key,
     kind: l.kind,
     label: pick(l.label, base.locale, base.defaultLocale),
@@ -58,6 +73,7 @@ export function previewLink(l: PreviewLinkValue, base: DigitalCardPreviewBase): 
     value: l.kind === 'phone' || l.kind === 'email' || l.kind === 'whatsapp' ? l.value : null,
     page: target,
     file: l.kind === 'file' && l.file ? base.files[l.file] ?? null : null,
+    logo: l.logo ? base.files[l.logo]?.logo ?? null : null,
   }
 }
 

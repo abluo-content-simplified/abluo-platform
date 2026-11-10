@@ -255,6 +255,22 @@ export const projectScopeSlugFromTenantSlug = projectScopeSlugFromUrlSegment
 /** Longest first name we echo back to the visitor; anything longer is cut with "…". */
 export const MAX_FIRST_NAME_LENGTH = 40
 
+/**
+ * Field keys that hold the visitor's (first) name, in order. `name` is the
+ * platform key; the others cover forms authored in another language or with
+ * split name fields (Hoffmann's contact form uses `nome`). The first key with
+ * a non-empty value wins.
+ */
+export const VISITOR_NAME_KEYS = ['name', 'first_name', 'firstname', 'nome', 'vorname', 'prenom', 'prénom', 'nombre', 'voornaam', 'naam'] as const
+
+function visitorName(values: Record<string, unknown>): unknown {
+  for (const key of VISITOR_NAME_KEYS) {
+    const v = values[key]
+    if (typeof v === 'string' && v.trim()) return v
+  }
+  return undefined
+}
+
 function firstNameOf(name: unknown): string {
   if (typeof name !== 'string') return ''
   const first = name.trim().split(/\s+/)[0] ?? ''
@@ -271,7 +287,7 @@ function firstNameOf(name: unknown): string {
  * "{first_name}, you're on the list — thank you!".
  *
  * Tokens:
- *   - `{first_name}` — first word of the `name` field's value
+ *   - `{first_name}` — first word of the visitor's name (see VISITOR_NAME_KEYS)
  *   - `{<internalKey>}` — any submitted field by its key (arrays joined with ", ")
  * Unknown/empty tokens collapse to nothing, and a stray leading comma/space left
  * by an empty leading token is tidied so the sentence still reads cleanly.
@@ -279,7 +295,7 @@ function firstNameOf(name: unknown): string {
 export function applySuccessTemplate(text: string | undefined, values: Record<string, unknown>): string | undefined {
   if (!text || !text.includes('{')) return text
   const filled = text.replace(/\{(\w+)\}/g, (_match, key: string) => {
-    if (key === 'first_name') return firstNameOf(values.name)
+    if (key === 'first_name') return firstNameOf(visitorName(values))
     const v = values[key]
     if (v === null || v === undefined) return ''
     return Array.isArray(v) ? v.join(', ') : String(v)
@@ -328,6 +344,18 @@ export function resolveSuccessTitle(
   values: Record<string, unknown>,
 ): string | undefined {
   if (customTitle && customTitle.trim()) return applySuccessTemplate(customTitle, values)
-  if (!firstNameOf(values.name)) return undefined
+  if (!firstNameOf(visitorName(values))) return undefined
   return applySuccessTemplate(namedTemplate, values)
+}
+
+/**
+ * The success-state body when the form has none of its own. Under a title
+ * (e.g. "Thank you, Anna!") the default drops its own "Thank you!", so the
+ * visitor is not thanked twice; without a title it keeps it.
+ */
+export function defaultSuccessBody(
+  title: string | undefined,
+  messages: { successMessage: string; successMessageSent: string },
+): string {
+  return title ? messages.successMessageSent : messages.successMessage
 }

@@ -18,6 +18,30 @@ import { getAccessMessages } from '@/lib/i18n/access-messages'
 const DEFAULT_LOCALE_SEGMENTS: readonly string[] = LOCALE_CODES
 
 /**
+ * The built-in sections a navigation link can point at (`navigationLink.internalPage`)
+ * — coded routes with no Sanity page document — in the order pickers offer
+ * them. Keep in step with resolveInternalPage() below and the schema's list.
+ */
+export const NAV_INTERNAL_PAGES = ['homepage', 'blog', 'news', 'events', 'live'] as const
+export type NavInternalPage = (typeof NAV_INTERNAL_PAGES)[number]
+
+/**
+ * The module whose installation serves each built-in section; null = always
+ * there (the home page). A picker offers a section only while its module is
+ * installed and switched on.
+ */
+export const NAV_INTERNAL_PAGE_MODULE: Record<NavInternalPage, string | null> = {
+  homepage: null,
+  blog: 'blog',
+  news: 'news',
+  events: 'events',
+  live: 'live',
+}
+
+/** Modules a `module` link may point at (the `navigationLink.moduleId` options). */
+export const NAV_MODULE_TARGETS = ['catalogue'] as const
+
+/**
  * Resolve internal page to URL path (without locale prefix).
  *
  * These cases match the `internalPage` values in the `navigationLink` schema.

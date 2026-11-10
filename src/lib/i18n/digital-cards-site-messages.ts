@@ -20,6 +20,13 @@ export interface DigitalCardSiteMessages {
   linkPhone: string
   linkEmail: string
   linkFile: string
+  /** Names of the built-in sections and module pages a "page" link can open (Amendment B) — its label when none is typed. */
+  sectionHome: string
+  sectionBlog: string
+  sectionNews: string
+  sectionEvents: string
+  sectionLive: string
+  sectionCatalogue: string
   /** Visible names of the contact rows. */
   phone: string
   email: string
@@ -60,6 +67,7 @@ const MESSAGES: Record<string, DigitalCardSiteMessages> = {
   en: {
     linkUrl: 'Website', linkPage: 'Open page', linkForm: 'Get in touch', linkBooking: 'Book now',
     linkWhatsapp: 'WhatsApp', linkPhone: 'Call', linkEmail: 'Send an email', linkFile: 'Download',
+    sectionHome: 'Home', sectionBlog: 'Blog', sectionNews: 'News', sectionEvents: 'Events', sectionLive: 'Live', sectionCatalogue: 'Catalogue',
     phone: 'Phone', email: 'Email', whatsapp: 'WhatsApp',
     saveContact: 'Save contact', moreAbout: 'More about {name}', directions: 'Directions',
     linksHeading: 'Links', contactHeading: 'Contact', socialsHeading: 'Social profiles', locationsHeading: 'Locations',
@@ -71,6 +79,7 @@ const MESSAGES: Record<string, DigitalCardSiteMessages> = {
   it: {
     linkUrl: 'Sito web', linkPage: 'Apri la pagina', linkForm: 'Scrivici', linkBooking: 'Prenota',
     linkWhatsapp: 'WhatsApp', linkPhone: 'Chiama', linkEmail: "Invia un'email", linkFile: 'Scarica',
+    sectionHome: 'Home', sectionBlog: 'Blog', sectionNews: 'Notizie', sectionEvents: 'Eventi', sectionLive: 'Live', sectionCatalogue: 'Catalogo',
     phone: 'Telefono', email: 'Email', whatsapp: 'WhatsApp',
     saveContact: 'Salva contatto', moreAbout: 'Scopri di più su {name}', directions: 'Indicazioni',
     linksHeading: 'Link', contactHeading: 'Contatti', socialsHeading: 'Profili social', locationsHeading: 'Sedi',
@@ -82,6 +91,7 @@ const MESSAGES: Record<string, DigitalCardSiteMessages> = {
   de: {
     linkUrl: 'Website', linkPage: 'Seite öffnen', linkForm: 'Kontakt aufnehmen', linkBooking: 'Jetzt buchen',
     linkWhatsapp: 'WhatsApp', linkPhone: 'Anrufen', linkEmail: 'E-Mail schreiben', linkFile: 'Herunterladen',
+    sectionHome: 'Startseite', sectionBlog: 'Blog', sectionNews: 'Neuigkeiten', sectionEvents: 'Veranstaltungen', sectionLive: 'Live', sectionCatalogue: 'Katalog',
     phone: 'Telefon', email: 'E-Mail', whatsapp: 'WhatsApp',
     saveContact: 'Kontakt speichern', moreAbout: 'Mehr über {name}', directions: 'Route',
     linksHeading: 'Links', contactHeading: 'Kontakt', socialsHeading: 'Soziale Profile', locationsHeading: 'Standorte',
@@ -93,6 +103,7 @@ const MESSAGES: Record<string, DigitalCardSiteMessages> = {
   fr: {
     linkUrl: 'Site web', linkPage: 'Ouvrir la page', linkForm: 'Nous écrire', linkBooking: 'Réserver',
     linkWhatsapp: 'WhatsApp', linkPhone: 'Appeler', linkEmail: 'Envoyer un e-mail', linkFile: 'Télécharger',
+    sectionHome: 'Accueil', sectionBlog: 'Blog', sectionNews: 'Actualités', sectionEvents: 'Événements', sectionLive: 'Live', sectionCatalogue: 'Catalogue',
     phone: 'Téléphone', email: 'E-mail', whatsapp: 'WhatsApp',
     saveContact: 'Enregistrer le contact', moreAbout: 'En savoir plus sur {name}', directions: 'Itinéraire',
     linksHeading: 'Liens', contactHeading: 'Contact', socialsHeading: 'Réseaux sociaux', locationsHeading: 'Adresses',
@@ -104,6 +115,7 @@ const MESSAGES: Record<string, DigitalCardSiteMessages> = {
   es: {
     linkUrl: 'Sitio web', linkPage: 'Abrir la página', linkForm: 'Escríbenos', linkBooking: 'Reservar',
     linkWhatsapp: 'WhatsApp', linkPhone: 'Llamar', linkEmail: 'Enviar un correo', linkFile: 'Descargar',
+    sectionHome: 'Inicio', sectionBlog: 'Blog', sectionNews: 'Noticias', sectionEvents: 'Eventos', sectionLive: 'En directo', sectionCatalogue: 'Catálogo',
     phone: 'Teléfono', email: 'Correo', whatsapp: 'WhatsApp',
     saveContact: 'Guardar contacto', moreAbout: 'Más sobre {name}', directions: 'Cómo llegar',
     linksHeading: 'Enlaces', contactHeading: 'Contacto', socialsHeading: 'Redes sociales', locationsHeading: 'Direcciones',
@@ -115,6 +127,7 @@ const MESSAGES: Record<string, DigitalCardSiteMessages> = {
   pt: {
     linkUrl: 'Site', linkPage: 'Abrir a página', linkForm: 'Fale connosco', linkBooking: 'Reservar',
     linkWhatsapp: 'WhatsApp', linkPhone: 'Ligar', linkEmail: 'Enviar um e-mail', linkFile: 'Descarregar',
+    sectionHome: 'Início', sectionBlog: 'Blog', sectionNews: 'Notícias', sectionEvents: 'Eventos', sectionLive: 'Ao vivo', sectionCatalogue: 'Catálogo',
     phone: 'Telefone', email: 'E-mail', whatsapp: 'WhatsApp',
     saveContact: 'Guardar contacto', moreAbout: 'Mais sobre {name}', directions: 'Direções',
     linksHeading: 'Ligações', contactHeading: 'Contacto', socialsHeading: 'Redes sociais', locationsHeading: 'Moradas',
@@ -126,6 +139,7 @@ const MESSAGES: Record<string, DigitalCardSiteMessages> = {
   nl: {
     linkUrl: 'Website', linkPage: 'Pagina openen', linkForm: 'Neem contact op', linkBooking: 'Nu boeken',
     linkWhatsapp: 'WhatsApp', linkPhone: 'Bellen', linkEmail: 'E-mail sturen', linkFile: 'Downloaden',
+    sectionHome: 'Home', sectionBlog: 'Blog', sectionNews: 'Nieuws', sectionEvents: 'Evenementen', sectionLive: 'Live', sectionCatalogue: 'Catalogus',
     phone: 'Telefoon', email: 'E-mail', whatsapp: 'WhatsApp',
     saveContact: 'Contact opslaan', moreAbout: 'Meer over {name}', directions: 'Route',
     linksHeading: 'Links', contactHeading: 'Contact', socialsHeading: 'Sociale profielen', locationsHeading: 'Locaties',

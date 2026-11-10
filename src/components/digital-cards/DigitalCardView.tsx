@@ -64,15 +64,38 @@ const SECONDARY_STYLE: CSSProperties = {
   fontFamily: 'var(--font-body)',
 }
 
+/**
+ * A link's logo (Amendment A, 10): decorative, on a small neutral tile in the
+ * card's background colour so any logo stays readable on any button colour.
+ * Absolutely placed at the start of the button (the label stays centred, the
+ * same with or without a logo); the image is 24px high, up to 48px wide, never
+ * cropped; the tile is a fixed 32px tall with ~4px padding.
+ */
+function CardLogoTile({ logo }: { logo: NonNullable<CardLinkView['logo']> }) {
+  return (
+    <span
+      data-card-link-logo=""
+      aria-hidden="true"
+      className="pointer-events-none absolute start-3 top-1/2 flex h-8 -translate-y-1/2 items-center justify-center p-1"
+      style={{ backgroundColor: 'var(--color-background)', borderRadius: 'var(--radius-sm, var(--radius-md))' }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- Media Library logo, sized by the helper */}
+      <img src={logo.src} alt="" width={logo.width} height={24} loading="lazy" decoding="async" className="h-6 w-auto max-w-12 object-contain" />
+    </span>
+  )
+}
+
 function CardButton({ link, primary, messages }: { link: CardLinkView; primary: boolean; messages: DigitalCardSiteMessages }) {
   const style = primary ? PRIMARY_STYLE : SECONDARY_STYLE
   // The accessible name is the label (+ "opens in a new tab"); the one-liner is
   // its description: aria-hidden inside the link so it stays out of the name,
   // and referenced by aria-describedby so screen readers still read it.
   const descriptionId = link.description ? `card-link-desc-${link.key}` : undefined
-  const className = link.description ? BUTTON_STACKED : BUTTON
+  // With a logo the button reserves room for the tile on BOTH sides, so labels stay centred and aligned with the buttons that have none.
+  const className = `${link.description ? BUTTON_STACKED : BUTTON}${link.logo ? ' relative !px-[4.5rem]' : ''}`
   const label = link.description ? (
     <>
+      {link.logo && <CardLogoTile logo={link.logo} />}
       <span className="text-base font-semibold">
         {link.label}
         {link.external && <span className="sr-only"> ({messages.opensInNewTab})</span>}
@@ -83,6 +106,7 @@ function CardButton({ link, primary, messages }: { link: CardLinkView; primary: 
     </>
   ) : (
     <>
+      {link.logo && <CardLogoTile logo={link.logo} />}
       {link.label}
       {link.external && <span className="sr-only"> ({messages.opensInNewTab})</span>}
     </>

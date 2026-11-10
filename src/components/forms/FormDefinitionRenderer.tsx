@@ -28,7 +28,7 @@ import {
   submissionEndpoint,
   projectScopeSlugFromUrlSegment,
   applySuccessTemplate,
-  resolveSuccessTitle,
+  resolveSuccessTitle, defaultSuccessBody,
   CONSENT_FIELD_ID,
   selectedOptionSuccessNotes,
 } from '@/lib/forms/render-mapping'
@@ -39,6 +39,8 @@ export interface FormDefinitionRendererMessages {
   submitLabel: string
   submitting: string
   successMessage: string
+  /** Default body under a title — without its own "Thank you!". */
+  successMessageSent: string
   /** Default title when the visitor gave a name, e.g. "Thank you, {first_name}!". */
   successTitleNamed: string
   errorMessage: string
@@ -150,7 +152,7 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
 
   if (status === 'success') {
     const successTitle = resolveSuccessTitle(definition.successTitle, messages.successTitleNamed, values)
-    const successBody = applySuccessTemplate(definition.successBody, values) ?? messages.successMessage
+    const successBody = applySuccessTemplate(definition.successBody, values) ?? defaultSuccessBody(successTitle, messages)
     const successNotes = selectedOptionSuccessNotes(fields ?? [], values)
     return (
       <div ref={successRef} tabIndex={-1} role="status" aria-live="polite" className="py-8 text-center outline-none">

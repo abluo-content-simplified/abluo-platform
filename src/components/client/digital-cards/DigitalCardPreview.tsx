@@ -69,14 +69,16 @@ export function DigitalCardPreview({
   // here holds until the editing tab changes again.
   const [picked, setPicked] = useState<{ editing: string; value: string } | null>(null)
   const previewLang = picked && picked.editing === lang && languages.includes(picked.value) ? picked.value : lang
-  const fileIds = useMemo(() => [...new Set(links.map((l) => (l.kind === 'file' ? l.file : null)).filter((f): f is string => Boolean(f)))].sort(), [links])
-  const key = `${previewLang}|${backgroundId ?? ''}|${fileIds.join(',')}`
+  const fileIds = useMemo(() => [...new Set(links.flatMap((l) => [l.kind === 'file' ? l.file : null, l.logo]).filter((f): f is string => Boolean(f)))].sort(), [links])
+  // Amendment B — page links may point at a catalogue target: its address and title are read too.
+  const targetIds = useMemo(() => [...new Set(links.filter((l) => l.kind === 'page' && l.page).map((l) => l.page!))].sort(), [links])
+  const key = `${previewLang}|${backgroundId ?? ''}|${fileIds.join(',')}|${targetIds.join(',')}`
   const [state, setState] = useState<{ key: string; base: DigitalCardPreviewBase } | 'failed' | null>(null)
 
   useEffect(() => {
     let live = true
     const timer = setTimeout(() => {
-      getDigitalCardPreviewAction({ projectSlug, id, locale: previewLang, backgroundId, fileIds })
+      getDigitalCardPreviewAction({ projectSlug, id, locale: previewLang, backgroundId, fileIds, targetIds })
         .then((r) => live && setState(r.ok ? { key, base: r.preview } : 'failed'))
         .catch(() => live && setState('failed'))
     }, 250)
@@ -84,7 +86,7 @@ export function DigitalCardPreview({
       live = false
       clearTimeout(timer)
     }
-  }, [projectSlug, id, previewLang, backgroundId, fileIds, key])
+  }, [projectSlug, id, previewLang, backgroundId, fileIds, targetIds, key])
 
   // The last data read stays on screen while the next one loads (no flashing).
   const base = state && state !== 'failed' ? state.base : null

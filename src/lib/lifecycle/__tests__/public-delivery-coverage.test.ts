@@ -278,6 +278,7 @@ const OTHER_READERS: Record<string, string> = {
   'src/lib/api/catalogue-lifecycle.ts': 'catalogue lifecycle descriptors — referrer checks before archive/delete (authenticated dashboard)',
   'src/lib/api/faq-sets.ts': 'client dashboard FAQ set editor and library (authenticated, project-scoped after assertModuleAction) — lists every state on purpose',
   'src/lib/api/faq-lifecycle.ts': 'FAQ set lifecycle descriptor — referrer checks before archive/delete (authenticated dashboard)',
+  'src/lib/api/digital-cards.ts': 'client dashboard Digital Card editor (authenticated, project-scoped after assertModuleAction) — the page picker lists catalogue link targets with the navigation\'s own public rule (NAV_CATALOGUE_TARGET_FILTER, ADR-049 Amendment B); never delivery',
   'src/lib/api/testimonials.ts': 'client dashboard testimonial editor and library (authenticated, project-scoped after assertModuleAction) — lists every state on purpose (ADR-048)',
   'src/lib/api/testimonial-submissions.ts': 'testimonial submissions inbox (authenticated, testimonials.private.read) — resolves which testimonial was created from a submission, every state (ADR-048)',
   'src/lib/api/persons-lifecycle.ts': 'People usage and delete-referrer checks (ADR-043) — which pages, posts and events name a person; authenticated dashboard, never content',

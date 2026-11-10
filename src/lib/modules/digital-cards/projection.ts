@@ -23,6 +23,8 @@
 import { publicFilterFor } from '@/lib/lifecycle/public-types'
 import { PERSON_LISTABLE, PERSON_PUBLIC_FIELDS, type PersonPublic, type PersonPublicPhoto } from '@/lib/modules/people/projection'
 import type { BusinessLocation, ResolvedImage, SocialLink } from '@/lib/sanity/types'
+import { NAV_CATALOGUE_TARGET_FIELDS, NAV_CATALOGUE_TARGET_FILTER } from '@/lib/modules/catalogue/nav-target-groq'
+import type { CatalogueNavTarget } from '@/lib/modules/catalogue/nav-target'
 import { DIGITAL_CARD_TYPE, type DigitalCardKind, type DigitalCardLinkKind, type DigitalCardNameMode } from './model'
 
 const loc = (field: string) =>
@@ -46,6 +48,27 @@ export const DIGITAL_CARD_MEDIA_IMAGE_PROJECTION = /* groq */ `{
 /** A Media Library image reference (field on the current document) with its focal point, only when it belongs to this project. */
 const mediaImage = (field: string) => /* groq */ `select(${field}->projectSlug == $projectSlug => ${field}->${DIGITAL_CARD_MEDIA_IMAGE_PROJECTION})`
 
+/** A link's logo (Amendment A, 10): the Media Library image's asset, URL, type and size — only when it belongs to this project. */
+export const DIGITAL_CARD_LOGO_PROJECTION = /* groq */ `{
+        "asset": image.asset,
+        "url": image.asset->url,
+        "mime": image.asset->mimeType,
+        "dimensions": image.asset->metadata.dimensions { width, height }
+      }`
+
+/**
+ * Amendment B — a page link's catalogue target (landing page, collection,
+ * item): navigationLink's own projection (NAV_CATALOGUE_TARGET_FILTER / _FIELDS, ADR-033
+ * Amendment G — project-scoped, lifecycle rule, explicit-reference
+ * visibility, slug in the request locale only, segment of the enabled
+ * installation), plus the title the card shows when the link has no label.
+ * null when the reference is not a public catalogue target of this project.
+ */
+export const DIGITAL_CARD_CATALOGUE_TITLE = /* groq */ `"title": coalesce(heroTitle[$locale], name[$locale], heroTitle[$defaultLocale], name[$defaultLocale], heroTitle.en, name.en)`
+export const DIGITAL_CARD_CATALOGUE_TARGET = /* groq */ `select(defined(page) => *[^.page._ref == _id && ${NAV_CATALOGUE_TARGET_FILTER}][0]{${NAV_CATALOGUE_TARGET_FIELDS},
+        ${DIGITAL_CARD_CATALOGUE_TITLE}
+      })`
+
 /** One shown link, its target resolved. Hidden links are left out. */
 export const DIGITAL_CARD_LINK_FIELDS = /* groq */ `
       _key,
@@ -58,13 +81,19 @@ export const DIGITAL_CARD_LINK_FIELDS = /* groq */ `
       "page": select(kind in ["page", "form", "booking"] => *[_type == "page" && _id == ^.page._ref && projectSlug == $projectSlug && ${PUBLISHED}][0]{
         pageType,
         "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
-        "title": ${loc('title')}
+        "title": ${loc('title')},
+        "access": access{ visibility, navigation }
       }),
+      "hasPageRef": defined(page),
+      "catalogue": select(kind == "page" => ${DIGITAL_CARD_CATALOGUE_TARGET}),
+      "internalPage": select(kind == "page" && !defined(page) => internalPage),
+      "moduleId": select(kind == "page" && !defined(page) && !defined(internalPage) => moduleId),
       "file": select(kind == "file" => *[_type == "mediaAsset" && _id == ^.file._ref && projectSlug == $projectSlug][0]{
         mediaType,
         "url": coalesce(image.asset->url, animation.asset->url, videoUrl),
         "title": coalesce(${loc('title')}, name)
-      })
+      }),
+      "logo": select(defined(logo) => *[_type == "mediaAsset" && _id == ^.logo._ref && projectSlug == $projectSlug && defined(image.asset)][0]${DIGITAL_CARD_LOGO_PROJECTION})
 `
 
 /** The card's own fields (both kinds). */
@@ -103,6 +132,8 @@ export const DIGITAL_CARD_SITE_FIELDS = /* groq */ `
     "project": *[_type == "project" && projectSlug == $projectSlug && ${PUBLISHED}][0]{
       customDomain,
       "enabledModules": coalesce(moduleInstallations[enabled != false].moduleId, []),
+      // Amendment B — the same shape as navigationLink's moduleSegments (module page links).
+      "moduleSegments": moduleInstallations[enabled != false]{ moduleId, "segment": config.publicSegment },
       "peopleProfileSegment": moduleInstallations[moduleId == "people" && enabled != false][0].config.profileSegment
     }
 `
@@ -118,6 +149,18 @@ export const DIGITAL_CARD_SITE_CARD_FIELD = /* groq */ `"siteCard": *[${DIGITAL_
 /** A Media Library image as mediaImage() returns it. */
 export type DigitalCardImage = PersonPublicPhoto
 
+/** A link's logo as the projection returns it. */
+export interface DigitalCardLinkLogo {
+  asset?: { _ref: string; _type: 'reference' } | null
+  url?: string | null
+  /** e.g. image/svg+xml, image/png. */
+  mime?: string | null
+  dimensions?: { width?: number | null; height?: number | null } | null
+}
+
+/** A page link's catalogue target as projected (CatalogueNavTarget + its title). */
+export type DigitalCardCatalogueTarget = CatalogueNavTarget & { title?: string | null }
+
 export interface DigitalCardLinkPublic {
   _key: string
   kind: DigitalCardLinkKind
@@ -130,10 +173,20 @@ export interface DigitalCardLinkPublic {
   url?: string | null
   /** kind phone / email / whatsapp — PLAIN: encode before rendering (D9). */
   value?: string | null
-  /** kind page / form / booking — null when the page is gone or a draft. */
-  page?: { pageType?: string | null; slug?: string | null; title?: string | null } | null
+  /** kind page / form / booking — null when the target is not a `page` (or gone, or a draft). */
+  page?: { pageType?: string | null; slug?: string | null; title?: string | null; access?: { visibility?: string | null; navigation?: string | null } | null } | null
+  /** A target reference is set (with no `page` / `catalogue` it is not public → the link is left out). */
+  hasPageRef?: boolean | null
+  /** kind page (Amendment B) — a public catalogue landing page / collection / item of this project, else null. */
+  catalogue?: DigitalCardCatalogueTarget | null
+  /** kind page (Amendment B) — a built-in section (navigationLink.internalPage). */
+  internalPage?: string | null
+  /** kind page (Amendment B) — an installed module's public page (navigationLink moduleId). */
+  moduleId?: string | null
   /** kind file — null when the asset is gone or belongs to another project. */
   file?: { mediaType?: string | null; url?: string | null; title?: string | null } | null
+  /** Optional small logo on the button (Amendment A, 10); null when none, gone, or another project's. Never in the vCard. */
+  logo?: DigitalCardLinkLogo | null
 }
 
 /** The raw `show` object as stored (may be missing or partial): pass it through resolveShow(kind, show, available). */
@@ -186,6 +239,8 @@ export interface DigitalCardProjectPublic {
   customDomain?: string | null
   /** Enabled module ids: gate on 'digital-cards'; booking links need 'reservations'. */
   enabledModules: string[]
+  /** Enabled installations' public segments (navigationLink's moduleSegments) — module page links. */
+  moduleSegments?: Array<{ moduleId?: string | null; segment?: string | null }> | null
   /** People module config — the profile base path per language (for the "More about …" link). */
   peopleProfileSegment?: Record<string, string> | string | null
 }

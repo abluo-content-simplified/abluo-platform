@@ -40,6 +40,7 @@ const link = (over: Partial<PreviewLinkValue>): PreviewLinkValue => ({
   url: '',
   page: null,
   file: null,
+  logo: null,
   value: '',
   hidden: false,
   primary: false,
@@ -85,6 +86,17 @@ describe('live preview view model (Amendment A)', () => {
     expect(previewCardView('person', 'p', values, base(), messages)).toBeNull()
   })
 
+  it('a link’s logo comes from the preview files and shows as a logo on the button', () => {
+    const logo = { asset: { _ref: 'image-abc123-100x50-png', _type: 'reference' as const }, mime: 'image/png', dimensions: { width: 100, height: 50 } }
+    const b = base({ files: { ...base().files, 'img-9': { mediaType: 'image', url: 'https://cdn.sanity.io/images/x/y/abc123-100x50.png', title: 'Logo', logo } } })
+    expect(previewLink(link({ kind: 'url', url: 'https://a.example', logo: 'img-9' }), b).logo).toEqual(logo)
+    expect(previewLink(link({ kind: 'url', url: 'https://a.example', logo: 'gone' }), b).logo).toBeNull()
+    expect(previewLink(link({ kind: 'url', url: 'https://a.example' }), b).logo).toBeNull()
+    const view = previewCardView('site', 'p', { description: {}, links: [link({ key: 'z', kind: 'url', url: 'https://a.example', logo: 'img-9' })], backgroundId: null, show: {}, urlName: '' }, b, messages)!
+    expect(view.links[0].logo?.src).toContain('h=72')
+    expect(view.links[0].logo?.width).toBe(48)
+  })
+
   it('an unfinished link has no target (it is dropped like on the website)', () => {
     expect(previewLink(link({ kind: 'page', page: 'missing' }), base()).page).toBeNull()
     expect(previewLink(link({ kind: 'url', url: 'x' }), base()).url).toBe('x')
@@ -110,5 +122,26 @@ describe('preview design system (scoped CSS)', () => {
     const t = cardPreviewTheme({ colors: { darkTheme: { primary: 'red;}</style>' } } } as never, 'darkOnly', 'x"]{')
     expect(t.css).not.toContain('</style>')
     expect(t.css).toContain('[data-card-preview="x"]')
+  })
+
+  it('Amendment B — the preview resolves page links to the catalogue, sections and module pages like the website', () => {
+    const b = base({
+      project: { customDomain: 'tmz.it', enabledModules: ['digital-cards', 'catalogue', 'blog'], moduleSegments: [{ moduleId: 'catalogue', segment: 'libri' }] },
+      catalogue: { 'tmz-catalogue-page': { type: 'cataloguePage', hasPage: null, slug: null, segment: 'libri', title: 'Tra le righe' } },
+    })
+    expect(previewLink(link({ kind: 'page', page: 'tmz-catalogue-page' }), b)).toMatchObject({ hasPageRef: true, catalogue: { title: 'Tra le righe' }, page: null })
+    const links = [
+      link({ key: 'a', kind: 'page', page: 'tmz-catalogue-page' }),
+      link({ key: 'b', kind: 'page', internalPage: 'blog' }),
+      link({ key: 'c', kind: 'page', page: 'page-1' }),
+      // a reference the preview cannot read (not public) is left out
+      link({ key: 'd', kind: 'page', page: 'not-public' }),
+    ]
+    const view = previewCardView('site', 'p', { description: {}, links, backgroundId: null, show: {}, urlName: '' }, b, getDigitalCardSiteMessages('it'))!
+    expect(view.links.map((l) => [l.key, l.href, l.label])).toEqual([
+      ['a', '/libri', 'Tra le righe'],
+      ['b', '/blog', 'Blog'],
+      ['c', '/orari', 'Orari'],
+    ])
   })
 })

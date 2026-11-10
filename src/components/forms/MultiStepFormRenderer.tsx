@@ -45,7 +45,7 @@ import { useFocusOnChange } from './useFocusOnChange'
 import { FormField, validateForm } from '@/components/fields'
 import type { RenderableFormDefinition, RenderableFormField } from '@/lib/sanity/types'
 import type { FormSectionMessages } from '@/lib/i18n/form-section-messages'
-import { buildFieldConfigs, buildSubmissionPayload, submissionEndpoint, projectScopeSlugFromUrlSegment, applySuccessTemplate, resolveSuccessTitle, selectedOptionSuccessNotes, CONSENT_FIELD_ID } from '@/lib/forms/render-mapping'
+import { buildFieldConfigs, buildSubmissionPayload, submissionEndpoint, projectScopeSlugFromUrlSegment, applySuccessTemplate, resolveSuccessTitle, defaultSuccessBody, selectedOptionSuccessNotes, CONSENT_FIELD_ID } from '@/lib/forms/render-mapping'
 import { collectClientSource } from '@/lib/forms/source'
 import {
   mapContextToValues,
@@ -403,7 +403,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
 
   if (status === 'success') {
     const successTitle = resolveSuccessTitle(def.successTitle, messages.successTitleNamed, values)
-    const successBody = applySuccessTemplate(def.successBody, values) ?? messages.successMessage
+    const successBody = applySuccessTemplate(def.successBody, values) ?? defaultSuccessBody(successTitle, messages)
     const successNotes = selectedOptionSuccessNotes(def.steps.flatMap((s) => s.fields), values)
     return (
       <div ref={successRef} tabIndex={-1} role="status" aria-live="polite" className="py-8 text-center outline-none">

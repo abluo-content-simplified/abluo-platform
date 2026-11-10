@@ -33,6 +33,7 @@ import { onlyWhenReadable, pageIsOpen, PAGE_ACCESS_PROJECTION } from '@/lib/acce
 import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
 import { publicFilterFor, publicFilterForAnyType } from '@/lib/lifecycle/public-types'
 import { visibilityFilter } from '@/lib/modules/catalogue/visibility'
+import { NAV_CATALOGUE_TARGET_FIELDS, NAV_CATALOGUE_TARGET_FILTER } from '@/lib/modules/catalogue/nav-target-groq'
 import { catalogueCategoryTermsGroq, catalogueTermsGroq, moduleRoutableTermsGroq, moduleTermsGroq } from '@/lib/taxonomy/vocabulary'
 import { catalogueTaxonomyGroq } from '@/lib/modules/catalogue/taxonomy/read'
 import { EVENT_HOST_PEOPLE_FIELDS, POST_AUTHORS_FIELDS, TEAM_SECTION_PEOPLE_FIELDS } from '@/lib/modules/people/queries'
@@ -147,11 +148,12 @@ const EVENT_ENGAGEMENT_FIELDS = /* groq */ `
 //    enabled catalogue installation — null when not installed or switched off.
 // `hasPageRef` (ADR-021): a link whose target is not published yet is hidden,
 // not sent home. nav-links.ts turns all of this into a URL, or omits the link.
-const NAV_CATALOGUE_TARGET = /* groq */ `select(defined(pageRef) => *[^.pageRef._ref == _id && projectSlug == $projectSlug && string::startsWith(_type, "catalogue") && ${publicFilterForAnyType()} && ${visibilityFilter('explicitReference')}][0]{
-    "type": _type,
-    hasPage,
-    "slug": slug[$locale].current,
-    "segment": *[_type == "project" && projectSlug == $projectSlug][0].moduleInstallations[moduleId == "catalogue" && enabled != false][0].config.publicSegment
+// The catalogue-target filter and fields live in nav-target-groq.ts (shared with
+// the Digital Card links, ADR-049 Amendment B, without pulling this file into
+// browser bundles); re-exported here so the delivery scans see them.
+export { NAV_CATALOGUE_TARGET_FILTER, NAV_CATALOGUE_TARGET_FIELDS }
+
+const NAV_CATALOGUE_TARGET = /* groq */ `select(defined(pageRef) => *[^.pageRef._ref == _id && ${NAV_CATALOGUE_TARGET_FILTER}][0]{${NAV_CATALOGUE_TARGET_FIELDS}
   })`
 
 export const NAV_LINK_FIELDS = /* groq */ `

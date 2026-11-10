@@ -3,6 +3,7 @@ import {
   cardShareMeta,
   createFixedWindowLimiter,
   isBotUserAgent,
+  linkView,
   linkViews,
   loadPersonCard,
   loadSiteCard,
@@ -346,3 +347,104 @@ describe('vCard follows hidden social profiles (Amendment A)', () => {
     expect(input.urls).toEqual(['https://sofia.example'])
   })
 })
+
+describe('link logo on its tile (Amendment A, 10)', () => {
+  const lctx = { ...ctx, enabledModules: [] as string[] }
+  const base = { _key: 'k9', kind: 'url' as const, label: 'Shop', primary: false, url: 'https://shop.example.com' }
+
+  it('no logo → no logo in the view', () => {
+    expect(linkView(base, lctx)).not.toHaveProperty('logo')
+    expect(linkView({ ...base, logo: null }, lctx)).not.toHaveProperty('logo')
+    expect(linkView({ ...base, logo: { asset: null, url: null } }, lctx)).not.toHaveProperty('logo')
+  })
+
+  it('a raster logo is requested 72 px high (3x), never cropped, width from its proportions capped at 48', () => {
+    const wide = linkView({ ...base, logo: { asset: { _ref: 'image-abc123-400x100-png', _type: 'reference' }, url: 'https://cdn.sanity.io/images/p/d/abc123-400x100.png', mime: 'image/png', dimensions: { width: 400, height: 100 } } }, lctx)!
+    expect(wide.logo?.src).toContain('h=72')
+    expect(wide.logo?.src).toContain('fit=max')
+    expect(wide.logo?.width).toBe(48)
+    const square = linkView({ ...base, logo: { asset: { _ref: 'image-abc123-100x100-png', _type: 'reference' }, mime: 'image/png', dimensions: { width: 100, height: 100 } } }, lctx)!
+    expect(square.logo?.width).toBe(24)
+  })
+
+  it('an SVG logo is served as stored', () => {
+    const v = linkView({ ...base, logo: { asset: { _ref: 'image-svg1-80x20-svg', _type: 'reference' }, url: 'https://cdn.sanity.io/images/p/d/svg1-80x20.svg', mime: 'image/svg+xml', dimensions: { width: 80, height: 20 } } }, lctx)!
+    expect(v.logo?.src).toBe('https://cdn.sanity.io/images/p/d/svg1-80x20.svg')
+  })
+
+  it('the view renders the tile only on links that have a logo, decorative, in the card background colour', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server')
+    const { createElement } = await import('react')
+    const { DigitalCardView } = await import('@/components/digital-cards/DigitalCardView')
+    const withLogo = linkView({ ...base, _key: 'with', logo: { asset: { _ref: 'image-abc123-100x100-png', _type: 'reference' }, mime: 'image/png', dimensions: { width: 100, height: 100 } } }, lctx)!
+    const without = linkView({ ...base, _key: 'without', label: 'Plain' }, lctx)!
+    const view = { ...siteCardView(site({ links: [], background: null, site: { ...site().site, logo: null } as never }), ctx), primary: null, links: [withLogo, without] }
+    const html = renderToStaticMarkup(createElement(DigitalCardView, { view, messages, legalLinks: [], projectSlug: 'p', countable: false, motion: null, preview: true }))
+    expect(html.match(/data-card-link-logo/g)).toHaveLength(1)
+    const tile = html.slice(html.indexOf('data-card-link-logo'), html.indexOf('</span>', html.indexOf('data-card-link-logo')))
+    expect(tile).toContain('aria-hidden="true"')
+    expect(tile).toContain('var(--color-background)')
+    expect(tile).toContain('alt=""')
+    expect(tile).toContain('object-contain')
+    expect(html.indexOf('Plain')).toBeGreaterThan(html.indexOf('data-card-link-logo'))
+    // the without-logo button carries no tile
+    const plain = html.slice(html.indexOf('data-card-link="without"'))
+    expect(plain.slice(0, plain.indexOf('</a>'))).not.toContain('data-card-link-logo')
+  })
+})
+
+// ── Amendment B: "Page on this website" reaches what the navigation reaches ──
+describe('page links resolve through the navigation resolver (Amendment B)', () => {
+  const tmzProject = {
+    enabledModules: ['digital-cards', 'catalogue', 'blog'],
+    moduleSegments: [{ moduleId: 'catalogue', segment: 'books' }, { moduleId: 'blog', segment: null }],
+  }
+  const lctx = (siteBase: string) => ({ locale: 'en', siteBase, messages, ...tmzProject })
+  const page = (over: Record<string, unknown>) => ({ _key: 'p', kind: 'page' as const, label: null, primary: false, ...over })
+  const landing = { type: 'cataloguePage', hasPage: null, slug: null, segment: 'books', title: 'Between the Lines' }
+  const collection = { type: 'catalogueCollection', hasPage: true, slug: 'douglas-adams', segment: 'books', title: 'Douglas Adams' }
+
+  it('catalogue landing page, collection, item, built-in section and module page — on the own host and path-based', () => {
+    for (const [siteBase, pre] of [['/en', '/en'], ['/en/tmz', '/en/tmz']] as const) {
+      expect(linkView(page({ hasPageRef: true, catalogue: landing }), lctx(siteBase))).toMatchObject({ href: `${pre}/books`, label: 'Between the Lines', external: false })
+      expect(linkView(page({ hasPageRef: true, catalogue: collection }), lctx(siteBase))).toMatchObject({ href: `${pre}/books/douglas-adams`, label: 'Douglas Adams' })
+      expect(linkView(page({ hasPageRef: true, catalogue: { ...collection, type: 'catalogueItem', slug: 'good-omens', title: 'Good Omens' } }), lctx(siteBase))).toMatchObject({ href: `${pre}/books/good-omens` })
+      expect(linkView(page({ internalPage: 'blog' }), lctx(siteBase))).toMatchObject({ href: `${pre}/blog`, label: 'Blog' })
+      expect(linkView(page({ internalPage: 'homepage' }), lctx(siteBase))).toMatchObject({ href: pre, label: 'Home' })
+      expect(linkView(page({ moduleId: 'catalogue' }), lctx(siteBase))).toMatchObject({ href: `${pre}/books`, label: 'Catalogue' })
+    }
+    // A typed label wins over the target's title.
+    expect(linkView(page({ label: 'Books', hasPageRef: true, catalogue: landing }), lctx('/en'))!.label).toBe('Books')
+  })
+
+  it('page references stored before Amendment B work as before (home → site base, others → slug)', () => {
+    expect(linkView(page({ hasPageRef: true, page: { pageType: 'home', slug: 'home', title: 'Home' } }), lctx('/it/hoffmann'))!.href).toBe('/it/hoffmann')
+    expect(linkView(page({ page: { pageType: 'standard', slug: 'contatti', title: 'Contatti' } }), lctx('/it'))).toMatchObject({ href: '/it/contatti', label: 'Contatti' })
+  })
+
+  it('omits a link whose target is not public: no page, no slug in this language, catalogue or section module off, restricted page', () => {
+    // a reference that resolved to nothing (draft, archived, another project, not public)
+    expect(linkView(page({ hasPageRef: true, catalogue: null, page: null }), lctx('/en'))).toBeNull()
+    // a collection without a page / without a slug in the visitor's language
+    expect(linkView(page({ hasPageRef: true, catalogue: { ...collection, hasPage: false } }), lctx('/en'))).toBeNull()
+    expect(linkView(page({ hasPageRef: true, catalogue: { ...collection, slug: null } }), lctx('/en'))).toBeNull()
+    // catalogue not installed → no segment
+    expect(linkView(page({ hasPageRef: true, catalogue: { ...landing, segment: null } }), lctx('/en'))).toBeNull()
+    expect(linkView(page({ moduleId: 'catalogue' }), { ...lctx('/en'), moduleSegments: [] })).toBeNull()
+    // a section whose module is off
+    expect(linkView(page({ internalPage: 'events' }), lctx('/en'))).toBeNull()
+    expect(linkView(page({ internalPage: 'blog' }), { ...lctx('/en'), enabledModules: [] })).toBeNull()
+    // a members-only page (ADR-040: hidden by default, like in the menu)
+    expect(linkView(page({ page: { pageType: 'standard', slug: 'soci', title: 'Soci', access: { visibility: 'members' } } }), lctx('/en'))).toBeNull()
+    // nothing chosen
+    expect(linkView(page({}), lctx('/en'))).toBeNull()
+  })
+
+  it('the site card passes the project’s module segments through (catalogue landing on the live card)', () => {
+    const card = site()
+    card.project = { customDomain: 'tmz.it', ...tmzProject }
+    card.links = [page({ _key: 'b', hasPageRef: true, catalogue: landing }), page({ _key: 'c', moduleId: 'catalogue' })]
+    expect(siteCardView(card, ctx).links.map((l) => l.href)).toEqual(['/en/books', '/en/books'])
+  })
+})
+

@@ -144,6 +144,7 @@ function lake() {
       if (q.includes('"config": *[_type == "siteConfig"')) return HOFFMANN_SITE
       if (q.includes('_type == "digitalCard"') && q.includes('order(_updatedAt desc)')) return Object.values(docs)
       if (q.includes('_type == "page"') && q.includes('_id in $ids]._id')) return (p.ids as string[]).filter((i) => i.startsWith('hoffmann-page-'))
+      if (q.includes('_type in $types') && q.includes('_id in $ids]._id')) return (p.ids as string[]).filter((i) => i.startsWith('hoffmann-page-'))
       if (q.includes('_type == "page"')) return [{ _id: 'hoffmann-page-home', title: 'Home' }, { _id: 'hoffmann-page-contatti', title: 'Contatti' }]
       if (q.includes('_type == "person"')) return []
       return null

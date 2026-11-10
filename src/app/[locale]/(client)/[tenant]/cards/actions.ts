@@ -108,9 +108,11 @@ export async function getDigitalCardPreviewAction(input: {
   locale: string
   backgroundId: string | null
   fileIds: string[]
+  /** Page links' references (Amendment B: catalogue targets are read for these). */
+  targetIds?: string[]
 }): Promise<Result<{ preview: DigitalCardPreviewBase }>> {
   return run(input?.projectSlug, async (ctx, pid) => ({
-    preview: await getDigitalCardPreview(ctx, pid, { id: input.id, locale: input.locale, backgroundId: input.backgroundId, fileIds: input.fileIds }),
+    preview: await getDigitalCardPreview(ctx, pid, { id: input.id, locale: input.locale, backgroundId: input.backgroundId, fileIds: input.fileIds, targetIds: input.targetIds }),
   }))
 }
 
