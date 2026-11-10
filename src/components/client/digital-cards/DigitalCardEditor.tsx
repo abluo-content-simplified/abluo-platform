@@ -497,7 +497,7 @@ export function DigitalCardEditor({
   const personHref = snapshot.person ? `/${projectSlug}/people/${snapshot.person.id}` : null
   // The QR code and the share links use the address that is live (old ones redirect); before the first publish, the one being typed.
   const shareName = isPerson ? (snapshot.publishedUrlName ?? (isValidUrlName(values.urlName) && nameCheck?.state !== 'taken' ? values.urlName : null)) : null
-  const sharePath = shareName ? `/link/${shareName}` : '/link'
+  const sharePath = shareName ? `/card/${shareName}` : '/card'
   const fileName = isPerson ? shareName || 'card' : 'link'
   const linkLabels = Object.fromEntries(values.links.map((l) => [l.key, linkDisplay(l, d, d, { pages: snapshot.pages, files: snapshot.files }, getDigitalCardSiteMessages(d)).label]))
   const descriptionCount = cardTextLength(values.description[lang])
@@ -776,7 +776,7 @@ export function DigitalCardEditor({
                   <Field
                     label={e.urlName}
                     error={nameCheck?.state === 'taken' ? e.urlNameTaken : nameCheck?.state === 'invalid' ? e.urlNameInvalid : null}
-                    hint={snapshot.origin ? `${snapshot.origin.replace(/^https:\/\//, '')}/link/${values.urlName || '…'}` : `/link/${values.urlName || '…'}`}
+                    hint={snapshot.origin ? `${snapshot.origin.replace(/^https:\/\//, '')}/card/${values.urlName || '…'}` : `/card/${values.urlName || '…'}`}
                   >
                     {(p) => <TextInput {...p} value={values.urlName} readOnly={!editable} maxLength={60} autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(ev) => changeUrlName(ev.target.value)} />}
                   </Field>
@@ -786,7 +786,7 @@ export function DigitalCardEditor({
                     <Button onClick={() => changeUrlName(nameCheck.suggestion!)}>{formatDigitalCardsMessage(e.useSuggestion, { name: nameCheck.suggestion })}</Button>
                   ) : null}
                   {snapshot.retiredUrlNames.length ? (
-                    <p className="text-sm leading-5 break-words text-muted-foreground">{formatDigitalCardsMessage(e.retiredNames, { names: snapshot.retiredUrlNames.map((n) => `/link/${n}`).join(', ') })}</p>
+                    <p className="text-sm leading-5 break-words text-muted-foreground">{formatDigitalCardsMessage(e.retiredNames, { names: snapshot.retiredUrlNames.map((n) => `/card/${n}`).join(', ') })}</p>
                   ) : null}
                 </Panel>
               ) : (
@@ -795,7 +795,7 @@ export function DigitalCardEditor({
                     {e.addressTitle}
                   </h2>
                   <p className="text-[0.9375rem] leading-6 break-all text-foreground" translate="no">
-                    {formatDigitalCardsMessage(e.addressSite, { address: snapshot.origin ? `${snapshot.origin}/link` : '/link' })}
+                    {formatDigitalCardsMessage(e.addressSite, { address: snapshot.origin ? `${snapshot.origin}/card` : '/card' })}
                   </p>
                 </Panel>
               )}

@@ -210,7 +210,7 @@ describe('vCard (D9)', () => {
       phones: ['+39 335 1234567', ''],
       emails: ['sofia@example.com'],
       address: { street: 'Rue 1', postalCode: '1000', city: 'Bruxelles', country: 'BE' },
-      urls: ['https://example.com/link/sofia-rossi'],
+      urls: ['https://example.com/card/sofia-rossi'],
     })
     const lines = v.split('\r\n')
     expect(lines[0]).toBe('BEGIN:VCARD')
@@ -223,7 +223,7 @@ describe('vCard (D9)', () => {
     expect(lines.filter((l) => l.startsWith('TEL'))).toHaveLength(1)
     expect(lines).toContain('EMAIL;TYPE=INTERNET:sofia@example.com')
     expect(lines).toContain('ADR;TYPE=WORK:;;Rue 1;Bruxelles;;1000;BE')
-    expect(lines).toContain('URL:https://example.com/link/sofia-rossi')
+    expect(lines).toContain('URL:https://example.com/card/sofia-rossi')
     expect(v).not.toContain('PHOTO')
     expect(v.endsWith('END:VCARD\r\n')).toBe(true)
   })
@@ -269,15 +269,15 @@ describe('sources (D11)', () => {
 
 describe('paths and QR (D5, D12)', () => {
   it('cardPath', () => {
-    expect(cardPath('site')).toBe('/link')
-    expect(cardPath('person', 'sofia-rossi')).toBe('/link/sofia-rossi')
-    expect(cardPath('person', 'Bad Name')).toBe('/link')
+    expect(cardPath('site')).toBe('/card')
+    expect(cardPath('person', 'sofia-rossi')).toBe('/card/sofia-rossi')
+    expect(cardPath('person', 'Bad Name')).toBe('/card')
   })
 
   it('qrTarget and tagged links', () => {
-    expect(qrTarget('https://www.cyce.info/', '/link/sofia-rossi')).toBe('https://www.cyce.info/link/sofia-rossi?src=qr')
-    expect(qrTarget('https://www.cyce.info', 'link')).toBe('https://www.cyce.info/link?src=qr')
-    expect(taggedLink('https://www.cyce.info', '/link', 'instagram')).toBe('https://www.cyce.info/link?src=instagram')
-    expect(taggedLink('https://www.cyce.info', '/link', 'Bad Tag')).toBe('https://www.cyce.info/link?src=direct')
+    expect(qrTarget('https://www.cyce.info/', '/card/sofia-rossi')).toBe('https://www.cyce.info/card/sofia-rossi?src=qr')
+    expect(qrTarget('https://www.cyce.info', 'card')).toBe('https://www.cyce.info/card?src=qr')
+    expect(taggedLink('https://www.cyce.info', '/card', 'instagram')).toBe('https://www.cyce.info/card?src=instagram')
+    expect(taggedLink('https://www.cyce.info', '/card', 'Bad Tag')).toBe('https://www.cyce.info/card?src=direct')
   })
 })

@@ -99,9 +99,9 @@ export const RESERVED_SLUGS: readonly string[] = [
   'blog',
   'booking',   // booking management link /<tenant>/booking/<token> (Reservations, ADR-044 D11)
   'brand',     // Brand Hub (ADR-036)
+  'card',      // Digital Cards /<tenant>/card, /<tenant>/card/<name> (ADR-049)
   'category',
   'events',
-  'link',      // Digital Cards /<tenant>/link, /<tenant>/link/<name> (ADR-049)
   'live',
   'my-pass',   // My pass link /<tenant>/my-pass/<token> (Reservations, ADR-044 D11)
   'news',

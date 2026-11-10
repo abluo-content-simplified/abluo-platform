@@ -6,12 +6,12 @@
 // and the People projection test scan this file. Bind $projectSlug
 // (fetchForTenant does), $locale and $defaultLocale.
 //
-// Route resolution for /link/<name> (D5, D6):
-//   1. DIGITAL_CARD_PERSON_QUERY          live card → render (person null → redirect /link)
-//   2. DIGITAL_CARD_BY_RETIRED_NAME_QUERY a live card used this name → 308 /link/<urlName>
-//   3. DIGITAL_CARD_ROUTE_STATE_QUERY     the card exists but is offline → redirect /link
+// Route resolution for /card/<name> (D5, D6):
+//   1. DIGITAL_CARD_PERSON_QUERY          live card → render (person null → redirect /card)
+//   2. DIGITAL_CARD_BY_RETIRED_NAME_QUERY a live card used this name → 308 /card/<urlName>
+//   3. DIGITAL_CARD_ROUTE_STATE_QUERY     the card exists but is offline → redirect /card
 //   4. otherwise 404
-// For /link: DIGITAL_CARD_SITE_QUERY; null → DIGITAL_CARD_ROUTE_STATE_QUERY
+// For /card: DIGITAL_CARD_SITE_QUERY; null → DIGITAL_CARD_ROUTE_STATE_QUERY
 // ($kind "site") exists → redirect to the homepage, else 404.
 
 import { DIGITAL_CARD_TYPE } from './model'
@@ -23,7 +23,7 @@ import {
   DIGITAL_CARD_SITE_FIELDS,
 } from './projection'
 
-/** The project's live site card (/link). → DigitalCardSiteResult | null */
+/** The project's live site card (/card). → DigitalCardSiteResult | null */
 export const DIGITAL_CARD_SITE_QUERY = /* groq */ `*[${DIGITAL_CARD_PUBLIC} && kind == "site"] | order(_createdAt asc)[0]{
   ${DIGITAL_CARD_FIELDS},
   ${DIGITAL_CARD_SITE_FIELDS}

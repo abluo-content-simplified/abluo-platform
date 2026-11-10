@@ -1,6 +1,6 @@
 // ── Digital Cards — the public website (ADR-049 D5, D6, D7, D9) ───────────────
 //
-// Pure: the route decisions of the /link pages and the vCard routes, and the
+// Pure: the route decisions of the /card pages and the vCard routes, and the
 // VIEW MODEL a card renders from. No React, no Next, no Sanity client — the
 // pages fetch (queries.ts) and hand the results in; everything here is
 // unit-tested (__tests__/website.test.ts).
@@ -61,12 +61,12 @@ const PEOPLE_MODULE_ID = 'people'
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
 
-/** `${siteBase}/link` — siteBase is siteBasePath(locale, tenant, hostScoped). */
+/** `${siteBase}/card` — siteBase is siteBasePath(locale, tenant, hostScoped). */
 export function siteCardHref(siteBase: string): string {
   return `${siteBase.replace(/\/+$/, '')}/${DIGITAL_CARD_SEGMENT}`
 }
 
-/** `${siteBase}/link/<urlName>`. */
+/** `${siteBase}/card/<urlName>`. */
 export function personCardHref(siteBase: string, urlName: string): string {
   return `${siteCardHref(siteBase)}/${urlName}`
 }
@@ -95,7 +95,7 @@ export function isDigitalCardsModuleOn(enabledModuleIds: readonly string[] | nul
 }
 
 /**
- * /link. Live site card → render. A site card that exists but is offline
+ * /card. Live site card → render. A site card that exists but is offline
  * (unpublished / archived) → the homepage (temporary). No site card → 404.
  */
 export function siteCardOutcome(input: {
@@ -111,11 +111,11 @@ export function siteCardOutcome(input: {
 }
 
 /**
- * /link/<name>, in the order of queries.ts:
+ * /card/<name>, in the order of queries.ts:
  *   1. live card by its current name → render; its person gone / off /
- *      anonymised / archived → /link (temporary);
+ *      anonymised / archived → /card (temporary);
  *   2. a live card USED this name → 308 to its current name;
- *   3. a card with this name exists but is offline → /link (temporary);
+ *   3. a card with this name exists but is offline → /card (temporary);
  *   4. 404.
  */
 export function personCardOutcome(input: {
@@ -150,7 +150,7 @@ interface LoadParams {
   siteBase: string
 }
 
-/** /link: reads only what the decision needs, in order. */
+/** /card: reads only what the decision needs, in order. */
 export async function loadSiteCard(fetch: CardFetch, p: LoadParams): Promise<CardRouteOutcome<DigitalCardSiteResult>> {
   const moduleOn = isDigitalCardsModuleOn(p.enabledModuleIds)
   if (!moduleOn) return { kind: 'not-found' }
@@ -160,7 +160,7 @@ export async function loadSiteCard(fetch: CardFetch, p: LoadParams): Promise<Car
   return siteCardOutcome({ moduleOn, card, state, siteBase: p.siteBase })
 }
 
-/** /link/<name>: live card → retired name → offline card → 404 (queries.ts order). */
+/** /card/<name>: live card → retired name → offline card → 404 (queries.ts order). */
 export async function loadPersonCard(
   fetch: CardFetch,
   p: LoadParams & { urlName: string },
@@ -596,10 +596,12 @@ export function siteCardView(card: DigitalCardSiteResult, ctx: CardViewContext):
   }))
 
   const logoDark = show.logo ? imageView(site.logo, siteName ?? '') : null
+  // The logo already contains the name (Website Settings): never print it twice. Only when the logo is actually shown.
+  const nameInLogo = Boolean(logoDark) && site.logoIncludesName === true
   const view: CardView = {
     kind: 'site',
     publicId: card.publicId,
-    name: show.businessName ? siteName : null,
+    name: show.businessName && !nameInLogo ? siteName : null,
     role: null,
     description: show.description ? orNull(card.description) || orNull(site.tagline) : null,
     logo: logoDark ? { dark: logoDark, light: show.logo ? imageView(site.logoLight, siteName ?? '') : null } : null,

@@ -1,4 +1,4 @@
-// ── Digital Cards — what the /link pages and vCard routes read (ADR-049) ───────
+// ── Digital Cards — what the /card pages and vCard routes read (ADR-049) ───────
 //
 // Server-only glue between the request (params, host) and the pure decisions
 // of website.ts. One cached loader per request, shared by generateMetadata and

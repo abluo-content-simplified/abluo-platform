@@ -317,8 +317,8 @@ describe('list and read', () => {
   it('lists the site card first, then person cards, with the people still without a card', async () => {
     const r = await listDigitalCards(ctx(viewer()), PROJECT, fake().deps)
     expect(r.cards.map((c) => c.id)).toEqual([SITE, CARD, 'retired'])
-    expect(r.cards[0]).toMatchObject({ kind: 'site', path: '/link', title: '' })
-    expect(r.cards[1]).toMatchObject({ kind: 'person', title: 'Anna Rossi', urlName: 'anna', path: '/link/anna', hasChanges: true, personMissing: false, linkCount: 1 })
+    expect(r.cards[0]).toMatchObject({ kind: 'site', path: '/card', title: '' })
+    expect(r.cards[1]).toMatchObject({ kind: 'person', title: 'Anna Rossi', urlName: 'anna', path: '/card/anna', hasChanges: true, personMissing: false, linkCount: 1 })
     // person-old is not among the published people: the card is marked offline.
     expect(r.cards[2]).toMatchObject({ personMissing: true })
     expect(r.people.map((p) => p.id)).toEqual(['person-sofia', 'person-luca'])
@@ -327,7 +327,7 @@ describe('list and read', () => {
 
   it('reads the draft with the switches resolved over the defaults and what data exists', async () => {
     const card = await getDigitalCard(ctx(viewer()), PROJECT, CARD, fake().deps)
-    expect(card).toMatchObject({ kind: 'person', urlName: 'anna', publishedUrlName: 'anna-rossi', rev: 'd1', path: '/link/anna', origin: 'https://www.cyce.info' })
+    expect(card).toMatchObject({ kind: 'person', urlName: 'anna', publishedUrlName: 'anna-rossi', rev: 'd1', path: '/card/anna', origin: 'https://www.cyce.info' })
     expect(card.person).toMatchObject({ id: 'person-anna', name: 'Anna Rossi', firstName: 'Anna', live: true })
     // Amendment A: social profiles on by default (nothing hidden); contacts stay off (D7)
     expect(card.show).toMatchObject({ photo: true, name: true, role: true, phone: false, email: false, whatsapp: false, saveContact: false, nameMode: 'full', socials: ['c2'], hiddenSocials: [] })

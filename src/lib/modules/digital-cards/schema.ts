@@ -27,7 +27,7 @@ import {
 //
 // Owned by: digital-cards module (MODULE_REGISTRY id: 'digital-cards')
 //   digitalCard     — collection document: one card. `site` (one per project,
-//                     /link) or `person` (a People person, /link/<urlName>).
+//                     /card) or `person` (a People person, /card/<urlName>).
 //                     Stores ONLY its own links, background and visibility
 //                     switches — never copies of Website Settings or People
 //                     data (D2, D3).
@@ -38,7 +38,7 @@ import {
 
 const SECTION_TITLES: Record<DigitalCardSection, string> = { homepage: 'Homepage', blog: 'Blog', news: 'News (module)', events: 'Events', live: 'Live' }
 
-const KIND_TITLES: Record<DigitalCardKind, string> = { site: 'Site card (/link)', person: 'Person card (/link/<name>)' }
+const KIND_TITLES: Record<DigitalCardKind, string> = { site: 'Site card (/card)', person: 'Person card (/card/<name>)' }
 
 const LINK_KIND_TITLES: Record<DigitalCardLinkKind, string> = {
   url: 'Web address',
@@ -340,7 +340,7 @@ const digitalCardType = defineType({
       type: 'string',
       group: 'content',
       hidden: ({ document }) => !isPerson({ document }),
-      description: 'The card’s address: /link/<URL name>. Lowercase letters, numbers and hyphens. Renaming keeps the old address working.',
+      description: 'The card’s address: /card/<URL name>. Lowercase letters, numbers and hyphens. Renaming keeps the old address working.',
       validation: (Rule) => Rule.custom((value, context) => validateUrlName(value, context)),
     }),
     defineField({
@@ -412,7 +412,7 @@ const digitalCardType = defineType({
         title: kind === 'site' ? `Site card${projectSlug ? ` · ${projectSlug}` : ''}` : personName || 'Person card',
         subtitle: [
           kind === 'site' ? 'Site card' : kind === 'person' ? 'Person card' : 'Card',
-          kind === 'site' ? '/link' : urlName ? `/link/${urlName}` : 'No URL name',
+          kind === 'site' ? '/card' : urlName ? `/card/${urlName}` : 'No URL name',
           status,
         ]
           .filter(Boolean)

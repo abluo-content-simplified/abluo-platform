@@ -1,6 +1,6 @@
 // ── Digital Cards module — the ONE public projection of a card (ADR-049) ──────
 //
-// Every website read of a `digitalCard` (the /link pages, the vCard routes, the
+// Every website read of a `digitalCard` (the /card pages, the vCard routes, the
 // hit endpoint's id check) filters it with DIGITAL_CARD_PUBLIC — this
 // project's, published (never a draft), not archived, not unpublished
 // (publicFilterFor('digitalCard'), ADR-032) — and projects it with the
@@ -111,6 +111,7 @@ export const DIGITAL_CARD_FIELDS = /* groq */ `
 export const DIGITAL_CARD_SITE_FIELDS = /* groq */ `
     "site": *[_type == "siteConfig" && projectSlug == $projectSlug && ${PUBLISHED}][0]{
       siteName,
+      logoIncludesName,
       "tagline": ${loc('tagline')},
       logo { asset, hotspot, crop, "alt": ${loc('alt')} },
       logoLight { asset, hotspot, crop, "alt": ${loc('alt')} },
@@ -212,6 +213,8 @@ export type DigitalCardShowRaw = Partial<{
 
 export interface DigitalCardSitePublic {
   siteName?: string | null
+  /** The logo image already contains the business name (Website Settings) — the card then omits the name text. */
+  logoIncludesName?: boolean | null
   tagline?: string | null
   logo?: ResolvedImage | null
   logoLight?: ResolvedImage | null
@@ -267,13 +270,13 @@ export interface DigitalCardSiteResult extends DigitalCardBase {
 export interface DigitalCardPersonResult extends DigitalCardBase {
   kind: 'person'
   urlName: string
-  /** null = the person is gone, off, anonymised or archived → the card is offline (redirect to /link, D6). */
+  /** null = the person is gone, off, anonymised or archived → the card is offline (redirect to /card, D6). */
   person?: PersonPublic | null
-  /** The live site card (null = none): its background is inherited when the card has none; business name links to /link only when set. */
+  /** The live site card (null = none): its background is inherited when the card has none; business name links to /card only when set. */
   siteCard?: { background?: DigitalCardImage | null } | null
 }
 
-/** DIGITAL_CARD_BY_RETIRED_NAME_QUERY result: 308 to /link/<urlName>. */
+/** DIGITAL_CARD_BY_RETIRED_NAME_QUERY result: 308 to /card/<urlName>. */
 export interface DigitalCardRetiredResult {
   urlName: string
 }

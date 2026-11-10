@@ -2182,14 +2182,14 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
 
   // ── Digital Cards ──────────────────────────────────────────────────────────
   // ADR-049 — a Linktree-like digital business card: one branded mobile page
-  // per website (/link) and one per person (/link/<name>), a QR code to print,
+  // per website (/card) and one per person (/card/<name>), a QR code to print,
   // and privacy-first visit statistics.
   //
   // The module owns `digitalCard` documents (Sanity: links, background and
   // visibility switches only — logo, name, contacts and socials are READ from
   // Website Settings and People, D3) and the aggregate statistics rows in
   // Supabase (digital_card_daily, migration 068, service role only, D11). Not a
-  // section: the /link routes present the module's data and 404 when the
+  // section: the /card routes present the module's data and 404 when the
   // module is not installed (D1). Website reads go through
   // src/lib/modules/digital-cards/projection.ts.
   //
@@ -2257,7 +2257,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
 
       placement: {
         surfaces: [
-          { kind: 'siteWide', description: 'Digital cards at /link (the website) and /link/<name> (one per person), outside the normal page layout: no header, footer, cookie banner or tracking.' },
+          { kind: 'siteWide', description: 'Digital cards at /card (the website) and /card/<name> (one per person), outside the normal page layout: no header, footer, cookie banner or tracking.' },
         ],
         note: 'Cards are not sections and have no place in the navigation. They are never in search engines or the sitemap.',
       },
@@ -2275,7 +2275,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       primary: 'hybrid',
     },
 
-    changelog: 'V1.0.0 — ADR-049. digitalCard documents (site and person cards, links, switches, background), digital_card_daily statistics (Supabase, migration 068), /link website routes, QR codes.',
+    changelog: 'V1.0.0 — ADR-049. digitalCard documents (site and person cards, links, switches, background), digital_card_daily statistics (Supabase, migration 068), /card website routes, QR codes.',
   },
 
   // ── Courses ────────────────────────────────────────────────────────────────

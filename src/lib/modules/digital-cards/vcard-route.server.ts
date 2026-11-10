@@ -1,6 +1,6 @@
 // ── Digital Cards — Save contact (ADR-049 D9) ─────────────────────────────────
 //
-// The two GET route handlers (`/link/contact.vcf`, `/link/<name>/contact.vcf`)
+// The two GET route handlers (`/card/contact.vcf`, `/card/<name>/contact.vcf`)
 // share this. The vCard is generated on request from the same published data
 // and switches as the card; nothing is stored. Bot user agents → 403 before
 // any read; module off / card offline / Save contact off / nothing to save →

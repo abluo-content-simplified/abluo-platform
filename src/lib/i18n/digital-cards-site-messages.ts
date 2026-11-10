@@ -1,6 +1,6 @@
 /**
  * Digital Cards — website messages (ADR-049). Platform chrome of the public
- * /link pages: the standard labels of links without a label of their own, the
+ * /card pages: the standard labels of links without a label of their own, the
  * Save contact button, the small "More about …" link and the screen-reader
  * headings. Tenant content (names, labels, descriptions) comes from Sanity.
  *
@@ -9,6 +9,13 @@
  * formatDigitalCardSiteMessage(). (Dashboard strings live in
  * digital-cards-messages.ts — a different file, a different audience.)
  */
+
+/**
+ * The brand line under the card's buttons ("a.card by abluo"): a product
+ * name, not copy — the same in every language, so it is not in the dictionaries.
+ * Always shown (not tied to the project's showAbluoCredit).
+ */
+export const DIGITAL_CARD_CREDIT = { text: 'a.card by abluo', href: 'https://abluo.app' } as const
 
 export interface DigitalCardSiteMessages {
   /** Standard link labels, used when a link has no label of its own (D8). */

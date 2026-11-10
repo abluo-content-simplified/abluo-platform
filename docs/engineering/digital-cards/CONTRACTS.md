@@ -1,4 +1,6 @@
-# Digital Cards — build contracts (ADR-049)
+# a.card (Abluo Card) — Digital Cards build contracts (ADR-049)
+
+Public URLs are `/card…` (ADR-049 Amendment C); the module id stays `digital-cards`.
 
 Shared names every build stream uses. Change a name here first, then in code.
 
@@ -20,7 +22,7 @@ Shared names every build stream uses. Change a name here first, then in code.
 | Lifecycle rule | `digitalCard: 'optional'` in `LIFECYCLE_PUBLIC_RULES` |
 | Nav label | "Digital Cards" (en) · "Biglietti digitali" (it) · "Digitale Karten" (de) |
 | Dashboard route | `/{project}/cards`, editor `/{project}/cards/[id]` |
-| Website routes | `src/app/[locale]/(website)/[tenant]/link/page.tsx` (site card), `link/[name]/page.tsx` (person card), `link/contact.vcf/route.ts`, `link/[name]/contact.vcf/route.ts` |
+| Website routes | `src/app/[locale]/(website)/[tenant]/card/page.tsx` (site card), `link/[name]/page.tsx` (person card), `link/contact.vcf/route.ts`, `link/[name]/contact.vcf/route.ts` |
 | Proxy marker | request header `x-abluo-card: 1` (`DIGITAL_CARD_HEADER` in `src/lib/proxy/digital-card.ts`, with `isDigitalCardPath(pathname)`); response `X-Robots-Tag: noindex, nofollow` |
 | Reserved segments | `link` (website tenant-level) and `cards` (client dashboard) in `src/lib/platform/reserved-slugs.ts` |
 | Hit endpoint | `POST /api/cards/hit` |
@@ -53,7 +55,7 @@ Defaults (`defaultShow(kind)` in `model.ts`): site → all true, all socials, al
 - `encodeContact(value: string): string` / `decodeContact(enc: string): string` — reversible, non-plain (base64 of a fixed XOR + reverse); the HTML never contains `@` addresses or digit runs of phone numbers.
 - `buildVCard(input)` → vCard 3.0 string (FN, N, ORG, TITLE, TEL, EMAIL, ADR, URL, PHOTO omitted), escaping per RFC 6350.
 - `normalizeSource(srcParam, referrerHost)` → allow-listed slug `[a-z0-9-]{1,32}` from `src`, else known referrer map (instagram, facebook, linkedin, google, whatsapp, x, tiktok, youtube…), else `direct`.
-- `cardPath(kind, urlName?)` → `/link` | `/link/<urlName>`; `qrTarget(canonicalOrigin, path)` → `${origin}${path}?src=qr`.
+- `cardPath(kind, urlName?)` → `/card` | `/card/<urlName>`; `qrTarget(canonicalOrigin, path)` → `${origin}${path}?src=qr`.
 
 ## Website (public)
 - Bare layout: in `[tenant]/layout.tsx`, when the `x-abluo-card` header is `1` (after design-system resolution, before the Livener/generic branches), return only `SiteLinkScopeProvider` + `DesignSystemHead` (+ page gradient if any) + `<main>{children}</main>`. No ConsentProvider banner, TrackingScripts, FirstTouchRecorder, header, footer, WhatsApp FAB.

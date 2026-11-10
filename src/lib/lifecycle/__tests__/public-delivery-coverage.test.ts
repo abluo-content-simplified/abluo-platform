@@ -35,7 +35,7 @@ const DELIVERY_MODULES: Record<string, Record<string, unknown>> = {
   'src/lib/connections/api/event-queries.ts': partnerEvents,
   // ADR-048 — the testimonials section's selection queries (featured / latest / tag / hand-picked).
   'src/lib/modules/testimonials/queries.ts': testimonialQueries,
-  // ADR-049 — the /link pages, the vCard routes and the hit endpoint's id check.
+  // ADR-049 — the /card pages, the vCard routes and the hit endpoint's id check.
   'src/lib/modules/digital-cards/queries.ts': digitalCardQueries,
 }
 

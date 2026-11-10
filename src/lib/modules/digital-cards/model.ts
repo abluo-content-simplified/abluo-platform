@@ -22,7 +22,7 @@ export const DIGITAL_CARD_PERMISSIONS = {
   statsRead: 'digital-cards.stats.read',
 } as const
 
-/** D2 — a site card (one per project, at /link) or a person card (/link/<urlName>). */
+/** D2 — a site card (one per project, at /card) or a person card (/card/<urlName>). */
 export const DIGITAL_CARD_KINDS = ['site', 'person'] as const
 export type DigitalCardKind = (typeof DIGITAL_CARD_KINDS)[number]
 
@@ -98,7 +98,7 @@ export const DIGITAL_CARD_URL_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 export const DIGITAL_CARD_URL_NAME_MAX = 60
 
 /** The website segment (reserved slug) and the dashboard segment. */
-export const DIGITAL_CARD_SEGMENT = 'link'
+export const DIGITAL_CARD_SEGMENT = 'card'
 export const DIGITAL_CARD_DASHBOARD_SEGMENT = 'cards'
 
 /** D11 — statistics. */
@@ -511,7 +511,7 @@ export function normalizeSource(srcParam: string | null | undefined, referrerHos
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
 
-/** `/link` for the site card, `/link/<urlName>` for a person card (tenant-relative, no locale). */
+/** `/card` for the site card, `/card/<urlName>` for a person card (tenant-relative, no locale). */
 export function cardPath(kind: DigitalCardKind, urlName?: string | null): string {
   if (kind === 'person' && isValidUrlName(urlName)) return `/${DIGITAL_CARD_SEGMENT}/${urlName}`
   return `/${DIGITAL_CARD_SEGMENT}`

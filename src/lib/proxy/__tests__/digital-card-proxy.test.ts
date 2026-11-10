@@ -1,5 +1,5 @@
 /**
- * Digital Cards through `proxy()` (ADR-049 D5, D10): `/link…` routes like any
+ * Digital Cards through `proxy()` (ADR-049 D5, D10): `/card…` routes like any
  * website path on every host kind, lands in the visitor's language on a
  * project's own domain, is marked noindex (but NOT no-store — cards cache) and
  * carries the bare-layout marker. A client-sent marker never reaches the layout.
@@ -26,21 +26,24 @@ async function call(host: string, path: string, headers: Record<string, string> 
 
 describe('isDigitalCardPath', () => {
   it.each([
-    ['/link', true],
-    ['/link/', true],
-    ['/link/sofia-rossi', true],
-    ['/link/contact.vcf', true],
-    ['/link/sofia-rossi/contact.vcf', true],
-    ['/it/link', true],
-    ['/it/link/sofia', true],
-    ['/it/hoffmann/link', true],
-    ['/en/cyce/link/anna/contact.vcf', true],
-    ['/hoffmann/link/sofia', true],
+    ['/card', true],
+    ['/card/', true],
+    ['/card/sofia-rossi', true],
+    ['/card/contact.vcf', true],
+    ['/card/sofia-rossi/contact.vcf', true],
+    ['/it/card', true],
+    ['/it/card/sofia', true],
+    ['/it/hoffmann/card', true],
+    ['/en/cyce/card/anna/contact.vcf', true],
+    ['/hoffmann/card/sofia', true],
     ['/linkedin', false],
     ['/links', false],
-    ['/link/Sofia', false],
-    ['/link/sofia/other', false],
-    ['/link/sofia.vcf', false],
+    ['/card/Sofia', false],
+    ['/link', false],
+    ['/link/sofia', false],
+    ['/link/contact.vcf', false],
+    ['/card/sofia/other', false],
+    ['/card/sofia.vcf', false],
     ['/it/hoffmann/blog/link-post', false],
     ['/', false],
     ['/en/dashboard', false],
@@ -52,14 +55,14 @@ describe('isDigitalCardPath', () => {
 describe('digital card routing', () => {
   it.each([
     // [host, request path, expected rewrite pathname or null for pass-through]
-    ['dev.abluo.app', '/hoffmann/link', '/it/hoffmann/link'],
-    ['dev.abluo.app', '/it/hoffmann/link/sofia', null],
-    ['preview.abluo.app', '/hoffmann/link/sofia', '/it/hoffmann/link/sofia'],
-    ['preview.abluo.app', '/cyce/link/contact.vcf', '/en/cyce/link/contact.vcf'],
-    ['ch-psicoterapeuta.com', '/de/link', '/de/hoffmann/link'],
-    ['ch-psicoterapeuta.com', '/link', '/it/hoffmann/link'],
-    ['ch-psicoterapeuta.com', '/link/sofia/contact.vcf', '/it/hoffmann/link/sofia/contact.vcf'],
-    ['hoffmann.localhost:3000', '/link', '/it/hoffmann/link'],
+    ['dev.abluo.app', '/hoffmann/card', '/it/hoffmann/card'],
+    ['dev.abluo.app', '/it/hoffmann/card/sofia', null],
+    ['preview.abluo.app', '/hoffmann/card/sofia', '/it/hoffmann/card/sofia'],
+    ['preview.abluo.app', '/cyce/card/contact.vcf', '/en/cyce/card/contact.vcf'],
+    ['ch-psicoterapeuta.com', '/de/card', '/de/hoffmann/card'],
+    ['ch-psicoterapeuta.com', '/card', '/it/hoffmann/card'],
+    ['ch-psicoterapeuta.com', '/card/sofia/contact.vcf', '/it/hoffmann/card/sofia/contact.vcf'],
+    ['hoffmann.localhost:3000', '/card', '/it/hoffmann/card'],
   ])('%s %s', async (host, path, expected) => {
     const { res, rewrite } = await call(host, path)
     expect(res.status).toBeLessThan(300)
@@ -68,18 +71,18 @@ describe('digital card routing', () => {
   })
 
   it("lands in the visitor's language on the project's own domain (D5)", async () => {
-    const { rewrite } = await call('ch-psicoterapeuta.com', '/link/sofia', { 'accept-language': 'de-CH,de;q=0.9' })
-    expect(rewrite?.pathname).toBe('/de/hoffmann/link/sofia')
-    const fr = await call('cyce.info', '/link?src=qr', { 'accept-language': 'fr-BE,fr;q=0.9,en;q=0.5' })
-    expect(fr.rewrite?.pathname).toBe('/fr/cyce/link')
+    const { rewrite } = await call('ch-psicoterapeuta.com', '/card/sofia', { 'accept-language': 'de-CH,de;q=0.9' })
+    expect(rewrite?.pathname).toBe('/de/hoffmann/card/sofia')
+    const fr = await call('cyce.info', '/card?src=qr', { 'accept-language': 'fr-BE,fr;q=0.9,en;q=0.5' })
+    expect(fr.rewrite?.pathname).toBe('/fr/cyce/card')
     expect(fr.rewrite?.search).toBe('?src=qr')
     // A language the site does not offer → its default.
-    const ja = await call('cyce.info', '/link', { 'accept-language': 'ja' })
-    expect(ja.rewrite?.pathname).toBe('/en/cyce/link')
+    const ja = await call('cyce.info', '/card', { 'accept-language': 'ja' })
+    expect(ja.rewrite?.pathname).toBe('/en/cyce/card')
   })
 
   it('marks the response noindex and forwards the bare-layout marker, without no-store', async () => {
-    const { res } = await call('ch-psicoterapeuta.com', '/link')
+    const { res } = await call('ch-psicoterapeuta.com', '/card')
     expect(res.headers.get('x-robots-tag')).toBe('noindex, nofollow')
     expect(res.headers.get('cache-control')).toBeNull()
     expect(res.headers.get('x-middleware-override-headers')?.split(',')).toContain(DIGITAL_CARD_HEADER)

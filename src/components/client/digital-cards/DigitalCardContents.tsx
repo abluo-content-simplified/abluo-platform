@@ -123,7 +123,14 @@ export function DigitalCardContents({
       ]
     : [
         { key: 'logo', label: e.logo, value: av.logo ? c.logoValue : c.notAdded, ...sw('logo', av.logo) },
-        { key: 'businessName', label: e.businessName, value: valueOr(av.siteName), ...sw('businessName', av.businessName) },
+        {
+          key: 'businessName',
+          label: e.businessName,
+          value: valueOr(av.siteName),
+          ...sw('businessName', av.businessName),
+          // The logo image already contains the name: keep the switch, say it is not printed (live with the Logo switch).
+          extra: av.logoIncludesName === true && av.logo && flag('logo') ? <p className="text-sm leading-5 text-muted-foreground">{c.nameInLogoNote}</p> : undefined,
+        },
         { key: 'description', label: e.description, value: descriptionText || c.descriptionEmpty, on: flag('description'), onChange: (on) => onSwitch('description', on), extra: descriptionField },
       ]
 

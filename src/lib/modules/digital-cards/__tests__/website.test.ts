@@ -114,18 +114,18 @@ describe('route outcomes (D6)', () => {
     expect(siteCardOutcome({ moduleOn: true, card: null, state: null, siteBase: '/it' }).kind).toBe('not-found')
   })
 
-  it('person card: render, person offline → /link, retired name → 308, offline card → /link, else 404', () => {
+  it('person card: render, person offline → /card, retired name → 308, offline card → /card, else 404', () => {
     const base = { moduleOn: true, urlName: 'sofia', retired: null, state: null, siteBase: '/en/cyce' }
     expect(personCardOutcome({ ...base, card: personCard() }).kind).toBe('render')
-    expect(personCardOutcome({ ...base, card: personCard({ person: null }) })).toEqual({ kind: 'redirect', to: '/en/cyce/link', permanent: false })
+    expect(personCardOutcome({ ...base, card: personCard({ person: null }) })).toEqual({ kind: 'redirect', to: '/en/cyce/card', permanent: false })
     expect(personCardOutcome({ ...base, card: null, retired: { urlName: 'sofia-rossi' } })).toEqual({
       kind: 'redirect',
-      to: '/en/cyce/link/sofia-rossi',
+      to: '/en/cyce/card/sofia-rossi',
       permanent: true,
     })
     expect(personCardOutcome({ ...base, card: null, state: { kind: 'person', urlName: 'sofia', live: false } })).toEqual({
       kind: 'redirect',
-      to: '/en/cyce/link',
+      to: '/en/cyce/card',
       permanent: false,
     })
     expect(personCardOutcome({ ...base, card: null }).kind).toBe('not-found')
@@ -134,10 +134,10 @@ describe('route outcomes (D6)', () => {
   })
 
   it('keeps an allow-listed ?src= across a redirect only', () => {
-    expect(withSource('/en/link', 'qr')).toBe('/en/link?src=qr')
-    expect(withSource('/en/link', 'QR')).toBe('/en/link?src=qr')
-    expect(withSource('/en/link', '<script>')).toBe('/en/link')
-    expect(withSource('/en/link', ['qr', 'x'])).toBe('/en/link')
+    expect(withSource('/en/card', 'qr')).toBe('/en/card?src=qr')
+    expect(withSource('/en/card', 'QR')).toBe('/en/card?src=qr')
+    expect(withSource('/en/card', '<script>')).toBe('/en/card')
+    expect(withSource('/en/card', ['qr', 'x'])).toBe('/en/card')
   })
 
   it('loaders read only what the decision needs, in the queries.ts order', async () => {
@@ -154,7 +154,7 @@ describe('route outcomes (D6)', () => {
 
     calls.length = 0
     const out = await loadPersonCard(fake(new Map([[DIGITAL_CARD_BY_RETIRED_NAME_QUERY, { urlName: 'sofia-rossi' }]])), { ...p, urlName: 'sofia' })
-    expect(out).toEqual({ kind: 'redirect', to: '/en/link/sofia-rossi', permanent: true })
+    expect(out).toEqual({ kind: 'redirect', to: '/en/card/sofia-rossi', permanent: true })
     expect(calls).toEqual([DIGITAL_CARD_PERSON_QUERY, DIGITAL_CARD_BY_RETIRED_NAME_QUERY])
 
     calls.length = 0
@@ -177,7 +177,7 @@ describe('site card view (D7, D8, D9)', () => {
     expect(view.contacts.map((c) => c.kind)).toEqual(['phone', 'email', 'whatsapp'])
     expect(view.socials.map((s) => s.icon)).toEqual(['instagram', 'facebook'])
     expect(view.locations.map((l) => l.key)).toEqual(['l1', 'l2'])
-    expect(view.saveContactHref).toBe('/en/link/contact.vcf')
+    expect(view.saveContactHref).toBe('/en/card/contact.vcf')
     // D9: nothing scrapeable in what reaches the HTML
     const html = JSON.stringify(view)
     expect(html).not.toContain('@studio.example')
@@ -239,7 +239,7 @@ describe('person card view (D2, D7)', () => {
     expect(view.contacts).toEqual([])
     expect(view.socials.map((x) => x.key)).toEqual(['c3', 'c4'])
     expect(view.saveContactHref).toBeNull()
-    expect(view.business).toEqual({ name: 'Studio Rossi', href: '/en/link' })
+    expect(view.business).toEqual({ name: 'Studio Rossi', href: '/en/card' })
     expect(view.profile).toEqual({ href: '/en/team/sofia-rossi', label: 'More about Sofia' })
     // inherits the site card's background (D4)
     expect((view.background as { asset: { _ref: string } }).asset._ref).toBe('image-bg-site')
@@ -250,7 +250,7 @@ describe('person card view (D2, D7)', () => {
     expect(view.name).toBe('Sofia')
     expect(view.contacts.map((c) => c.kind)).toEqual(['phone', 'email'])
     expect(view.socials.map((s) => s.href)).toEqual(['https://www.instagram.com/sofia.yoga/', 'https://sofia.example'])
-    expect(view.saveContactHref).toBe('/en/link/sofia-rossi/contact.vcf')
+    expect(view.saveContactHref).toBe('/en/card/sofia-rossi/contact.vcf')
     expect(JSON.stringify(view)).not.toContain('sofia@studio.example')
   })
 
@@ -266,6 +266,29 @@ describe('person card view (D2, D7)', () => {
     expect(share.title).toBe('Sofia Rossi · Studio Rossi')
     expect(share.description).toBe('Yoga teacher')
     expect((share.image as { asset: { _ref: string } }).asset._ref).toBe('image-photo-1')
+  })
+})
+
+describe('logo already contains the name', () => {
+  const withSite = (extra: Record<string, unknown>, show: Record<string, unknown> = {}) => {
+    const s = site({ show })
+    return { ...s, site: { ...s.site, ...extra } } as typeof s
+  }
+  it('hides the name text when the logo is shown and the flag is on', () => {
+    const view = siteCardView(withSite({ logoIncludesName: true }), ctx)
+    expect(view.logo).not.toBeNull()
+    expect(view.name).toBeNull()
+  })
+  it('shows the name when the logo is switched off, missing, or the flag is off', () => {
+    expect(siteCardView(withSite({ logoIncludesName: true }, { logo: false }), ctx).name).toBe('Studio Rossi')
+    expect(siteCardView(withSite({ logoIncludesName: true, logo: null }), ctx).name).toBe('Studio Rossi')
+    expect(siteCardView(withSite({ logoIncludesName: false }), ctx).name).toBe('Studio Rossi')
+    expect(siteCardView(withSite({}), ctx).name).toBe('Studio Rossi')
+  })
+  it('still honours the business name switch, and the vCard keeps the name', () => {
+    expect(siteCardView(withSite({ logoIncludesName: true }, { logo: false, businessName: false }), ctx).name).toBeNull()
+    const v = buildVCard(siteVCardInput(withSite({ logoIncludesName: true }), 'https://www.studio.example'))
+    expect(v).toContain('ORG:Studio Rossi')
   })
 })
 
@@ -331,8 +354,8 @@ describe('fixed-window limiter (no IP)', () => {
 
 describe('Show QR code (Amendment A)', () => {
   it('encodes the card’s canonical address with ?src=qr', () => {
-    expect(siteCardView(site(), ctx).qr).toEqual({ url: 'https://www.studio.example/link?src=qr', address: 'www.studio.example/link' })
-    expect(personCardView(personCard(), ctx).qr).toEqual({ url: 'https://www.studio.example/link/sofia-rossi?src=qr', address: 'www.studio.example/link/sofia-rossi' })
+    expect(siteCardView(site(), ctx).qr).toEqual({ url: 'https://www.studio.example/card?src=qr', address: 'www.studio.example/card' })
+    expect(personCardView(personCard(), ctx).qr).toEqual({ url: 'https://www.studio.example/card/sofia-rossi?src=qr', address: 'www.studio.example/card/sofia-rossi' })
   })
 
   it('is absent without a domain of its own (a preview host is never printed)', () => {
@@ -370,6 +393,20 @@ describe('link logo on its tile (Amendment A, 10)', () => {
   it('an SVG logo is served as stored', () => {
     const v = linkView({ ...base, logo: { asset: { _ref: 'image-svg1-80x20-svg', _type: 'reference' }, url: 'https://cdn.sanity.io/images/p/d/svg1-80x20.svg', mime: 'image/svg+xml', dimensions: { width: 80, height: 20 } } }, lctx)!
     expect(v.logo?.src).toBe('https://cdn.sanity.io/images/p/d/svg1-80x20.svg')
+  })
+
+  it('the view shows the a.card credit linking to abluo.app, even without a QR button, and it is not a counted link', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server')
+    const { createElement } = await import('react')
+    const { DigitalCardView } = await import('@/components/digital-cards/DigitalCardView')
+    const view = { ...siteCardView(site({ links: [], background: null, site: { ...site().site, logo: null } as never }), ctx), qr: null, saveContactHref: null, profile: null }
+    const html = renderToStaticMarkup(createElement(DigitalCardView, { view, messages, legalLinks: [], projectSlug: 'p', countable: true, motion: null, preview: true }))
+    const a = html.match(/<a[^>]*data-card-credit[^>]*>[^]*?<\/a>/)?.[0] ?? ''
+    expect(a).toContain('href="https://abluo.app"')
+    expect(a).toContain('target="_blank"')
+    expect(a).toContain('rel="noopener"')
+    expect(a).toContain('a.card by abluo')
+    expect(a).not.toContain('data-card-link')
   })
 
   it('the view renders the tile only on links that have a logo, decorative, in the card background colour', async () => {

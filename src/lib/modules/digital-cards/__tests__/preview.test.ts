@@ -77,7 +77,7 @@ describe('live preview view model (Amendment A)', () => {
     ])
     expect(view.socials.map((s) => s.icon)).toEqual(['instagram'])
     expect(view.background).not.toBeNull()
-    expect(view.qr?.url).toBe('https://www.studio.example/link?src=qr')
+    expect(view.qr?.url).toBe('https://www.studio.example/card?src=qr')
   })
 
   it('no background when none is chosen on screen; a person card without its person renders nothing', () => {
@@ -95,6 +95,14 @@ describe('live preview view model (Amendment A)', () => {
     const view = previewCardView('site', 'p', { description: {}, links: [link({ key: 'z', kind: 'url', url: 'https://a.example', logo: 'img-9' })], backgroundId: null, show: {}, urlName: '' }, b, messages)!
     expect(view.links[0].logo?.src).toContain('h=72')
     expect(view.links[0].logo?.width).toBe(48)
+  })
+
+  it('the name is not printed beside a logo that already contains it', () => {
+    const values = { description: {}, links: [], backgroundId: null, show: {}, urlName: '' }
+    const withSite = (extra: Record<string, unknown>) => base({ site: { ...base().site!, ...extra } })
+    expect(previewCardView('site', 'p', values, withSite({ logo: img('image-logo'), logoIncludesName: true }), messages)!.name).toBeNull()
+    expect(previewCardView('site', 'p', { ...values, show: { logo: false } }, withSite({ logo: img('image-logo'), logoIncludesName: true }), messages)!.name).toBe('Studio Rossi')
+    expect(previewCardView('site', 'p', values, withSite({ logo: img('image-logo'), logoIncludesName: false }), messages)!.name).toBe('Studio Rossi')
   })
 
   it('an unfinished link has no target (it is dropped like on the website)', () => {

@@ -1,4 +1,4 @@
-# ADR-049 — Digital Cards module (link page / digital business card)
+# ADR-049 — Digital Cards module (a.card — Abluo Card; link page / digital business card)
 
 **Status:** Accepted (2026-11-09 — Tom approved the brief v1.1 + decision rounds 1–4 in chat and asked to build it in one go)
 **Date:** 2026-11-09
@@ -12,17 +12,17 @@ Tenants want a Linktree-like digital business card: one branded mobile page, one
 
 ## Decisions
 
-**D1 — Module `digital-cards`**, nav label **"Digital Cards"**. Owns `digitalCard` documents (Sanity) and aggregate statistics (Supabase). Not a section; the `/link` routes present the module's data. Module-gated: not installed → `/link…` 404s.
+**D1 — Module `digital-cards`**, nav label **"Digital Cards"**. Owns `digitalCard` documents (Sanity) and aggregate statistics (Supabase). Not a section; the `/card` routes present the module's data. Module-gated: not installed → `/card…` 404s.
 
-**D2 — One record per card, two kinds.** `site` (at most one per project, at `/link`) and `person` (references a People `person`, at `/link/<urlName>`). A person card stores only its own links, background and switches; photo, name, role and public contacts are READ from People through `PERSON_PUBLIC_FIELDS` (never `person_private`). Links are never stored in People.
+**D2 — One record per card, two kinds.** `site` (at most one per project, at `/card`) and `person` (references a People `person`, at `/card/<urlName>`). A person card stores only its own links, background and switches; photo, name, role and public contacts are READ from People through `PERSON_PUBLIC_FIELDS` (never `person_private`). Links are never stored in People.
 
 **D3 — No second configuration surface.** Logo, site name, socials, locations, contacts come from Website Settings (`siteConfig`) and People. Cards store visibility switches only, never copies of the data.
 
 **D4 — Look = the design system.** No themes, colours or fonts. The only extra personalisation: one background image (Media Library asset, focal point honoured, readability overlay from an existing DS token). Person cards inherit the site card's background unless they set their own.
 
-**D5 — URLs.** `/link` and `/link/<urlName>`, the same in every language, landing in the visitor's language (language negotiation). Person urlName = the person's People slug (default locale) when it exists, else the full name slugified (`sofia-rossi`); unique per project; a number only for identical full names; editable. A renamed card keeps its old names in `retiredUrlNames` (redirect to the current name) and never gives them to another card. `link` is a reserved page/tenant segment. No short-link service.
+**D5 — URLs.** `/card` and `/card/<urlName>`, the same in every language, landing in the visitor's language (language negotiation). Person urlName = the person's People slug (default locale) when it exists, else the full name slugified (`sofia-rossi`); unique per project; a number only for identical full names; editable. A renamed card keeps its old names in `retiredUrlNames` (redirect to the current name) and never gives them to another card. `link` is a reserved page/tenant segment. No short-link service.
 
-**D6 — Offline cards never dead-end.** Unpublished/archived person card, or person `off`/anonymised/archived → redirect to `/link`. Offline site card → redirect to the homepage. Lifecycle = Publish / Unpublish / Archive like all content (no separate on/off switch). Lifecycle type `digitalCard: 'optional'`.
+**D6 — Offline cards never dead-end.** Unpublished/archived person card, or person `off`/anonymised/archived → redirect to `/card`. Offline site card → redirect to the homepage. Lifecycle = Publish / Unpublish / Archive like all content (no separate on/off switch). Lifecycle type `digitalCard: 'optional'`.
 
 **D7 — What's shown.** Per-card switches. Site card: logo, business name, description, phone, email, WhatsApp, each location, each social profile, Save contact. Person card: photo, role, short description, name (full / first only), phone, email, WhatsApp (public People contacts), the person's socials, business name (links to site card), Save contact, "More about …" link when the person has a profile page. Defaults: site card — everything that exists on; person card — photo, name, role on; phone, email, WhatsApp, Save contact OFF. Missing data → the switch is disabled with a reason and a link to where it is added.
 
@@ -72,3 +72,8 @@ Consequences: the `show.socials` field is kept hidden/read-only in the schema fo
 
 Not covered: courses and people have no public index page (only `/{segment}/{slug}` pages), so there is no module page to offer for them.
 
+## Amendment C — 2026-11-10: URL /card; product name a.card / Abluo Card
+
+1. **Public URL `/card`**, not `/link`: `/card`, `/card/<urlName>`, `/card/contact.vcf`, `/card/<urlName>/contact.vcf` (with the usual locale / project prefixes). Nothing had been printed or released to production, so there is **no `/link` alias or redirect**; `/link` is no longer a Digital Cards path and is no longer a reserved slug, while `card` is. `DIGITAL_CARD_SEGMENT` is `card`; the dashboard segment stays `cards`.
+2. **Product name.** The product is **a.card**; its full name is **Abluo Card**. Used in Abluo-voice places (this ADR, CONTRACTS, the module's Discover description). Unchanged: the nav label "Digital Cards", the module id `digital-cards`, permissions.
+3. **Credit on the public card.** Directly below the buttons (where "Show QR code" sits; shown even when the QR button is hidden) a quiet line **"a.card by abluo"** linking to `https://abluo.app` (new tab, `rel="noopener"`). Always shown — not tied to the project's `showAbluoCredit` — in the live preview too; not localized (a brand line, `DIGITAL_CARD_CREDIT`), not counted as a link click.

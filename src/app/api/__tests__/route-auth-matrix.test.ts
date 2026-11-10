@@ -1071,8 +1071,8 @@ describe('API route inventory', () => {
 const WEBSITE_ROUTES: Record<string, 'public-write (site access)' | 'public-read (site access)' | 'public-read (digital card)'> = {
   // ADR-049 D9: Save contact — GET only, the vCard of a published card whose
   // Save contact switch is on; bots refused, rate-limited (website.ts).
-  '[tenant]/link/contact.vcf': 'public-read (digital card)',
-  '[tenant]/link/[name]/contact.vcf': 'public-read (digital card)',
+  '[tenant]/card/contact.vcf': 'public-read (digital card)',
+  '[tenant]/card/[name]/contact.vcf': 'public-read (digital card)',
   '[tenant]/site-access/unlock': 'public-write (site access)',
   '[tenant]/site-access/sign-out': 'public-write (site access)',
   // B2.4: GET/HEAD only. Anonymous by nature; every request re-checks the

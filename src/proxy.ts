@@ -504,7 +504,7 @@ async function routeRequest(request: NextRequest) {
     const defaultLocale = hostScope?.defaultLocale ?? 'en'
     let locale = defaultLocale
 
-    // Digital Cards (ADR-049 D5): /link and /link/<name> are "the same in
+    // Digital Cards (ADR-049 D5): /card and /card/<name> are "the same in
     // every language, landing in the visitor's language" — printed on QR codes
     // and business cards without a locale, so they negotiate like the root.
     if (path === '/' || isDigitalCardPath(path)) {
@@ -575,7 +575,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // ─── Digital Cards (ADR-049 D10) ────────────────────────────────────────────
-  // `/link…` routes like any website path above. On top of the routing the
+  // `/card…` routes like any website path above. On top of the routing the
   // response is kept out of search engines and the layout is told to render the
   // bare card layout. Deliberately NO no-store: a card is a public page (the
   // visit counter is a browser beacon precisely so caching never matters).

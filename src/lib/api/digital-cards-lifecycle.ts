@@ -88,5 +88,5 @@ export const DIGITAL_CARD_LIFECYCLE: LifecycleDescriptor = {
   },
   isId: isDigitalCardId,
   fail,
-  label: (doc) => (doc.kind === 'site' ? 'Site card' : typeof doc.urlName === 'string' && doc.urlName ? `/link/${doc.urlName}` : 'Person card'),
+  label: (doc) => (doc.kind === 'site' ? 'Site card' : typeof doc.urlName === 'string' && doc.urlName ? `/card/${doc.urlName}` : 'Person card'),
 }

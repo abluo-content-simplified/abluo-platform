@@ -7,7 +7,7 @@ import { focalObjectPosition } from '@/lib/gallery/focal'
 import { imageSrcSet, imageUrl } from '@/lib/sanity/image'
 import { resolveEasing } from '@/lib/motion/easing'
 import type { MotionTokens } from '@/lib/sanity/types'
-import type { DigitalCardSiteMessages } from '@/lib/i18n/digital-cards-site-messages'
+import { DIGITAL_CARD_CREDIT, type DigitalCardSiteMessages } from '@/lib/i18n/digital-cards-site-messages'
 import type { CardLinkView, CardView } from '@/lib/modules/digital-cards/website'
 import { CardBeacon } from './CardBeacon'
 import { CardContacts } from './CardContacts'
@@ -294,8 +294,7 @@ export function DigitalCardView({ view, messages, legalLinks, projectSlug, count
           </section>
         )}
 
-        {(view.saveContactHref || view.profile || view.qr) && (
-          <div className="flex w-full flex-col items-center gap-3">
+        <div className="flex w-full flex-col items-center gap-3">
             {view.saveContactHref && (
               // A plain link to the route handler: the browser downloads the .vcf.
               <a href={view.saveContactHref} className={BUTTON} style={SECONDARY_STYLE} rel="nofollow">
@@ -313,8 +312,20 @@ export function DigitalCardView({ view, messages, legalLinks, projectSlug, count
               </Link>
             )}
             {view.qr && <CardQrButton url={view.qr.url} address={view.qr.address} messages={messages} />}
+            {/* The product's own credit: always shown, not tied to showAbluoCredit, and not a card link (no data-card-link → never counted as a click). */}
+            <a
+              href={DIGITAL_CARD_CREDIT.href}
+              target="_blank"
+              rel="noopener"
+              data-card-credit
+              translate="no"
+              className={`inline-flex min-h-11 items-center px-2 text-xs underline-offset-4 hover:underline ${FOCUS}`}
+              style={{ ...FOCUS_STYLE, ...muted }}
+            >
+              {DIGITAL_CARD_CREDIT.text}
+              <span className="sr-only"> ({messages.opensInNewTab})</span>
+            </a>
           </div>
-        )}
 
         {legalLinks.length > 0 && (
           <footer className="mt-4 w-full">

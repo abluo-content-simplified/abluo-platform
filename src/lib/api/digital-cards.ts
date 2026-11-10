@@ -117,7 +117,7 @@ export interface DigitalCardListItem {
   /** A person card whose person is gone, off, anonymised or archived (offline on the website, D6). */
   personMissing: boolean
   urlName: string | null
-  /** `/link` or `/link/<urlName>`. */
+  /** `/card` or `/card/<urlName>`. */
   path: string
   /** Shown links. */
   linkCount: number
@@ -203,6 +203,8 @@ export interface DigitalCardOption {
 export interface DigitalCardAvailability {
   siteName: string
   logo: boolean
+  /** Site card: the logo image already contains the business name (Website Settings), so the name text is not shown while the logo is. */
+  logoIncludesName?: boolean
   businessName: boolean
   phone: boolean
   email: boolean
@@ -365,6 +367,7 @@ const publicIdOf = (doc: Doc | undefined): string => (typeof doc?.publicId === '
 type SiteRow = {
   config?: {
     siteName?: unknown
+    logoIncludesName?: unknown
     defaultLocale?: unknown
     supportedLocales?: unknown
     phone?: unknown
@@ -383,7 +386,7 @@ type SiteRow = {
 
 const SITE_QUERY = /* groq */ `{
   "config": *[_type == "siteConfig" && projectSlug == $projectSlug && ${PUBLISHED}][0]{
-    siteName, defaultLocale, supportedLocales, phone, email, whatsappNumber,
+    siteName, logoIncludesName, defaultLocale, supportedLocales, phone, email, whatsappNumber,
     "hasLogo": defined(logo.asset) || defined(logoLight.asset),
     socialLinks[]{ _key, platform, url },
     locations[]{ _key, name, shortName, "city": address.city },
@@ -401,6 +404,7 @@ interface SiteFacts {
   siteName: string
   origin: string | null
   hasLogo: boolean
+  logoIncludesName: boolean
   phone: boolean
   email: boolean
   whatsapp: boolean
@@ -455,6 +459,7 @@ async function readSiteFacts(client: Client, projectSlug: string): Promise<SiteF
     siteName: str(c.siteName).trim(),
     origin: canonicalOrigin(str(row.project?.customDomain) || null),
     hasLogo: c.hasLogo === true,
+    logoIncludesName: c.logoIncludesName === true,
     phone: Boolean(str(c.phone).trim()),
     email: Boolean(str(c.email).trim()),
     whatsapp: Boolean(str(row.project?.whatsappNumber).trim() || str(c.whatsappNumber).trim()),
@@ -541,6 +546,7 @@ function siteAvailability(facts: SiteFacts, reservations: boolean): DigitalCardA
   return {
     siteName: facts.siteName,
     logo: facts.hasLogo,
+    logoIncludesName: facts.logoIncludesName,
     businessName: Boolean(facts.siteName),
     phone: facts.phone,
     email: facts.email,
@@ -1064,7 +1070,7 @@ async function assertRoomForOneMore(cards: CardRow[]) {
   if (groupCards(cards).size >= MAX_CARDS) throw new DigitalCardError('too_large', 'This site has too many cards. Delete some first.')
 }
 
-/** The site card (D2 — one per project, at /link). A new, unpublished draft; its switches start at the defaults. Write permission. */
+/** The site card (D2 — one per project, at /card). A new, unpublished draft; its switches start at the defaults. Write permission. */
 export async function createSiteCard(ctx: TenantAuthorizationContext, projectId: string, deps: DigitalCardDeps = {}): Promise<{ id: string; publicId: string; rev: string }> {
   const newId = deps.uuid ?? randomUUID
   const id = newId()

@@ -1,4 +1,4 @@
-/** GET /link/contact.vcf — the site card's Save contact (ADR-049 D9). See vcard-route.server.ts. */
+/** GET /card/contact.vcf — the site card's Save contact (ADR-049 D9). See vcard-route.server.ts. */
 import { serveCardVCard } from '@/lib/modules/digital-cards/vcard-route.server'
 
 export const runtime = 'nodejs'

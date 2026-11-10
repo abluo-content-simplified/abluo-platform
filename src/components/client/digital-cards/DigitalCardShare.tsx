@@ -35,7 +35,7 @@ export function DigitalCardShare({
 }: {
   /** https://www.<domain>, or null while the site has no domain. */
   origin: string | null
-  /** `/link` or `/link/<urlName>`. */
+  /** `/card` or `/card/<urlName>`. */
   path: string
   /** Download name without extension. */
   fileName: string

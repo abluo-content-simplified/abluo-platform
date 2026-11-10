@@ -90,7 +90,8 @@ describe('Digital Cards platform registrations', () => {
   })
 
   it('reserves the website and dashboard segments', () => {
-    expect(RESERVED_SLUGS).toContain('link')
+    expect(RESERVED_SLUGS).toContain('card')
+    expect(RESERVED_SLUGS).not.toContain('link')
     expect(RESERVED_SLUGS).toContain('cards')
   })
 })
