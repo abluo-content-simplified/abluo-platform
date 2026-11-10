@@ -35,6 +35,20 @@ const SCHEME_RE = /^[a-zA-Z][a-zA-Z0-9+.-]*:/
  * NOT pass-through (these are internal paths and still get prefixed):
  *   - `/about`, `about`, `/pricing#tiers`
  */
+/**
+ * A button link typed as a bare email address ("info@example.com") becomes a
+ * `mailto:` link — without the scheme a browser treats it as a page path and
+ * the button goes nowhere (CYCE contact hero, 2026-11-10). Everything else is
+ * returned unchanged, including an existing `mailto:` or a path containing @.
+ */
+const BARE_EMAIL_RE = /^[^\s@/:?#]+@[^\s@/:?#]+\.[^\s@/:?#]{2,}$/
+
+export function emailAwareHref<T extends string | null | undefined>(href: T): T {
+  if (!href) return href
+  const trimmed = href.trim()
+  return (BARE_EMAIL_RE.test(trimmed) ? `mailto:${trimmed}` : href) as T
+}
+
 export function isPassThroughHref(href: string | null | undefined): boolean {
   if (!href) return true
   // Protocol-relative — checked before the single-slash internal path case.

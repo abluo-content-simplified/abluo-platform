@@ -11,7 +11,7 @@
  */
 
 import type { Cta, CtaContextItem, ResolvedCta } from './types'
-import { isPassThroughHref, withTenantPrefix } from './href'
+import { emailAwareHref, isPassThroughHref, withTenantPrefix } from './href'
 
 /**
  * Route segment of the News module (ADR-020): `/{locale}/{tenant}/news` is the
@@ -135,12 +135,16 @@ export function resolveCta(cta: Cta | null | undefined): ResolvedCta {
 
     case 'externalUrl': {
       if (!cta.externalUrl) return { type: 'none', label, internalName }
+      // A bare email address becomes a mailto: link, which opens the mail app
+      // in place — never in a new, empty tab.
+      const href = emailAwareHref(cta.externalUrl)
+      const isMail = href.startsWith('mailto:')
       return {
         type: 'link',
         label,
         internalName,
-        href: cta.externalUrl,
-        external: cta.openInNewTab ?? true,
+        href,
+        external: isMail ? false : (cta.openInNewTab ?? true),
       }
     }
 

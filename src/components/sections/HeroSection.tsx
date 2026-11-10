@@ -15,6 +15,7 @@ import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { urlFor } from '@/lib/sanity/image'
 import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
+import { emailAwareHref } from '@/lib/sanity/href'
 import { useHostScoped } from '@/components/SiteLinkScope'
 import { CtaButton } from '@/components/ui/CtaButton'
 import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
@@ -729,7 +730,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
         ) : ctaLabel ? (
           <SlideUp duration={duration} ease={ease} delay={d4} className={ctaAtBottom ? 'mt-16' : undefined}>
             <a
-              href={ctaHref ?? '#'}
+              href={emailAwareHref(ctaHref) ?? '#'}
               className={quietCta ? quietCtaClass : 'inline-flex h-12 items-center gap-2 rounded-[var(--radius-btn)] px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85'}
               style={quietCta ? quietCtaStyle : { backgroundColor: ctaBg, color: ctaText }}
             >
