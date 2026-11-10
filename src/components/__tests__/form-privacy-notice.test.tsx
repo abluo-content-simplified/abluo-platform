@@ -1,4 +1,4 @@
-/** Privacy line above the submit button — instead of a consent checkbox. */
+/** Privacy line under the submit button — instead of a consent checkbox. */
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { FormDefinitionRenderer } from '@/components/forms/FormDefinitionRenderer'
@@ -42,12 +42,16 @@ describe('FormDefinitionRenderer — privacy line', () => {
     expect(html).toContain('data-form-privacy-notice')
     expect(html).toMatch(/<a href="\/fr\/cyce\/confidentialite"[^>]*>politique de confidentialité<\/a>\./)
     expect(html).not.toContain('gdpr_consent')
-    expect(html.indexOf('data-form-privacy-notice')).toBeLessThan(html.indexOf('type="submit"'))
+    expect(html.indexOf('data-form-privacy-notice')).toBeGreaterThan(html.indexOf('type="submit"'))
   })
   it('without a page the words stay plain text', () => {
     const html = render(def({ privacyNotice: 'By sending, you agree to our {privacy policy}.' }))
     expect(html).toContain('By sending, you agree to our privacy policy.')
     expect(html).not.toContain('<a href')
+  })
+  it('a form names its own send button; the platform word otherwise', () => {
+    expect(render(def({ submitLabel: 'Start a conversation →' }))).toContain('Start a conversation →</button>')
+    expect(render(def())).toContain('Submit</button>')
   })
   it('a form without a line renders as before', () => {
     expect(render(def({ requireConsent: true, consentText: 'I agree.' }))).not.toContain('data-form-privacy-notice')

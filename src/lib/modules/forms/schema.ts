@@ -203,7 +203,7 @@ const formDefinitionFieldMember = defineArrayMember({
         layout: 'radio',
       },
       initialValue: 'list',
-      description: 'How the field is shown. Cards suit single-select (role, type); Chips suit multi-select (interests) — Radio group and Checkbox group. Switch shows a single Checkbox as an on/off toggle (label left, switch right); the value is the same yes/no.',
+      description: 'How the field is shown. Cards suit single-select (role, type); Chips are small pills — pick one on a Radio group (nothing chosen to start with), several on a Checkbox group. Switch shows a single Checkbox as an on/off toggle (label left, switch right); the value is the same yes/no.',
       hidden: hiddenUnless(['radio-group', 'checkbox-group', 'checkbox']),
     }),
     defineField({ name: 'width', title: 'Width', type: 'string', options: { list: [{ title: 'Full row', value: '100%' }, { title: 'Half row', value: '50%' }], layout: 'radio' }, initialValue: '100%' }),
@@ -318,6 +318,13 @@ const formDefinitionType = defineType({
       description: 'Optional short paragraph shown under the title, above the fields — in the overlay and above inline forms. Leave empty and the form renders exactly as before.',
     }),
     defineField({
+      name: 'submitLabel',
+      title: 'Send Button Label',
+      type: 'localizedString',
+      group: 'presentation',
+      description: 'Text on the button that sends the form (e.g. “Start a conversation →”). Leave empty for the standard “Submit”.',
+    }),
+    defineField({
       name: 'fullWidthButton',
       title: 'Full-width Submit Button',
       type: 'boolean',
@@ -347,11 +354,11 @@ const formDefinitionType = defineType({
         defineField({ name: 'requireConsent', title: 'Require Consent', type: 'boolean', initialValue: false, description: 'When on, the final step requires GDPR consent; consent is stored on the submission as a top-level flag, not a data field.' }),
         defineField({ name: 'consentText', title: 'Consent Text', type: 'localizedText', description: 'Short consent copy shown beside the checkbox.', hidden: ({ parent }: { parent?: { requireConsent?: boolean } }) => !parent?.requireConsent }),
         defineField({ name: 'policyUrl', title: 'Privacy Policy URL', type: 'string', description: 'Optional link to the privacy policy.' }),
-        // A short line above the submit button instead of (or as well as) the
+        // A short line under the submit button instead of (or as well as) the
         // consent checkbox. The link text is marked with {braces}.
         defineField({
           name: 'notice',
-          title: 'Privacy Line (above the button)',
+          title: 'Privacy Line (under the button)',
           type: 'localizedString',
           description: 'e.g. "By sending, you agree to our {privacy policy}." — the words in {braces} link to the Privacy Page below. Leave empty for no line.',
         }),

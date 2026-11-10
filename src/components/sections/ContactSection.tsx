@@ -86,8 +86,8 @@ export function ContactSection({ section, surface, designSystem, siteConfig, mod
         /* ── Statement ────────────────────────────────────────────────────
            A closing block, not a contact card. The headline runs at display
            size, then a single rule-topped row: the email and social link on
-           the left, the availability lines right-aligned opposite. No map, no
-           form, no address — a site that closes this way is asking to be
+           the left (with the optional message button under it), the availability lines right-aligned opposite. No map, no
+           inline form, no address — a site that closes this way is asking to be
            written to, not visited. */
         <>
           {title && (
@@ -146,6 +146,24 @@ export function ContactSection({ section, surface, designSystem, siteConfig, mod
                     {link.platform ?? 'Link'}
                   </a>
                 ))}
+                {/* Optional message button — the same overlay form button the
+                    standard layout shows, under the address. Absent without a form. */}
+                {showButton && contactForm && (
+                  <FormOverlayWrapper
+                    tenantSlug={tenantSlug as UrlProjectSegment}
+                    locale={locale}
+                    forms={[{ formId: contactForm.formId, definition: contactForm }]}
+                  >
+                    <FormOverlayTrigger
+                      formId={contactForm.formId}
+                      title={section.contactOverlayTitle ?? undefined}
+                      source={{ source: 'contact_section' }}
+                      className={`mt-3 ${overlayButtonClass('primary')}`}
+                    >
+                      {buttonLabel}
+                    </FormOverlayTrigger>
+                  </FormOverlayWrapper>
+                )}
               </div>
 
               {subtitle && (

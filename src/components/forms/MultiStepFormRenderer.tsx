@@ -81,6 +81,8 @@ interface Props {
   layout?: 'inline' | 'overlay'
   /** Lead-source seed (entry point + CTA) merged with auto page/referrer/UTM. */
   source?: Record<string, unknown> | null
+  /** Called once when the form has been sent — the overlay drops its lead-in text then. */
+  onSent?: () => void
 }
 
 /** Renders a submitted value for the recap: maps option values → localized labels. */
@@ -95,7 +97,7 @@ function formatFieldValue(field: RenderableFormField, value: unknown): string {
   return String(value)
 }
 
-export function MultiStepFormRenderer({ definition: def, messages, locale = 'en', tenantSlug, context, layout = 'inline', source }: Props) {
+export function MultiStepFormRenderer({ definition: def, messages, locale = 'en', tenantSlug, context, layout = 'inline', source, onSent }: Props) {
   const openedAt = useRef(Date.now())
   const honeypotRef = useRef<HTMLInputElement>(null)
   const preparedRef = useRef(false)
@@ -396,6 +398,8 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
   const successRef = useRef<HTMLDivElement>(null)
   useFocusOnChange(stepHeaderRef, stepIndex)
   useFocusOnChange(successRef, status === 'success')
+  const sent = status === 'success'
+  useEffect(() => { if (sent) onSent?.() }, [sent]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (status === 'preparing') {
     return <div className="py-8 text-center text-[var(--color-text-secondary)] text-sm">{messages.submitting}</div>
@@ -417,17 +421,19 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
 
   if (!isRecap && !currentStep) return null
 
+  // A form may name its own send button ("Start a conversation →"); the platform word otherwise.
+  const submitLabel = def.submitLabel?.trim() || messages.submitLabel
   const primaryLabel =
     status === 'submitting'
       ? messages.submitting
       : isRecap
-        ? messages.submitLabel
+        ? submitLabel
         : editReturn
           ? messages.continueLabel
           : showRecap
             ? messages.continueLabel // last step advances to the recap; earlier steps continue
             : finalStep
-              ? messages.submitLabel
+              ? submitLabel
               : messages.continueLabel
 
   return (
@@ -560,9 +566,6 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
         </>
       )}
 
-      {/* Privacy line — on the step that sends (the final one). */}
-      {finalStep && <FormPrivacyNotice text={def.privacyNotice} pageSlug={def.privacyPageSlug} locale={locale} urlSegment={tenantSlug} />}
-
       {/* Honeypot — hidden from humans, caught by spam.ts as `company_website`. */}
       <input
         ref={honeypotRef}
@@ -608,6 +611,8 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
             {primaryLabel}
           </button>
         </div>
+        {/* Privacy line — under the button, on the step that sends (the final one). */}
+        {finalStep && <FormPrivacyNotice text={def.privacyNotice} pageSlug={def.privacyPageSlug} locale={locale} urlSegment={tenantSlug} />}
       </div>
     </form>
   )

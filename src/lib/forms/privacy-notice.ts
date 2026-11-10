@@ -1,6 +1,6 @@
 /**
  * Privacy notice line — a form that does not ask for a consent checkbox can
- * show one short line above the submit button instead ("By sending, you agree
+ * show one short line under the submit button instead ("By sending, you agree
  * to our privacy policy."). The editor marks the link text with {braces}; the
  * link goes to the form's chosen privacy page in the visitor's language.
  *

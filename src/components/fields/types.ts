@@ -175,8 +175,8 @@ export interface RadioGroupFieldConfig extends BaseFieldConfig {
   type: 'radio-group'
   options: OptionItem[]
   layout?: 'vertical' | 'horizontal'
-  /** Visual presentation: 'list' (radios, default) or 'cards' (selectable card grid). */
-  display?: 'list' | 'cards'
+  /** Visual presentation: 'list' (radios, default), 'cards' (selectable card grid) or 'chips' (pills, pick one). */
+  display?: 'list' | 'cards' | 'chips'
 }
 
 export interface CheckboxFieldConfig extends BaseFieldConfig {

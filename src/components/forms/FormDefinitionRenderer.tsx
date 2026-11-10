@@ -16,7 +16,7 @@
  * flow is slice 5.
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useFocusOnChange } from './useFocusOnChange'
 import { FormPrivacyNotice } from './FormPrivacyNotice'
 import { FormField, validateForm } from '@/components/fields'
@@ -64,9 +64,11 @@ interface Props {
   layout?: 'inline' | 'overlay'
   /** Lead-source seed (entry point + CTA) merged with auto page/referrer/UTM. */
   source?: Record<string, unknown> | null
+  /** Called once when the form has been sent — the overlay drops its lead-in text then. */
+  onSent?: () => void
 }
 
-export function FormDefinitionRenderer({ definition, messages, locale = 'en', tenantSlug, layout = 'inline', source }: Props) {
+export function FormDefinitionRenderer({ definition, messages, locale = 'en', tenantSlug, layout = 'inline', source, onSent }: Props) {
   const fields = singleStepFields(definition)
   // Presentation (ADR-018 slice 7): submit spans full width unless explicitly disabled.
   const fullWidth = definition.fullWidthButton !== false
@@ -96,6 +98,8 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
   // Focus the success message once it replaces the form (see useFocusOnChange).
   const successRef = useRef<HTMLDivElement>(null)
   useFocusOnChange(successRef, status === 'success')
+  const sent = status === 'success'
+  useEffect(() => { if (sent) onSent?.() }, [sent]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Multi-step / malformed definitions are not rendered this slice (slice 5).
   if (!fields) {
@@ -205,8 +209,6 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
           </div>
         ))}
 
-      <FormPrivacyNotice text={definition.privacyNotice} pageSlug={definition.privacyPageSlug} locale={locale} urlSegment={tenantSlug} />
-
       {/* Honeypot — hidden from humans, caught by spam.ts as `company_website`. */}
       <input
         ref={honeypotRef}
@@ -235,8 +237,10 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
           disabled={status === 'submitting'}
           className={`${fullWidth ? 'w-full ' : ''}inline-flex items-center justify-center rounded-[var(--radius-btn)] px-6 py-3.5 bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] text-sm font-semibold transition-all disabled:opacity-60 hover:bg-[var(--btn-primary-hover-bg)]`}
         >
-          {status === 'submitting' ? messages.submitting : messages.submitLabel}
+          {status === 'submitting' ? messages.submitting : (definition.submitLabel?.trim() || messages.submitLabel)}
         </button>
+        {/* Privacy line — under the button (Tom, 2026-11-10), inside the sticky bar in an overlay. */}
+        <FormPrivacyNotice text={definition.privacyNotice} pageSlug={definition.privacyPageSlug} locale={locale} urlSegment={tenantSlug} />
       </div>
     </form>
   )

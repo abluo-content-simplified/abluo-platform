@@ -85,7 +85,7 @@ export function toFieldConfig(field: RenderableFormField): FieldConfig | null {
     case 'multi-select':
       return { ...base, type: 'multi-select', options }
     case 'radio-group':
-      return { ...base, type: 'radio-group', options, display: field.display === 'cards' ? 'cards' : 'list' }
+      return { ...base, type: 'radio-group', options, display: field.display === 'cards' || field.display === 'chips' ? field.display : 'list' }
     case 'checkbox':
       // The label is the text beside the box (like the consent checkbox), not a
       // second heading above it — CheckboxField hides the top label when they match.

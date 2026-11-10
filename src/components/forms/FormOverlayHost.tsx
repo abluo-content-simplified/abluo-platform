@@ -32,9 +32,14 @@ export function FormOverlayHost() {
   const [display, setDisplay] = useState<OverlayOpenRequest | null>(null)
   const activeRequest = ctx?.request ?? null
 
+  // Once the form is sent, the lead-in ("Tell me a little about…") no longer
+  // applies — only the thank-you shows under the heading. Reset per opening.
+  const [sent, setSent] = useState(false)
+
   useEffect(() => {
     if (activeRequest) {
       setDisplay(activeRequest)
+      setSent(false)
       return
     }
     const t = setTimeout(() => setDisplay(null), 300)
@@ -54,7 +59,7 @@ export function FormOverlayHost() {
 
   return (
     <FormModal isOpen={isOpen} onClose={ctx.close} closeLabel={chrome.closeLabel} title={title} eyebrow={def?.eyebrow ?? null}>
-      {def?.intro ? (
+      {def?.intro && !sent ? (
         <p className="mb-6 whitespace-pre-line text-sm leading-relaxed text-[var(--color-text-secondary)]">{def.intro}</p>
       ) : null}
       {def ? (
@@ -67,6 +72,7 @@ export function FormOverlayHost() {
             context={req?.context ?? undefined}
             source={req?.source ?? undefined}
             layout="overlay"
+            onSent={() => setSent(true)}
           />
         ) : (
           <FormDefinitionRenderer
@@ -76,6 +82,7 @@ export function FormOverlayHost() {
             tenantSlug={ctx.tenantSlug}
             source={req?.source ?? undefined}
             layout="overlay"
+            onSent={() => setSent(true)}
           />
         )
       ) : null}

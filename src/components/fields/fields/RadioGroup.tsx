@@ -20,8 +20,11 @@ export function RadioGroup({ config, value, onChange, onBlur, error: externalErr
   const isHorizontal = config.layout === 'horizontal'
   const display = config.display ?? 'list'
 
-  // Cards presentation — a selectable card grid (single-select).
-  if (display === 'cards') {
+  // Cards / chips presentation — a selectable card grid or a row of pills
+  // (single-select). Nothing is chosen to start with; on an optional field a
+  // second click on the chosen one clears it again.
+  if (display === 'cards' || display === 'chips') {
+    const isCards = display === 'cards'
     return (
       <FieldWrapper
         id={config.id}
@@ -35,7 +38,11 @@ export function RadioGroup({ config, value, onChange, onBlur, error: externalErr
           role="radiogroup"
           aria-labelledby={`${config.id}-label`}
           onBlur={() => { handleBlur(); onBlur?.() }}
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px' }}
+          style={
+            isCards
+              ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px' }
+              : { display: 'flex', flexWrap: 'wrap', gap: '10px' }
+          }
         >
           {config.options.map((opt) => {
             const active = value === opt.value
@@ -47,19 +54,20 @@ export function RadioGroup({ config, value, onChange, onBlur, error: externalErr
                 role="radio"
                 aria-checked={active}
                 disabled={optDisabled}
-                onClick={() => !optDisabled && onChange(opt.value)}
+                onClick={() => !optDisabled && onChange(active && !config.required ? '' : opt.value)}
                 style={{
                   textAlign: 'left',
-                  padding: '12px 14px',
-                  borderRadius: 'var(--form-border-radius)',
                   fontSize: 'inherit',
                   lineHeight: 1.3,
                   cursor: optDisabled ? 'not-allowed' : 'pointer',
                   opacity: optDisabled ? 0.5 : 1,
                   border: `1px solid ${active ? 'var(--color-primary)' : 'var(--form-input-border, var(--color-border))'}`,
-                  background: active ? 'color-mix(in oklch, var(--color-primary) 8%, transparent)' : 'var(--form-input-bg)',
+                  background: active ? 'color-mix(in oklch, var(--color-primary) 8%, transparent)' : (isCards ? 'var(--form-input-bg)' : 'transparent'),
                   color: active ? 'var(--color-primary)' : 'var(--form-input-text)',
                   transition: 'border-color var(--motion-duration-fast), background var(--motion-duration-fast)',
+                  ...(isCards
+                    ? { padding: '12px 14px', borderRadius: 'var(--form-border-radius)' }
+                    : { display: 'inline-flex', alignItems: 'center', padding: '8px 14px', borderRadius: 'var(--radius-btn)' }),
                 }}
               >
                 {opt.description ? (

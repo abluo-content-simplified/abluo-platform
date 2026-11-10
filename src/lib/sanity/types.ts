@@ -1698,6 +1698,8 @@ export interface RenderableFormDefinition {
   eyebrow?: string
   /** Optional localized paragraph under the title, above the fields. Absent on every form authored before it existed. */
   intro?: string
+  /** The form's own text for the button that sends it; the platform's "Submit" when absent. */
+  submitLabel?: string | null
   /** When false, the submit/continue button is auto-width; defaults to full-width. */
   fullWidthButton?: boolean
   /** When true, a multi-step form shows an end-of-form review/recap screen (ADR-018 slice 7e). */
@@ -1706,7 +1708,7 @@ export interface RenderableFormDefinition {
   steps: RenderableFormStep[]
   requireConsent?: boolean
   consentText?: string
-  /** Locale-resolved privacy line above the submit button; link text in {braces}. */
+  /** Locale-resolved privacy line under the submit button; link text in {braces}. */
   privacyNotice?: string | null
   /** Slug (request locale) of the privacy page the line links to; null when unset or another project's page. */
   privacyPageSlug?: string | null
