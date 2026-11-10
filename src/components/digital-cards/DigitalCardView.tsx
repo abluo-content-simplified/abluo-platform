@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { FadeIn } from '@/components/animation/FadeIn'
 import { SlideUp } from '@/components/animation/SlideUp'
-import { Icon } from '@/components/icons'
+import { Icon, socialIconName } from '@/components/icons'
 import { focalObjectPosition } from '@/lib/gallery/focal'
 import { imageSrcSet, imageUrl } from '@/lib/sanity/image'
 import { resolveEasing } from '@/lib/motion/easing'
@@ -232,7 +232,7 @@ export function DigitalCardView({ view, messages, legalLinks, projectSlug, count
                     className={`inline-flex min-h-11 items-center gap-2 px-3 py-2 text-sm font-medium transition-opacity hover:opacity-80 ${FOCUS}`}
                     style={{ ...FOCUS_STYLE, color: 'var(--color-text-primary)' }}
                   >
-                    <Icon name={s.icon} size={18} />
+                    <Icon name={socialIconName(s.icon) ?? s.icon} size={18} />
                     <span>{s.label}</span>
                     <span className="sr-only"> ({messages.opensInNewTab})</span>
                   </a>

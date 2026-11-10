@@ -8,7 +8,7 @@ import { siteBasePath } from '@/lib/sanity/href'
 import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { imageUrl } from '@/lib/sanity/image'
 import { renderWordmark, FOOTER_WORDMARK_ACCENT_STYLE } from '@/lib/wordmark'
-import { Icon } from '@/components/icons'
+import { Icon, socialIconName } from '@/components/icons'
 import { FooterLanguageSwitcher } from './FooterClient'
 import { CookieSettingsLink } from '@/components/consent/CookieSettingsLink'
 import { AbluoCredit } from './AbluoCredit'
@@ -89,7 +89,7 @@ export async function Footer({
               style={{ color: 'var(--color-footer-text-muted)' }}
             >
               {/* Unregistered platforms render no icon rather than a broken one. */}
-              <Icon name={social.platform} size={16} />
+              <Icon name={socialIconName(social.platform) ?? social.platform} size={16} />
               <span
                 className="text-[0.625rem] font-bold uppercase tracking-[0.1em]"
                 style={{ fontFamily: 'var(--font-heading)' }}

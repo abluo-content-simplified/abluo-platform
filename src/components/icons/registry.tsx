@@ -109,6 +109,38 @@ export const ICONS = {
     </svg>
   ),
 
+  facebook: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M15.5 7.5h-1.75A2.75 2.75 0 0011 10.25V21" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.5 13h6" strokeLinecap="round" />
+    </svg>
+  ),
+  youtube: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <rect x="2.5" y="5.5" width="19" height="13" rx="4" />
+      <path d="M10 9.25v5.5L14.75 12z" strokeLinejoin="round" />
+    </svg>
+  ),
+  tiktok: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <path d="M13.5 3.5v11.25a3.25 3.25 0 11-3.25-3.25" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13.5 3.5c.4 2.6 2.3 4.5 5 4.75" strokeLinecap="round" />
+    </svg>
+  ),
+  threads: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <path d="M17.6 7.4A7 7 0 0012.2 5C8.3 5 5.5 7.9 5.5 12s2.8 7 6.7 7c3.2 0 5.6-1.7 5.6-4.4 0-2.2-1.9-3.6-4.6-3.6-2.3 0-3.7 1.1-3.7 2.6 0 1.3 1.1 2.2 2.6 2.2 2.2 0 3.3-1.7 3.3-4.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  // The X (formerly Twitter) logo. Its own key: `x` is the close cross.
+  'x-social': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <path d="M4.5 4.5h4l11 15h-4z" strokeLinejoin="round" />
+      <path d="M19.25 4.5l-6.1 6.7M10.85 13.3l-6.1 6.2" strokeLinecap="round" />
+    </svg>
+  ),
+
   // ── Platform staples ───────────────────────────────────────────────────────
   check: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
@@ -287,4 +319,15 @@ export const ICON_OPTIONS: { title: string; value: IconName }[] = ICON_KEYS.map(
 /** Type guard — true when `value` is a registered icon key. */
 export function isIconName(value: unknown): value is IconName {
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(ICONS, value)
+}
+
+/**
+ * Icon for a social platform value (siteConfig `socialLink.platform`, People
+ * contact kinds). `x` is the close cross in this registry, so the X platform
+ * maps to `x-social`. Unknown platforms return undefined (render no icon).
+ */
+export function socialIconName(platform: string | null | undefined): IconName | undefined {
+  if (!platform) return undefined
+  const key = platform === 'x' || platform === 'twitter' ? 'x-social' : platform
+  return isIconName(key) ? key : undefined
 }
