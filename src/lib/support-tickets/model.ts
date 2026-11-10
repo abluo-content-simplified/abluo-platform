@@ -142,13 +142,26 @@ export type TicketAttachmentView = {
   /** Signed link (5 minutes). null once deleted. */
   url: string | null
   deleted: null | 'retention' | 'redacted' | 'project_deleted' | 'removed_by_client'
+  /** The file's own name (Messages, ADR-050: shown for PDFs). */
+  name?: string
   /** Client side: the person uploaded it themselves and may delete it (round 3). */
   canDelete?: boolean
 }
 
 /** One entry of the thread, in time order. Notes only ever appear for the admin. */
 export type ThreadEntry =
-  | { kind: 'message'; id: string; authorKind: AuthorKind; author: TicketPerson; body: string; redacted: boolean; createdAt: string; attachments: TicketAttachmentView[] }
+  | {
+      kind: 'message'
+      id: string
+      authorKind: AuthorKind
+      author: TicketPerson
+      body: string
+      redacted: boolean
+      createdAt: string
+      attachments: TicketAttachmentView[]
+      /** Messages (ADR-050 D4): "Open in dashboard" cards — a destination id and its dashboard path. */
+      links?: { id: string; href: string }[]
+    }
   | { kind: 'note'; id: string; author: TicketPerson; body: string; createdAt: string }
   | { kind: 'event'; id: string; event: TicketEventKind; from: string | null; to: string | null; createdAt: string; actor: TicketPerson | null }
 
@@ -180,4 +193,9 @@ export type TicketDetail = TicketSummary & {
   context?: TicketContext // admin only
   /** Client side: the dashboard page the request was sent from (never the rest of the context). */
   reportedFrom?: string
+  /**
+   * Admin only (Tom, 2026-11-10): the client side's latest read of the request — when and by whom.
+   * The admin thread shows "Read" under the newest Abluo reply when this is at or after it.
+   */
+  clientRead?: { at: string; name: string } | null
 }

@@ -35,7 +35,7 @@
       "change": "Foto ändern",
       "remove": "Entfernen",
       "saving": "Wird gespeichert …",
-      "hint": "Es wird ein quadratischer Ausschnitt deines Bildes verwendet.",
+      "hint": "Es wird ein quadratischer Ausschnitt deines Bildes verwendet. Du kannst auch ein Bild einfügen (⌘V / Strg+V).",
       "errors": {
         "unauthenticated": "Bitte melde dich erneut an.",
         "missing": "Wähle zuerst ein Bild.",
@@ -96,7 +96,8 @@
       "catalogueItems": "Einträge",
       "catalogueCollections": "Sammlungen",
       "catalogueOptions": "Optionen",
-      "catalogueSetup": "Einrichtung"
+      "catalogueSetup": "Einrichtung",
+      "messages": "Nachrichten"
     },
     "navGroups": {
       "publish": "Veröffentlichen",
@@ -860,7 +861,7 @@
           "ai": "Mit KI erstellen",
           "soon": "Demnächst",
           "computer": "Vom Computer hochladen",
-          "computerHint": "oder ein Foto hierher ziehen"
+          "computerHint": "oder ein Foto hierher ziehen oder einen Screenshot einfügen (⌘V / Strg+V)"
         },
         "note": "Wir machen jedes Foto leichter fürs Web und bitten dich um eine kurze Beschreibung, damit alle es verstehen.",
         "preparing": "Foto wird vorbereitet …",
@@ -1599,7 +1600,7 @@
         "camera": "Foto aufnehmen",
         "phone": "Von diesem Telefon",
         "computer": "Fotos hochladen",
-        "computerHint": "oder hierher ziehen",
+        "computerHint": "oder hierher ziehen oder einen Screenshot einfügen (⌘V / Strg+V)",
         "dropHere": "Fotos loslassen, um sie hinzuzufügen",
         "library": "Mediathek",
         "full": "Hier ist kein Platz für weitere Fotos.",
@@ -1900,7 +1901,7 @@
           "label": "Fotos hinzufügen",
           "camera": "Foto aufnehmen",
           "computer": "Vom Computer hochladen",
-          "computerHint": "oder Fotos hierher ziehen",
+          "computerHint": "oder Fotos hierher ziehen oder einen Screenshot einfügen (⌘V / Strg+V)",
           "library": "Deine Mediathek",
           "photoLibrary": "Fotomediathek"
         },
@@ -2228,7 +2229,11 @@
     },
     "announcements": {
       "warning": "Bitte beachten",
-      "dismiss": "Schließen"
+      "dismiss": "Schließen",
+      "readMore": "Mehr lesen",
+      "readMoreTitle": "Ankündigung",
+      "acknowledge": "OK, verstanden",
+      "close": "Schließen"
     },
     "sites": {
       "title": "Deine Websites",
@@ -5044,6 +5049,38 @@
           "noConsent": "Die Person hat das Einwilligungsfeld nicht angekreuzt. Wenn du daraus eine Kundenstimme erstellst, musst du „Erlaubnis zur Veröffentlichung“ noch setzen, sobald du ihre Erlaubnis hast."
         }
       }
+    },
+    "messages": {
+      "title": "Nachrichten",
+      "intro": "Persönliche Nachrichten vom Abluo-Team. Nur du kannst sie sehen. Bei einem Problem stelle eine Anfrage im Support.",
+      "supportMode": "Nachrichten sind persönlich und werden während eines Supportbesuchs nicht angezeigt.",
+      "back": "Zurück zu den Nachrichten",
+      "sharedWith": "Gemeinsame Unterhaltung mit {names} und Abluo. Alle hier sehen alle Antworten.",
+      "replyLabel": "Deine Antwort",
+      "replyShared": "Deine Antwort sehen: {names}",
+      "replyPlaceholder": "Schreibe deine Antwort…",
+      "unreadCount": "{count, plural, one {# ungelesene Unterhaltung} other {# ungelesene Unterhaltungen}}",
+      "errors": {
+        "error": "Die Nachrichten konnten nicht geladen werden. Bitte versuche es erneut."
+      },
+      "list": {
+        "shared": "{count, plural, one {Gemeinsam · # Person} other {Gemeinsam · # Personen}}",
+        "unread": "Ungelesen",
+        "columns": {
+          "subject": "Betreff",
+          "state": "Status",
+          "updated": "Letzte Nachricht"
+        },
+        "emptyTitle": "Noch keine Nachrichten",
+        "emptyBody": "Wenn das Abluo-Team dir schreibt, erscheint die Unterhaltung hier.",
+        "filtersLabel": "Nachrichten durchsuchen",
+        "searchLabel": "Suchen",
+        "search": "Nachrichten durchsuchen",
+        "showing": "{shown} von {total}",
+        "clear": "Suche löschen",
+        "noMatch": "Keine Unterhaltung passt zu deiner Suche.",
+        "open": "{subject} öffnen"
+      }
     }
   },
   "app": {
@@ -5832,6 +5869,96 @@
         "notFound": "Dieser Kunde wurde nicht gefunden.",
         "failed": "Speichern fehlgeschlagen. Bitte versuch es noch einmal."
       }
+    },
+    "notifications": {
+      "title": "Benachrichtigungen",
+      "unread": "{count, plural, one {# ungelesen} other {# ungelesen}}",
+      "unreadRow": "Ungelesen",
+      "empty": "Nichts Neues. Hier erscheinen Nachrichten, Antworten des Supports und Ankündigungen, die dich betreffen.",
+      "markAll": "Alle als gelesen markieren",
+      "error": "Die Benachrichtigungen konnten nicht geladen werden.",
+      "retry": "Erneut versuchen",
+      "abluo": "Abluo",
+      "fromAbluo": "{name} · Abluo",
+      "someone": "Jemand",
+      "kinds": {
+        "message": {
+          "received": "{count, plural, one {Neue Nachricht von {from}: {subject}} other {# neue Nachrichten von {from}: {subject}}}",
+          "replied": "{count, plural, one {{name} hat geantwortet: {subject}} other {# neue Antworten von {name}: {subject}}}"
+        },
+        "ticket": {
+          "created": "Neue Supportanfrage {reference} auf {project}",
+          "client_replied": "Der Kunde hat auf {reference} geantwortet",
+          "support_replied": "Der Abluo Support hat auf deine Anfrage {reference} geantwortet",
+          "waiting_for_user": "Der Abluo Support wartet auf deine Antwort zu {reference}",
+          "resolved": "Deine Anfrage {reference} ist gelöst"
+        },
+        "announcement": {
+          "ack_requested": "Abluo bittet dich, eine Ankündigung zu bestätigen"
+        }
+      }
+    },
+    "messages": {
+      "send": "Senden",
+      "sending": "Wird gesendet…",
+      "remaining": "{count, plural, one {# Zeichen übrig} other {# Zeichen übrig}}",
+      "seen": "Gesehen",
+      "notSeenYet": "Noch nicht gesehen",
+      "deleteFile": "Löschen",
+      "deleteTitle": "Diese Datei löschen?",
+      "deleteBody": "Die Datei wird für alle in dieser Unterhaltung entfernt. Das kann nicht rückgängig gemacht werden.",
+      "deleteConfirm": "Datei löschen",
+      "picker": {
+        "add": "Bilder oder PDFs hinzufügen",
+        "hint": "Bis zu {max} Dateien: Bilder (PNG, JPG, WebP, je {size} MB) oder PDFs (bis 4 MB). Du kannst auch einen Screenshot einfügen (⌘V / Strg+V).",
+        "remove": "{name} entfernen",
+        "problem": {
+          "type": "{name}: Nur PNG-, JPG- oder WebP-Bilder und PDFs können angehängt werden.",
+          "size": "{name}: Diese Datei ist größer als {size} MB.",
+          "count": "{name}: Du kannst bis zu {max} Dateien anhängen.",
+          "total": "{name}: Die Dateien sind zusammen zu groß zum Senden."
+        }
+      },
+      "errors": {
+        "unavailable": "Nachrichten sind noch nicht verfügbar.",
+        "forbidden": "Das kannst du nicht tun.",
+        "notFound": "Diese Unterhaltung gibt es nicht mehr.",
+        "supportMode": "Während eines Supportbesuchs kann Abluo die Nachrichten des Kunden weder lesen noch schreiben.",
+        "rateLimited": "Zu viele Nachrichten in kurzer Zeit. Bitte warte kurz und versuche es erneut.",
+        "invalid": "Etwas an der Nachricht ist ungültig.",
+        "attachmentType": "Nur PNG-, JPG- oder WebP-Bilder und PDFs können angehängt werden.",
+        "attachmentTooLarge": "Eine Datei ist zu groß (Bilder 5 MB, PDFs 4 MB).",
+        "tooManyAttachments": "Du kannst bis zu 5 Dateien anhängen.",
+        "error": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+        "uploadTooLarge": "Die Dateien sind zusammen zu groß zum Senden. Entferne eine oder sende sie in zwei Nachrichten.",
+        "subjectRequired": "Füge einen Betreff hinzu.",
+        "subjectTooLong": "Der Betreff ist zu lang (höchstens 120 Zeichen).",
+        "bodyRequired": "Schreibe eine Nachricht.",
+        "bodyTooLong": "Die Nachricht ist zu lang.",
+        "recipientsRequired": "Wähle mindestens eine Person.",
+        "tooManyRecipients": "Wähle höchstens 50 Personen.",
+        "sharedNeedsOneSite": "Eine gemeinsame Unterhaltung ist nur mit Personen derselben Website möglich.",
+        "recipientNotMember": "Eine der Personen hat keinen Zugang mehr zu dieser Website."
+      },
+      "thread": {
+        "abluo": "Abluo",
+        "fromAbluo": "{name} · Abluo",
+        "redacted": "Von Abluo entfernt",
+        "imageDeleted": "Bild gelöscht",
+        "fileDeleted": "Datei nicht mehr verfügbar",
+        "openImage": "Bild {n} öffnen",
+        "downloadFile": "{name} herunterladen",
+        "removedPart": "von Abluo entfernt",
+        "openLink": "{place} öffnen",
+        "label": "Unterhaltung",
+        "viewer": {
+          "dialog": "Bild",
+          "close": "Schließen",
+          "previous": "Vorheriges Bild",
+          "next": "Nächstes Bild",
+          "counter": "{n} von {total}"
+        }
+      }
     }
   },
   "admin": {
@@ -5850,7 +5977,8 @@
       "translations": "Übersetzungen",
       "lab": "Komponenten-Labor",
       "support": "Support-Tickets",
-      "users": "Benutzer"
+      "users": "Benutzer",
+      "messages": "Nachrichten"
     },
     "home": {
       "title": "Start",
@@ -6279,7 +6407,11 @@
         "endsAt": "Ende",
         "endsAtHelp": "Das Banner verschwindet zu dieser Zeit von selbst.",
         "audience": "Wer sieht es",
-        "audienceHelp": "Lass alles abgewählt, um es allen Kunden zu zeigen. Wähle Module, um es nur Websites zu zeigen, die mindestens eines davon nutzen."
+        "audienceHelp": "Nur Websites, die mindestens eines der angehakten Module nutzen.",
+        "body": "Mehr lesen (optional)",
+        "bodyHelp": "Ein längerer Text, den der Kunde mit „Mehr lesen“ öffnet. In derselben Sprache wie die Nachricht.",
+        "requiresAck": "Bestätigung anfordern",
+        "requiresAckHelp": "Das Banner zeigt „OK, verstanden“ statt einer Schließen-Schaltfläche, und du siehst, wer bestätigt hat."
       },
       "actions": {
         "saveDraft": "Entwurf speichern",
@@ -6306,7 +6438,27 @@
         "forbidden": "Du bist nicht mehr als Admin mit 2-Faktor-Bestätigung angemeldet.",
         "notFound": "Dieser Hinweis existiert nicht mehr.",
         "failed": "Speichern nicht möglich. Bitte versuch es erneut.",
-        "missing": "Hinweise sind noch nicht eingerichtet (Migration 045)."
+        "missing": "Hinweise sind noch nicht eingerichtet (Migration 045).",
+        "bodyTooLong": "Der „Mehr lesen“-Text ist zu lang (höchstens 4.000 Zeichen).",
+        "unknownTarget": "Eine gewählte Website oder Person gibt es nicht mehr."
+      },
+      "audience": {
+        "everyone": "Alle Kunden",
+        "everyoneHelp": "Alle, die sich bei einer Website anmelden können.",
+        "modules": "Websites mit einem Modul",
+        "specific": "Bestimmte Websites oder Personen",
+        "specificHelp": "Nur die Websites und Personen, die du auswählst. Niemand sonst kann es sehen.",
+        "sites": "Websites",
+        "people": "Personen",
+        "findPeople": "Name, E-Mail oder Website",
+        "peopleCount": "{count, plural, one {# Person} other {# Personen}}"
+      },
+      "acks": {
+        "title": "Bestätigungen",
+        "count": "{count, plural, one {# bestätigt} other {# bestätigt}}",
+        "countOf": "{done} von {total} bestätigt",
+        "notYet": "Noch nicht",
+        "none": "Noch niemand hat bestätigt."
       }
     },
     "whatsNew": {
@@ -6346,7 +6498,7 @@
         "ctaUrl": "Button-Link",
         "ctaHelp": "Optional. Ein https-Link; der Button braucht einen Text in mindestens einer Sprache.",
         "image": "Bild",
-        "imageHelp": "Optional. JPEG, PNG oder WebP, bis 5 MB.",
+        "imageHelp": "Optional. JPEG, PNG oder WebP, bis 5 MB. Du kannst auch einen Screenshot einfügen (⌘V / Strg+V).",
         "chooseImage": "Bild auswählen",
         "replaceImage": "Bild ersetzen",
         "removeImage": "Bild entfernen",
@@ -7233,6 +7385,10 @@
       "time": {
         "today": "Heute",
         "yesterday": "Gestern"
+      },
+      "readReceipt": {
+        "by": "Gelesen von {name} · {when}",
+        "read": "Gelesen · {when}"
       }
     },
     "users": {
@@ -7590,6 +7746,92 @@
           "notFound": "Diesen Hinweis gibt es nicht mehr.",
           "failed": "Speichern nicht möglich. Versuch es noch einmal."
         }
+      }
+    },
+    "messages": {
+      "title": "Nachrichten",
+      "archivedTitle": "Archivierte Nachrichten",
+      "unavailableTitle": "Nachrichten sind noch nicht eingerichtet",
+      "unavailableBody": "Wende Migration 069 an, um Kunden zu schreiben.",
+      "loadFailedTitle": "Die Nachrichten konnten nicht geladen werden",
+      "loadFailedBody": "Bitte lade die Seite neu.",
+      "unreadNav": "{count, plural, one {# Unterhaltung mit neuer Antwort} other {# Unterhaltungen mit neuen Antworten}}",
+      "back": "Zurück zu den Nachrichten",
+      "restore": "Wiederherstellen",
+      "archive": "Archivieren",
+      "archivedNotice": "Diese Unterhaltung ist archiviert. Eine neue Nachricht von einer der beiden Seiten holt sie zurück.",
+      "redact": "Teile ausblenden",
+      "replyShared": "Alle hier sehen deine Antwort: {names}",
+      "replyLabel": "Antworten",
+      "replyPlaceholder": "Schreibe eine Antwort…",
+      "sendToEveryone": "{count, plural, one {Senden} other {An alle senden (#)}}",
+      "details": "Details",
+      "sharedWith": "{count, plural, one {Mit} other {Gemeinsam mit # Personen}}",
+      "with": "Mit",
+      "site": "Website",
+      "started": "Begonnen",
+      "deleteFileBody": "Die Datei wird für alle in dieser Unterhaltung entfernt, und das Entfernen wird protokolliert. Das kann nicht rückgängig gemacht werden.",
+      "list": {
+        "newMessage": "Neue Nachricht",
+        "showActive": "Aktive Unterhaltungen zeigen",
+        "showArchived": "Archivierte zeigen",
+        "archivedEmptyTitle": "Nichts archiviert",
+        "archivedEmptyBody": "Archivierte Unterhaltungen erscheinen hier.",
+        "emptyTitle": "Noch keine Unterhaltungen",
+        "emptyBody": "Schreibe einem Kunden – er antwortet direkt in seinem Dashboard.",
+        "filtersLabel": "Unterhaltungen filtern",
+        "searchLabel": "Suchen",
+        "search": "Betreff, Personen oder Text suchen",
+        "siteFilter": "Website",
+        "allSites": "Alle Websites",
+        "unreadFilter": "Anzeigen",
+        "allConversations": "Alle Unterhaltungen",
+        "onlyUnread": "Mit neuen Antworten",
+        "showing": "{shown} von {total}",
+        "clear": "Filter löschen",
+        "noMatch": "Keine Unterhaltung passt zu diesen Filtern.",
+        "open": "{subject} öffnen",
+        "columns": {
+          "subject": "Betreff",
+          "people": "Mit",
+          "state": "Status",
+          "updated": "Letzte Nachricht"
+        },
+        "unread": "Neue Antwort",
+        "shared": "{count, plural, one {Gemeinsam · # Person} other {Gemeinsam · # Personen}}"
+      },
+      "links": {
+        "label": "Link zu einer Dashboard-Seite",
+        "hint": "Bis zu {max}. Der Kunde sieht eine Schaltfläche, die diese Seite seines Dashboards öffnet.",
+        "choose": "Seite wählen…",
+        "add": "Link hinzufügen",
+        "remove": "Link zu {place} entfernen"
+      },
+      "new": {
+        "title": "Neue Nachricht",
+        "back": "Zurück zu den Nachrichten",
+        "intro": "Schreibe einer oder mehreren Personen. Die Empfänger werden in ihrem Dashboard benachrichtigt und können dort antworten.",
+        "recipients": "{count, plural, =0 {An} one {An (# Person)} other {An (# Personen)}}",
+        "removeRecipient": "{name} entfernen",
+        "findPeople": "Personen oder Websites suchen",
+        "findPlaceholder": "Name, E-Mail oder Website",
+        "noPeople": "Niemand passt zu deiner Suche.",
+        "mode": {
+          "legend": "Wie soll sie gesendet werden?",
+          "individual": "An jede Person einzeln",
+          "individualHelp": "Jede Person erhält ihre eigene private Unterhaltung. Antworten bleiben zwischen ihr und Abluo.",
+          "shared": "Eine gemeinsame Unterhaltung",
+          "sharedHelp": "Alle sind in derselben Unterhaltung und sehen alle Antworten.",
+          "sharedOneSite": "Nur möglich, wenn alle auf derselben Website sind.",
+          "warningTitle": "Alle sehen alle Antworten",
+          "warning": "{names} sehen gegenseitig ihre Antworten. Personen können später nicht hinzugefügt werden."
+        },
+        "subject": "Betreff",
+        "body": "Nachricht",
+        "bodyHint": "Reiner Text. Links sind anklickbar.",
+        "send": "Senden",
+        "sendSeparately": "{count, plural, other {Einzeln an # Personen senden}}",
+        "sendToEveryone": "{count, plural, other {An alle senden (#)}}"
       }
     }
   },
@@ -9094,5 +9336,19 @@
       "heading": "Wir brauchen deine Antwort zu {ref}",
       "body": "Der Abluo Support braucht noch ein paar Informationen von dir, um mit deiner Anfrage {ref} zu {project} weiterzumachen."
     }
+  },
+  "notificationEmail": {
+    "one": {
+      "subject": "Du hast eine neue Nachricht in Abluo",
+      "heading": "Du hast eine neue Nachricht"
+    },
+    "other": {
+      "subject": "Du hast {count} ungelesene Nachrichten in Abluo",
+      "heading": "Du hast {count} ungelesene Nachrichten"
+    },
+    "body": "Öffne dein Abluo-Dashboard, um sie zu lesen und zu antworten.",
+    "button": "Nachrichten öffnen",
+    "linkHint": "Oder kopiere diesen Link in deinen Browser:",
+    "privacy": "Zum Schutz deiner Privatsphäre enthält diese E-Mail keine Nachrichten. Bitte antworte nicht auf diese E-Mail, sondern öffne dein Dashboard."
   }
 }

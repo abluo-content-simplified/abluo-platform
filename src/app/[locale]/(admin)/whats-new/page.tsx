@@ -11,7 +11,10 @@ import { PageShell } from '@/components/app/ui/PageShell'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { WhatsNewAdmin } from '@/components/admin/whats-new/WhatsNewAdmin'
 import { AnnouncementsAdmin } from '@/components/admin/whats-new/AnnouncementsAdmin'
-import { listNoticesForAdmin } from '@/lib/whats-new/notices-admin'
+import { listNoticeAcks, listNoticesForAdmin } from '@/lib/whats-new/notices-admin'
+import { listAdminUsers } from '@/lib/api/admin-dashboard/users'
+import { buildMessageDirectory } from '@/lib/messages/directory'
+import { ackReport } from '@/lib/whats-new/acks'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,7 +31,14 @@ export default async function AdminWhatsNewPage() {
   if (!actor) notFound()
 
   const t = await getTranslations('admin.whatsNew')
-  const [result, notices] = await Promise.all([listProductUpdatesForAdmin(), listNoticesForAdmin()])
+  const [result, notices, directory] = await Promise.all([listProductUpdatesForAdmin(), listNoticesForAdmin(), listAdminUsers()])
+  // ADR-050 D8: sites and people for specific audiences, and who acknowledged what.
+  const sites = directory.error ? [] : buildMessageDirectory(directory.people, directory.projects)
+  const ackNotices = notices.state === 'ok' ? notices.notices.filter((n) => n.requiresAck) : []
+  const acks = await listNoticeAcks(ackNotices.map((n) => n.id))
+  const reports = Object.fromEntries(
+    ackNotices.map((n) => [n.id, ackReport(n.projects.length || n.users.length ? { projects: n.projects, users: n.users } : { modules: n.modules }, acks.get(n.id) ?? [], sites)]),
+  )
 
   if (result.state !== 'ok') {
     return (
@@ -59,6 +69,8 @@ export default async function AdminWhatsNewPage() {
         <AnnouncementsAdmin
           notices={notices.state === 'ok' ? notices.notices : []}
           missing={notices.state === 'missing'}
+          sites={sites}
+          reports={reports}
           modules={MODULE_REGISTRY.map((m) => ({ id: m.id, label: m.label }))}
           languages={WHATS_NEW_LOCALES.map((code) => ({ code, name: PLATFORM_LOCALES[code].nativeName }))}
         />

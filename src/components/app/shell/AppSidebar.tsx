@@ -127,6 +127,12 @@ export type AppSidebarProps = {
    * `rail` is the collapsed rail's first item, `icon` sits in the phone top bar just before the avatar. None → no search (the admin).
    */
   search?: { field: ReactNode; rail: ReactNode; icon: ReactNode }
+  /**
+   * The Notification Center bell (ADR-050 D10), hosted like search: `field` sits beside the search field at the top of the
+   * expanded sidebar (md+; without search: at the right of the brand), `rail` follows search in the collapsed rail, `icon`
+   * sits in the phone top bar beside the search icon. None → no bell.
+   */
+  bell?: { field: ReactNode; rail: ReactNode; icon: ReactNode }
 }
 
 const BRAND = 'Abluo'
@@ -160,6 +166,7 @@ export function AppSidebar({
   drawerSide = 'left',
   showMenuButton = true,
   search,
+  bell,
 }: AppSidebarProps) {
   const t = useTranslations('app.shell')
   const pathname = usePathname() // locale-stripped, e.g. "/livener/posts"
@@ -232,6 +239,7 @@ export function AppSidebar({
         ) : null}
         <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{heading}</span>
         {search?.icon}
+        {bell?.icon}
         <AccountMenu variant="bar" {...account} />
       </div>
 
@@ -270,17 +278,25 @@ export function AppSidebar({
               <AbluoLogo label={BRAND} className="h-6 text-foreground" />
               <p className="mt-1.5 text-xs text-muted-foreground">{tagline}</p>
             </div>
-            {railEnabled && collapsible ? (
-              <span className="hidden md:inline-flex">
-                <SidebarCollapseToggle collapsed={false} label={collapsible.collapseLabel} onToggle={toggle} controls={id} />
-              </span>
-            ) : null}
+            <div className="flex items-start gap-1">
+              {bell && !search ? <span className="hidden md:inline-flex">{bell.field}</span> : null}
+              {railEnabled && collapsible ? (
+                <span className="hidden md:inline-flex">
+                  <SidebarCollapseToggle collapsed={false} label={collapsible.collapseLabel} onToggle={toggle} controls={id} />
+                </span>
+              ) : null}
+            </div>
           </div>
 
           {top ? <div className="border-b border-border-subtle px-4 py-4">{top}</div> : null}
 
           <nav aria-label={navLabel ?? tagline} className="flex-1 space-y-0.5 px-3 py-4">
-            {search ? <div className="mb-3 hidden md:block">{search.field}</div> : null}
+            {search ? (
+              <div className="mb-3 hidden items-start gap-2 md:flex">
+                <div className="min-w-0 flex-1">{search.field}</div>
+                {bell ? bell.field : null}
+              </div>
+            ) : null}
             {items.map((item) => {
               if (isGroup(item)) {
                 const badge = sumBadges(item.items)
@@ -349,6 +365,7 @@ export function AppSidebar({
             </div>
             <nav aria-label={navLabel ?? tagline} className="flex flex-1 flex-col items-center gap-1 px-2 py-3">
               {search?.rail}
+              {bell?.rail}
               {items.map((item) => {
                 if (isGroup(item)) {
                   return (

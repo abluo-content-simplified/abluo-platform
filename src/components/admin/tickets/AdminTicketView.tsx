@@ -48,6 +48,8 @@ import {
 import { RedactPartsDialog } from './RedactPartsDialog'
 import { AdminLastUpdate, SEVERITY_TONE, STATUS_TONE } from './ticket-bits'
 import { useVisibleInterval } from './use-visible-interval'
+import { Pill } from '@/components/app/ui/list/cells'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 type MessageEntry = Extract<ThreadEntry, { kind: 'message' }>
 
@@ -78,6 +80,10 @@ function useNarrow(): boolean {
 export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetail; supportNotice: 'unavailable' | 'failed' | null }) {
   const t = useTranslations('admin.supportTickets')
   const tRoles = useTranslations('app.roles')
+  const dateLocale = useDateLocale()
+  // Read receipt (Tom, 2026-11-10): under the newest Abluo reply, once the client side has opened the request since.
+  const readWhen = (iso: string) =>
+    new Intl.DateTimeFormat(dateLocale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso))
   const router = useRouter()
   const narrow = useNarrow()
   const { toast, show } = useUndo()
@@ -266,19 +272,30 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
             entries={ticket.thread}
             labels={labels}
             formatEvent={formatEvent}
-            actions={(entry) =>
-              entry.redacted ? null : (
-                <Button
-                  variant="link"
-                  onClick={() => {
-                    setRedactError(null)
-                    setRedactParts(entry)
-                  }}
-                >
-                  {t('redactParts.action')}
-                </Button>
-              )
-            }
+            actions={(entry) => (
+              <>
+                {entry.id === lastSupportReply?.id && ticket.clientRead && Date.parse(ticket.clientRead.at) >= Date.parse(entry.createdAt) ? (
+                  <span className="inline-flex min-h-11 items-center" suppressHydrationWarning>
+                    <Pill tone="success">
+                      {ticket.clientRead.name
+                        ? t('readReceipt.by', { name: ticket.clientRead.name, when: readWhen(ticket.clientRead.at) })
+                        : t('readReceipt.read', { when: readWhen(ticket.clientRead.at) })}
+                    </Pill>
+                  </span>
+                ) : null}
+                {entry.redacted ? null : (
+                  <Button
+                    variant="link"
+                    onClick={() => {
+                      setRedactError(null)
+                      setRedactParts(entry)
+                    }}
+                  >
+                    {t('redactParts.action')}
+                  </Button>
+                )}
+              </>
+            )}
             imageActions={(a) => (
               <Button variant="destructive" onClick={() => setRemoveShot({ id: a.id, n: 0 })}>
                 {t('panel.deleteScreenshot')}

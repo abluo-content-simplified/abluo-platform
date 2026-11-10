@@ -1,7 +1,10 @@
 'use client'
 
 import { useLiveSupportCount } from '@/components/client/tickets/useLiveSupportCount'
-import { useEffect, useState } from 'react'
+import { useLiveMessagesCount } from '@/components/client/messages/useLiveMessagesCount'
+import { useNotificationCenter, type NotificationActions } from '@/components/app/notifications/NotificationCenter'
+import { clientNotificationCountAction, clientNotificationListAction, clientNotificationMarkReadAction } from '@/app/[locale]/(client)/[tenant]/notification-actions'
+import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
@@ -67,6 +70,12 @@ export type ClientSidebarProps = {
   whatsNewPopup?: boolean
   /** Support requests with news for this person (Support Tickets, ADR-039); 0 = no badge. */
   supportUnread?: number
+  /** Messages (ADR-050 D12): null = no conversation here (no entry); otherwise conversations with an unread message from Abluo. */
+  messages?: { unread: number } | null
+  /** Notification Center (ADR-050 D10): the bell's first number. */
+  notificationsUnread?: number
+  /** Show the bell (off in an Abluo support visit). */
+  bell?: boolean
   /** Show "Report a Problem" in the account menu (the person may send support requests). */
   reportProblem?: boolean
   /** Contact requests nobody has answered yet (status `new`): badge on the Requests tab and the sidebar entry; 0 = none. */
@@ -106,6 +115,7 @@ const ICONS = {
   reservations: 'M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4zM14 7v10',
   documents: 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M12 11v6M9 14l3 3 3-3',
   support: APP_ICONS.support,
+  messages: APP_ICONS.messages,
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   close: 'M6 6l12 12M18 6L6 18',
   content: 'M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
@@ -137,6 +147,9 @@ export function ClientSidebar({
   whatsNewPopup = true,
   profile = null,
   supportUnread = 0,
+  messages = null,
+  notificationsUnread = 0,
+  bell: showBell = true,
   reportProblem = false,
   newRequestsCount = 0,
   billingAttention = null,
@@ -162,11 +175,22 @@ export function ClientSidebar({
   // Billing lives in the phone's More drawer: the More tab carries its badge too.
   const moreBadge = billingBadge && overflow.some((i) => i.moduleId === 'billing') ? billingBadge : undefined
   const liveSupportUnread = useLiveSupportCount(activeSlug, supportUnread, pathname, navItems.some((i) => i.moduleId === 'support'))
+  const liveMessagesUnread = useLiveMessagesCount(activeSlug, messages?.unread ?? 0, pathname, messages !== null)
+  const notificationActions = useMemo<NotificationActions>(
+    () => ({
+      count: () => clientNotificationCountAction(activeSlug),
+      list: () => clientNotificationListAction(activeSlug),
+      markRead: (id) => clientNotificationMarkReadAction(activeSlug, id),
+    }),
+    [activeSlug],
+  )
+  const notifications = useNotificationCenter({ actions: notificationActions, initialCount: notificationsUnread, pathname, enabled: showBell, showProject: projects.length > 1 })
 
   // ADR-042: Home stands alone at the top; then the headed groups (Content, Catalogue, Visitors, Library,
   // Insights, Project), each a collapsible disclosure (a flyout in the rail); then the unheaded bottom block
   // (Support, What's New, More You Can Add). One definition: `surfaces.ts` -> `sidebarGroups`.
-  const activeId = isNavItemActive(pathname, homeHref) ? 'home' : resolveActiveNavId(pathname, navItems)
+  const messagesHref = `/${activeSlug}/messages`
+  const activeId = isNavItemActive(pathname, homeHref) ? 'home' : messages && isNavItemActive(pathname, messagesHref) ? 'messages' : resolveActiveNavId(pathname, navItems)
   const activeGroup = groupOfNavId(navItems, activeId)
   const sidebarState = useSidebarState()
   const setGroupOpen = sidebarState?.setGroupOpen
@@ -204,7 +228,20 @@ export function ClientSidebar({
         if (!open && g.group === activeGroup) setClosedAt(activeId)
       },
     })),
-    ...bottom.map((i, n) => ({ ...toEntry(i), groupStart: n === 0 })),
+    // Messages (ADR-050): only when Abluo has written to this person here; first in the bottom block, above Support.
+    ...(messages
+      ? [
+          {
+            key: 'messages',
+            href: messagesHref,
+            label: t('nav.messages'),
+            icon: ICONS.messages,
+            groupStart: true,
+            badge: liveMessagesUnread > 0 ? { count: liveMessagesUnread, label: t('messages.unreadCount', { count: liveMessagesUnread }) } : undefined,
+          },
+        ]
+      : []),
+    ...bottom.map((i, n) => ({ ...toEntry(i), groupStart: n === 0 && !messages })),
     ...(news.sidebarRow ? [{ key: 'whatsNew', node: news.sidebarRow, railNode: news.railRow }] : []),
     { key: 'discover', href: `/${activeSlug}/discover`, label: t('nav.discover'), icon: ICONS.discover, groupStart: bottom.length === 0 },
   ]
@@ -227,6 +264,7 @@ export function ClientSidebar({
     <>
     <AppSidebar
       search={search.triggers}
+      bell={notifications.bell}
       id="client-sidebar"
       tagline={t('shell.brandTagline')}
       title={activeProjectName}
@@ -338,6 +376,7 @@ export function ClientSidebar({
       </BottomSheet>
     ) : null}
     {search.dialog}
+    {notifications.panel}
     {news.panel}
     {profile ? <ProfilePanel open={profileOpen} onClose={() => setProfileOpen(false)} profile={profile} /> : null}
     </>

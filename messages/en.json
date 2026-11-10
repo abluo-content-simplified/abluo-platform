@@ -35,7 +35,7 @@
       "change": "Change photo",
       "remove": "Remove",
       "saving": "Saving…",
-      "hint": "A square crop of your picture is used.",
+      "hint": "A square crop of your picture is used. You can also paste a picture (⌘V / Ctrl+V).",
       "errors": {
         "unauthenticated": "Please sign in again.",
         "missing": "Choose a picture first.",
@@ -96,7 +96,8 @@
       "catalogueItems": "Items",
       "catalogueCollections": "Collections",
       "catalogueOptions": "Options",
-      "catalogueSetup": "Setup"
+      "catalogueSetup": "Setup",
+      "messages": "Messages"
     },
     "navGroups": {
       "publish": "Publish",
@@ -860,7 +861,7 @@
           "ai": "Create with AI",
           "soon": "Coming soon",
           "computer": "Upload from your computer",
-          "computerHint": "or drag a photo here"
+          "computerHint": "or drag a photo here, or paste a screenshot (⌘V / Ctrl+V)"
         },
         "note": "We make every photo lighter for the web and ask you for a short description, so everyone can understand it.",
         "preparing": "Preparing your photo…",
@@ -1599,7 +1600,7 @@
         "camera": "Take a photo",
         "phone": "From this phone",
         "computer": "Upload photos",
-        "computerHint": "or drag them here",
+        "computerHint": "or drag them here, or paste a screenshot (⌘V / Ctrl+V)",
         "dropHere": "Drop the photos to add them",
         "library": "Media Library",
         "full": "There's no room for more photos here.",
@@ -1900,7 +1901,7 @@
           "label": "Add photos",
           "camera": "Take a photo",
           "computer": "Upload from your computer",
-          "computerHint": "or drag photos here",
+          "computerHint": "or drag photos here, or paste a screenshot (⌘V / Ctrl+V)",
           "library": "Your media library",
           "photoLibrary": "Photo library"
         },
@@ -2228,7 +2229,11 @@
     },
     "announcements": {
       "warning": "Please note",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "readMore": "Read More",
+      "readMoreTitle": "Announcement",
+      "acknowledge": "OK, Understood",
+      "close": "Close"
     },
     "sites": {
       "title": "Your websites",
@@ -5044,6 +5049,38 @@
           "noConsent": "The person did not tick the consent box. If you create a testimonial from this, “Permission to publish” still needs ticking once you have their permission."
         }
       }
+    },
+    "messages": {
+      "title": "Messages",
+      "intro": "Personal messages from the Abluo team. Only you can see them. For a problem, open a request in Support.",
+      "supportMode": "Messages are personal: they aren’t shown during a support visit.",
+      "back": "Back to Messages",
+      "sharedWith": "Shared conversation with {names} and Abluo. Everyone here sees all replies.",
+      "replyLabel": "Your reply",
+      "replyShared": "Your reply is visible to: {names}",
+      "replyPlaceholder": "Write your reply…",
+      "unreadCount": "{count, plural, one {# unread conversation} other {# unread conversations}}",
+      "errors": {
+        "error": "Messages couldn’t be loaded. Please try again."
+      },
+      "list": {
+        "shared": "{count, plural, one {Shared · # person} other {Shared · # people}}",
+        "unread": "Unread",
+        "columns": {
+          "subject": "Subject",
+          "state": "Status",
+          "updated": "Last message"
+        },
+        "emptyTitle": "No messages yet",
+        "emptyBody": "When the Abluo team writes to you, the conversation appears here.",
+        "filtersLabel": "Search messages",
+        "searchLabel": "Search",
+        "search": "Search messages",
+        "showing": "{shown} of {total}",
+        "clear": "Clear Search",
+        "noMatch": "No conversation matches your search.",
+        "open": "Open {subject}"
+      }
     }
   },
   "app": {
@@ -5832,6 +5869,96 @@
         "notFound": "This client could not be found.",
         "failed": "Couldn’t save. Please try again."
       }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "unread": "{count, plural, one {# unread} other {# unread}}",
+      "unreadRow": "Unread",
+      "empty": "Nothing new. Messages, support replies and announcements that need you show up here.",
+      "markAll": "Mark All as Read",
+      "error": "Notifications couldn’t be loaded.",
+      "retry": "Try again",
+      "abluo": "Abluo",
+      "fromAbluo": "{name} · Abluo",
+      "someone": "Someone",
+      "kinds": {
+        "message": {
+          "received": "{count, plural, one {New message from {from}: {subject}} other {# new messages from {from}: {subject}}}",
+          "replied": "{count, plural, one {{name} replied: {subject}} other {# new replies from {name}: {subject}}}"
+        },
+        "ticket": {
+          "created": "New support request {reference} on {project}",
+          "client_replied": "The client replied to {reference}",
+          "support_replied": "Abluo Support replied to your request {reference}",
+          "waiting_for_user": "Abluo Support is waiting for your reply on {reference}",
+          "resolved": "Your request {reference} is resolved"
+        },
+        "announcement": {
+          "ack_requested": "Abluo asks you to confirm an announcement"
+        }
+      }
+    },
+    "messages": {
+      "send": "Send",
+      "sending": "Sending…",
+      "remaining": "{count, plural, one {# character left} other {# characters left}}",
+      "seen": "Seen",
+      "notSeenYet": "Not seen yet",
+      "deleteFile": "Delete",
+      "deleteTitle": "Delete this file?",
+      "deleteBody": "It is removed for everyone in this conversation. This can’t be undone.",
+      "deleteConfirm": "Delete File",
+      "picker": {
+        "add": "Add images or PDFs",
+        "hint": "Up to {max} files: images (PNG, JPG, WebP, {size} MB each) or PDFs (up to 4 MB). You can also paste a screenshot (⌘V / Ctrl+V).",
+        "remove": "Remove {name}",
+        "problem": {
+          "type": "{name}: only PNG, JPG or WebP images and PDFs can be attached.",
+          "size": "{name}: this file is larger than {size} MB.",
+          "count": "{name}: you can attach up to {max} files.",
+          "total": "{name}: the files together are too large to send."
+        }
+      },
+      "errors": {
+        "unavailable": "Messages aren’t available yet.",
+        "forbidden": "You can’t do this.",
+        "notFound": "This conversation no longer exists.",
+        "supportMode": "During a support visit Abluo can’t read or write the client’s messages.",
+        "rateLimited": "Too many messages in a short time. Please wait a little and try again.",
+        "invalid": "Something in the message isn’t valid.",
+        "attachmentType": "Only PNG, JPG or WebP images and PDFs can be attached.",
+        "attachmentTooLarge": "A file is too large (images 5 MB, PDFs 4 MB).",
+        "tooManyAttachments": "You can attach up to 5 files.",
+        "error": "Something went wrong. Please try again.",
+        "uploadTooLarge": "The files together are too large to send. Remove one or send them in two messages.",
+        "subjectRequired": "Add a subject.",
+        "subjectTooLong": "The subject is too long (120 characters at most).",
+        "bodyRequired": "Write a message.",
+        "bodyTooLong": "The message is too long.",
+        "recipientsRequired": "Choose at least one person.",
+        "tooManyRecipients": "Choose 50 people at most.",
+        "sharedNeedsOneSite": "A shared conversation is possible only with people of one site.",
+        "recipientNotMember": "One of the people no longer has access to that site."
+      },
+      "thread": {
+        "abluo": "Abluo",
+        "fromAbluo": "{name} · Abluo",
+        "redacted": "Removed by Abluo",
+        "imageDeleted": "Image deleted",
+        "fileDeleted": "File no longer available",
+        "openImage": "Open image {n}",
+        "downloadFile": "Download {name}",
+        "removedPart": "removed by Abluo",
+        "openLink": "Open {place}",
+        "label": "Conversation",
+        "viewer": {
+          "dialog": "Image",
+          "close": "Close",
+          "previous": "Previous image",
+          "next": "Next image",
+          "counter": "{n} of {total}"
+        }
+      }
     }
   },
   "admin": {
@@ -5850,7 +5977,8 @@
       "translations": "Translations",
       "lab": "Component Lab",
       "support": "Support Tickets",
-      "users": "Users"
+      "users": "Users",
+      "messages": "Messages"
     },
     "home": {
       "title": "Home",
@@ -6279,7 +6407,11 @@
         "endsAt": "Ends",
         "endsAtHelp": "The banner disappears by itself at this time.",
         "audience": "Who sees it",
-        "audienceHelp": "Leave everything unticked to show it to every client. Tick modules to show it only to sites that use at least one of them."
+        "audienceHelp": "Only sites that use at least one of the ticked modules.",
+        "body": "Read more (optional)",
+        "bodyHelp": "A longer text the client opens with “Read More”. Same language as the message.",
+        "requiresAck": "Ask to confirm",
+        "requiresAckHelp": "The banner shows “OK, Understood” instead of a close button, and you see who confirmed."
       },
       "actions": {
         "saveDraft": "Save draft",
@@ -6306,7 +6438,27 @@
         "forbidden": "You’re no longer signed in as an admin with 2-step verification.",
         "notFound": "That announcement no longer exists.",
         "failed": "Couldn’t save. Please try again.",
-        "missing": "Announcements are not set up yet (migration 045)."
+        "missing": "Announcements are not set up yet (migration 045).",
+        "bodyTooLong": "The “Read more” text is too long (4,000 characters at most).",
+        "unknownTarget": "A chosen site or person no longer exists."
+      },
+      "audience": {
+        "everyone": "Every client",
+        "everyoneHelp": "Everyone who can sign in to a site.",
+        "modules": "Sites using a module",
+        "specific": "Specific sites or people",
+        "specificHelp": "Only the sites and people you choose. Nobody else can see it.",
+        "sites": "Sites",
+        "people": "People",
+        "findPeople": "Name, email or site",
+        "peopleCount": "{count, plural, one {# person} other {# people}}"
+      },
+      "acks": {
+        "title": "Confirmations",
+        "count": "{count, plural, one {# confirmed} other {# confirmed}}",
+        "countOf": "{done} of {total} confirmed",
+        "notYet": "Not yet",
+        "none": "Nobody has confirmed yet."
       }
     },
     "whatsNew": {
@@ -6346,7 +6498,7 @@
         "ctaUrl": "Button link",
         "ctaHelp": "Optional. An https link; the button needs a label in at least one language.",
         "image": "Image",
-        "imageHelp": "Optional. JPEG, PNG or WebP, up to 5 MB.",
+        "imageHelp": "Optional. JPEG, PNG or WebP, up to 5 MB. You can also paste a screenshot (⌘V / Ctrl+V).",
         "chooseImage": "Choose image",
         "replaceImage": "Replace image",
         "removeImage": "Remove image",
@@ -7233,6 +7385,10 @@
       "time": {
         "today": "Today",
         "yesterday": "Yesterday"
+      },
+      "readReceipt": {
+        "by": "Read by {name} · {when}",
+        "read": "Read · {when}"
       }
     },
     "users": {
@@ -7590,6 +7746,92 @@
           "notFound": "This alert no longer exists.",
           "failed": "Couldn't save. Please try again."
         }
+      }
+    },
+    "messages": {
+      "title": "Messages",
+      "archivedTitle": "Archived Messages",
+      "unavailableTitle": "Messages aren’t set up yet",
+      "unavailableBody": "Apply migration 069 to start writing to clients.",
+      "loadFailedTitle": "Messages couldn’t be loaded",
+      "loadFailedBody": "Please reload the page.",
+      "unreadNav": "{count, plural, one {# conversation with a new reply} other {# conversations with new replies}}",
+      "back": "Back to Messages",
+      "restore": "Restore",
+      "archive": "Archive",
+      "archivedNotice": "This conversation is archived. A new message from either side brings it back.",
+      "redact": "Hide Parts",
+      "replyShared": "Everyone here sees your reply: {names}",
+      "replyLabel": "Reply",
+      "replyPlaceholder": "Write a reply…",
+      "sendToEveryone": "{count, plural, one {Send} other {Send to Everyone (#)}}",
+      "details": "Details",
+      "sharedWith": "{count, plural, one {With} other {Shared with # people}}",
+      "with": "With",
+      "site": "Site",
+      "started": "Started",
+      "deleteFileBody": "The file is removed for everyone in this conversation and the removal is logged. This can’t be undone.",
+      "list": {
+        "newMessage": "New Message",
+        "showActive": "Show Active Conversations",
+        "showArchived": "Show Archived",
+        "archivedEmptyTitle": "Nothing archived",
+        "archivedEmptyBody": "Archived conversations appear here.",
+        "emptyTitle": "No conversations yet",
+        "emptyBody": "Write to a client — they reply right in their dashboard.",
+        "filtersLabel": "Filter conversations",
+        "searchLabel": "Search",
+        "search": "Search subject, people or text",
+        "siteFilter": "Site",
+        "allSites": "All sites",
+        "unreadFilter": "Show",
+        "allConversations": "All conversations",
+        "onlyUnread": "With new replies",
+        "showing": "{shown} of {total}",
+        "clear": "Clear Filters",
+        "noMatch": "No conversation matches these filters.",
+        "open": "Open {subject}",
+        "columns": {
+          "subject": "Subject",
+          "people": "With",
+          "state": "Status",
+          "updated": "Last message"
+        },
+        "unread": "New reply",
+        "shared": "{count, plural, one {Shared · # person} other {Shared · # people}}"
+      },
+      "links": {
+        "label": "Link to a dashboard page",
+        "hint": "Up to {max}. The client sees a button that opens that page of their dashboard.",
+        "choose": "Choose a page…",
+        "add": "Add Link",
+        "remove": "Remove link to {place}"
+      },
+      "new": {
+        "title": "New Message",
+        "back": "Back to Messages",
+        "intro": "Write to one or more people. They are notified in their dashboard and can reply there.",
+        "recipients": "{count, plural, =0 {To} one {To (# person)} other {To (# people)}}",
+        "removeRecipient": "Remove {name}",
+        "findPeople": "Find people or sites",
+        "findPlaceholder": "Name, email or site",
+        "noPeople": "Nobody matches your search.",
+        "mode": {
+          "legend": "How should it be sent?",
+          "individual": "Separately to each person",
+          "individualHelp": "Each person gets their own private conversation. Replies stay between them and Abluo.",
+          "shared": "One shared conversation",
+          "sharedHelp": "Everyone is in the same conversation and sees all replies.",
+          "sharedOneSite": "Only possible when everyone is on the same site.",
+          "warningTitle": "Everyone sees all replies",
+          "warning": "{names} will all see each other’s replies. People can’t be added later."
+        },
+        "subject": "Subject",
+        "body": "Message",
+        "bodyHint": "Plain text. Links are clickable.",
+        "send": "Send",
+        "sendSeparately": "{count, plural, other {Send to # People Separately}}",
+        "sendToEveryone": "{count, plural, other {Send to Everyone (#)}}"
       }
     }
   },
@@ -9094,5 +9336,19 @@
       "heading": "We need your reply on {ref}",
       "body": "Abluo Support needs a little more information from you to continue with your request {ref} on {project}."
     }
+  },
+  "notificationEmail": {
+    "one": {
+      "subject": "You have a new message in Abluo",
+      "heading": "You have a new message"
+    },
+    "other": {
+      "subject": "You have {count} unread messages in Abluo",
+      "heading": "You have {count} unread messages"
+    },
+    "body": "Open your Abluo dashboard to read and reply.",
+    "button": "Open Messages",
+    "linkHint": "Or copy this link into your browser:",
+    "privacy": "For your privacy this email does not include the messages. Please do not reply to this email: open your dashboard instead."
   }
 }

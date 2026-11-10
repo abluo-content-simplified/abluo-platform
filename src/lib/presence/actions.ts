@@ -1,5 +1,6 @@
 'use server'
 
+import { getLocale } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -14,7 +15,10 @@ export async function touchLastSeen(): Promise<void> {
     const { data } = await supabase.auth.getUser()
     if (!data?.user) return
     await supabase.rpc('touch_last_seen')
+    // ADR-050 D11: remember the dashboard language for the email digest (own row; no-op when unchanged).
+    const locale = await getLocale().catch(() => null)
+    if (locale === 'en' || locale === 'it' || locale === 'de') await supabase.rpc('set_interface_locale', { p_locale: locale })
   } catch {
-    /* migration 049 not applied, offline … — ignore */
+    /* migration 049 / 069 not applied, offline … — ignore */
   }
 }

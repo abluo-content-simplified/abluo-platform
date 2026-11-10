@@ -66,6 +66,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'partners',
   'projects',
   'settings',
+  'messages',  // admin Messages and the client's Messages page (/<tenant>/messages), ADR-050
   'support',   // admin Support Tickets and the client's Support page (/<tenant>/support)
   'translations',
   'users',   // admin Users, and the client's Users page (/<tenant>/users, was People; ADR-043)

@@ -11,6 +11,8 @@ import { useMediaUploads } from '@/components/client/media/use-media-uploads'
 import { ACCEPTED_TYPES } from '@/lib/client/gallery-upload-queue'
 
 /** A photo that was just uploaded or picked from the Media Library. */
+import { usePasteFiles } from '@/components/app/ui/use-paste-files'
+
 export type AddedPhoto = {
   assetId: string
   url: string
@@ -119,9 +121,12 @@ export function AddPhotos({ projectSlug, scope, onUploaded, onOpenLibrary, room,
 
   const full = room !== undefined && room <= 0
   const off = disabled || full
+  // Paste a screenshot or copied picture straight in (Tom, 2026-11-10): same upload + TinyPNG path as a chosen file.
+  const rootRef = useRef<HTMLDivElement>(null)
+  usePasteFiles((list) => addFiles(list), { enabled: !off, scope: rootRef })
 
   return (
-    <div {...dropProps} className={`rounded-2xl transition-colors ${dragOver ? 'bg-selected-tint ring-2 ring-ring' : ''}`}>
+    <div ref={rootRef} {...dropProps} className={`rounded-2xl transition-colors ${dragOver ? 'bg-selected-tint ring-2 ring-ring' : ''}`}>
       <input
         ref={cameraRef}
         type="file"

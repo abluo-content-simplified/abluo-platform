@@ -9,6 +9,9 @@ import { UploadsProvider } from '@/components/client/media/UploadsProvider'
 import { resolveAdminAccess } from '@/lib/api/auth'
 import { getViewerAccount } from '@/lib/api/viewer-account'
 import { countAdminUnread } from '@/lib/support-tickets/service'
+import { countAdminUnreadMessages } from '@/lib/messages/service'
+import { countUnreadNotifications } from '@/lib/notification-center/service'
+import { maybeSweepDigest } from '@/lib/notification-center/digest'
 import { APP_TEXT_SIZE_COOKIE, APP_THEME_COOKIE, parseAppTextSize, parseAppTheme } from '@/lib/app-theme'
 
 // Installable dashboard (manifest, icons, theme colour): dashboards only, never the websites.
@@ -37,11 +40,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!actor) redirect('/login')
 
   // Unread support tickets for the nav badge. Never blocks the page: any failure (e.g. migration 046 not applied) is 0.
-  const [viewer, jar, supportUnread] = await Promise.all([
+  const [viewer, jar, supportUnread, messagesUnread, notificationsUnread] = await Promise.all([
     getViewerAccount(actor.userId),
     cookies(),
     countAdminUnread(actor.userId).catch(() => 0),
+    countAdminUnreadMessages(actor.userId).catch(() => 0),
+    countUnreadNotifications(actor.userId, 'abluo').catch(() => 0),
   ])
+  maybeSweepDigest()
 
   return (
     <AppRoot surface="admin">
@@ -49,6 +55,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="min-h-screen md:flex">
         <AdminSidebar
           supportUnread={supportUnread}
+          messagesUnread={messagesUnread}
+          notificationsUnread={notificationsUnread}
           account={{
             name: viewer.name,
             email: viewer.email,

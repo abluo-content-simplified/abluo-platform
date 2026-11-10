@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type DragEvent } from 'react'
 import { useTranslations } from 'next-intl'
+import { usePasteFiles } from '@/components/app/ui/use-paste-files'
 import { Button, IconButton } from '@/components/app/ui/Button'
 import { ChoiceCard } from '@/components/app/ui/ChoiceCard'
 import { Notice } from '@/components/app/ui/Notice'
@@ -154,6 +155,10 @@ export function PhotoAddStep({
     onSettled: (id, landed) => settle(id, landed),
   })
 
+  // Paste screenshots or copied pictures straight in (Tom, 2026-11-10).
+  const stepRef = useRef<HTMLElement>(null)
+  usePasteFiles((list) => addFiles(list), { scope: stepRef })
+
   const addFiles = (list: FileList | File[] | null | undefined, fromCamera = false) => {
     const picked = Array.from(list ?? []).filter((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name))
     if (!picked.length) return
@@ -226,6 +231,7 @@ export function PhotoAddStep({
 
   return (
     <section
+      ref={stepRef}
       aria-labelledby="photos-step-title"
       className={`relative -m-2 flex flex-col rounded-3xl p-2 transition-colors ${dragging ? 'bg-selected-tint ring-2 ring-ring' : ''}`}
       {...dragProps}

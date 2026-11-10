@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import { AppIcon, APP_ICONS } from '@/components/app/shell/AppIcon'
 import { Avatar } from './Avatar'
+import { ButtonLink } from './Button'
 import { ImageViewer, type ImageViewerLabels } from './ImageViewer'
 import { segmentBody } from '@/lib/support-tickets/redaction'
 import type { TicketAttachmentView, ThreadEntry } from '@/lib/support-tickets/model'
@@ -45,6 +47,12 @@ export type MessageThreadLabels = {
   viewer: ImageViewerLabels
   /** Accessible name of the whole list. */
   thread: string
+  /** Messages (ADR-050): accessible name of a file (PDF) link, e.g. "Download offer.pdf". */
+  openFile?: (name: string) => string
+  /** Messages: a deleted file's placeholder (defaults to `screenshotDeleted`). */
+  fileDeleted?: string
+  /** Messages: the label of an "Open in dashboard" card for a destination id. */
+  link?: (id: string) => string
 }
 
 type EventEntry = Extract<ThreadEntry, { kind: 'event' }>
@@ -56,8 +64,11 @@ export function MessageThread({
   actions,
   attachmentActions,
   imageActions,
+  supportName,
 }: {
   entries: ThreadEntry[]
+  /** Messages (ADR-050 D4): the name shown on a message from Abluo's team ("Tom · Abluo"). Default `labels.support`. */
+  supportName?: (entry: Extract<ThreadEntry, { kind: 'message' }>) => string
   labels: MessageThreadLabels
   formatEvent: (event: EventEntry) => string | null
   /** Controls under a message (admin: remove text). */
@@ -70,7 +81,8 @@ export function MessageThread({
   const dateLocale = useDateLocale()
   const [viewing, setViewing] = useState<{ entryId: string; attachmentId: string } | null>(null)
   const viewedEntry = viewing ? entries.find((e): e is Extract<ThreadEntry, { kind: 'message' }> => e.kind === 'message' && e.id === viewing.entryId) : undefined
-  const live = viewedEntry ? viewedEntry.attachments.filter((a) => a.url && a.deleted === null) : []
+  const isFile = (a: TicketAttachmentView) => a.mime === 'application/pdf'
+  const live = viewedEntry ? viewedEntry.attachments.filter((a) => a.url && a.deleted === null && !isFile(a)) : []
   const viewIndex = viewing ? Math.max(0, live.findIndex((a) => a.id === viewing.attachmentId)) : 0
   const fmt = new Intl.DateTimeFormat(dateLocale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   const time = (iso: string) => (
@@ -108,7 +120,7 @@ export function MessageThread({
         }
 
         const fromSupport = entry.authorKind === 'support'
-        const name = fromSupport ? labels.support : entry.author.name
+        const name = fromSupport ? (supportName ? supportName(entry) : labels.support) : entry.author.name
         return (
           <li key={entry.id} className={`rounded-xl border border-border px-4 py-3 ${fromSupport ? 'bg-muted' : 'bg-card'}`}>
             <div className="flex items-start gap-3">
@@ -138,11 +150,38 @@ export function MessageThread({
                     )}
                   </p>
                 )}
+                {entry.links && entry.links.length > 0 && labels.link ? (
+                  <div className="mt-3 flex flex-wrap items-start gap-2">
+                    {entry.links.map((l) => (
+                      <ButtonLink key={l.id} variant="secondary" href={l.href}>
+                        {labels.link?.(l.id)}
+                      </ButtonLink>
+                    ))}
+                  </div>
+                ) : null}
                 {entry.attachments.length > 0 ? (
                   <ul className="mt-3 flex flex-wrap items-start gap-3">
                     {entry.attachments.map((a, i) => (
                       <li key={a.id} className="flex flex-col items-start gap-1">
-                        {a.url ? (
+                        {isFile(a) ? (
+                          a.url ? (
+                            <a
+                              href={a.url}
+                              download={a.name || true}
+                              aria-label={labels.openFile ? labels.openFile(a.name ?? '') : a.name}
+                              className="flex min-h-11 max-w-64 items-start gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm leading-5 text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                            >
+                              <span className="shrink-0 text-muted-foreground">
+                                <AppIcon d={APP_ICONS.file} size={18} />
+                              </span>
+                              <span className="min-w-0 break-words">{a.name}</span>
+                            </a>
+                          ) : (
+                            <span className="flex min-h-11 max-w-64 items-start rounded-xl border border-dashed border-border px-3 py-2.5 text-xs leading-4 text-muted-foreground">
+                              {labels.fileDeleted ?? labels.screenshotDeleted}
+                            </span>
+                          )
+                        ) : a.url ? (
                           <button
                             type="button"
                             onClick={() => setViewing({ entryId: entry.id, attachmentId: a.id })}

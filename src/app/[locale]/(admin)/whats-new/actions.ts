@@ -16,8 +16,14 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { MODULE_REGISTRY } from '@/lib/modules/registry'
 import { sniffImageType } from '@/lib/account/avatar'
 import { getNoticeForAdmin, toAdminNotice, type AdminNotice } from '@/lib/whats-new/notices-admin'
+import { listAdminUsers } from '@/lib/api/admin-dashboard/users'
+import { buildMessageDirectory } from '@/lib/messages/directory'
+import { notify } from '@/lib/notification-center/service'
+import { expectedPeople } from '@/lib/whats-new/acks'
 import {
   NOTICE_COLUMNS,
+  isMissingColumnError,
+  NOTICE_COLUMNS_045,
   nextNoticeStatus,
   validateNotice,
   type NoticeError,
@@ -156,10 +162,15 @@ export async function saveNoticeAction(id: string | null, intent: SaveIntent, in
   if (!INTENTS.includes(intent)) return { ok: false, error: 'failed' }
   if (id !== null && !UUID.test(id)) return { ok: false, error: 'notFound' }
 
+  // ADR-050 D8: named sites / people must exist in the people directory.
+  const specific = (input.projects?.length ?? 0) > 0 || (input.users?.length ?? 0) > 0
+  const directory = specific || input.requiresAck ? await listAdminUsers() : null
+  const sites = directory && !directory.error ? buildMessageDirectory(directory.people, directory.projects) : []
   const checked = validateNotice(input, {
     knownModules: MODULE_REGISTRY.map((m) => m.id),
     publishing: intent === 'publish',
     now: Date.now(),
+    ...(specific ? { knownProjects: directory?.projects.map((p) => p.id) ?? [], knownUsers: directory?.people.flatMap((p) => (p.userId ? [p.userId] : [])) ?? [] } : {}),
   })
   if (!checked.ok) return { ok: false, error: 'invalid', errors: checked.errors }
 
@@ -167,14 +178,46 @@ export async function saveNoticeAction(id: string | null, intent: SaveIntent, in
   const current = id ? await getNoticeForAdmin(id) : null
   if (id && !current) return { ok: false, error: 'notFound' }
 
-  const values = { ...checked.values, status: nextNoticeStatus(intent, current?.status ?? null), updated_by: actor.userId }
-  const { data, error } = current
-    ? await admin.from('product_notices').update(values).eq('id', current.id).select(NOTICE_COLUMNS).single()
-    : await admin.from('product_notices').insert({ ...values, created_by: actor.userId }).select(NOTICE_COLUMNS).single()
+  const status = nextNoticeStatus(intent, current?.status ?? null)
+  const values = { ...checked.values, status, updated_by: actor.userId }
+  const write = (v: Record<string, unknown>, columns: string) =>
+    current
+      ? admin.from('product_notices').update(v).eq('id', current.id).select(columns).single()
+      : admin.from('product_notices').insert({ ...v, created_by: actor.userId }).select(columns).single()
+  let res = await write(values, NOTICE_COLUMNS)
+  if (isMissingColumnError(res.error)) {
+    // Migration 069 not applied yet: the 045 shape works as long as no new option is used.
+    const usesNew = specific || values.requires_ack || Object.keys(values.body).length > 0
+    if (usesNew) return { ok: false, error: 'missing' }
+    const { body: _body, requires_ack: _ack, ...old } = values
+    void _body
+    void _ack
+    res = await write(old, NOTICE_COLUMNS_045)
+  }
+  const { data, error } = res
   if (error || !data) {
     console.warn(`announcements: save failed (${error?.message ?? 'no row'})`)
     return { ok: false, error: isMissingTableError(error) ? 'missing' : 'failed' }
   }
+  const saved = data as unknown as NoticeRow
+  // ADR-050 D9: a newly published notice that asks for an acknowledgement rings the bell of the people it is aimed at.
+  if (status === 'published' && current?.status !== 'published' && saved.requires_ack === true) {
+    const people = expectedPeople(saved.audience, sites) ?? []
+    const slugs = new Map<string, string>()
+    const projectIds = [...new Set(people.map((p) => p.projectId).filter((p): p is string => Boolean(p)))]
+    if (projectIds.length) {
+      const { data: ps } = await admin.from('projects').select('id, slug').in('id', projectIds)
+      for (const p of (ps ?? []) as { id: string; slug: string }[]) slugs.set(p.id, p.slug)
+    }
+    await notify(
+      people.flatMap((p) => {
+        const slug = p.projectId ? slugs.get(p.projectId) : undefined
+        return slug
+          ? [{ userId: p.userId, side: 'client' as const, projectId: p.projectId, kind: 'announcement.ack_requested' as const, sourceType: 'notice' as const, sourceId: saved.id, href: `/${slug}/home` }]
+          : []
+      }),
+    )
+  }
   revalidatePath('/whats-new')
-  return { ok: true, notice: toAdminNotice(data as NoticeRow) }
+  return { ok: true, notice: toAdminNotice(saved) }
 }

@@ -38,6 +38,8 @@ export const ADMIN_SURFACE_SEGMENTS = new Set([
   'lab',
   // Users — everyone with access to any site, across Abluo (ADR-030 A1, 2026-10-23).
   'users',
+  // Messages — conversations Abluo starts with clients (ADR-050, 2026-11-10).
+  'messages',
 ])
 
 /**

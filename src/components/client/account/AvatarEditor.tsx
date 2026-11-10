@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
+import { usePasteFiles } from '@/components/app/ui/use-paste-files'
 import { useRouter } from '@/i18n/navigation'
 import { Avatar } from '@/components/app/ui/Avatar'
 import { AVATAR_EDGE_PX } from '@/lib/account/avatar'
@@ -56,6 +57,10 @@ export function AvatarEditor({ name, email, src }: { name: string; email: string
     })
   }
 
+  // Paste a picture straight in (Tom, 2026-11-10).
+  const rootRef = useRef<HTMLDivElement>(null)
+  usePasteFiles((list) => onPick(list[0]), { enabled: !pending, accept: ['image/jpeg', 'image/png', 'image/webp'], scope: rootRef })
+
   function onRemove() {
     setError(null)
     start(async () => {
@@ -67,7 +72,7 @@ export function AvatarEditor({ name, email, src }: { name: string; email: string
 
 
   return (
-    <div className="flex items-center gap-4 py-2">
+    <div ref={rootRef} className="flex items-center gap-4 py-2">
       <Avatar name={name} email={email} src={src} size="lg" />
       <div className="min-w-0 space-y-2">
         <div className="flex flex-wrap gap-2">

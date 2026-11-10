@@ -79,14 +79,15 @@ describe('isClientSurface', () => {
     }
   })
 
-  it('project and admin sub-page segment sets are disjoint (except media, analytics, support, users — matched at different positions)', () => {
+  it('project and admin sub-page segment sets are disjoint (except media, analytics, support, users, messages — matched at different positions)', () => {
     // `media` and `analytics` are both an admin page (`/media`, `/analytics`,
     // FIRST segment) and a client screen (`/{project}/media`, `/{project}/analytics`,
     // SECOND segment). The two predicates look at different positions, so they
     // never claim the same path.
     // `support` too (Tom, 2026-10-22): admin Support Tickets and the client's Support page.
     // `users` too (ADR-043): admin Users and the client's Users page (was People).
-    const SHARED = new Set(['media', 'analytics', 'support', 'users'])
+    // `messages` too (ADR-050): admin Messages and the client's Messages page.
+    const SHARED = new Set(['media', 'analytics', 'support', 'users', 'messages'])
     for (const seg of CLIENT_PROJECT_SEGMENTS) {
       if (SHARED.has(seg)) continue
       expect(ADMIN_SURFACE_SEGMENTS.has(seg)).toBe(false)

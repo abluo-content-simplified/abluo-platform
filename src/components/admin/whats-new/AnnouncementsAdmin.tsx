@@ -4,7 +4,6 @@ import { useRef, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/app/ui/Button'
-import { Checkbox } from '@/components/app/ui/Checkbox'
 import { DateTimePicker } from '@/components/app/ui/DateTimePicker'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { Field } from '@/components/app/ui/Field'
@@ -20,6 +19,12 @@ import { LocalDate, Pill, type PillTone } from '@/components/app/ui/list/cells'
 import { saveNoticeAction } from '@/app/[locale]/(admin)/whats-new/actions'
 import type { SaveIntent } from '@/app/[locale]/(admin)/whats-new/actions'
 import type { AdminNotice } from '@/lib/whats-new/notices-admin'
+import type { DirectorySite } from '@/lib/messages/directory'
+import type { AckReport } from '@/lib/whats-new/acks'
+import { CheckboxCard } from '@/components/app/ui/CheckboxCard'
+import { RadioList } from '@/components/app/ui/RadioList'
+import { TextInput } from '@/components/app/ui/TextInput'
+import { FactRow } from '@/components/app/ui/FactRow'
 import { NOTICE_LIMITS, NOTICE_TONES, isNoticeActive, type NoticeError, type NoticeInput, type NoticeTone } from '@/lib/whats-new/notices'
 import { pickLocalized, type LocalizedText, type ProductUpdateStatus, type WhatsNewLocale } from '@/lib/whats-new/model'
 
@@ -42,20 +47,38 @@ const STATUS_TONE: Record<ProductUpdateStatus, PillTone> = { draft: 'outline', p
 const HELP = 'mt-1 text-sm text-muted-foreground'
 
 type Draft = NoticeInput
-const EMPTY: Draft = { message: {}, tone: 'info', startsAt: null, endsAt: null, modules: [] }
-const toDraft = (n: AdminNotice): Draft => ({ message: n.message, tone: n.tone, startsAt: n.startsAt, endsAt: n.endsAt, modules: n.modules })
+const EMPTY: Draft = { message: {}, tone: 'info', startsAt: null, endsAt: null, modules: [], body: {}, requiresAck: false, projects: [], users: [] }
+const toDraft = (n: AdminNotice): Draft => ({
+  message: n.message,
+  tone: n.tone,
+  startsAt: n.startsAt,
+  endsAt: n.endsAt,
+  modules: n.modules,
+  body: n.body,
+  requiresAck: n.requiresAck,
+  projects: n.projects,
+  users: n.users,
+})
+type AudienceKind = 'everyone' | 'modules' | 'specific'
+const kindOf = (d: Draft): AudienceKind => ((d.projects?.length ?? 0) || (d.users?.length ?? 0) ? 'specific' : d.modules.length ? 'modules' : 'everyone')
 
 export function AnnouncementsAdmin({
   notices: initial,
   modules,
   languages,
   missing,
+  sites = [],
+  reports = {},
 }: {
   notices: AdminNotice[]
   modules: ModuleOption[]
   languages: LanguageOption[]
   /** Migration 045 is not applied yet. */
   missing: boolean
+  /** ADR-050 D8: sites and their people, for "specific sites or people". */
+  sites?: DirectorySite[]
+  /** Acknowledgements per notice that asks for them. */
+  reports?: Record<string, AckReport>
 }) {
   const t = useTranslations('admin.announcements')
   const router = useRouter()
@@ -116,6 +139,13 @@ export function AnnouncementsAdmin({
               <span className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <Pill tone={STATUS_TONE[n.status]}>{stateOf(n)}</Pill>
                 <Pill tone={n.tone === 'warning' ? 'highlight' : 'muted'}>{t(`tones.${n.tone}`)}</Pill>
+                {n.requiresAck ? (
+                  <Pill tone="outline">
+                    {reports[n.id]?.pending
+                      ? t('acks.countOf', { done: reports[n.id]?.acknowledged.length ?? 0, total: (reports[n.id]?.acknowledged.length ?? 0) + (reports[n.id]?.pending?.length ?? 0) })
+                      : t('acks.count', { count: reports[n.id]?.acknowledged.length ?? 0 })}
+                  </Pill>
+                ) : null}
                 <span>
                   <LocalDate iso={n.startsAt} /> – <LocalDate iso={n.endsAt} />
                 </span>
@@ -131,6 +161,8 @@ export function AnnouncementsAdmin({
         notice={current}
         modules={modules}
         languages={languages}
+        sites={sites}
+        report={current ? reports[current.id] ?? null : null}
         onClose={() => setEditing(null)}
         onSaved={onSaved}
         onError={(m) => show(m, 'error')}
@@ -145,6 +177,8 @@ function NoticeEditor({
   notice,
   modules,
   languages,
+  sites,
+  report,
   onClose,
   onSaved,
   onError,
@@ -153,6 +187,8 @@ function NoticeEditor({
   notice: AdminNotice | null
   modules: ModuleOption[]
   languages: LanguageOption[]
+  sites: DirectorySite[]
+  report: AckReport | null
   onClose: () => void
   onSaved: (n: AdminNotice, intent: SaveIntent) => void
   onError: (message: string) => void
@@ -163,6 +199,18 @@ function NoticeEditor({
   const [errors, setErrors] = useState<string[]>([])
   const [pending, startTransition] = useTransition()
   const status: ProductUpdateStatus = notice?.status ?? 'draft'
+  const [kind, setKind] = useState<AudienceKind>(() => kindOf(notice ? toDraft(notice) : EMPTY))
+  const [find, setFind] = useState('')
+  const people = sites.flatMap((s) => s.people.map((p) => ({ ...p, site: s.name }))).filter((p, i, all) => all.findIndex((x) => x.userId === p.userId) === i)
+  const needle = find.trim().toLowerCase()
+  const foundPeople = people.filter((p) => !needle || `${p.name} ${p.email} ${p.site}`.toLowerCase().includes(needle))
+  const nameOf = (userId: string) => {
+    const p = people.find((x) => x.userId === userId)
+    return p ? p.name || p.email : userId
+  }
+  const toggleIn = (key: 'projects' | 'users', id: string, on: boolean) =>
+    setDraft((d) => ({ ...d, [key]: on ? [...new Set([...(d[key] ?? []), id])] : (d[key] ?? []).filter((x) => x !== id) }))
+  const setBody = (value: string) => setDraft((d) => ({ ...d, body: { ...(d.body ?? {}), [lang]: value } as LocalizedText }))
 
   const setMessage = (value: string) => setDraft((d) => ({ ...d, message: { ...d.message, [lang]: value } as LocalizedText }))
   const toggleModule = (id: string, on: boolean) =>
@@ -171,7 +219,14 @@ function NoticeEditor({
   const save = (intent: SaveIntent) =>
     startTransition(async () => {
       setErrors([])
-      const res = await saveNoticeAction(notice?.id ?? null, intent, draft)
+      // Only the chosen audience kind is sent (switching kinds never keeps hidden choices).
+      const payload: Draft = {
+        ...draft,
+        modules: kind === 'modules' ? draft.modules : [],
+        projects: kind === 'specific' ? draft.projects : [],
+        users: kind === 'specific' ? draft.users : [],
+      }
+      const res = await saveNoticeAction(notice?.id ?? null, intent, payload)
       if (res.ok) return onSaved(res.notice, intent)
       if (res.error === 'invalid') setErrors(res.errors.map((e: NoticeError) => t(`errors.${e}`)))
       else onError(t(`errors.${res.error}`))
@@ -259,20 +314,90 @@ function NoticeEditor({
           </Field>
         </div>
 
-        <fieldset>
-          <FieldLabel as="legend">{t('fields.audience')}</FieldLabel>
-          <p className={HELP}>{t('fields.audienceHelp')}</p>
-          <ul className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
+        <Field label={t('fields.body')} hint={t('fields.bodyHelp')}>
+          {(p) => <TextArea {...p} lang={lang} rows={6} value={draft.body?.[lang] ?? ''} maxLength={NOTICE_LIMITS.body} onChange={(e) => setBody(e.target.value)} />}
+        </Field>
+
+        <CheckboxCard
+          label={t('fields.requiresAck')}
+          description={t('fields.requiresAckHelp')}
+          checked={draft.requiresAck === true}
+          onChange={(on) => setDraft((d) => ({ ...d, requiresAck: on }))}
+        />
+
+        <RadioList
+          legend={t('fields.audience')}
+          name="audience"
+          value={kind}
+          onChange={setKind}
+          options={[
+            { value: 'everyone', label: t('audience.everyone'), description: t('audience.everyoneHelp') },
+            { value: 'modules', label: t('audience.modules'), description: t('fields.audienceHelp') },
+            { value: 'specific', label: t('audience.specific'), description: t('audience.specificHelp') },
+          ]}
+        />
+
+        {kind === 'modules' ? (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {modules.map((m) => (
-              <li key={m.id}>
-                <label className="flex cursor-pointer items-center gap-1 text-[0.9375rem] text-foreground">
-                  <Checkbox checked={draft.modules.includes(m.id)} onChange={(on) => toggleModule(m.id, on)} aria-label={m.label} />
-                  {m.label}
-                </label>
-              </li>
+              <CheckboxCard key={m.id} label={m.label} checked={draft.modules.includes(m.id)} onChange={(on) => toggleModule(m.id, on)} />
             ))}
-          </ul>
-        </fieldset>
+          </div>
+        ) : null}
+
+        {kind === 'specific' ? (
+          <div className="space-y-4">
+            <div>
+              <FieldLabel as="p">{t('audience.sites')}</FieldLabel>
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {sites.map((site) => (
+                  <CheckboxCard
+                    key={site.id}
+                    label={site.name}
+                    description={t('audience.peopleCount', { count: site.people.length })}
+                    checked={(draft.projects ?? []).includes(site.id)}
+                    onChange={(on) => toggleIn('projects', site.id, on)}
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <Field label={t('audience.people')} hint={(draft.users ?? []).length ? (draft.users ?? []).map(nameOf).join(', ') : undefined}>
+                {(p) => <TextInput {...p} type="search" value={find} placeholder={t('audience.findPeople')} onChange={(e) => setFind(e.target.value)} />}
+              </Field>
+              <div className="mt-2 flex max-h-72 flex-col gap-2 overflow-y-auto">
+                {foundPeople.map((person) => (
+                  <CheckboxCard
+                    key={person.userId}
+                    label={person.name || person.email}
+                    description={[person.name ? person.email : null, person.site].filter(Boolean).join(' · ')}
+                    checked={(draft.users ?? []).includes(person.userId)}
+                    onChange={(on) => toggleIn('users', person.userId, on)}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {report ? (
+          <section aria-label={t('acks.title')}>
+            <FieldLabel as="p">{t('acks.title')}</FieldLabel>
+            <dl className="mt-1">
+              {report.acknowledged.map((a) => (
+                <FactRow key={a.userId} label={a.name || a.email || a.userId}>
+                  <LocalDate iso={a.at} />
+                </FactRow>
+              ))}
+              {(report.pending ?? []).map((p) => (
+                <FactRow key={p.userId} label={p.name || p.email || p.userId}>
+                  {t('acks.notYet')}
+                </FactRow>
+              ))}
+            </dl>
+            {report.acknowledged.length === 0 && !(report.pending ?? []).length ? <p className={HELP}>{t('acks.none')}</p> : null}
+          </section>
+        ) : null}
       </div>
     </SidePanel>
   )

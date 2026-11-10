@@ -40,6 +40,8 @@ import {
   type ThreadEntry,
 } from './model'
 import { scheduleTicketNotifications } from './notify'
+import { ringTicketBell } from './bell'
+import { markSourceRead } from '@/lib/notification-center/service'
 import { clientReplyOutcome, isUnread } from './state'
 import { maskRanges, type RedactionRange } from './redaction'
 
@@ -121,6 +123,8 @@ async function markRead(db: Db, ticketId: string, userId: string, side: ReadSide
   const at = new Date().toISOString()
   const res = await db.from('support_ticket_reads').upsert({ ticket_id: ticketId, user_id: userId, side, last_read_at: at }, { onConflict: 'ticket_id,user_id,side' })
   if (isMissingSide(res.error)) await db.from('support_ticket_reads').upsert({ ticket_id: ticketId, user_id: userId, last_read_at: at }, { onConflict: 'ticket_id,user_id' })
+  // ADR-050 D9: opening (or answering) a ticket clears its bell row.
+  await markSourceRead(userId, side === 'support' ? 'abluo' : 'client', 'ticket', ticketId)
 }
 
 /** Uploads prepared screenshots and links them to a message. A failed upload is logged and skipped, never fatal. */
@@ -336,7 +340,10 @@ export async function createTicket(access: TicketAccess, input: NewTicketInput):
     return { ok: true as const, value: { id: row.id, number: Number(row.number), reference: formatTicketNumber(row.number), created: row.created } }
   })
   if (!result.ok) return result
-  if (result.value.created) scheduleTicketNotifications()
+  if (result.value.created) {
+    scheduleTicketNotifications()
+    await ringTicketBell('ticket.created', result.value.id)
+  }
   return { ok: true, value: { id: result.value.id, number: result.value.number, reference: result.value.reference } }
 }
 
@@ -361,7 +368,10 @@ export async function replyAsClient(access: TicketAccess, ticketId: string, body
     await markRead(db, ticketId, access.userId, 'client')
     return { ok: true, value: undefined }
   })
-  if (result.ok) scheduleTicketNotifications()
+  if (result.ok) {
+    scheduleTicketNotifications()
+    await ringTicketBell('ticket.client_replied', ticketId)
+  }
   return result
 }
 
@@ -441,6 +451,10 @@ export async function getAdminTicket(adminUserId: string, ticketId: string, opti
     const eventRows = (events.data ?? []) as EventRow[]
     const people = await loadPeople(db, [t.created_by, ...messages.map((m) => m.author_id), ...noteRows.map((n) => n.author_id), ...eventRows.map((e) => e.actor_id)], true)
     const byMessage = await attachmentViews(db, (atts.data ?? []) as AttachmentRow[])
+    // The client side's latest read (migration 047 marks per side; before it nothing is shown).
+    const reads = await db.from('support_ticket_reads').select('user_id, last_read_at').eq('ticket_id', t.id).eq('side', 'client').order('last_read_at', { ascending: false }).limit(1)
+    const lastRead = reads.error ? null : ((reads.data ?? []) as Array<{ user_id: string; last_read_at: string }>)[0] ?? null
+    const reader = lastRead ? (people.get(lastRead.user_id) ?? (await loadPeople(db, [lastRead.user_id], false)).get(lastRead.user_id)) : undefined
     if (options.markRead !== false) await markRead(db, t.id, adminUserId, 'support')
     return {
       ok: true,
@@ -452,6 +466,7 @@ export async function getAdminTicket(adminUserId: string, ticketId: string, opti
         reply: 'allowed',
         context: t.context ?? {},
         thread: buildThread({ messages, notes: noteRows, events: eventRows, people, byMessage, firstMessageId: messages[0]?.id ?? null, hideSupportNames: false }),
+        clientRead: lastRead ? { at: lastRead.last_read_at, name: reader?.name ?? '' } : null,
       },
     }
   })
@@ -475,7 +490,10 @@ export async function replyAsSupport(adminUserId: string, ticketId: string, body
     await markRead(db, ticketId, adminUserId, 'support')
     return { ok: true, value: undefined }
   })
-  if (result.ok) scheduleTicketNotifications()
+  if (result.ok) {
+    scheduleTicketNotifications()
+    await ringTicketBell('ticket.support_replied', ticketId)
+  }
   return result
 }
 
@@ -542,7 +560,10 @@ export async function setTicketStatus(adminUserId: string, ticketId: string, sta
     await markRead(db, ticketId, adminUserId, 'support')
     return { ok: true, value: undefined }
   })
-  if (result.ok && (status === 'resolved' || status === 'waiting_for_user')) scheduleTicketNotifications()
+  if (result.ok && (status === 'resolved' || status === 'waiting_for_user')) {
+    scheduleTicketNotifications()
+    await ringTicketBell(status === 'resolved' ? 'ticket.resolved' : 'ticket.waiting_for_user', ticketId)
+  }
   return result
 }
 

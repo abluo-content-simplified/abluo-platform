@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
+import { usePasteFiles } from '@/components/app/ui/use-paste-files'
 import { useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/app/ui/Button'
 import { buttonClass } from '@/components/app/ui/button-styles'
@@ -323,6 +324,10 @@ function UpdateEditor({
       else onError(t(`errors.${res.error}`))
     })
 
+  // Paste a screenshot straight in (Tom, 2026-11-10) — the same upload and checks as choosing a file.
+  const imageRef = useRef<HTMLDivElement>(null)
+  usePasteFiles((list) => void upload(list[0]), { enabled: open && !uploading, accept: ['image/jpeg', 'image/png', 'image/webp'], scope: imageRef })
+
   const upload = async (file: File | undefined) => {
     if (!file) return
     setUploading(true)
@@ -434,7 +439,7 @@ function UpdateEditor({
           )}
         </Field>
 
-        <div>
+        <div ref={imageRef}>
           <FieldLabel as="p">{t('fields.image')}</FieldLabel>
           <p className={HELP}>{t('fields.imageHelp')}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">

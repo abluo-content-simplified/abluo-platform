@@ -32,6 +32,10 @@ import { SUPPORT_EDIT_MINUTES } from '@/lib/support/constants'
 import { listSupportNotices } from '@/lib/support/server'
 import { ticketAccess } from '@/lib/support-tickets/access'
 import { countClientUnread } from '@/lib/support-tickets/service'
+import { messageAccess } from '@/lib/messages/access'
+import { clientMessagesNav } from '@/lib/messages/service'
+import { countUnreadNotifications } from '@/lib/notification-center/service'
+import { maybeSweepDigest } from '@/lib/notification-center/digest'
 import { SupportBanner } from '@/components/client/support/SupportBanner'
 import { SupportReplyNotice } from '@/components/client/support/SupportReplyNotice'
 import { getFormsDashboard } from '@/lib/api/dashboard/forms'
@@ -94,6 +98,13 @@ async function ClientProjectLayoutInner({
   // Billing is tenant-scoped: resolve this project's own client (only for people holding a billing permission).
   const billingTenantId = hasAnyBillingGrant(ctx) ? (tenantIdOfGrant(activeGrant) ?? (await projectTenantId(activeGrant.projectId))) : null
   const navItems = buildClientNavItems({ ...activeGrant, permissions: [...activeGrant.permissions, ...billingNavPermissions(ctx, activeGrant, billingTenantId)] })
+  // Messages (ADR-050 D12): personal, so not a tenant surface — the entry shows only once Abluo has written to this
+  // person here, never in a support visit.
+  const msgAccess = messageAccess(ctx, activeGrant.projectSlug)
+  const messagesNav = msgAccess && !ctx.support ? await clientMessagesNav(msgAccess).catch(() => null) : null
+  // Notification Center (ADR-050 D10): the bell's first number; never in a support visit.
+  const notificationsUnread = ctx.support ? 0 : await countUnreadNotifications(ctx.userId, 'client').catch(() => 0)
+  maybeSweepDigest()
   const viewer = await getViewerAccount(ctx.userId)
   lap('viewer')
   const summaries = await loadProjectSummaries(ctx.projects.map((grant) => grant.projectId))
@@ -116,6 +127,7 @@ async function ClientProjectLayoutInner({
     userId: ctx.userId,
     locale: uiLocale,
     enabledModuleIds: activeGrant.enabledModuleIds,
+    projectId: activeGrant.projectId,
   })
   lap('notices')
   // Profile panel (Tom, 2026-10-08): every site this person works on, with their role there.
@@ -195,6 +207,9 @@ async function ClientProjectLayoutInner({
           whatsNew={whatsNew?.updates ?? null}
           whatsNewPopup={!support}
           supportUnread={supportUnread}
+          messages={messagesNav}
+          notificationsUnread={notificationsUnread}
+          bell={!support}
           newRequestsCount={newRequestsCount}
           billingAttention={billingAttention}
           reportProblem={Boolean(ticketAccessForNav?.canWrite) && navItems.some((i) => i.moduleId === 'support')}
@@ -207,7 +222,7 @@ async function ClientProjectLayoutInner({
           <PresenceHeartbeat />
           <SectionTarget />
           {/* Announcements (planned maintenance …) between their start and end. */}
-          <AnnouncementBanners notices={notices} />
+          <AnnouncementBanners notices={notices} projectSlug={activeGrant.projectSlug} canAcknowledge={!support} />
           {support ? (
             <SupportBanner
               site={support.projectName}

@@ -11,6 +11,8 @@
  * ignored). Never throws: a failure only means the dot shows again next time.
  */
 import { createClient } from '@/lib/supabase/server'
+import { markSourceRead } from '@/lib/notification-center/service'
+import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const MAX_IDS = 100
@@ -63,6 +65,34 @@ export async function dismissNoticeAction(id: string): Promise<{ ok: boolean }> 
       console.warn(`announcements: dismissal not saved (${error.message})`)
       return { ok: false }
     }
+    return { ok: true }
+  } catch {
+    return { ok: false }
+  }
+}
+
+/**
+ * "OK, understood" on an announcement that asks for it (ADR-050 D8). Goes
+ * through the support-aware resolver first: in an Abluo support visit nothing
+ * is recorded (the admin is not the client). The row itself is written with
+ * the person's own session: RLS only accepts their own row, for a published
+ * notice aimed at them that requires an acknowledgement. Also clears its bell
+ * row. Idempotent; never throws.
+ */
+export async function acknowledgeNoticeAction(projectSlug: string, id: string): Promise<{ ok: boolean }> {
+  if (typeof id !== 'string' || !UUID.test(id) || typeof projectSlug !== 'string' || !projectSlug) return { ok: false }
+  try {
+    const ctx = await getTenantAuthorizationContext({ project: projectSlug })
+    if (!ctx || ctx.support) return { ok: false }
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from('product_notice_acks')
+      .upsert({ user_id: ctx.userId, notice_id: id }, { onConflict: 'user_id,notice_id', ignoreDuplicates: true })
+    if (error) {
+      console.warn(`announcements: acknowledgement not saved (${error.message})`)
+      return { ok: false }
+    }
+    await markSourceRead(ctx.userId, 'client', 'notice', id)
     return { ok: true }
   } catch {
     return { ok: false }

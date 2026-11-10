@@ -70,6 +70,8 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   // ADR-049: Digital Cards (`/{project}/cards`, `/{project}/cards/{id}`). Not `link` — that is the public card.
   'cards',
   'users',
+  // ADR-050: Messages (`/{project}/messages`, `/{project}/messages/{id}`) — personal, so not a tenant surface; the sidebar adds it.
+  'messages',
   'analytics',
   'apps',
   // ADR-033: the Catalogue (reserved as a public segment, so no clash with a tenant's catalogue URL).

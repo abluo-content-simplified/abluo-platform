@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/digital-cards-sweep",
       "schedule": "35 2 * * *"
+    },
+    {
+      "path": "/api/cron/notifications-sweep",
+      "schedule": "10 8 * * *"
     }
   ]
 }

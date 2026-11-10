@@ -954,6 +954,7 @@ describe('cron / webhook routes require their shared secret', () => {
     { name: 'GET /api/cron/content-activity', run: async (h = {}) => (await import('@/app/api/cron/content-activity/route')).GET(req('/api/cron/content-activity', { headers: h })) },
     { name: 'GET /api/cron/media-sweep', run: async (h = {}) => (await import('@/app/api/cron/media-sweep/route')).GET(req('/api/cron/media-sweep', { headers: h })) },
     { name: 'GET /api/cron/support-tickets-sweep', run: async (h = {}) => (await import('@/app/api/cron/support-tickets-sweep/route')).GET(req('/api/cron/support-tickets-sweep', { headers: h })) },
+    { name: 'GET /api/cron/notifications-sweep', run: async (h = {}) => (await import('@/app/api/cron/notifications-sweep/route')).GET(req('/api/cron/notifications-sweep', { headers: h })) },
     { name: 'GET /api/cron/reservations-sweep', run: async (h = {}) => (await import('@/app/api/cron/reservations-sweep/route')).GET(req('/api/cron/reservations-sweep', { headers: h })) },
     { name: 'GET /api/cron/digital-cards-sweep', run: async (h = {}) => (await import('@/app/api/cron/digital-cards-sweep/route')).GET(req('/api/cron/digital-cards-sweep', { headers: h })) },
   ]
@@ -1009,6 +1010,7 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   'cron/analytics': 'machine',
   'cron/media-sweep': 'machine', // CRON_SECRET bearer (ADR-035 slice 2)
   'cron/support-tickets-sweep': 'machine', // CRON_SECRET bearer (ADR-039 D13)
+  'cron/notifications-sweep': 'machine', // CRON_SECRET bearer (ADR-050 D7/D11)
   'cron/site-access-sweep': 'machine', // CRON_SECRET bearer (ADR-040 B2.4)
   'webhooks/form-events': 'machine',
   'webhooks/stripe': 'machine', // Stripe webhook signature (ADR-041 D11)

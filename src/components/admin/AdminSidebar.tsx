@@ -2,7 +2,11 @@
 
 import { useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/navigation'
+import { useMemo } from 'react'
 import { useLiveAdminSupportCount } from '@/components/admin/tickets/use-live-admin-support-count'
+import { useNotificationCenter, type NotificationActions } from '@/components/app/notifications/NotificationCenter'
+import { adminNotificationCountAction, adminNotificationListAction, adminNotificationMarkReadAction } from '@/app/[locale]/(admin)/notification-actions'
+import { useLiveAdminMessagesCount } from '@/components/admin/messages/use-live-admin-messages-count'
 import type { AccountMenuProps } from '@/components/app/shell/AccountMenu'
 import { APP_ICONS } from '@/components/app/shell/AppIcon'
 import { AppSidebar } from '@/components/app/shell/AppSidebar'
@@ -35,18 +39,37 @@ const NAV = [
   { key: 'media', href: '/media', icon: APP_ICONS.media },
   // Support Tickets: client requests (ADR-039); the count is the unread ones.
   { key: 'support', href: '/support', icon: APP_ICONS.support, group: 'operations' },
+  // Messages: conversations Abluo started with clients (ADR-050); the count is the unread replies.
+  { key: 'messages', href: '/messages', icon: APP_ICONS.messages },
   { key: 'backlog', href: '/backlog', icon: 'M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01' },
   { key: 'translations', href: '/translations', icon: 'm5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6' },
   { key: 'lab', href: '/lab', icon: 'M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3M7 15h10', group: 'product' },
   { key: 'whatsNew', href: '/whats-new', icon: 'M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z' },
 ] as const satisfies readonly { key: string; href: string; icon: string; group?: 'platform' | 'operations' | 'product' }[]
 
-export function AdminSidebar({ account, supportUnread = 0 }: { account: Omit<AccountMenuProps, 'variant'>; supportUnread?: number }) {
+export function AdminSidebar({
+  account,
+  supportUnread = 0,
+  messagesUnread = 0,
+  notificationsUnread = 0,
+}: {
+  account: Omit<AccountMenuProps, 'variant'>
+  supportUnread?: number
+  messagesUnread?: number
+  notificationsUnread?: number
+}) {
   const t = useTranslations('admin')
   const pathname = usePathname()
   const router = useRouter()
   const supportCount = useLiveAdminSupportCount(supportUnread, pathname)
+  const messagesCount = useLiveAdminMessagesCount(messagesUnread, pathname)
+  const notificationActions = useMemo<NotificationActions>(
+    () => ({ count: adminNotificationCountAction, list: adminNotificationListAction, markRead: adminNotificationMarkReadAction }),
+    [],
+  )
+  const notifications = useNotificationCenter({ actions: notificationActions, initialCount: notificationsUnread, pathname })
   return (
+    <>
     <AppSidebar
       id="admin-sidebar"
       tagline={t('shell.tagline')}
@@ -58,7 +81,9 @@ export function AdminSidebar({ account, supportUnread = 0 }: { account: Omit<Acc
         icon: item.icon,
         ...('group' in item ? { groupHeading: t(`navGroups.${item.group}`) } : {}),
         ...(item.key === 'support' && supportCount > 0 ? { badge: { count: supportCount, label: t('supportTickets.unreadNav', { count: supportCount }) } } : {}),
+        ...(item.key === 'messages' && messagesCount > 0 ? { badge: { count: messagesCount, label: t('messages.unreadNav', { count: messagesCount }) } } : {}),
       }))}
+      bell={notifications.bell}
       account={account}
       bottomBar={({ isActive }) => (
         <nav
@@ -84,5 +109,7 @@ export function AdminSidebar({ account, supportUnread = 0 }: { account: Omit<Acc
         </nav>
       )}
     />
+    {notifications.panel}
+    </>
   )
 }

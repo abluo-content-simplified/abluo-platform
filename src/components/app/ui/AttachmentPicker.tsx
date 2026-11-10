@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { AppIcon, APP_ICONS } from '@/components/app/shell/AppIcon'
 import { Button, IconButton } from './Button'
 import { mergePickedFiles, type PickProblem } from './pick-files'
+import { usePasteFiles } from './use-paste-files'
 
 /**
  * Pick a few images (screenshots, photos from the camera roll) and show them
@@ -15,7 +17,9 @@ import { mergePickedFiles, type PickProblem } from './pick-files'
  *     labels={{ add: t('add'), hint: t('hint'), remove: (n) => t('remove', { name: n }), problem: (p) => t(`problem.${p.kind}`, { name: p.name }) }} />
  *
  * All text arrives through `labels` (already translated). The input opens the
- * phone's photo library / camera; PNG, JPG and WebP by default.
+ * phone's photo library / camera; PNG, JPG and WebP by default. Pass
+ * `accept` with `application/pdf` to allow documents too: they show as a file
+ * tile (icon + name) instead of a thumbnail.
  */
 export const DEFAULT_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const
 
@@ -50,9 +54,9 @@ export function AttachmentPicker({
   labels: AttachmentPickerLabels
   disabled?: boolean
   /**
-   * Also take images pasted anywhere on the page (⌘V / Ctrl+V of a
-   * screenshot). Text pastes are left alone: only a clipboard that carries
-   * image files and no text is taken. One picker per page should set this.
+   * Also take images pasted on the page (⌘V / Ctrl+V of a screenshot) —
+   * the shared rule in use-paste-files.ts: text pastes are left alone; with
+   * several pickers the one the person is in gets it.
    */
   acceptPaste?: boolean
 }) {
@@ -71,38 +75,27 @@ export function AttachmentPicker({
     if (merged.files.length !== files.length) onChange(merged.files)
   }
 
-  // Paste a screenshot straight in. The latest onPick is read through a ref so
-  // the listener is attached once, not on every render.
-  const onPickRef = useRef(onPick)
-  useEffect(() => {
-    onPickRef.current = onPick
-  })
-  useEffect(() => {
-    if (!acceptPaste || disabled) return
-    const onPaste = (e: ClipboardEvent) => {
-      const data = e.clipboardData
-      if (!data || data.types.includes('text/plain')) return
-      const images = Array.from(data.files).filter((f) => f.type.startsWith('image/'))
-      if (!images.length) return
-      e.preventDefault()
-      const stamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')
-      onPickRef.current(
-        images.map((f, i) => (f.name && f.name !== 'image.png' ? f : new File([f], `screenshot-${stamp}${i ? `-${i + 1}` : ''}.${f.type.split('/')[1] || 'png'}`, { type: f.type })))
-      )
-    }
-    document.addEventListener('paste', onPaste)
-    return () => document.removeEventListener('paste', onPaste)
-  }, [acceptPaste, disabled])
+  // Paste a screenshot straight in (shared rule: use-paste-files.ts).
+  const rootRef = useRef<HTMLDivElement>(null)
+  usePasteFiles((list) => onPick(list), { enabled: acceptPaste && !disabled, accept, scope: rootRef })
 
   const full = files.length >= max
   return (
-    <div className="flex flex-col items-start gap-3">
+    <div ref={rootRef} className="flex flex-col items-start gap-3">
       {files.length > 0 ? (
         <ul className="flex flex-wrap items-start gap-3">
           {files.map((f, i) => (
             <li key={`${f.name}-${f.size}-${i}`} className="relative size-24 overflow-hidden rounded-xl border border-border bg-muted">
-              {/* eslint-disable-next-line @next/next/no-img-element -- local preview of a picked file */}
-              <img src={urls[i]} alt="" className="size-full object-cover" />
+              {f.type.startsWith('image/') ? (
+                // eslint-disable-next-line @next/next/no-img-element -- local preview of a picked file
+                <img src={urls[i]} alt="" className="size-full object-cover" />
+              ) : (
+                // A document (PDF, Messages ADR-050): its icon and name instead of a preview.
+                <span className="flex size-full flex-col items-start gap-1 p-2 pr-9 text-xs leading-4 text-foreground">
+                  <AppIcon d={APP_ICONS.file} size={18} />
+                  <span className="line-clamp-3 break-all">{f.name}</span>
+                </span>
+              )}
               <IconButton
                 appearance="chip"
                 aria-label={labels.remove(f.name)}

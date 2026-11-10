@@ -12,6 +12,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
+import { usePasteFiles } from '@/components/app/ui/use-paste-files'
 import type { StepProps } from '@/components/client/create/types'
 import {
   listProjectMediaAction,
@@ -484,11 +485,15 @@ export function CoverStep(props: CoverStepProps) {
     void handleFile(input.files?.[0])
     input.value = ''
   }
+  // Paste a screenshot or copied picture as the cover (Tom, 2026-11-10).
+  const coverStepRef = useRef<HTMLElement>(null)
+  usePasteFiles((list) => void handleFile(list[0]), { scope: coverStepRef })
 
   const statusText = saveStatus === 'idle' ? '' : t(`altStatus.${saveStatus}`)
 
   return (
     <section
+      ref={coverStepRef}
       aria-labelledby="cover-step-title"
       className={`relative -m-2 flex flex-col rounded-3xl p-2 transition-colors ${dragging ? 'bg-selected-tint ring-2 ring-ring' : ''}`}
       {...dragProps}
