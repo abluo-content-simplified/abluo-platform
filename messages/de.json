@@ -328,7 +328,7 @@
           "whenPast": "Vergangen",
           "whenAll": "Jederzeit",
           "status": "Status",
-          "statusAll": "Jeder Status",
+          "statusAll": "Alle Status",
           "category": "Kategorie",
           "categoryAll": "Jede Kategorie"
         },
@@ -366,10 +366,25 @@
       "editor": {
         "back": "Veranstaltungen",
         "untitled": "Veranstaltung ohne Titel",
-        "menu": "Mehr zu dieser Veranstaltung",
+        "menu": {
+          "label": "Mehr zu dieser Veranstaltung",
+          "activity": "Aktivität"
+        },
         "publish": "Veröffentlichen",
         "publishChanges": "Änderungen veröffentlichen",
-        "publishing": "Wird veröffentlicht…",
+        "publishing": {
+          "title": "Veröffentlichung",
+          "live": "Diese Veranstaltung ist auf deiner Website.",
+          "liveUntil": "Diese Veranstaltung ist bis {date} auf deiner Website.",
+          "scheduledSentence": "Geht am {date} online. Bis dahin ist sie nicht auf deiner Website.",
+          "changesNotScheduled": "Du hast Änderungen, die noch nicht in der geplanten Version sind.",
+          "updateScheduled": "Geplante Veranstaltung aktualisieren",
+          "unpublishedBody": "Diese Veranstaltung ist nicht veröffentlicht: sie ist nicht auf deiner Website. Veröffentliche sie erneut, um sie zurückzubringen.",
+          "notOnline": "Noch nicht auf deiner Website. Veröffentliche sie oder wähle, wann sie online geht.",
+          "datesHelp": "Optional. Die Zeiten gelten in der Zeitzone deiner Website. „Veröffentlichung endet am“ nimmt die Veranstaltung von selbst von deiner Website — sie wird nie archiviert oder gelöscht.",
+          "scheduleNeedsDate": "Wähle ein Datum bei „Veröffentlichen am“, um sie zu planen.",
+          "separate": "Eine Veranstaltung abzusagen oder zu verschieben (unten) nimmt sie nicht von deiner Website — das macht „Veröffentlichung aufheben“. Vergangene Veranstaltungen bleiben auf deiner Website, bis du ihre Veröffentlichung aufhebst."
+        },
         "published": "Deine Veranstaltung ist auf der Website aktuell.",
         "discard": "Änderungen verwerfen",
         "delete": "Veranstaltung löschen",
@@ -445,8 +460,11 @@
         "confirm": {
           "discardTitle": "Änderungen verwerfen?",
           "discardBody": "Die Veranstaltung wird wieder so, wie sie jetzt auf deiner Website ist.",
-          "deleteTitle": "Diese Veranstaltung löschen?",
-          "deleteBody": "„{title}“ wurde nie veröffentlicht. Sie wird endgültig entfernt."
+          "deleteTitle": "„{title}“ löschen?",
+          "deleteBody": "„{title}“ wurde nie veröffentlicht. Sie wird endgültig entfernt.",
+          "unpublishTitle": "Veröffentlichung von „{title}“ aufheben?",
+          "unpublishBody": "Die Veranstaltung verschwindet von deiner Website. Du kannst sie jederzeit erneut veröffentlichen.",
+          "unpublishKeep": "Online lassen"
         },
         "attendance": {
           "title": "Teilnahme",
@@ -460,12 +478,12 @@
           "helper": "Deine Orte und Veranstaltungsorte richtet Abluo ein. Wähle einen, damit Besucher eine Karte sehen."
         },
         "status": {
-          "title": "Status",
+          "title": "Status der Veranstaltung",
           "scheduled": "Findet statt",
           "cancelled": "Abgesagt",
           "postponed": "Verschoben",
           "soldOut": "Ausverkauft",
-          "helper": "Besucher sehen das beim Event und in Listen."
+          "helper": "Besucher sehen das bei der Veranstaltung und in Listen. Es ändert nichts daran, ob die Veranstaltung veröffentlicht ist."
         },
         "visibility": {
           "title": "Wer es sehen kann",
@@ -486,6 +504,28 @@
           "unknownPerson": "Person nicht gefunden",
           "legacyTitle": "Früher hinzugefügte Gastgeber",
           "legacyBody": "Diese Veranstaltung zeigt noch Gastgeber, die vor der Personenliste hinzugefügt wurden: {names}. Diese bleiben unverändert, bis du oben Personen auswählst; Abluo kann sie für dich übernehmen."
+        },
+        "dismiss": "Schließen",
+        "undo": "Rückgängig",
+        "publishNow": "Jetzt veröffentlichen",
+        "reason": {
+          "missingTitle": "Vor dem Veröffentlichen: Name auf {language} ergänzen.",
+          "missingStart": "Vor dem Veröffentlichen: Beginn der Veranstaltung wählen.",
+          "upToDate": "Nichts Neues zu veröffentlichen."
+        },
+        "archived": {
+          "title": "Diese Veranstaltung ist archiviert",
+          "body": "Die Veranstaltung ist nicht auf deiner Website. Stelle sie wieder her, um Änderungen vorzunehmen — sie kommt als nicht veröffentlicht zurück, und du veröffentlichst sie erneut, wenn du bereit bist."
+        },
+        "toast": {
+          "online": "Veröffentlicht. Die Veranstaltung ist auf deiner Website.",
+          "scheduled": "Geplant. Die Veranstaltung geht am {date} online.",
+          "unpublished": "Veröffentlichung aufgehoben. Die Veranstaltung ist nicht mehr auf deiner Website.",
+          "restored": "Wiederhergestellt. Die Veranstaltung ist nicht veröffentlicht — veröffentliche sie erneut, wenn du bereit bist.",
+          "archived": "Archiviert. Die Veranstaltung ist nicht mehr auf deiner Website.",
+          "datesSaved": "Datum gespeichert.",
+          "unpublishDateSaved": "Die Veröffentlichung endet am {date}.",
+          "unpublishDateRemoved": "Veröffentlichungsende entfernt."
         }
       },
       "errors": {
@@ -495,7 +535,13 @@
         "too_large": "Diese Website hat bereits sehr viele Veranstaltungen. Bitte frag uns.",
         "conflict": "Jemand anderes hat diese Veranstaltung geändert. Lade die Seite neu und versuch es erneut.",
         "forbidden": "Dazu fehlt dir die Berechtigung.",
-        "failed": "Etwas ist schiefgelaufen. Bitte versuch es erneut."
+        "failed": "Etwas ist schiefgelaufen. Bitte versuch es erneut.",
+        "not_found": "Diese Veranstaltung existiert nicht mehr.",
+        "archived": "Diese Veranstaltung ist archiviert. Stelle sie wieder her, um Änderungen vorzunehmen.",
+        "archive_first": "Archiviere diese Veranstaltung, bevor du sie löschst.",
+        "in_use": "Diese Veranstaltung wird noch irgendwo verwendet. Entferne sie zuerst dort.",
+        "in_use_where": "Diese Veranstaltung wird noch verwendet in: {places}. Entferne sie zuerst dort.",
+        "invalid_schedule": "Wähle ein Datum und eine Uhrzeit in der Zukunft, höchstens zwei Jahre voraus."
       }
     },
     "submissions": {
@@ -2871,7 +2917,7 @@
       },
       "picker": {
         "add": "Screenshots hinzufügen",
-        "hint": "Bis zu {max} Bilder (PNG, JPG oder WebP), je {size} MB",
+        "hint": "Bis zu {max} Bilder (PNG, JPG oder WebP), je {size} MB. Du kannst auch einen Screenshot einfügen (⌘V / Strg+V).",
         "remove": "{name} entfernen",
         "problem": {
           "type": "{name}: Es können nur PNG-, JPG- oder WebP-Bilder angehängt werden.",
@@ -4882,6 +4928,12 @@
         "rating": "Bewertung",
         "ratingHint": "Optional. Wird von niemandem verlangt.",
         "noRating": "Keine Bewertung",
+        "photoTitle": "Foto",
+        "photoHint": "Optional. Füge nur dann ein Foto hinzu, wenn die Person zugestimmt hat, dass es auf der Website gezeigt wird.",
+        "noPhoto": "Kein Foto",
+        "addPhoto": "Foto hinzufügen",
+        "changePhoto": "Foto ändern",
+        "removePhoto": "Foto entfernen",
         "ratingOption": "{count, plural, one {# Stern} other {# Sterne}}",
         "givenOn": "Datum",
         "givenOnHint": "Wann die Person es gesagt hat.",
@@ -7131,7 +7183,7 @@
       },
       "picker": {
         "add": "Bilder hinzufügen",
-        "hint": "Bis zu {max} Bilder (PNG, JPG oder WebP), je {size} MB. Der Kunde sieht sie.",
+        "hint": "Bis zu {max} Bilder (PNG, JPG oder WebP), je {size} MB. Du kannst auch einen Screenshot einfügen (⌘V / Strg+V). Der Kunde sieht sie.",
         "remove": "{name} entfernen",
         "problem": {
           "type": "{name}: Es können nur PNG-, JPG- oder WebP-Bilder angehängt werden.",

@@ -328,7 +328,7 @@
           "whenPast": "Past",
           "whenAll": "Any time",
           "status": "Status",
-          "statusAll": "Any status",
+          "statusAll": "All statuses",
           "category": "Category",
           "categoryAll": "Any category"
         },
@@ -366,10 +366,25 @@
       "editor": {
         "back": "Events",
         "untitled": "Untitled event",
-        "menu": "More for this event",
+        "menu": {
+          "label": "More for this event",
+          "activity": "Activity"
+        },
         "publish": "Publish",
         "publishChanges": "Publish changes",
-        "publishing": "Publishing…",
+        "publishing": {
+          "title": "Publishing",
+          "live": "This event is on your website.",
+          "liveUntil": "This event is on your website until {date}.",
+          "scheduledSentence": "Goes online on {date}. Until then it’s not on your website.",
+          "changesNotScheduled": "You have changes that aren’t in the scheduled version yet.",
+          "updateScheduled": "Update scheduled event",
+          "unpublishedBody": "This event is unpublished: it isn’t on your website. Publish it again to put it back.",
+          "notOnline": "Not on your website yet. Publish it, or choose when it goes online.",
+          "datesHelp": "Optional. Times are in your website’s time zone. “Unpublish on” takes the event off your website by itself — it is never archived or deleted.",
+          "scheduleNeedsDate": "Choose a “Publish on” date to schedule it.",
+          "separate": "Cancelling or postponing an event (below) doesn’t take it off your website — Unpublish does that. Past events stay on your website unless you unpublish them."
+        },
         "published": "Your event is up to date on the website.",
         "discard": "Discard changes",
         "delete": "Delete event",
@@ -445,8 +460,11 @@
         "confirm": {
           "discardTitle": "Discard your changes?",
           "discardBody": "The event goes back to what's on your website now.",
-          "deleteTitle": "Delete this event?",
-          "deleteBody": "“{title}” was never published. It will be removed for good."
+          "deleteTitle": "Delete “{title}”?",
+          "deleteBody": "“{title}” was never published. It will be removed for good.",
+          "unpublishTitle": "Unpublish “{title}”?",
+          "unpublishBody": "It leaves your website. You can publish it again any time.",
+          "unpublishKeep": "Keep online"
         },
         "attendance": {
           "title": "How people attend",
@@ -460,12 +478,12 @@
           "helper": "Your places and venues are set up by Abluo. Pick one so visitors get a map."
         },
         "status": {
-          "title": "Status",
+          "title": "Event status",
           "scheduled": "On as planned",
           "cancelled": "Cancelled",
           "postponed": "Postponed",
           "soldOut": "Sold out",
-          "helper": "Visitors see this on the event and in lists."
+          "helper": "Visitors see this on the event and in lists. It doesn’t change whether the event is published."
         },
         "visibility": {
           "title": "Who can see it",
@@ -486,6 +504,28 @@
           "unknownPerson": "Person not found",
           "legacyTitle": "Hosts added earlier",
           "legacyBody": "This event still shows hosts that were added before the People list: {names}. They stay as they are until you choose people above; Abluo can move them over for you."
+        },
+        "dismiss": "Dismiss",
+        "undo": "Undo",
+        "publishNow": "Publish now",
+        "reason": {
+          "missingTitle": "Before you can publish: add a name in {language}.",
+          "missingStart": "Before you can publish: choose when the event starts.",
+          "upToDate": "Nothing new to publish."
+        },
+        "archived": {
+          "title": "This event is archived",
+          "body": "It isn’t on your website. Restore it to make changes — it comes back as unpublished, and you publish it again when you’re ready."
+        },
+        "toast": {
+          "online": "Published. The event is on your website.",
+          "scheduled": "Scheduled. The event goes online on {date}.",
+          "unpublished": "Unpublished. The event is no longer on your website.",
+          "restored": "Restored. It’s unpublished — publish it again when you’re ready.",
+          "archived": "Archived. The event is no longer on your website.",
+          "datesSaved": "Date saved.",
+          "unpublishDateSaved": "It will be unpublished on {date}.",
+          "unpublishDateRemoved": "Unpublish date removed."
         }
       },
       "errors": {
@@ -495,7 +535,13 @@
         "too_large": "This site already has a lot of events. Please ask us for help.",
         "conflict": "Someone else changed this event. Reload the page and try again.",
         "forbidden": "You don't have permission to do that.",
-        "failed": "Something went wrong. Please try again."
+        "failed": "Something went wrong. Please try again.",
+        "not_found": "This event no longer exists.",
+        "archived": "This event is archived. Restore it to make changes.",
+        "archive_first": "Archive this event before deleting it.",
+        "in_use": "This event is still used somewhere. Remove it there first.",
+        "in_use_where": "This event is still used in: {places}. Remove it there first.",
+        "invalid_schedule": "Pick a date and time in the future, within two years."
       }
     },
     "submissions": {
@@ -2871,7 +2917,7 @@
       },
       "picker": {
         "add": "Add screenshots",
-        "hint": "Up to {max} images (PNG, JPG or WebP), {size} MB each",
+        "hint": "Up to {max} images (PNG, JPG or WebP), {size} MB each. You can also paste a screenshot (⌘V / Ctrl+V).",
         "remove": "Remove {name}",
         "problem": {
           "type": "{name}: only PNG, JPG or WebP images can be attached.",
@@ -4882,6 +4928,12 @@
         "rating": "Rating",
         "ratingHint": "Optional. Never required of anyone.",
         "noRating": "No rating",
+        "photoTitle": "Photo",
+        "photoHint": "Optional. Only add a photo if the person agreed to have it shown on the website.",
+        "noPhoto": "No photo",
+        "addPhoto": "Add photo",
+        "changePhoto": "Change photo",
+        "removePhoto": "Remove photo",
         "ratingOption": "{count, plural, one {# star} other {# stars}}",
         "givenOn": "Date given",
         "givenOnHint": "When the person said it.",
@@ -7131,7 +7183,7 @@
       },
       "picker": {
         "add": "Add images",
-        "hint": "Up to {max} images (PNG, JPG or WebP), {size} MB each. The client sees them.",
+        "hint": "Up to {max} images (PNG, JPG or WebP), {size} MB each. You can also paste a screenshot (⌘V / Ctrl+V). The client sees them.",
         "remove": "Remove {name}",
         "problem": {
           "type": "{name}: only PNG, JPG or WebP images can be attached.",

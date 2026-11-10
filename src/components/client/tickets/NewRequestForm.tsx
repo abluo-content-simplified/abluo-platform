@@ -99,6 +99,7 @@ export function NewRequestForm({ projectSlug, from, relatedTo, initialTitle = ''
           {() => (
             <div className="mt-1.5">
               <AttachmentPicker
+                acceptPaste
                 files={files}
                 onChange={setFiles}
                 max={TICKET_LIMITS.attachmentsMax}

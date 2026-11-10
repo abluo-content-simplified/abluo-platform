@@ -40,8 +40,11 @@ describe('Testimonials manifest', () => {
     expect(manifest.dataStore.primary).toBe('hybrid')
   })
 
-  it('has one setting: acceptSubmissions, off by default', () => {
-    expect(manifest.platformContract.configSchema).toEqual([expect.objectContaining({ id: 'acceptSubmissions', type: 'boolean', initialValue: false })])
+  it('has two settings, both off by default: acceptSubmissions and showPhotos', () => {
+    expect(manifest.platformContract.configSchema).toEqual([
+      expect.objectContaining({ id: 'acceptSubmissions', type: 'boolean', initialValue: false }),
+      expect.objectContaining({ id: 'showPhotos', type: 'boolean', initialValue: false }),
+    ])
   })
 
   it('declares the tag vocabulary on testimonial.tags', () => {

@@ -7,6 +7,7 @@ import type { DigitalCardLinkValue, DigitalCardSnapshot } from '@/lib/api/digita
 import { DIGITAL_CARD_LIMITS, DIGITAL_CARD_LINK_KINDS, DIGITAL_CARD_LINK_TARGET, cardLinkTargetFields, defaultNewLinkKind, type DigitalCardLinkKind } from '@/lib/modules/digital-cards/model'
 import { formatDigitalCardsMessage, getDigitalCardsMessages, type DigitalCardsMessages } from '@/lib/i18n/digital-cards-messages'
 import { MediaLibraryPicker } from '@/components/client/media/MediaLibraryPicker'
+import { PhotoSource } from '@/components/client/media/PhotoSource'
 import { Button } from '@/components/app/ui/Button'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { DragGrip, DropLine } from '@/components/app/ui/DragGrip'
@@ -368,9 +369,26 @@ export function DigitalCardLinks({
                         // eslint-disable-next-line @next/next/no-img-element -- Media Library thumbnail, decorative
                         <img src={`${logoUrls[l.logo] ?? files[l.logo]?.url}?h=96&fit=max`} alt="" className="h-8 max-w-24 rounded-md bg-muted object-contain p-1" />
                       ) : null}
-                      <Button onClick={() => setPickingLogoFor(l.key)}>{l.logo ? e.changeLogo : e.chooseLogo}</Button>
+                      <Button aria-expanded={pickingLogoFor === l.key} onClick={() => setPickingLogoFor((k) => (k === l.key ? null : l.key))}>{l.logo ? e.changeLogo : e.chooseLogo}</Button>
                       {l.logo ? <Button onClick={() => update(l.key, { logo: null })}>{e.removeLogo}</Button> : null}
                     </div>
+                    {/* Upload (logos usually live as a file, not in the library) · Media Library — the shared "add photos" block. */}
+                    {pickingLogoFor === l.key ? (
+                      <PhotoSource
+                        projectSlug={projectSlug}
+                        scope="media"
+                        defaultLocale={defaultLocale}
+                        exclude={l.logo ? [l.logo] : []}
+                        room={1}
+                        onAdd={(photos) => {
+                          const photo = photos[0]
+                          setPickingLogoFor(null)
+                          if (!photo) return
+                          setLogoUrls((n) => ({ ...n, [photo.assetId]: photo.url }))
+                          update(l.key, { logo: photo.assetId })
+                        }}
+                      />
+                    ) : null}
                   </div>
                   <div className="flex justify-end">
                     <Button onClick={() => setEditing(null)}>{e.linkDone}</Button>
@@ -396,24 +414,6 @@ export function DigitalCardLinks({
             if (!photo || !key) return
             setFileNames((n) => ({ ...n, [photo.assetId]: photo.name || photo.alt[defaultLocale] || photo.assetId }))
             update(key, { file: photo.assetId })
-          }}
-        />
-      ) : null}
-      {pickingLogoFor ? (
-        <MediaLibraryPicker
-          projectSlug={projectSlug}
-          scope="media"
-          defaultLocale={defaultLocale}
-          exclude={[]}
-          room={1}
-          onClose={() => setPickingLogoFor(null)}
-          onAdd={(photos) => {
-            const photo = photos[0]
-            const key = pickingLogoFor
-            setPickingLogoFor(null)
-            if (!photo || !key) return
-            setLogoUrls((n) => ({ ...n, [photo.assetId]: photo.url }))
-            update(key, { logo: photo.assetId })
           }}
         />
       ) : null}

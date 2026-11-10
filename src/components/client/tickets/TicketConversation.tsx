@@ -208,6 +208,7 @@ export function TicketConversation({ ticket, projectSlug, supportMode }: { ticke
             error={error}
             attachments={
               <AttachmentPicker
+                acceptPaste
                 files={files}
                 onChange={setFiles}
                 max={TICKET_LIMITS.attachmentsMax}

@@ -1,7 +1,9 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { Pill, type PillTone } from '@/components/app/ui/list/cells'
+import type { EventLifecycle } from '@/lib/api/event-drafts'
+import { LifecycleBadge } from '@/components/app/lifecycle/LifecycleBadge'
+import { shortMoment } from '@/components/app/lifecycle/publish-plan'
 import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 const svg = (d: string) => (
@@ -20,23 +22,31 @@ export const EVENT_ICONS = {
   cards: svg('M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z'),
 }
 
-export type EventState = 'live' | 'changes' | 'draft'
-
-export function eventState(e: { isPublished: boolean; hasDraft: boolean }): EventState {
-  if (!e.isPublished) return 'draft'
-  return e.hasDraft ? 'changes' : 'live'
-}
-
-const TONE: Record<EventState, PillTone> = { live: 'success', changes: 'highlight', draft: 'outline' }
-
-/** Published · Unpublished changes · Not published yet. */
-export function EventStatePill({ state }: { state: EventState }) {
-  const t = useTranslations('clientDashboard.events.state')
-  return (
-    <Pill tone={TONE[state]} icon={state === 'live' ? <span aria-hidden="true" className="size-1.5 rounded-full bg-success" /> : undefined}>
-      {t(state)}
-    </Pill>
-  )
+/**
+ * The event's PUBLICATION status as the shared lifecycle badge (ADR-032):
+ * Draft · Scheduled (+ its date, in the site's zone, 24 h) · Published
+ * (+ Pending changes) · Unpublished · Archived. Not the event's own status
+ * (cancelled, postponed…), which is separate and shown on the website.
+ */
+export function EventLifecycleBadge({
+  lifecycle,
+  changes = lifecycle.hasChanges,
+  zone,
+  oneLine = false,
+}: {
+  lifecycle: Pick<EventLifecycle, 'status' | 'publishedAt'> & Partial<Pick<EventLifecycle, 'hasChanges'>>
+  /** Show "Pending changes" (default: the lifecycle's own flag). */
+  changes?: boolean
+  /** The site's IANA time zone. */
+  zone: string
+  oneLine?: boolean
+}) {
+  const tp = useTranslations('app.lifecycle.publish')
+  const dateLocale = useDateLocale()
+  if (lifecycle.status === 'scheduled' && lifecycle.publishedAt) {
+    return <LifecycleBadge status="scheduled" extra={tp('moment', shortMoment(lifecycle.publishedAt, zone, dateLocale))} oneLine={oneLine} />
+  }
+  return <LifecycleBadge status={lifecycle.status} changes={changes && lifecycle.status !== 'archived'} oneLine={oneLine} />
 }
 
 /** "Sat 12 Apr 2026, 09:00 – Mon 14 Apr, 20:00" in the viewer's language and time zone. */

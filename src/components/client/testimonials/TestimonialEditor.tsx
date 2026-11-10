@@ -19,6 +19,7 @@ import type { PendingSet } from '@/lib/client/autosave/journal'
 import { openThenSave } from '@/lib/client/autosave/open-then-save'
 import { formatTranslateMessage, getTranslateMessages } from '@/lib/i18n/translate-messages'
 import { effectiveStatus, isWritableTarget, type TranslationMeta } from '@/lib/translate/status'
+import { PhotoSource } from '@/components/client/media/PhotoSource'
 import { TermPicker } from '@/components/client/taxonomy/TermPicker'
 import type { PickerTerm } from '@/components/client/taxonomy/term-picker-model'
 import { DeletePermanentlyDialog } from '@/components/app/lifecycle/DeletePermanentlyDialog'
@@ -30,6 +31,7 @@ import { CheckboxCard } from '@/components/app/ui/CheckboxCard'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { DateInput } from '@/components/app/ui/DateInput'
 import { Field } from '@/components/app/ui/Field'
+import { MediaFrame } from '@/components/app/ui/list/cells'
 import { Notice } from '@/components/app/ui/Notice'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { Panel } from '@/components/app/ui/Panel'
@@ -60,6 +62,7 @@ type Values = {
   tags: string[]
   permissionToPublish: boolean
   featured: boolean
+  photo: { assetId: string; url: string | null } | null
 }
 
 type Priv = { available: boolean; fullName: string; email: string; phone: string; note: string; state: 'idle' | 'saving' | 'saved' | 'error' }
@@ -87,6 +90,7 @@ function valuesOf(s: TestimonialSnapshot): Values {
     tags: s.tags,
     permissionToPublish: s.permissionToPublish,
     featured: s.featured,
+    photo: s.photo,
   }
 }
 
@@ -157,6 +161,7 @@ export function TestimonialEditor({
   const [values, setValues] = useState<Values>(() => valuesOf(initial))
   const valuesRef = useRef(values)
   const [lang, setLang] = useState(d)
+  const [pickingPhoto, setPickingPhoto] = useState(false)
   /** A server draft exists (decides whether the next save must open one first). */
   const hasDraftRef = useRef(initial.hasDraft)
 
@@ -652,6 +657,47 @@ export function TestimonialEditor({
               </div>
             ) : null}
           </Panel>
+
+          {initial.showPhotos ? (
+            <Panel as="section" aria-labelledby="testimonial-photo" className="space-y-4">
+              <h2 id="testimonial-photo" className="text-[1.0625rem] leading-7 font-semibold text-foreground">
+                {t('photoTitle')}
+              </h2>
+              <div className="flex items-start gap-4">
+                <div className="size-20 shrink-0 overflow-hidden rounded-full bg-muted">
+                  {values.photo?.url ? <MediaFrame src={values.photo.url} alt="" className="size-full" /> : <span className="grid size-full place-items-center px-2 text-center text-xs text-muted-foreground">{t('noPhoto')}</span>}
+                </div>
+                <div className="flex min-w-0 flex-col items-start gap-2">
+                  <p className="text-sm leading-5 text-muted-foreground">{t('photoHint')}</p>
+                  {editable ? (
+                    <div className="flex flex-wrap items-start gap-2">
+                      <Button onClick={() => setPickingPhoto((x) => !x)} aria-expanded={pickingPhoto}>
+                        {values.photo ? t('changePhoto') : t('addPhoto')}
+                      </Button>
+                      {values.photo ? <Button onClick={() => change({ photo: null }, { photo: null })}>{t('removePhoto')}</Button> : null}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              {editable && pickingPhoto ? (
+                <Panel>
+                  <PhotoSource
+                    projectSlug={projectSlug}
+                    scope="media"
+                    defaultLocale={d}
+                    exclude={values.photo ? [values.photo.assetId] : []}
+                    room={1}
+                    onAdd={(photos) => {
+                      const first = photos[0]
+                      if (!first) return
+                      setPickingPhoto(false)
+                      change({ photo: { assetId: first.assetId, url: first.thumbUrl ?? first.url } }, { photo: first.assetId })
+                    }}
+                  />
+                </Panel>
+              ) : null}
+            </Panel>
+          ) : null}
 
           <Panel as="section" aria-labelledby="testimonial-who" className="space-y-4">
             <h2 id="testimonial-who" className="text-[1.0625rem] leading-7 font-semibold text-foreground">

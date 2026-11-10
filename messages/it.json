@@ -328,7 +328,7 @@
           "whenPast": "Passati",
           "whenAll": "Sempre",
           "status": "Stato",
-          "statusAll": "Qualsiasi stato",
+          "statusAll": "Tutti gli stati",
           "category": "Categoria",
           "categoryAll": "Qualsiasi categoria"
         },
@@ -366,10 +366,25 @@
       "editor": {
         "back": "Eventi",
         "untitled": "Evento senza titolo",
-        "menu": "Altro per questo evento",
+        "menu": {
+          "label": "Altro per questo evento",
+          "activity": "Attività"
+        },
         "publish": "Pubblica",
         "publishChanges": "Pubblica le modifiche",
-        "publishing": "Pubblicazione…",
+        "publishing": {
+          "title": "Pubblicazione",
+          "live": "Questo evento è sul tuo sito.",
+          "liveUntil": "Questo evento è sul tuo sito fino al {date}.",
+          "scheduledSentence": "Va online il {date}. Fino ad allora non è sul tuo sito.",
+          "changesNotScheduled": "Hai modifiche che non sono ancora nella versione programmata.",
+          "updateScheduled": "Aggiorna l’evento programmato",
+          "unpublishedBody": "Questo evento non è pubblicato: non è sul tuo sito. Pubblicalo di nuovo per rimetterlo.",
+          "notOnline": "Non è ancora sul tuo sito. Pubblicalo, oppure scegli quando va online.",
+          "datesHelp": "Facoltativo. Gli orari sono nel fuso orario del tuo sito. “Fine pubblicazione” toglie l’evento dal sito da sola: non viene mai archiviato né eliminato.",
+          "scheduleNeedsDate": "Scegli una data “Pubblica il” per programmarlo.",
+          "separate": "Annullare o rimandare un evento (qui sotto) non lo toglie dal tuo sito: lo fa “Annulla pubblicazione”. Gli eventi passati restano sul tuo sito finché non annulli la pubblicazione."
+        },
         "published": "Il tuo evento è aggiornato sul sito.",
         "discard": "Annulla le modifiche",
         "delete": "Elimina evento",
@@ -445,8 +460,11 @@
         "confirm": {
           "discardTitle": "Annullare le modifiche?",
           "discardBody": "L'evento torna a com'è ora sul tuo sito.",
-          "deleteTitle": "Eliminare questo evento?",
-          "deleteBody": "«{title}» non è mai stato pubblicato. Verrà eliminato definitivamente."
+          "deleteTitle": "Eliminare «{title}»?",
+          "deleteBody": "«{title}» non è mai stato pubblicato. Verrà eliminato definitivamente.",
+          "unpublishTitle": "Annullare la pubblicazione di «{title}»?",
+          "unpublishBody": "Lascia il tuo sito. Puoi pubblicarlo di nuovo in qualsiasi momento.",
+          "unpublishKeep": "Lascia online"
         },
         "attendance": {
           "title": "Come si partecipa",
@@ -460,12 +478,12 @@
           "helper": "I tuoi luoghi e le sedi li prepara Abluo. Scegline uno così i visitatori vedono la mappa."
         },
         "status": {
-          "title": "Stato",
+          "title": "Stato dell’evento",
           "scheduled": "Confermato",
           "cancelled": "Annullato",
           "postponed": "Rinviato",
           "soldOut": "Esaurito",
-          "helper": "I visitatori lo vedono sull'evento e negli elenchi."
+          "helper": "I visitatori lo vedono sull’evento e negli elenchi. Non cambia se l’evento è pubblicato o no."
         },
         "visibility": {
           "title": "Chi può vederlo",
@@ -486,6 +504,28 @@
           "unknownPerson": "Persona non trovata",
           "legacyTitle": "Relatori aggiunti in precedenza",
           "legacyBody": "Questo evento mostra ancora relatori aggiunti prima dell’elenco Persone: {names}. Restano così finché non scegli le persone qui sopra; Abluo può spostarli per te."
+        },
+        "dismiss": "Chiudi",
+        "undo": "Annulla",
+        "publishNow": "Pubblica ora",
+        "reason": {
+          "missingTitle": "Prima di pubblicare: aggiungi un nome in {language}.",
+          "missingStart": "Prima di pubblicare: scegli quando inizia l’evento.",
+          "upToDate": "Niente di nuovo da pubblicare."
+        },
+        "archived": {
+          "title": "Questo evento è archiviato",
+          "body": "Non è sul tuo sito. Ripristinalo per modificarlo: torna come non pubblicato e lo pubblichi di nuovo quando sei pronto."
+        },
+        "toast": {
+          "online": "Pubblicato. L’evento è sul tuo sito.",
+          "scheduled": "Programmato. L’evento va online il {date}.",
+          "unpublished": "Pubblicazione annullata. L’evento non è più sul tuo sito.",
+          "restored": "Ripristinato. Non è pubblicato: pubblicalo di nuovo quando sei pronto.",
+          "archived": "Archiviato. L’evento non è più sul tuo sito.",
+          "datesSaved": "Data salvata.",
+          "unpublishDateSaved": "Verrà ritirato il {date}.",
+          "unpublishDateRemoved": "Fine pubblicazione rimossa."
         }
       },
       "errors": {
@@ -495,7 +535,13 @@
         "too_large": "Questo sito ha già molti eventi. Chiedici aiuto.",
         "conflict": "Qualcun altro ha modificato questo evento. Ricarica la pagina e riprova.",
         "forbidden": "Non hai il permesso per farlo.",
-        "failed": "Qualcosa è andato storto. Riprova."
+        "failed": "Qualcosa è andato storto. Riprova.",
+        "not_found": "Questo evento non esiste più.",
+        "archived": "Questo evento è archiviato. Ripristinalo per modificarlo.",
+        "archive_first": "Archivia questo evento prima di eliminarlo.",
+        "in_use": "Questo evento è ancora usato in qualche punto. Toglilo prima da lì.",
+        "in_use_where": "Questo evento è ancora usato in: {places}. Toglilo prima da lì.",
+        "invalid_schedule": "Scegli una data e un’ora nel futuro, entro due anni."
       }
     },
     "submissions": {
@@ -2871,7 +2917,7 @@
       },
       "picker": {
         "add": "Aggiungi screenshot",
-        "hint": "Fino a {max} immagini (PNG, JPG o WebP), {size} MB ciascuna",
+        "hint": "Fino a {max} immagini (PNG, JPG o WebP), {size} MB ciascuna. Puoi anche incollare uno screenshot (⌘V / Ctrl+V).",
         "remove": "Rimuovi {name}",
         "problem": {
           "type": "{name}: si possono allegare solo immagini PNG, JPG o WebP.",
@@ -4882,6 +4928,12 @@
         "rating": "Valutazione",
         "ratingHint": "Facoltativa. Non si chiede mai a nessuno.",
         "noRating": "Nessuna valutazione",
+        "photoTitle": "Foto",
+        "photoHint": "Facoltativa. Aggiungi una foto solo se la persona ha dato il consenso a mostrarla sul sito.",
+        "noPhoto": "Nessuna foto",
+        "addPhoto": "Aggiungi foto",
+        "changePhoto": "Cambia foto",
+        "removePhoto": "Rimuovi foto",
         "ratingOption": "{count, plural, one {# stella} other {# stelle}}",
         "givenOn": "Data",
         "givenOnHint": "Quando la persona l’ha detto.",
@@ -7131,7 +7183,7 @@
       },
       "picker": {
         "add": "Aggiungi immagini",
-        "hint": "Fino a {max} immagini (PNG, JPG o WebP), {size} MB ciascuna. Il cliente le vede.",
+        "hint": "Fino a {max} immagini (PNG, JPG o WebP), {size} MB ciascuna. Puoi anche incollare uno screenshot (⌘V / Ctrl+V). Il cliente le vede.",
         "remove": "Rimuovi {name}",
         "problem": {
           "type": "{name}: si possono allegare solo immagini PNG, JPG o WebP.",

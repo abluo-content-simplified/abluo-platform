@@ -54,6 +54,8 @@ export const TESTIMONIAL_FORM_STEP_KEY = 'testimonial'
 
 /** Module config key (D10). */
 export const TESTIMONIAL_ACCEPT_SUBMISSIONS_KEY = 'acceptSubmissions'
+/** Module config key: show an optional photo on testimonials (off by default). */
+export const TESTIMONIAL_SHOW_PHOTOS_KEY = 'showPhotos'
 
 export const TESTIMONIAL_LIMITS = {
   displayName: 120,

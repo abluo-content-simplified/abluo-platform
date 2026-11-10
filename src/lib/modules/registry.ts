@@ -2151,6 +2151,14 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           description:
             'Visitors can send a testimonial through the Testimonial form (put it on a page with a Form section). Each one arrives under Testimonials → Submissions; nothing is ever published without you.',
         },
+        {
+          // The one place photos are switched on. Off: the editor has no photo field and the website shows none.
+          id: 'showPhotos',
+          label: 'Show photos',
+          type: 'boolean',
+          initialValue: false,
+          description: 'Each testimonial can carry a photo of the person, shown on the website. Only for people who agreed to it.',
+        },
       ],
 
       placement: {

@@ -36,6 +36,8 @@ const dataset: Record<string, unknown>[] = [
   // Events and galleries use the 'optional' rule: no window fields = public.
   { _id: 'event-live', _type: 'event', projectSlug: P, title: { en: 'e' }, slug: slug('event-live'), startDate: FUTURE },
   { _id: 'event-unlisted', _type: 'event', projectSlug: P, title: { en: 'e' }, slug: slug('event-unlisted'), visibility: 'unlisted', startDate: FUTURE },
+  { _id: 'event-scheduled', _type: 'event', projectSlug: P, title: { en: 'e' }, slug: slug('event-scheduled'), publishedAt: FUTURE, startDate: FUTURE },
+  { _id: 'event-unpublished', _type: 'event', projectSlug: P, title: { en: 'e' }, slug: slug('event-unpublished'), redirectFrom: { en: ['old-event-unpublished'] }, publishedAt: PAST, expiresAt: PAST, startDate: FUTURE },
   { _id: 'event-archived', _type: 'event', projectSlug: P, title: { en: 'e' }, slug: slug('event-archived'), redirectFrom: { en: ['old-event-archived'] }, archivedAt: PAST, startDate: FUTURE },
   { _id: 'gallery-live', _type: 'gallery', projectSlug: P, internalName: 'live', items: [] },
   { _id: 'gallery-archived', _type: 'gallery', projectSlug: P, internalName: 'archived', archivedAt: PAST, items: [] },
@@ -79,6 +81,9 @@ describe('detail and old-slug lookups return public items only', () => {
     expect(await run(Q.eventBySlugQuery, { slug: 'event-unlisted' })).toBeTruthy()
     expect(await run(Q.eventBySlugQuery, { slug: 'event-archived' })).toBeNull()
     expect(await run(Q.eventByOldSlugQuery, { slug: 'old-event-archived' })).toBeNull()
+    expect(await run(Q.eventBySlugQuery, { slug: 'event-scheduled' })).toBeNull()
+    expect(await run(Q.eventBySlugQuery, { slug: 'event-unpublished' })).toBeNull()
+    expect(await run(Q.eventByOldSlugQuery, { slug: 'old-event-unpublished' })).toBeNull()
   })
 })
 
@@ -90,7 +95,7 @@ describe('lists and hand-picked items', () => {
   it('manual picks: posts, news, events', async () => {
     expect(ids(await run(Q.blogListingManualPostsQuery, { postIds: STATES.map((s) => `post-${s}`) }))).toEqual(['post-live'])
     expect(ids(await run(Q.newsListingManualArticlesQuery, { articleIds: STATES.map((s) => `news-${s}`) }))).toEqual(['news-live'])
-    expect(ids(await run(Q.eventsListingManualEventsQuery, { eventIds: ['event-live', 'event-archived'] }))).toEqual(['event-live'])
+    expect(ids(await run(Q.eventsListingManualEventsQuery, { eventIds: ['event-live', 'event-archived', 'event-scheduled', 'event-unpublished'] }))).toEqual(['event-live'])
   })
   it('the page projection drops non-public picks and galleries', async () => {
     const page = await run<{ sections: Record<string, unknown>[] }>(Q.pageBySlugQuery, { slug: 'page' })

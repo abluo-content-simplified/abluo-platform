@@ -233,6 +233,22 @@ describe('hydrateTestimonialsSection', () => {
     expect((await hydrateTestimonialsSection(section(), ctx(f))).map((i) => i.id)).toEqual(['q'])
   })
 
+  it('shows the photo only when the module setting showPhotos is on', async () => {
+    const photo = { asset: { _ref: 'image-abc-100x100-jpg' }, lqip: null }
+    const off = await hydrateTestimonialsSection(section(), ctx(fetcher([raw({ photo } as never)])))
+    expect(off[0].photo).toBeNull()
+    const modules = [{ moduleId: 'testimonials', config: { showPhotos: false } }] as never
+    const stillOff = await hydrateTestimonialsSection(section(), { ...ctx(fetcher([raw({ photo } as never)])), moduleConfig: modules })
+    expect(stillOff[0].photo).toBeNull()
+    const on = [{ moduleId: 'testimonials', config: { showPhotos: true } }] as never
+    const shown = await hydrateTestimonialsSection(section(), { ...ctx(fetcher([raw({ photo } as never), raw({ publicId: 'n' })])), moduleConfig: on })
+    expect(shown[0].photo).toEqual(photo)
+    expect(shown[1].photo).toBeNull()
+  })
+  it('never projects a photo for an anonymous testimonial', () => {
+    expect(normalizeTestimonial(raw({ anonymous: true, photo: { asset: { _ref: 'x' } } } as never), 'it')!.photo).toBeNull()
+  })
+
   it('helpers: limits, selection fallback, picked order, gating', () => {
     expect(testimonialLimitOf({})).toBe(DEFAULT_TESTIMONIAL_LIMIT)
     expect(testimonialLimitOf({ limit: 999 })).toBe(MAX_TESTIMONIAL_LIMIT)

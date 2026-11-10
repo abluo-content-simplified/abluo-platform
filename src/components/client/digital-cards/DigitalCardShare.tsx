@@ -9,10 +9,10 @@ import { buttonClass } from '@/components/app/ui/button-styles'
 import { Notice } from '@/components/app/ui/Notice'
 import { Panel } from '@/components/app/ui/Panel'
 import { Skeleton } from '@/components/app/ui/Skeleton'
+import { QR_COLORS } from '@/lib/modules/digital-cards/qr-colors'
 
 const H2 = 'text-[1.0625rem] leading-7 font-semibold text-foreground'
 /** D12 — black on white, whatever the theme: it is printed. */
-const QR_COLORS = { dark: '#000000ff', light: '#ffffffff' }
 const TAGGED_SOURCES = ['instagram', 'linkedin', 'facebook', 'whatsapp', 'email', 'print'] as const
 type TaggedSource = (typeof TAGGED_SOURCES)[number]
 

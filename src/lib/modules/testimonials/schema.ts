@@ -133,6 +133,15 @@ const testimonialType = defineType({
       options: { list: [1, 2, 3, 4, 5].map((n) => ({ title: String(n), value: n })) },
       validation: (Rule) => Rule.integer().min(TESTIMONIAL_RATING.min).max(TESTIMONIAL_RATING.max),
     }),
+    defineField({
+      name: 'photo',
+      title: 'Photo',
+      type: 'reference',
+      to: [{ type: 'mediaAsset' }],
+      group: 'content',
+      description: 'Optional. A Media Library image of the person, shown only when the website’s Testimonials setting "Show photos" is on. Only with the person’s agreement.',
+      options: { filter: scopedRef },
+    }),
     // ── Details ──────────────────────────────────────────────────────────────
     defineField({
       name: 'givenOn',

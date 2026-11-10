@@ -20,7 +20,7 @@ import type { PendingSet } from '@/lib/client/autosave/journal'
 import { openThenSave } from '@/lib/client/autosave/open-then-save'
 import { digitalCardErrorText, formatDigitalCardsMessage, getDigitalCardsMessages } from '@/lib/i18n/digital-cards-messages'
 import { formatTranslateMessage, getTranslateMessages } from '@/lib/i18n/translate-messages'
-import { MediaLibraryPicker } from '@/components/client/media/MediaLibraryPicker'
+import { PhotoSource } from '@/components/client/media/PhotoSource'
 import { DeletePermanentlyDialog } from '@/components/app/lifecycle/DeletePermanentlyDialog'
 import { LifecycleBadge } from '@/components/app/lifecycle/LifecycleBadge'
 import { AssistButton } from '@/components/app/ui/AssistButton'
@@ -811,7 +811,7 @@ export function DigitalCardEditor({
                 {!values.background ? <p className="text-sm leading-5 text-muted-foreground">{isPerson && snapshot.inheritedBackground ? e.backgroundInherited : e.backgroundNone}</p> : null}
                 {editable ? (
                   <div className="flex flex-wrap gap-2">
-                    <Button onClick={() => setPickingBackground(true)}>{values.background ? e.changeBackground : isPerson && snapshot.inheritedBackground ? e.backgroundOwn : e.chooseBackground}</Button>
+                    <Button aria-expanded={pickingBackground} onClick={() => setPickingBackground((p) => !p)}>{values.background ? e.changeBackground : isPerson && snapshot.inheritedBackground ? e.backgroundOwn : e.chooseBackground}</Button>
                     {values.background ? (
                       <Button aria-expanded={focusing} onClick={() => setFocusing((x) => !x)}>
                         {focusing ? c.focusHide : c.focusShow}
@@ -828,6 +828,26 @@ export function DigitalCardEditor({
                       </Button>
                     ) : null}
                   </div>
+                ) : null}
+                {/* Take a photo · upload · Media Library — the shared "add photos" block. */}
+                {editable && pickingBackground ? (
+                  <Panel>
+                    <PhotoSource
+                      projectSlug={projectSlug}
+                      scope="media"
+                      defaultLocale={d}
+                      exclude={values.background ? [values.background.assetId] : []}
+                      room={1}
+                      onAdd={(photos) => {
+                        setPickingBackground(false)
+                        const photo = photos[0]
+                        if (photo) {
+                          setFocal(null)
+                          change({ background: { assetId: photo.assetId, url: photo.url, alt: photo.alt } }, { background: photo.assetId })
+                        }
+                      }}
+                    />
+                  </Panel>
                 ) : null}
                 {values.background ? (
                   <AssetFocusPanel
@@ -877,24 +897,6 @@ export function DigitalCardEditor({
         ) : null}
       </div>
 
-      {pickingBackground ? (
-        <MediaLibraryPicker
-          projectSlug={projectSlug}
-          scope="media"
-          defaultLocale={d}
-          exclude={values.background ? [values.background.assetId] : []}
-          room={1}
-          onClose={() => setPickingBackground(false)}
-          onAdd={(photos) => {
-            setPickingBackground(false)
-            const photo = photos[0]
-            if (photo) {
-              setFocal(null)
-              change({ background: { assetId: photo.assetId, url: photo.url, alt: photo.alt } }, { background: photo.assetId })
-            }
-          }}
-        />
-      ) : null}
       <ConfirmDialog
         open={confirm === 'discard' || confirm === 'delete'}
         title={confirm === 'discard' ? e.discardTitle : e.deleteTitle}

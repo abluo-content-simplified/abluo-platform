@@ -8,6 +8,8 @@
 import { safeLinkHref } from '@/lib/links/safe-href'
 import { formatTestimonialMessage, type TestimonialMessages } from '@/lib/i18n/testimonials-messages'
 import type { TestimonialsSection } from '@/lib/sanity/types'
+import { imageSrcSet, imageUrl } from '@/lib/sanity/image'
+import { focalObjectPosition } from '@/lib/gallery/focal'
 import type { TestimonialPublic } from './projection'
 
 export interface TestimonialCardView {
@@ -36,6 +38,8 @@ export interface TestimonialCardView {
   /** The full text, one string per paragraph. */
   paragraphs: string[]
   readMoreLabel: string
+  /** The person's photo (cropped around the Media Library focal point), or null. */
+  photo: { src: string; srcSet: string | null; objectPosition: string; alt: string } | null
 }
 
 type Options = Pick<TestimonialsSection, 'showRating' | 'showDate' | 'showSource'>
@@ -80,6 +84,12 @@ function sourceOf(t: TestimonialPublic, msgs: TestimonialMessages): TestimonialC
   return { text: formatTestimonialMessage(msgs.onSource, { source: label }), href }
 }
 
+function photoOf(t: TestimonialPublic, name: string | null): TestimonialCardView['photo'] {
+  const src = t.photo ? imageUrl(t.photo, 160) : undefined
+  if (!t.photo || !src) return null
+  return { src, srcSet: imageSrcSet(t.photo, [96, 192, 288]) ?? null, objectPosition: focalObjectPosition(t.photo), alt: name ?? '' }
+}
+
 export function toCardView(t: TestimonialPublic, opts: Options, msgs: TestimonialMessages, pageLocale: string): TestimonialCardView {
   const name = t.anonymous ? msgs.anonymous : t.displayName
   const rating = opts.showRating === true && t.rating ? t.rating : null
@@ -103,6 +113,7 @@ export function toCardView(t: TestimonialPublic, opts: Options, msgs: Testimonia
     title,
     excerpt: paragraphs.join(' '),
     paragraphs,
+    photo: photoOf(t, name),
     readMoreLabel: formatTestimonialMessage(msgs.readMoreAbout, { name: name ?? msgs.dialogFallback }),
   }
 }

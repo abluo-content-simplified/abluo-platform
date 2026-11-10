@@ -590,3 +590,29 @@ describe('capabilities (ADR-038 D6)', () => {
     expect(f.writes.find(([k]) => k === 'create')?.[1]).toMatchObject({ attendanceMode: 'online' })
   })
 })
+
+describe('event lifecycle helpers (ADR-032)', () => {
+  const NOW = new Date('2026-11-10T12:00:00Z')
+  it('events without lifecycle fields stay published', async () => {
+    const { eventLifecycleOf } = await import('../event-drafts')
+    expect(eventLifecycleOf({}, false, NOW).status).toBe('published')
+    expect(eventLifecycleOf(null, true, NOW).status).toBe('draft')
+  })
+  it('derives scheduled, unpublished and archived', async () => {
+    const { eventLifecycleOf } = await import('../event-drafts')
+    expect(eventLifecycleOf({ publishedAt: '2026-12-01T09:00:00Z' }, false, NOW).status).toBe('scheduled')
+    expect(eventLifecycleOf({ publishedAt: '2026-10-01T09:00:00Z', expiresAt: '2026-11-01T09:00:00Z' }, false, NOW).status).toBe('unpublished')
+    expect(eventLifecycleOf({ archivedAt: '2026-11-01T09:00:00Z' }, false, NOW).status).toBe('archived')
+  })
+  it('past events are never archived automatically', async () => {
+    const { eventLifecycleOf } = await import('../event-drafts')
+    expect(eventLifecycleOf({ startDate: '2020-01-01T09:00:00Z', endDate: '2020-01-01T10:00:00Z' }, false, NOW).status).toBe('published')
+  })
+  it('schedule dates must be in the future and in order', async () => {
+    const { parseEventPublishAt, parseEventUnpublishAt } = await import('../event-drafts')
+    expect(() => parseEventPublishAt('2026-11-01T09:00:00Z', NOW)).toThrow()
+    expect(parseEventPublishAt('2026-12-01T09:00:00Z', NOW).toISOString()).toBe('2026-12-01T09:00:00.000Z')
+    expect(() => parseEventUnpublishAt('2026-12-01T09:00:00Z', NOW, '2026-12-02T09:00:00Z')).toThrow()
+    expect(parseEventUnpublishAt('2026-12-03T09:00:00Z', NOW, '2026-12-02T09:00:00Z')).toBe('2026-12-03T09:00:00.000Z')
+  })
+})

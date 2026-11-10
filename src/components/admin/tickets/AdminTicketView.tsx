@@ -305,6 +305,7 @@ export function AdminTicketView({ ticket, supportNotice }: { ticket: TicketDetai
               attachments={
                 mode === 'reply' ? (
                   <AttachmentPicker
+                    acceptPaste
                     files={files}
                     onChange={setFiles}
                     max={TICKET_LIMITS.attachmentsMax}

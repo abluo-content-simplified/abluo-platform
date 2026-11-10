@@ -158,6 +158,8 @@ function fake(opts: { docs?: Docs; terms?: string[]; count?: number; commitError
     if (q.includes('count(*[_type == "project"')) return 1
     if (q.includes('_type == "siteConfig"')) return { defaultLocale: 'it', supportedLocales: ['it', 'de'] }
     if (q.includes('count(*[_type == "testimonial"')) return opts.count ?? 3
+    if (q.includes('moduleInstallations')) return null
+    if (q.includes('_type == "mediaAsset"')) return q.includes('->url') ? 'https://cdn.example/p.jpg' : (p.id as string)
     if (q.includes('taxonomyTerm')) return (p.keys as string[]).filter((k) => (opts.terms ?? ['yoga']).includes(k))
     if (q.includes('order(_updatedAt desc)')) {
       return Object.values(docs)
@@ -378,6 +380,16 @@ describe('saveTestimonialDraft', () => {
     expect(set).toMatchObject({ rating: 4, 'body.it': 'Ottimo\n\nDavvero', 'context.de': 'Mitglied', givenOn: '2026-10-01', source: 'google', featured: true, tags: ['yoga'] })
     expect(f.patchOps).toContainEqual(['ifRevisionId', 'd1'])
     expect(f.patchOps).toContainEqual(['setIfMissing', { body: { _type: 'localizedText' }, context: { _type: 'localizedString' } }])
+  })
+
+  it('saves the photo as a reference to a Media Library asset and clears it on null', async () => {
+    const f = fake()
+    await save({ photo: 'asset-1' }, f)
+    expect((f.patchOps.find((o) => o[0] === 'set')![1] as Record<string, unknown>).photo).toEqual({ _type: 'reference', _ref: 'asset-1' })
+    const g = fake()
+    await save({ photo: null }, g)
+    expect(g.patchOps.find((o) => o[0] === 'unset')![1]).toContain('photo')
+    await expect(save({ photo: 'drafts.x/y' })).rejects.toMatchObject({ code: 'invalid_value' })
   })
 
   it('clears optional fields on null / empty', async () => {

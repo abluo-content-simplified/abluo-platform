@@ -46,6 +46,7 @@ export default async function EventsPage({
         events={screen.events}
         categoryOptions={screen.categoryOptions}
         defaultLocale={screen.defaultLocale}
+        timeZone={screen.timeZone}
         initialQuery={q}
         canWrite={grant.permissions.includes(EVENT_WRITE_PERMISSION)}
       />

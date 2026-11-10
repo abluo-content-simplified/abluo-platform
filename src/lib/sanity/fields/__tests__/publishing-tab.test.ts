@@ -86,3 +86,29 @@ describe('Publishing tab on post and newsArticle', () => {
     expect(f).toMatchObject({ group: 'publishing', readOnly: true })
   })
 })
+
+describe('Publishing tab on event', () => {
+  type F = { name: string; title?: string; group?: string; readOnly?: boolean }
+  const t = (schemaTypes as unknown as { name: string; groups?: { name: string }[]; fields?: F[] }[]).find((x) => x.name === 'event')!
+  const field = (n: string) => t.fields!.find((f) => f.name === n)
+
+  it('has the shared Publishing tab fields and no Placement tab', () => {
+    const groups = t.groups!.map((g) => g.name)
+    expect(groups).toContain('publishing')
+    expect(groups).not.toContain('placement')
+    expect(field('publishingStatus')).toMatchObject({ group: 'publishing' })
+    expect(field('publishedAt')).toMatchObject({ title: 'Publish on', group: 'publishing' })
+    expect(field('expiresAt')).toMatchObject({ title: 'Unpublish on', group: 'publishing' })
+    expect(field('archivedAt')).toMatchObject({ group: 'publishing', readOnly: true })
+    expect(field('visibility')).toMatchObject({ group: 'publishing' })
+  })
+
+  it('keeps the event status field separate from publication', () => {
+    expect(field('eventStatus')).toBeTruthy()
+    expect(field('eventStatus')!.group).not.toBe('publishing')
+  })
+
+  it('does not require a publish date (existing events stay published)', () => {
+    expect(field('publishedAt')).toBeTruthy()
+  })
+})

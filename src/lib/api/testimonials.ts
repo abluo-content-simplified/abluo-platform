@@ -43,6 +43,7 @@ import {
   TESTIMONIAL_LOCALIZED_FIELDS,
   type TestimonialLocalizedField,
   TESTIMONIAL_RATING,
+  TESTIMONIAL_SHOW_PHOTOS_KEY,
   TESTIMONIAL_SOURCES,
   TESTIMONIAL_TAG_KIND,
   TESTIMONIAL_TYPE,
@@ -142,9 +143,16 @@ export interface TestimonialSnapshot {
   tags: string[]
   permissionToPublish: boolean
   featured: boolean
+  /** The Media Library photo, or null. */
+  photo: { assetId: string; url: string | null } | null
+  /** Module setting `showPhotos`: the editor offers the Photo field only when on. */
+  showPhotos: boolean
   live: { rev: string } | null
   site: TestimonialSite
 }
+
+/** Whether this project's Testimonials module has `showPhotos` on (module config, ADR-048). */
+const TESTIMONIALS_SHOW_PHOTOS_QUERY = `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == $moduleId && enabled != false][0].config.${TESTIMONIAL_SHOW_PHOTOS_KEY}`
 
 type Client = Pick<typeof sanityWriteClient, 'getDocument' | 'fetch' | 'create' | 'patch' | 'transaction'>
 export type TestimonialDeps = {
@@ -423,6 +431,13 @@ export async function getTestimonial(ctx: TenantAuthorizationContext, projectId:
   if (!doc) notFound()
   const site = await readSite(client, grant.projectSlug)
   const state = stateOf(published, draft, (deps.now ?? (() => new Date()))())
+  const photoRef = str(objectOf(doc.photo)?._ref)
+  let photo: TestimonialSnapshot['photo'] = null
+  if (photoRef) {
+    const url = await client.fetch<string | null>(`*[_id == $id && _type == "mediaAsset" && projectSlug == $projectSlug][0].image.asset->url`, { id: photoRef, projectSlug: grant.projectSlug })
+    photo = { assetId: photoRef, url: typeof url === 'string' ? url : null }
+  }
+  const showPhotos = (await client.fetch<boolean | null>(TESTIMONIALS_SHOW_PHOTOS_QUERY, { projectSlug: grant.projectSlug, moduleId: TESTIMONIALS_MODULE_ID })) === true
   return {
     id,
     publicId: publicIdOf(doc),
@@ -447,6 +462,8 @@ export async function getTestimonial(ctx: TenantAuthorizationContext, projectId:
     tags: tagsOf(doc.tags),
     permissionToPublish: doc.permissionToPublish === true,
     featured: doc.featured === true,
+    photo,
+    showPhotos,
     live: published?._rev ? { rev: published._rev } : null,
     site,
   }
@@ -697,7 +714,7 @@ export async function openTestimonialForEdit(
 
 // ── Save (autosave) ──────────────────────────────────────────────────────────
 
-const PLAIN_FIELDS = new Set(['displayName', 'anonymous', 'age', 'originalLocale', 'rating', 'givenOn', 'source', 'sourceUrl', 'tags', 'permissionToPublish', 'featured'])
+const PLAIN_FIELDS = new Set(['photo', 'displayName', 'anonymous', 'age', 'originalLocale', 'rating', 'givenOn', 'source', 'sourceUrl', 'tags', 'permissionToPublish', 'featured'])
 
 /**
  * Validates and applies one autosave patch to `drafts.<id>`. Paths: the plain
@@ -746,6 +763,7 @@ export async function saveTestimonialDraft(
   const textTouched: string[] = []
   let newTags: string[] = []
   let permission: boolean | undefined
+  let photoId: string | null = null
 
   const metaPatches: Array<{ field: TestimonialLocalizedField; locale: string; meta: TranslationMeta | null }> = []
   for (const [path, value] of Object.entries(input.set)) {
@@ -760,6 +778,16 @@ export async function saveTestimonialDraft(
         const t = cleanLine(value ?? '', TESTIMONIAL_LIMITS.displayName, 'The name')
         if (t) set.displayName = t
         else unset.push('displayName')
+        break
+      }
+      case 'photo': {
+        if (value === null || value === '') {
+          unset.push('photo')
+          break
+        }
+        if (typeof value !== 'string' || !isTestimonialId(value)) throw new TestimonialError('invalid_value', 'Unknown photo.')
+        photoId = value
+        set.photo = { _type: 'reference', _ref: value }
         break
       }
       case 'anonymous':
@@ -856,6 +884,10 @@ export async function saveTestimonialDraft(
   }
 
   await assertTagsExist(client, grant.projectSlug, newTags)
+  if (photoId) {
+    const ok = await client.fetch<string | null>(`*[_id == $id && _type == "mediaAsset" && projectSlug == $projectSlug && defined(image.asset)][0]._id`, { id: photoId, projectSlug: grant.projectSlug })
+    if (ok !== photoId) throw new TestimonialError('invalid_value', 'That photo is not in this website’s Media Library.')
+  }
 
   const result = (await commit(
     client,

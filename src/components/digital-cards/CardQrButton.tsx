@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Icon } from '@/components/icons'
 import { formatDigitalCardSiteMessage, type DigitalCardSiteMessages } from '@/lib/i18n/digital-cards-site-messages'
+import { QR_COLORS } from '@/lib/modules/digital-cards/qr-colors'
 
 /** Printed / scanned: black on white whatever the site's theme (D12). */
-const QR_COLORS = { dark: '#000000ff', light: '#ffffffff' }
 const FOCUS = 'outline-offset-2 focus-visible:outline focus-visible:outline-2'
 const FOCUS_STYLE: CSSProperties = { outlineColor: 'var(--color-primary)' }
 

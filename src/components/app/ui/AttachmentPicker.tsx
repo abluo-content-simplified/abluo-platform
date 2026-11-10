@@ -39,6 +39,7 @@ export function AttachmentPicker({
   accept = DEFAULT_IMAGE_TYPES,
   labels,
   disabled = false,
+  acceptPaste = false,
 }: {
   files: File[]
   onChange: (files: File[]) => void
@@ -48,6 +49,12 @@ export function AttachmentPicker({
   accept?: readonly string[]
   labels: AttachmentPickerLabels
   disabled?: boolean
+  /**
+   * Also take images pasted anywhere on the page (⌘V / Ctrl+V of a
+   * screenshot). Text pastes are left alone: only a clipboard that carries
+   * image files and no text is taken. One picker per page should set this.
+   */
+  acceptPaste?: boolean
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const hintId = useId()
@@ -55,7 +62,7 @@ export function AttachmentPicker({
   const urls = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files])
   useEffect(() => () => urls.forEach((u) => URL.revokeObjectURL(u)), [urls])
 
-  function onPick(list: FileList | null) {
+  function onPick(list: FileList | File[] | null) {
     const picked = Array.from(list ?? [])
     if (inputRef.current) inputRef.current.value = ''
     if (!picked.length) return
@@ -63,6 +70,29 @@ export function AttachmentPicker({
     setProblems(merged.problems)
     if (merged.files.length !== files.length) onChange(merged.files)
   }
+
+  // Paste a screenshot straight in. The latest onPick is read through a ref so
+  // the listener is attached once, not on every render.
+  const onPickRef = useRef(onPick)
+  useEffect(() => {
+    onPickRef.current = onPick
+  })
+  useEffect(() => {
+    if (!acceptPaste || disabled) return
+    const onPaste = (e: ClipboardEvent) => {
+      const data = e.clipboardData
+      if (!data || data.types.includes('text/plain')) return
+      const images = Array.from(data.files).filter((f) => f.type.startsWith('image/'))
+      if (!images.length) return
+      e.preventDefault()
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')
+      onPickRef.current(
+        images.map((f, i) => (f.name && f.name !== 'image.png' ? f : new File([f], `screenshot-${stamp}${i ? `-${i + 1}` : ''}.${f.type.split('/')[1] || 'png'}`, { type: f.type })))
+      )
+    }
+    document.addEventListener('paste', onPaste)
+    return () => document.removeEventListener('paste', onPaste)
+  }, [acceptPaste, disabled])
 
   const full = files.length >= max
   return (

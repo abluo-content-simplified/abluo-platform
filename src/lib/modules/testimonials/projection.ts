@@ -33,6 +33,7 @@
 
 import { publicFilterFor } from '@/lib/lifecycle/public-types'
 import { LOCALE_CODES } from '@/lib/i18n/locales'
+import type { ResolvedImage } from '@/lib/sanity/types'
 import { TESTIMONIAL_TYPE, type TestimonialSource } from './model'
 
 /** One language-resolved text field, as GROQ returns it. */
@@ -43,6 +44,9 @@ export interface TestimonialText {
   /** A machine translation nobody has reviewed. */
   machine: boolean
 }
+
+/** The optional photo: a Media Library image of this project, never of an anonymous testimonial. */
+export type TestimonialPhoto = ResolvedImage & { lqip?: string | null }
 
 /** A testimonial exactly as TESTIMONIAL_FIELDS returns it. */
 export interface TestimonialRaw {
@@ -61,6 +65,8 @@ export interface TestimonialRaw {
   tags?: string[] | null
   /** The language it was written in (platform locale code). */
   originalLocale?: string | null
+  /** Only when the module setting `showPhotos` is on is it shown (hydrateTestimonialsSection drops it otherwise). */
+  photo?: TestimonialPhoto | null
   context?: TestimonialText | null
   abstract?: TestimonialText | null
   body?: TestimonialText | null
@@ -110,6 +116,12 @@ export const TESTIMONIAL_FIELDS = /* groq */ `
     "featured": coalesce(featured, false),
     "tags": coalesce(tags, []),
     originalLocale,
+    "photo": select(anonymous != true && photo->projectSlug == $projectSlug => photo->{
+      "asset": image.asset,
+      "hotspot": image.hotspot,
+      "crop": image.crop,
+      "lqip": image.asset->metadata.lqip
+    }),
     "context": ${resolvedText('context')},
     "abstract": ${resolvedText('abstract')},
     "body": ${resolvedText('body')}
@@ -128,6 +140,7 @@ export const TESTIMONIAL_PUBLIC_KEYS = [
   'featured',
   'tags',
   'originalLocale',
+  'photo',
   'context',
   'abstract',
   'body',
@@ -157,6 +170,8 @@ export interface TestimonialPublic {
   featured: boolean
   tags: string[]
   originalLocale: string | null
+  /** null unless the person has a photo and the site shows photos. */
+  photo: TestimonialPhoto | null
   /** The language of the whole card (the body's). */
   locale: string
   context: string | null
@@ -202,6 +217,7 @@ export function normalizeTestimonial(raw: TestimonialRaw | null | undefined, pag
     featured: raw.featured === true,
     tags: Array.isArray(raw.tags) ? raw.tags.filter((t): t is string => typeof t === 'string') : [],
     originalLocale: original,
+    photo: !anonymous && raw.photo?.asset ? raw.photo : null,
     locale,
     context: same(raw.context),
     abstract,

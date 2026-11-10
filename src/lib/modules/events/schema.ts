@@ -3,6 +3,7 @@ import { validateUniquePublicId } from '@/lib/sanity/fields/public-id'
 import { CategorySelectInput } from '@/lib/sanity/fields/CategorySelectInput'
 import { peopleRefsField } from '@/lib/modules/people/fields'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/lib/sanity/fields/shared'
+import { PUBLISHING_GROUP, publishingStatusField, publishOnField, unpublishOnField, archivedFields } from '@/lib/sanity/fields/publishing'
 import { isValidTimeZone, timeZoneOptions } from '@/lib/time/zones'
 
 // ── Events module — Sanity schema types ───────────────────────────────────────
@@ -372,7 +373,7 @@ const eventType = defineType({
   type: 'document',
   groups: [
     { name: 'content', title: 'Content', default: true },
-    { name: 'placement', title: 'Placement' },
+    PUBLISHING_GROUP,
     { name: 'schedule', title: 'Schedule' },
     { name: 'registration', title: 'Registration' },
     { name: 'media', title: 'Media' },
@@ -386,11 +387,15 @@ const eventType = defineType({
     defineField({ name: 'slug', title: 'Slug', type: 'localizedSlug', group: 'content', validation: (Rule) => Rule.required() }),
     // ── ADR-031 (Connections) — additive, all optional for existing events ─────
     publicIdField,
+    publishingStatusField('optional'),
+    publishOnField('Leave empty to publish as soon as you press Publish. Set a future date to schedule the event.'),
+    unpublishOnField('Optional. The event leaves the website at this time. It is not archived.'),
+    ...archivedFields(),
     defineField({
       name: 'visibility',
       title: 'Visibility',
       type: 'string',
-      group: 'content',
+      group: 'publishing',
       description:
         'Public: on the website and shared with connected apps. Website only: on the website, never shared. Unlisted: reachable only by its link — not in lists, not in search engines, never shared.',
       options: {
@@ -483,7 +488,7 @@ const eventType = defineType({
     }),
     defineField({
       name: 'status',
-      title: 'Status',
+      title: 'Timing (from the dates)',
       type: 'string',
       group: 'content',
       options: { list: [{ title: '🟡 Upcoming', value: 'upcoming' }, { title: '🔴 Live', value: 'live' }, { title: '⚫ Past', value: 'past' }], layout: 'radio' },
@@ -496,21 +501,21 @@ const eventType = defineType({
       name: 'featuredOnLivePage',
       title: 'Feature on Live Page',
       type: 'boolean',
-      group: 'placement',
+      group: 'publishing',
       initialValue: false,
     }),
     defineField({
       name: 'livePageFeatureStartDate',
       title: 'Live Page Feature Start Date',
       type: 'datetime',
-      group: 'placement',
+      group: 'publishing',
       description: 'Leave empty to feature immediately when toggled on.',
     }),
     defineField({
       name: 'livePageFeatureEndDate',
       title: 'Live Page Feature End Date',
       type: 'datetime',
-      group: 'placement',
+      group: 'publishing',
       description: 'Leave empty to feature indefinitely.',
     }),
     // Home Page
@@ -518,21 +523,21 @@ const eventType = defineType({
       name: 'featuredOnHomePage',
       title: 'Feature on Home Page',
       type: 'boolean',
-      group: 'placement',
+      group: 'publishing',
       initialValue: false,
     }),
     defineField({
       name: 'homePageFeatureStartDate',
       title: 'Homepage Feature Start Date',
       type: 'datetime',
-      group: 'placement',
+      group: 'publishing',
       description: 'Leave empty to feature immediately when toggled on.',
     }),
     defineField({
       name: 'homePageFeatureEndDate',
       title: 'Homepage Feature End Date',
       type: 'datetime',
-      group: 'placement',
+      group: 'publishing',
       description: 'Leave empty to feature indefinitely.',
     }),
     // Deprecated — kept for backward compatibility with existing published documents.

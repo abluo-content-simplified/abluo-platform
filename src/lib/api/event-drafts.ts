@@ -25,6 +25,14 @@
  *   4. `assertSingleSanityProject` right before every mutation; revision
  *      guards (`ifRevisionId` / transaction `ifRevisionID`) → "conflict".
  *   5. Opaque error codes (EventErrorCode).
+ *   6. ADR-032 Phase 3 — events adopt the content lifecycle: Publish (now /
+ *      "Publish on…" / "Unpublish on…"), Unpublish, Publish again, Archive,
+ *      Restore and Delete permanently run through the one lifecycle service
+ *      (`runEventLifecycle`, `setEventDates`); the status shown is derived
+ *      from publishedAt / expiresAt / archivedAt by `deriveStatus`. An event's
+ *      own `eventStatus` (cancelled, postponed…) and `visibility` are
+ *      separate: they never change publication, and publication never
+ *      changes them. Past events are never archived automatically.
  */
 import { randomUUID } from 'crypto'
 import { eventTiming as sharedEventTiming } from '@/lib/modules/events/timing'
@@ -44,6 +52,10 @@ import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
 import { DRAFT_SAVE } from '@/lib/sanity/draft-save'
 import { readsInOrder } from '@/lib/api/parallel-reads'
 import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
+import * as lifecycle from '@/lib/lifecycle/service'
+import { deriveStatus, type LifecycleStatus } from '@/lib/lifecycle/status'
+import { readContentActivity, type ActivityItem } from '@/lib/lifecycle/activity'
+import type { LifecycleFields } from '@/lib/lifecycle/visibility'
 import { lifecycleAction, snapshotOf as publishedSnapshotOf } from '@/lib/lifecycle/transition'
 import { coverThumbUrl } from '@/lib/api/post-drafts'
 import { eventPlaceName } from '@/lib/modules/events/structured'
@@ -112,12 +124,30 @@ export type EventErrorCode =
   | 'missing_title'
   | 'missing_date'
   | 'bad_dates'
+  /** The event is archived: restore it first (ADR-032). */
+  | 'archived'
+  /** Published (or once published) events are archived before they are deleted for good. */
+  | 'archive_first'
+  /** Something on the website still uses the event (`detail.usedIn`). */
+  | 'in_use'
+  /** The "Publish on" / "Unpublish on" date is missing, in the past or more than two years away. */
+  | 'invalid_schedule'
   | 'failed'
+
+/** Where an event is still used (an `in_use` refusal). */
+export interface EventUsage {
+  kind: 'page' | 'post' | 'course' | 'event' | 'other'
+  /** Sanity document id (base id). */
+  id: string
+  title: string
+}
 
 export class EventError extends Error {
   constructor(
     readonly code: EventErrorCode,
-    message: string
+    message: string,
+    /** in_use → what still uses the event. */
+    readonly detail?: { usedIn?: EventUsage[] }
   ) {
     super(message)
     this.name = 'EventError'
@@ -132,6 +162,8 @@ export type EventDeps = {
   audit?: ContentAuditWriter
   /** ADR-038 C6a — writes the schedule after a publish. Tests inject a fake; null skips it. */
   syncSchedule?: typeof syncEventSchedule | null
+  /** Reads an item's Activity (tests inject a fake). */
+  read?: typeof readContentActivity
 }
 
 /** Activity rows of an event are keyed by its publicId (ADR-032 D9), else its _id. */
@@ -220,6 +252,68 @@ export async function getEventSite(ctx: TenantAuthorizationContext, projectId: s
   return readSite(deps.client ?? sanityWriteClient, grant.projectSlug)
 }
 
+// ── Lifecycle state (ADR-032) ─────────────────────────────────────────────────
+
+const isoOf = (v: unknown): string | null => (typeof v === 'string' && v ? v : null)
+const str = (v: unknown) => (typeof v === 'string' ? v : '')
+const archivedAtOf = (doc: LifecycleFields | Record<string, unknown> | null | undefined): string | null => isoOf((doc as Record<string, unknown> | null | undefined)?.archivedAt)
+const publishedAtOf = (doc: LifecycleFields | Record<string, unknown> | null | undefined): string | null => isoOf((doc as Record<string, unknown> | null | undefined)?.publishedAt)
+const expiresAtOf = (doc: LifecycleFields | Record<string, unknown> | null | undefined): string | null => isoOf((doc as Record<string, unknown> | null | undefined)?.expiresAt)
+
+/** Lifecycle fields a draft never carries into a publish (the publish sets them from the published version and the chosen dates). */
+const WINDOW_FIELDS = new Set(['publishedAt', 'expiresAt', 'archivedAt', 'archivedBy'])
+
+/**
+ * An event's publication state (ADR-032 D4), separate from its `eventStatus`
+ * and `visibility`. Derived from the PUBLISHED version only (what the website
+ * shows); `hasChanges` = a draft sits next to it. No stored status; absent
+ * fields = published (the 'optional' rule: existing events stay live).
+ */
+export type EventLifecycle = {
+  status: LifecycleStatus
+  /** A draft with changes sits next to the published version. */
+  hasChanges: boolean
+  /** The published version's go-live date (ISO) — set when it carries one. */
+  publishedAt: string | null
+  /** A future unpublish date (ISO), or null. */
+  unpublishOn: string | null
+  archivedAt: string | null
+}
+
+export function eventLifecycleOf(published: LifecycleFields | Record<string, unknown> | null | undefined, hasDraft: boolean, now: Date): EventLifecycle {
+  const fields: LifecycleFields | null = published ? { publishedAt: publishedAtOf(published), expiresAt: expiresAtOf(published), archivedAt: archivedAtOf(published) } : null
+  const s = deriveStatus({ published: fields, draft: hasDraft ? true : null, rule: 'optional' }, now)
+  return { status: s.status, hasChanges: s.hasChanges, publishedAt: fields?.publishedAt ?? null, unpublishOn: s.unpublishOn, archivedAt: fields?.archivedAt ?? null }
+}
+
+/** How far ahead a "Publish on" / "Unpublish on" date may lie (the same two years as every module). */
+export const EVENT_MAX_SCHEDULE_MS = lifecycle.MAX_SCHEDULE_AHEAD_MS
+const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/
+
+/** "Publish on": a real moment in the future, within two years. */
+export function parseEventPublishAt(value: unknown, now: Date): Date {
+  const at = typeof value === 'string' && ISO.test(value) ? new Date(value) : null
+  if (!at || Number.isNaN(at.getTime()) || at.getTime() <= now.getTime() || at.getTime() - now.getTime() > EVENT_MAX_SCHEDULE_MS) {
+    throw new EventError('invalid_schedule', 'Pick a date and time in the future, within two years.')
+  }
+  return at
+}
+
+/** "Unpublish on": in the future, within two years, and after the go-live date when there is one. ISO UTC. */
+export function parseEventUnpublishAt(value: unknown, now: Date, goLive: string | null): string {
+  const at = typeof value === 'string' && ISO.test(value) ? new Date(value) : null
+  if (
+    !at ||
+    Number.isNaN(at.getTime()) ||
+    at.getTime() <= now.getTime() ||
+    at.getTime() - now.getTime() > EVENT_MAX_SCHEDULE_MS ||
+    (goLive !== null && at.getTime() <= Date.parse(goLive))
+  ) {
+    throw new EventError('invalid_schedule', 'Pick a date and time in the future, after the publish date.')
+  }
+  return at.toISOString()
+}
+
 // ── Dates ─────────────────────────────────────────────────────────────────────
 
 /** A real ISO date-time (what the date pickers send), normalised; else throws invalid_value. */
@@ -277,10 +371,13 @@ export type EventListItem = {
   updatedAt: string
   /** ADR-033 Amendment J — the stored category keys (names come from the vocabulary). */
   categories: string[]
+  /** ADR-032 — Draft · Scheduled · Published · Unpublished · Archived, from the published version's dates. */
+  lifecycle: EventLifecycle
 }
 
 const LIST_QUERY = /* groq */ `*[_type == "event" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{
     _id, _updatedAt, title, location, startDate, endDate, status, categories, attendanceMode,
+    publishedAt, expiresAt, archivedAt,
     "place": place{ kind, locationKey, "venueName": select(venue->projectSlug == $projectSlug => venue->name) },
     "coverUrl": heroImage.asset->url, "coverHotspot": heroImage.hotspot
   }`
@@ -298,6 +395,9 @@ type ListRow = {
   coverUrl?: string | null
   coverHotspot?: { x?: number; y?: number } | null
   categories?: unknown
+  publishedAt?: string | null
+  expiresAt?: string | null
+  archivedAt?: string | null
 }
 
 /** This project's events (draft shown over published), upcoming first by date, then past newest first. Read permission. */
@@ -310,7 +410,7 @@ export async function listEvents(ctx: TenantAuthorizationContext, projectId: str
 }
 
 /** The Events list screen: the events, plus the categories they can carry (to label and filter them) and the site's default language. */
-export type EventListScreen = { events: EventListItem[]; categoryOptions: EventCategoryOption[]; defaultLocale: string }
+export type EventListScreen = { events: EventListItem[]; categoryOptions: EventCategoryOption[]; defaultLocale: string; timeZone: string | null }
 
 /**
  * As `listEvents`, plus the project's event categories. Three reads in
@@ -322,7 +422,7 @@ export async function listEventsWithCategories(ctx: TenantAuthorizationContext, 
   const client = deps.client ?? sanityWriteClient
   const [site, rows, categoryOptions] = await Promise.all([readSite(client, grant.projectSlug), readListRows(client, grant.projectSlug), readCategoryOptions(client, grant.projectSlug)])
   const places = await readPlaceOptions(client, grant.projectSlug, site.defaultLocale)
-  return { events: listItemsOf(rows, site, (deps.now ?? (() => new Date()))(), places.locations), categoryOptions, defaultLocale: site.defaultLocale }
+  return { events: listItemsOf(rows, site, (deps.now ?? (() => new Date()))(), places.locations), categoryOptions, defaultLocale: site.defaultLocale, timeZone: site.timeZone }
 }
 
 async function readListRows(client: Client, projectSlug: string): Promise<ListRow[]> {
@@ -383,6 +483,7 @@ function listItemsOf(rows: readonly ListRow[], site: EventSite, now: Date, locat
       isPublished: Boolean(published),
       updatedAt: row._updatedAt ?? '',
       categories: categoryKeysOfDoc({ categories: row.categories }),
+      lifecycle: eventLifecycleOf(published, Boolean(draft), now),
     })
   }
   return sortEvents(items)
@@ -463,6 +564,10 @@ export type EventSnapshot = {
   hostPeople: string[]
   /** ADR-043 — the old inline hosts (read-only in the dashboard; kept until migrated). */
   legacyHosts: { name: string; role: string }[]
+  /** ADR-032 — publication state of the published version (separate from eventStatus and visibility). */
+  lifecycle: EventLifecycle
+  /** The PUBLIC id partners and Activity know the event by, when it has one. */
+  publicId: string | null
 }
 
 function snapshotOf(id: string, doc: Doc, draft: Doc | undefined, published: Doc | undefined, site: EventSite, cover: EventCover | null, now: Date, placeOptions: EventPlaceOptions = { locations: [], venues: [] }, categoryOptions: EventCategoryOption[] = [], capabilities: EventCapabilities = resolveEventCapabilities(null)): EventSnapshot {
@@ -496,6 +601,8 @@ function snapshotOf(id: string, doc: Doc, draft: Doc | undefined, published: Doc
     capabilities,
     hostPeople: personRefIds(doc.hostPeople),
     legacyHosts: legacyHostsOf(doc.hosts, site.defaultLocale),
+    lifecycle: eventLifecycleOf(published, Boolean(draft), now),
+    publicId: isoOf(doc.publicId),
   }
 }
 
@@ -623,6 +730,7 @@ export async function openEventForEdit(
   const client = deps.client ?? sanityWriteClient
   if (!isEventId(id)) notFound()
   const { published, draft } = await readPair(client, id, grant.projectSlug)
+  if (archivedAtOf(published) || archivedAtOf(draft)) throw new EventError('archived', 'Restore this event to edit it.')
   if (draft) return { id, rev: draft._rev ?? '', created: false }
   if (!published) notFound()
   const copy: Record<string, unknown> = {}
@@ -715,12 +823,13 @@ export async function patchEventDraft(
 
   // Independent reads + the single-project guard at the same time (awaited again before the write).
   const guard = singleProjectGuard(client, grant.projectSlug)
-  const [{ draft }, site] = await readsInOrder<[Awaited<ReturnType<typeof readPair>>, EventSite, void]>([
+  const [{ published, draft }, site] = await readsInOrder<[Awaited<ReturnType<typeof readPair>>, EventSite, void]>([
     readPair(client, input.id, grant.projectSlug),
     readSite(client, grant.projectSlug),
     guard,
   ])
   if (!draft) notFound()
+  if (archivedAtOf(published) || archivedAtOf(draft)) throw new EventError('archived', 'Restore this event to edit it.')
   if (draft!._rev !== input.rev) throw new EventError('conflict', 'This event was edited elsewhere.')
   const locales = new Set(site.locales)
   // ADR-038 D6 — capabilities, enforced here (the editor only hides). Keeping a
@@ -855,8 +964,9 @@ export async function setEventCover(
   const remove = input.remove === true
   if (!remove && (typeof input.assetId !== 'string' || !ASSET_ID.test(input.assetId))) throw new EventError('not_found', 'Unknown image.')
 
-  const { draft } = await readPair(client, input.id, grant.projectSlug)
+  const { published, draft } = await readPair(client, input.id, grant.projectSlug)
   if (!draft) notFound()
+  if (archivedAtOf(published) || archivedAtOf(draft)) throw new EventError('archived', 'Restore this event to edit it.')
   if (draft._rev !== input.rev) throw new EventError('conflict', 'This event was edited elsewhere.')
 
   if (remove) {
@@ -904,8 +1014,9 @@ export async function setEventCoverFocal(
   if (typeof input.rev !== 'string' || !input.rev) throw new EventError('conflict', 'Missing revision.')
   const focal = parseEventFocal(input.focal)
 
-  const { draft } = await readPair(client, input.id, grant.projectSlug)
+  const { published, draft } = await readPair(client, input.id, grant.projectSlug)
   if (!draft) notFound()
+  if (archivedAtOf(published) || archivedAtOf(draft)) throw new EventError('archived', 'Restore this event to edit it.')
   if (draft._rev !== input.rev) throw new EventError('conflict', 'This event was edited elsewhere.')
   const hero = draft.heroImage as { asset?: { _ref?: unknown }; hotspot?: { width?: unknown; height?: unknown } } | undefined
   if (typeof hero?.asset?._ref !== 'string' || !hero.asset._ref.startsWith('image-')) throw new EventError('not_found', 'This event has no photo.')
@@ -925,37 +1036,77 @@ export async function setEventCoverFocal(
 // ── Publish / discard ─────────────────────────────────────────────────────────
 
 /**
+ * How a publish sets the event's dates (ADR-032):
+ *   now      — online at once (a live event keeps its own go-live date)
+ *   schedule — "Publish on…": a published document that the website shows once
+ *              the date has passed (no job: the public rule compares with now())
+ *   keep     — an update of what is online/scheduled keeps its date; a new
+ *              event or an unpublished one with nothing else chosen = now
+ */
+export type EventPublishMode = 'now' | 'schedule' | 'keep'
+
+/**
  * Publishes `drafts.<id>` in one revision-guarded transaction. Needs a title in
  * the site's main language and a start date. Every language with a title gets
  * a web address (slug) when it has none — unique among this site's events;
  * existing addresses never change. The status follows the dates, except an
  * event Abluo set to "live".
+ *
+ * Lifecycle (ADR-032): the draft never carries publishedAt / expiresAt /
+ * archivedAt into the published version — they are set here from the published
+ * version and the chosen `mode`, `publishAt` ("Publish on") and `unpublishAt`
+ * ("Unpublish on"; null removes it, left out keeps a future one). Archived
+ * events cannot be published (`archived`): restore first. Publishing an
+ * unpublished event puts it back online.
  */
 export async function publishEventDraft(
   ctx: TenantAuthorizationContext,
   projectId: string,
-  input: { id: string; rev: string },
+  input: { id: string; rev: string; mode?: EventPublishMode; publishAt?: string; unpublishAt?: string | null },
   deps: EventDeps = {}
-): Promise<{ id: string }> {
+): Promise<{ id: string; publishedAt: string | null; unpublishOn: string | null }> {
   return audited({ ctx, projectId, contentType: 'event', contentId: isEventId(input?.id) ? input.id : null, intended: 'published', writer: deps.audit }, async (transactionId) => {
   const grant = grantFor(ctx, projectId, EVENT_WRITE_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   if (!isEventId(input?.id)) notFound()
   if (typeof input.rev !== 'string' || !input.rev) throw new EventError('conflict', 'Missing revision.')
+  const now = (deps.now ?? (() => new Date()))()
+  const mode = input.mode ?? 'keep'
+  if (mode !== 'now' && mode !== 'schedule' && mode !== 'keep') throw new EventError('invalid_value', 'Unknown publish mode.')
+  const scheduledAt = mode === 'schedule' ? parseEventPublishAt(input.publishAt, now) : null
   const { published, draft } = await readPair(client, input.id, grant.projectSlug)
   if (!draft) notFound()
   if (draft._rev !== input.rev) throw new EventError('conflict', 'This event was edited elsewhere.')
+  if (archivedAtOf(published) || archivedAtOf(draft)) throw new EventError('archived', 'Restore this event before publishing.')
   const site = await readSite(client, grant.projectSlug)
   const titles = localized(draft.title)
   if (!titles[site.defaultLocale]) throw new EventError('missing_title', 'The event needs a title.')
   if (typeof draft.startDate !== 'string' || !draft.startDate) throw new EventError('missing_date', 'The event needs a start date.')
 
+  // Dates (ADR-032): from the PUBLISHED version and the chosen mode — never from the draft.
+  const current = published ? eventLifecycleOf(published, false, now) : null
+  const live = current?.status === 'published'
+  // A live event is never moved into the future (that would take it offline).
+  if (live && mode === 'schedule') throw new EventError('invalid_value', 'This event is already online.')
+  const keepDate = Boolean(published) && (mode === 'keep' || (mode === 'now' && live))
+  const publishedAt: string | null = keepDate ? publishedAtOf(published) : (scheduledAt ?? now).toISOString()
+  let expiresAt: string | null = null
+  if (input.unpublishAt === undefined) {
+    // A future unpublish date survives an update; a passed one is dropped (publishing an unpublished event puts it back).
+    const kept = current && (current.status === 'published' || current.status === 'scheduled') ? current.unpublishOn : null
+    expiresAt = kept && (!publishedAt || Date.parse(kept) > Date.parse(publishedAt)) ? kept : null
+  } else if (input.unpublishAt !== null) {
+    expiresAt = parseEventUnpublishAt(input.unpublishAt, now, publishedAt)
+  }
+
   const doc: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(draft)) if (!SYSTEM_FIELDS.has(k)) doc[k] = v
+  for (const [k, v] of Object.entries(draft)) if (!SYSTEM_FIELDS.has(k) && !WINDOW_FIELDS.has(k)) doc[k] = v
   doc._id = input.id
   doc._type = 'event'
   doc.projectSlug = grant.projectSlug
-  doc.status = eventTiming(draft, (deps.now ?? (() => new Date()))())
+  doc.status = eventTiming(draft, now)
+  if (publishedAt) doc.publishedAt = publishedAt
+  if (expiresAt) doc.expiresAt = expiresAt
 
   // Web addresses for languages that have a title but no address yet.
   const slug = { ...((draft.slug as Record<string, unknown> | undefined) ?? {}) } as Record<string, unknown>
@@ -1004,9 +1155,8 @@ export async function publishEventDraft(
     if (facts) await sync(projectId, facts, ctx.userId ?? null)
   }
   const state = publishedSnapshotOf(doc)
-  const now = (deps.now ?? (() => new Date()))()
   return {
-    value: { id: input.id },
+    value: { id: input.id, publishedAt, unpublishOn: expiresAt },
     action: lifecycleAction(publishedSnapshotOf(published), state, 'optional', now),
     contentId: eventContentId(doc, input.id),
     state,
@@ -1030,6 +1180,8 @@ export async function discardEventDraft(
   if (!isEventId(input?.id)) notFound()
   const { published, draft } = await readPair(client, input.id, grant.projectSlug)
   if (!draft) notFound()
+  // An archived event is put away or deleted for good (Restore · Delete permanently), never "discarded".
+  if (archivedAtOf(published)) throw new EventError('archived', 'This event is archived.')
   if (!published) grantFor(ctx, projectId, EVENT_DELETE_PERMISSION)
   if (draft._rev !== input.rev) throw new EventError('conflict', 'This event was edited elsewhere.')
   const draftId = `drafts.${input.id}`
@@ -1040,4 +1192,197 @@ export async function discardEventDraft(
   // discarding a never-published one deletes the event.
   return { value: { deleted: !published }, action: published ? null : ('deleted' as const), contentId: eventContentId(draft, input.id), state: null, detail: { draftOnly: true } }
   })
+}
+
+// ── Unpublish · Archive · Restore · Delete permanently (ADR-032 Phase 3) ──────
+
+const LIFECYCLE_CODE: Record<lifecycle.LifecycleErrorCode, EventErrorCode> = {
+  forbidden: 'forbidden',
+  not_found: 'not_found',
+  conflict: 'conflict',
+  invalid_value: 'invalid_value',
+  archived: 'archived',
+  archive_first: 'archive_first',
+  in_use: 'in_use',
+  unpublished_dependencies: 'failed',
+  failed: 'failed',
+}
+
+/** EVERY document of the project that references the event in any version (a page's events list, a post's related event…), except its own versions. */
+export const EVENT_DELETE_REFERRERS = /* groq */ `*[projectSlug == $projectSlug && references($id) && !(_id in [$id, $draftId]) && !(_id in path("versions.**"))]{ _id, _type, "label": coalesce(title, internalName, name) }`
+
+const USAGE_KIND: Record<string, EventUsage['kind']> = { page: 'page', homePage: 'page', post: 'post', course: 'course', event: 'event' }
+
+const textOf = (value: unknown): string => {
+  if (typeof value === 'string') return value
+  if (!value || typeof value !== 'object') return ''
+  const v = value as Record<string, unknown>
+  const pick = v.en ?? Object.entries(v).find(([k, x]) => !k.startsWith('_') && typeof x === 'string' && x)?.[1]
+  return typeof pick === 'string' ? pick : ''
+}
+
+/** The lifecycle descriptor of events: `optional` rule (no dates = live, no data migration); delete needs events.event.delete (owner / editor by default). */
+export function eventLifecycle(): lifecycle.LifecycleDescriptor {
+  return {
+    type: 'event',
+    rule: 'optional',
+    permissions: {
+      // Edit, publish, schedule, unpublish, archive, restore.
+      write: EVENT_WRITE_PERMISSION,
+      delete: EVENT_DELETE_PERMISSION,
+      deletePublished: EVENT_DELETE_PERMISSION,
+    },
+    isId: isEventId,
+    fail: (code, message) => new EventError(LIFECYCLE_CODE[code], message),
+    refuseArchiveWhileReferenced: false,
+    deleteReferrers: async (client, id, projectSlug) => {
+      type Row = { _id: string; _type?: string; label?: unknown }
+      const rows = await client.fetch<Row[] | null>(EVENT_DELETE_REFERRERS, { id, draftId: `drafts.${id}`, projectSlug }, { perspective: 'raw' })
+      const seen = new Map<string, lifecycle.Referrer>()
+      for (const r of rows ?? []) {
+        const rid = r._id.replace(/^drafts\./, '')
+        if (!seen.has(rid)) seen.set(rid, { id: rid, type: typeof r._type === 'string' ? r._type : 'unknown', label: textOf(r.label) || 'Untitled' })
+      }
+      return [...seen.values()]
+    },
+    label: (doc) => textOf(doc.title) || 'Event',
+  }
+}
+
+export const EVENT_LIFECYCLE_OPS = ['archive', 'restore', 'unpublish', 'publishAgain', 'deletePermanently'] as const
+export type EventLifecycleOp = (typeof EVENT_LIFECYCLE_OPS)[number]
+
+/**
+ * Unpublish / Publish again / Archive / Restore (events.event.write) and
+ * Delete permanently (events.event.delete) through the lifecycle service, which
+ * checks permission and ownership, guards revisions and writes the Activity
+ * row. Past events are never archived by anything here (only by a person).
+ *
+ *   unpublish     published or scheduled → Unpublished: the unpublish date is
+ *                 now (D2: never Sanity's Unpublish). The event, its slug and
+ *                 its schedule stay; only the website stops showing it.
+ *   publishAgain  Unpublished → online now (the unpublish date is removed; a
+ *                 go-live date still in the future moves to now).
+ *   archive       published / scheduled / unpublished → Archived (both versions).
+ *   restore       Archived → Unpublished — never republished by itself.
+ *   deletePermanently  Archived only (`archive_first` otherwise), and refused
+ *                 while a page, post or course still names the event (`in_use`).
+ *
+ * Returns the DRAFT's new revision when the draft was touched too (archive /
+ * restore), so an open editor does not save against a stale one.
+ */
+export async function runEventLifecycle(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { id: string; op: EventLifecycleOp },
+  deps: EventDeps = {}
+): Promise<{ rev: string | null }> {
+  if (!(EVENT_LIFECYCLE_OPS as readonly unknown[]).includes(input?.op)) throw new EventError('invalid_value', 'Unknown action.')
+  // Gate before any read (the service re-checks).
+  const grant = grantFor(ctx, projectId, input.op === 'deletePermanently' ? EVENT_DELETE_PERMISSION : EVENT_WRITE_PERMISSION)
+  const client = deps.client ?? sanityWriteClient
+  const sdeps = { client, now: deps.now, audit: deps.audit }
+  const now = (deps.now ?? (() => new Date()))()
+  if (!isEventId(input.id)) notFound()
+  const d = eventLifecycle()
+  const { published } = await lifecycle.readPair(d, client, input.id, grant.projectSlug)
+  const args = { id: input.id, rev: str(published?._rev) }
+  const current = published ? eventLifecycleOf(published, false, now) : null
+  try {
+    switch (input.op) {
+      case 'archive': {
+        const r = await lifecycle.archive(d, ctx, projectId, args, sdeps)
+        return { rev: r.draftRev }
+      }
+      case 'restore': {
+        const r = await lifecycle.restore(d, ctx, projectId, args, sdeps)
+        return { rev: r.draftRev }
+      }
+      case 'unpublish': {
+        if (!published) throw new EventError('invalid_value', 'This event is not published.')
+        if (current?.status === 'archived') throw new EventError('archived', 'Restore this event first.')
+        if (current?.status === 'unpublished') throw new EventError('invalid_value', 'This event is already unpublished.')
+        await lifecycle.unpublishNow(d, ctx, projectId, args, sdeps)
+        return { rev: null }
+      }
+      case 'publishAgain': {
+        if (!published) throw new EventError('invalid_value', 'This event is not published.')
+        if (current?.status === 'archived') throw new EventError('archived', 'Restore this event first.')
+        if (current?.status !== 'unpublished') throw new EventError('invalid_value', 'This event is not unpublished.')
+        const goLive = publishedAtOf(published)
+        if (goLive && Date.parse(goLive) > now.getTime()) {
+          // Its go-live date is still ahead: "Publish again" means online now, not "scheduled again".
+          const r = await lifecycle.setDates(d, ctx, projectId, { ...args, publishedAt: 'now', expiresAt: null }, sdeps)
+          return { rev: r.draftRev }
+        }
+        await lifecycle.backOnline(d, ctx, projectId, args, sdeps)
+        return { rev: null }
+      }
+      case 'deletePermanently':
+        await lifecycle.deletePermanently(d, ctx, projectId, args, sdeps)
+        return { rev: null }
+    }
+  } catch (error) {
+    const referrers = (error as { referrers?: lifecycle.Referrer[] } | null)?.referrers
+    if (error instanceof EventError && error.code === 'in_use' && referrers?.length) {
+      const usedIn: EventUsage[] = referrers.map((r) => ({ kind: USAGE_KIND[r.type] ?? 'other', id: r.id, title: r.label }))
+      throw new EventError('in_use', error.message, { usedIn })
+    }
+    throw error
+  }
+}
+
+/**
+ * "Publish on" / "Unpublish on" of an event that is already published (the
+ * editor's Publishing block). `unpublishAt`: an ISO moment in the future, or
+ * null to remove it; left out = unchanged. `publishAt`: a new go-live date, or
+ * 'now' — only for a SCHEDULED event (moving a live one into the future would
+ * take it offline). Never archives: when the unpublish date passes the event
+ * is Unpublished, nothing else. Refused for archived and for unpublished events
+ * (a future date would quietly put them back online). Both versions are
+ * written, so the draft does not drift. Write permission; Activity via the
+ * lifecycle service.
+ */
+export async function setEventDates(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { id: string; publishAt?: string; unpublishAt?: string | null },
+  deps: EventDeps = {}
+): Promise<{ publishedAt: string | null; unpublishOn: string | null; rev: string | null }> {
+  const grant = grantFor(ctx, projectId, EVENT_WRITE_PERMISSION)
+  const client = deps.client ?? sanityWriteClient
+  const now = (deps.now ?? (() => new Date()))()
+  if (!isEventId(input?.id)) notFound()
+  if (input.publishAt === undefined && input.unpublishAt === undefined) throw new EventError('invalid_value', 'Nothing to change.')
+  const { published } = await readPair(client, input.id, grant.projectSlug)
+  if (!published) throw new EventError('invalid_value', 'Publish this event first.')
+  const current = eventLifecycleOf(published, false, now)
+  if (current.status === 'archived') throw new EventError('archived', 'Restore this event first.')
+  if (input.publishAt !== undefined && current.status !== 'scheduled') throw new EventError('invalid_value', 'This event is not waiting for a date.')
+  if (input.unpublishAt !== undefined && current.status === 'unpublished') throw new EventError('invalid_value', 'This event is already unpublished.')
+
+  const publishAt = input.publishAt === undefined ? undefined : input.publishAt === 'now' ? 'now' : parseEventPublishAt(input.publishAt, now).toISOString()
+  const goLive = publishAt === undefined ? publishedAtOf(published) : publishAt === 'now' ? now.toISOString() : publishAt
+  const unpublishAt = input.unpublishAt === undefined ? undefined : input.unpublishAt === null ? null : parseEventUnpublishAt(input.unpublishAt, now, goLive)
+  const d = eventLifecycle()
+  const sdeps = { client, now: deps.now, audit: deps.audit }
+  const rev = str(published._rev)
+  const r =
+    publishAt !== undefined
+      ? await lifecycle.setDates(d, ctx, projectId, { id: input.id, rev, publishedAt: publishAt, expiresAt: unpublishAt === undefined ? current.unpublishOn : unpublishAt }, sdeps)
+      : await lifecycle.setEndDate(d, ctx, projectId, { id: input.id, rev, expiresAt: unpublishAt ?? null }, sdeps)
+  return { publishedAt: isoOf(r.doc.publishedAt), unpublishOn: isoOf(r.doc.expiresAt), rev: r.draftRev }
+}
+
+// ── Activity ──────────────────────────────────────────────────────────────────
+
+/** The event's Activity (ADR-032 D9). Read permission; the event must be this project's. Rows are keyed by the publicId or the document id. */
+export async function getEventActivity(ctx: TenantAuthorizationContext, projectId: string, input: { id: string }, deps: EventDeps = {}): Promise<ActivityItem[]> {
+  const grant = grantFor(ctx, projectId, EVENT_READ_PERMISSION)
+  const client = deps.client ?? sanityWriteClient
+  if (!isEventId(input?.id)) notFound()
+  const { published, draft } = await readPair(client, input.id, grant.projectSlug)
+  if (!published && !draft) notFound()
+  const contentIds = [...new Set([eventContentId(published ?? draft, input.id), input.id])]
+  return (deps.read ?? readContentActivity)({ projectId, contentType: 'event', contentIds })
 }

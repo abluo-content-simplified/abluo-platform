@@ -50,6 +50,21 @@ function Meta({ t }: { t: TestimonialCardView }) {
   const bits = [t.context, t.age].filter(Boolean) as string[]
   return (
     <div className="pt-4">
+      {t.photo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={t.photo.src}
+          srcSet={t.photo.srcSet ?? undefined}
+          sizes="48px"
+          alt={t.photo.alt}
+          width={48}
+          height={48}
+          loading="lazy"
+          decoding="async"
+          className="mb-3 size-12 rounded-full object-cover"
+          style={{ objectPosition: t.photo.objectPosition }}
+        />
+      )}
       {t.name && (
         <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
           {t.name}

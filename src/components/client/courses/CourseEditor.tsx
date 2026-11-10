@@ -32,7 +32,7 @@ import { BackLink } from '@/components/app/ui/BackLink'
 import { Button } from '@/components/app/ui/Button'
 import { buttonClass } from '@/components/app/ui/button-styles'
 import { MediaFrame } from '@/components/app/ui/list/cells'
-import { MediaLibraryPicker } from '@/components/client/media/MediaLibraryPicker'
+import { PhotoSource } from '@/components/client/media/PhotoSource'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { Field } from '@/components/app/ui/Field'
@@ -583,12 +583,25 @@ export function CourseEditor({
             <MediaFrame src={values.image?.url ?? null} alt={values.image?.alt[d] ?? ''} size={{ width: '12rem', height: '8rem' }} className="rounded-xl border border-border" />
             {editable ? (
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => setPicking(true)}>{values.image ? t('imageChange') : t('imageChoose')}</Button>
+                <Button aria-expanded={picking} onClick={() => setPicking((p) => !p)}>{values.image ? t('imageChange') : t('imageChoose')}</Button>
                 {values.image ? <Button onClick={() => chooseImage(null)}>{t('imageRemove')}</Button> : null}
               </div>
             ) : null}
           </div>
           <p className="text-sm leading-5 text-muted-foreground">{t('imageHint')}</p>
+          {/* Take a photo · upload · Media Library — the shared "add photos" block. */}
+          {editable && picking ? (
+            <Panel>
+              <PhotoSource
+                projectSlug={projectSlug}
+                scope="media"
+                defaultLocale={d}
+                exclude={values.image ? [values.image.assetId] : []}
+                room={1}
+                onAdd={(photos) => photos[0] && chooseImage(photos[0])}
+              />
+            </Panel>
+          ) : null}
         </div>
         <div className="space-y-2">
           <p className="text-[0.9375rem] font-medium text-foreground">{t('colorLabel')}</p>
@@ -751,17 +764,6 @@ export function CourseEditor({
           setConfirmError(null)
         }}
       />
-      {picking ? (
-        <MediaLibraryPicker
-          projectSlug={projectSlug}
-          scope="media"
-          defaultLocale={d}
-          exclude={values.image ? [values.image.assetId] : []}
-          room={1}
-          onClose={() => setPicking(false)}
-          onAdd={(photos) => photos[0] && chooseImage(photos[0])}
-        />
-      ) : null}
       <CourseActivitySheet open={activity} onClose={() => setActivity(false)} projectSlug={projectSlug} courseId={id} />
       <Toast message={toast?.message ?? null} tone={toast?.tone} action={toast?.undo ? t('undo') : undefined} onAction={toast?.undo} />
     </div>

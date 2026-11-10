@@ -16,18 +16,25 @@ import {
   discardEventDraft,
   EventError,
   getEvent,
+  getEventActivity,
   openEventForEdit,
   patchEventDraft,
   publishEventDraft,
+  runEventLifecycle,
   setEventCover,
   setEventCoverFocal,
+  setEventDates,
   type EventCover,
   type EventErrorCode,
+  type EventLifecycleOp,
+  type EventPublishMode,
   type EventSnapshot,
+  type EventUsage,
 } from '@/lib/api/event-drafts'
+import type { ActivityItem } from '@/lib/lifecycle/activity'
 
 export type EventActionError = 'unauthenticated' | EventErrorCode
-type Result<T> = ({ ok: true } & T) | { ok: false; error: EventActionError }
+type Result<T> = ({ ok: true } & T) | { ok: false; error: EventActionError; detail?: { usedIn?: EventUsage[] } }
 
 async function run<T>(projectSlug: unknown, fn: (ctx: TenantAuthorizationContext, projectId: string) => Promise<T>): Promise<Result<T>> {
   const access = await resolveProjectAction(projectSlug)
@@ -36,7 +43,7 @@ async function run<T>(projectSlug: unknown, fn: (ctx: TenantAuthorizationContext
   try {
     return { ok: true, ...(await fn(ctx, grant.projectId)) }
   } catch (error) {
-    if (error instanceof EventError) return { ok: false, error: error.code }
+    if (error instanceof EventError) return { ok: false, error: error.code, ...(error.detail && { detail: error.detail }) }
     if (error instanceof TenantAuthorizationError) return { ok: false, error: 'forbidden' }
     return { ok: false, error: 'failed' }
   }
@@ -68,8 +75,43 @@ export async function setEventCoverFocalAction(input: { projectSlug: string; id:
   return run(input?.projectSlug, (ctx, pid) => setEventCoverFocal(ctx, pid, { id: input.id, rev: input.rev, focal: input.focal }))
 }
 
-export async function publishEventDraftAction(input: { projectSlug: string; id: string; rev: string }): Promise<Result<{ id: string }>> {
-  return run(input?.projectSlug, (ctx, pid) => publishEventDraft(ctx, pid, { id: input.id, rev: input.rev }))
+/**
+ * Publish (ADR-032): `mode` 'now' · 'schedule' ("Publish on…" + publishAt) · 'keep' (an update keeps its dates).
+ * `unpublishAt` ("Unpublish on…"): an ISO moment in the future, null to remove it, left out to keep what is set.
+ */
+export async function publishEventDraftAction(input: {
+  projectSlug: string
+  id: string
+  rev: string
+  mode?: EventPublishMode
+  publishAt?: string
+  unpublishAt?: string | null
+}): Promise<Result<{ id: string; publishedAt: string | null; unpublishOn: string | null }>> {
+  return run(input?.projectSlug, (ctx, pid) =>
+    publishEventDraft(ctx, pid, { id: input.id, rev: input.rev, mode: input.mode, publishAt: input.publishAt, unpublishAt: input.unpublishAt })
+  )
+}
+
+/**
+ * Unpublish · Publish again · Archive · Restore (write) and Delete permanently (events.event.delete; archived
+ * events only, refused while something names the event). Past events are never archived automatically.
+ */
+export async function eventLifecycleAction(input: { projectSlug: string; id: string; op: EventLifecycleOp }): Promise<Result<{ rev: string | null }>> {
+  return run(input?.projectSlug, (ctx, pid) => runEventLifecycle(ctx, pid, { id: input.id, op: input.op }))
+}
+
+/** "Publish on…" (a scheduled event) and "Unpublish on…" of a published event. Never archives. */
+export async function setEventDatesAction(input: {
+  projectSlug: string
+  id: string
+  publishAt?: string
+  unpublishAt?: string | null
+}): Promise<Result<{ publishedAt: string | null; unpublishOn: string | null; rev: string | null }>> {
+  return run(input?.projectSlug, (ctx, pid) => setEventDates(ctx, pid, { id: input.id, publishAt: input.publishAt, unpublishAt: input.unpublishAt }))
+}
+
+export async function getEventActivityAction(input: { projectSlug: string; id: string }): Promise<Result<{ items: ActivityItem[] }>> {
+  return run(input?.projectSlug, async (ctx, pid) => ({ items: await getEventActivity(ctx, pid, { id: input.id }) }))
 }
 
 export async function discardEventDraftAction(input: { projectSlug: string; id: string; rev: string }): Promise<Result<{ deleted: boolean }>> {

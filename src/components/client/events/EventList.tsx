@@ -21,14 +21,16 @@ import { cleanSearchQ } from '@/lib/client/search-landing'
 import { useLandedParam } from '@/lib/client/use-search-landing'
 import { useStripSearchParam } from '@/lib/client/use-strip-search-param'
 import type { EventCategoryOption } from '@/lib/modules/events/categories'
-import { EVENT_ICONS, EventStatePill, eventState, type EventState, useEventDates } from './event-bits'
+import { editingZone } from '@/components/app/lifecycle/zoned-time'
+import { EVENT_ICONS, EventLifecycleBadge, useEventDates } from './event-bits'
+import { EVENT_STATUS_FILTERS, eventStatusCounts, matchesEventStatus, type EventStatusFilter } from './event-status-view'
 import { EventCategoryChip } from './EventCategoryChip'
 import { eventCategoryFilterOptions, eventCategoryNames, hasEventCategories, matchesEventCategory } from './event-category-view'
 
 type When = 'upcoming' | 'past' | 'all'
 type SortKey = 'title' | 'when' | 'updated'
 const VIEWS = ['list', 'cards'] as const
-type Status = EventState | 'all'
+type Status = EventStatusFilter
 
 /**
  * Events (client dashboard · agenda) — a "content" list screen like Posts:
@@ -40,6 +42,11 @@ type Status = EventState | 'all'
  * Categories (ADR-033 Amendment J): when the project has any, a Category
  * filter and column (phones: a chip under the title), first name + "+N",
  * named in the dashboard language.
+ *
+ * Status (ADR-032): the publication status badge and the standard filters —
+ * All · Draft · Scheduled · Published · Unpublished · Archived, "All" leaving
+ * archived events out like Posts. Past events are never archived by anything
+ * but a person. The event's own status (cancelled…) is not part of this.
  */
 export function EventList({
   projectSlug,
@@ -47,6 +54,7 @@ export function EventList({
   canWrite,
   categoryOptions = [],
   defaultLocale = 'en',
+  timeZone = null,
   initialQuery = '',
 }: {
   projectSlug: string
@@ -56,12 +64,15 @@ export function EventList({
   categoryOptions?: EventCategoryOption[]
   /** The site's default language, the fallback for a category name. */
   defaultLocale?: string
+  /** The site's IANA time zone (a Scheduled badge names its date in it). */
+  timeZone?: string | null
   /** `?q=` from the dashboard search: pre-fills the search box (ADR-047 D6). */
   initialQuery?: string
 }) {
   const t = useTranslations('clientDashboard.events.list')
-  const ts = useTranslations('clientDashboard.events.state')
+  const tl = useTranslations('app.lifecycle')
   const dates = useEventDates()
+  const zone = editingZone(timeZone)
   const base = `/${projectSlug}/agenda`
   // A visit from the dashboard search: the search text is set and "Coming up"
   // is widened to "All" so a past match is visible (search-landing.ts).
@@ -94,7 +105,7 @@ export function EventList({
       events.filter(
         (e) =>
           (when === 'all' || (when === 'past' ? e.timing === 'past' : e.timing !== 'past')) &&
-          (status === 'all' || eventState(e) === status) &&
+          matchesEventStatus(e.lifecycle.status, status) &&
           matchesEventCategory(e.categories ?? [], categoryFilter) &&
           (!q || searchable(`${e.title} ${e.location ?? ''}`).includes(q))
       ),
@@ -115,16 +126,25 @@ export function EventList({
   }
 
   const whenOptions = (['upcoming', 'past', 'all'] as const).map((v) => ({ value: v, label: t(`filters.when${v[0].toUpperCase()}${v.slice(1)}` as 'filters.whenUpcoming') }))
-  const statusOptions = [{ value: 'all', label: t('filters.statusAll') }, ...(['live', 'changes', 'draft'] as const).map((v) => ({ value: v, label: ts(v) }))]
+  const counts = useMemo(() => eventStatusCounts(events), [events])
+  const statusOptions = [
+    { value: 'all', label: `${t('filters.statusAll')} (${counts.all})` },
+    ...EVENT_STATUS_FILTERS.map((v) => ({ value: v, label: `${tl(`status.${v}`)} (${counts[v]})` })),
+  ]
   const filters: ListToolbarFilter[] = [
     { key: 'when', label: t('filters.when'), value: when, options: whenOptions, onChange: (v) => setWhen(v as When) },
-    { key: 'status', label: t('filters.status'), value: status, options: statusOptions, onChange: (v) => setStatus(v as Status) },
+    // Archived events are old by nature: looking for them means looking at any time.
+    { key: 'status', label: t('filters.status'), value: status, options: statusOptions, onChange: (v) => {
+        setStatus(v as Status)
+        if (v === 'archived') setWhen('all')
+      },
+    },
   ]
   const categoryChoices = withCategories ? [{ value: '', label: t('filters.categoryAll') }, ...eventCategoryFilterOptions(categoryOptions, ui, defaultLocale)] : []
   if (withCategories) filters.push({ key: 'category', label: t('filters.category'), value: categoryFilter, options: categoryChoices, onChange: setCategory })
   const chips: FilterChip[] = [
     ...(when !== 'upcoming' ? [{ id: 'when', label: whenOptions.find((o) => o.value === when)!.label }] : []),
-    ...(status !== 'all' ? [{ id: 'status', label: statusOptions.find((o) => o.value === status)!.label }] : []),
+    ...(status !== 'all' ? [{ id: 'status', label: tl(`status.${status}`) }] : []),
     ...(categoryFilter ? [{ id: 'category', label: categoryChoices.find((o) => o.value === categoryFilter)?.label ?? categoryFilter }] : []),
   ]
 
@@ -168,7 +188,7 @@ export function EventList({
     },
     { key: 'when', header: t('columns.when'), sortable: true, width: 'w-64', render: (e) => <span className="flex min-h-6 items-center text-sm leading-6 text-foreground">{dates(e.startDate, e.endDate) || '—'}</span> },
     { key: 'where', header: t('columns.where'), width: 'w-48', render: (e) => <span className="line-clamp-2 text-sm leading-6 text-muted-foreground">{e.location || '—'}</span> },
-    { key: 'status', header: t('columns.status'), width: 'w-44', render: (e) => <EventStatePill state={eventState(e)} /> },
+    { key: 'status', header: t('columns.status'), width: 'w-56', render: (e) => <EventLifecycleBadge lifecycle={e.lifecycle} zone={zone} /> },
     ...(withCategories
       ? [{ key: 'category', header: t('columns.category'), width: 'w-40', render: (e: EventListItem) => categoryChip(e) ?? <span className="text-sm leading-6 text-muted-foreground">—</span> }]
       : []),
@@ -220,7 +240,7 @@ export function EventList({
                   {sorted.map((e) => (
                     <CardGridItem key={e.id}>
                       <ContentCard media={{ src: e.coverThumb }} title={e.title || t('untitled')} subtitle={detail(e)} href={`${base}/${e.id}`}>
-                        <EventStatePill state={eventState(e)} />
+                        <EventLifecycleBadge lifecycle={e.lifecycle} zone={zone} />
                       </ContentCard>
                     </CardGridItem>
                   ))}
@@ -234,7 +254,7 @@ export function EventList({
                     <span className="line-clamp-2 text-[0.9375rem] leading-6 font-semibold text-foreground">{e.title || t('untitled')}</span>
                     {categoryChip(e)}
                     {detail(e) ? <span className="line-clamp-2 text-sm leading-5 text-muted-foreground">{detail(e)}</span> : null}
-                    <EventStatePill state={eventState(e)} />
+                    <EventLifecycleBadge lifecycle={e.lifecycle} zone={zone} />
                   </ListRow>
                 ))}
               </ul>

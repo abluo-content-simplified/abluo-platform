@@ -13,6 +13,7 @@ vi.mock('next-intl', async () => {
 vi.mock('@/i18n/navigation', () => ({ Link: ({ href, children }: { href: string; children?: React.ReactNode }) => <a href={href}>{children}</a> }))
 
 vi.mock('@/components/client/media/MediaLibraryPicker', () => ({ MediaLibraryPicker: () => null }))
+vi.mock('@/components/client/media/PhotoSource', () => ({ PhotoSource: () => null }))
 
 let m: Mounted | null = null
 afterEach(() => {

@@ -6,15 +6,18 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import {
   discardEventDraftAction,
+  eventLifecycleAction,
+  getEventAction,
   openEventForEditAction,
   patchEventDraftAction,
   publishEventDraftAction,
   setEventCoverAction,
   setEventCoverFocalAction,
+  setEventDatesAction,
 } from '@/app/[locale]/(client)/[tenant]/agenda/actions'
-import type { EventCover, EventSnapshot } from '@/lib/api/event-drafts'
+import type { EventCover, EventLifecycle, EventSnapshot, EventUsage } from '@/lib/api/event-drafts'
 import { languageName } from '@/components/client/create/StepHeading'
-import { MediaLibraryPicker } from '@/components/client/media/MediaLibraryPicker'
+import { PhotoSource } from '@/components/client/media/PhotoSource'
 import { FocalPointPicker, type FocalPoint } from '@/components/app/ui/FocalPointPicker'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
@@ -23,7 +26,8 @@ import { Panel } from '@/components/app/ui/Panel'
 import { MediaFrame } from '@/components/app/ui/list/cells'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
-import { EVENT_ICONS, EventStatePill, eventState } from './event-bits'
+import { EVENT_ICONS, EventLifecycleBadge } from './event-bits'
+import { EventActivitySheet } from './EventActivitySheet'
 import { Button } from '@/components/app/ui/Button'
 import { FieldLabel } from '@/components/app/ui/FieldLabel'
 import { TextArea, TextInput } from '@/components/app/ui/TextInput'
@@ -34,6 +38,12 @@ import { TermPicker } from '@/components/client/taxonomy/TermPicker'
 import type { PersonPickerPerson } from '@/components/app/ui/PersonPicker'
 import { PersonPickerField } from '@/components/client/persons/PersonPickerField'
 import { editingZone } from '@/components/app/lifecycle/zoned-time'
+import { DeletePermanentlyDialog } from '@/components/app/lifecycle/DeletePermanentlyDialog'
+import { PublicationDateField } from '@/components/app/lifecycle/PublicationDateField'
+import { PublicationDates } from '@/components/app/lifecycle/PublicationDates'
+import { UnpublishDateSheet } from '@/components/app/lifecycle/UnpublishDateSheet'
+import { shortMoment } from '@/components/app/lifecycle/publish-plan'
+import { useDateLocale } from '@/lib/i18n/date-locale-context'
 
 const TEXT_FIELDS = ['title', 'shortDescription', 'location', 'registrationLabel'] as const
 type TextField = (typeof TEXT_FIELDS)[number]
@@ -56,7 +66,7 @@ type Values = {
 const CHOICES = ['visibility', 'eventStatus', 'attendanceMode', 'place'] as const
 
 const SAVE_DELAY_MS = 800
-const PUBLISH_ERRORS = ['missing_title', 'missing_date', 'conflict', 'forbidden', 'failed']
+type Confirm = 'discard' | 'delete' | 'deletePermanently' | 'unpublish' | null
 type SaveState = 'idle' | 'saving' | 'saved' | 'error' | 'conflict' | 'invalid'
 
 function valuesOf(e: EventSnapshot): Values {
@@ -107,16 +117,29 @@ function ChoiceChips<V extends string>({ label, value, options, onChange, disabl
  * button. Every change is saved to the event's draft after a short pause;
  * "Publish changes" updates the website. The rest of an event (full text,
  * programme, prices, photos, streaming) is kept as it is and edited by Abluo.
+ *
+ * Publication (ADR-032 Phase 3) — one status, the words of every module:
+ * Draft · Scheduled · Published · Unpublished · Archived. "Publish" means
+ * online on the website. A "Publishing" block holds Publish on / Unpublish on
+ * (site time zone, 24 h); Unpublish, Archive, Restore and Delete permanently
+ * are in the ⋯ menu (archive first, then delete; restore always lands as
+ * Unpublished and never republishes). Past events are never archived for you.
+ * The event's own status (cancelled, postponed, sold out) and who can see it
+ * are separate choices below and never change whether it is published.
  */
 export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddCategory = false, people }: { projectSlug: string; initial: EventSnapshot; canWrite: boolean; canDelete: boolean; /** Holds events.taxonomy.write: the category field offers "+ Add category" (and shows even with no category yet). */ canAddCategory?: boolean; /** ADR-043 — present only with the People module and people.person.read: the hosts field. `initial` = the hosts already on the event, named; `canCreate` = people.person.write. */ people?: { initial: PersonPickerPerson[]; canCreate: boolean } }) {
   const t = useTranslations('clientDashboard.events.editor')
   const te = useTranslations('clientDashboard.events.errors')
+  const tl = useTranslations('app.lifecycle')
+  const tp = useTranslations('app.lifecycle.publish')
+  const dateLocale = useDateLocale()
   const ui = useLocale()
   const router = useRouter()
   const ids = { title: useId(), shortDescription: useId(), location: useId(), registrationLabel: useId(), start: useId(), end: useId(), url: useId() }
   const { site, id, placeOptions, capabilities: caps } = initial
   const d = site.defaultLocale
   const zone = editingZone(site.timeZone)
+  const when = (iso: string) => tp('moment', shortMoment(iso, zone, dateLocale))
   const base = `/${projectSlug}/agenda`
 
   const [values, setValues] = useState<Values>(() => valuesOf(initial))
@@ -128,6 +151,20 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
   const revRef = useRef(initial.rev)
   const [hasDraft, setHasDraft] = useState(initial.hasDraft)
   const [isPublished, setIsPublished] = useState(initial.isPublished)
+  // ADR-032 — the publication state of the PUBLISHED version (what the website shows).
+  const [life, setLife] = useState<EventLifecycle>(initial.lifecycle)
+  /** "Publish on" / "Unpublish on" chosen for an event that is not online yet. */
+  const [publishOn, setPublishOn] = useState<string | null>(null)
+  const [unpublishOnNew, setUnpublishOnNew] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [activity, setActivity] = useState(false)
+  const [dateSheet, setDateSheet] = useState(false)
+  const archived = life.status === 'archived'
+  const scheduled = life.status === 'scheduled'
+  const unpublished = life.status === 'unpublished'
+  const live = life.status === 'published'
+  /** Archived events are read-only until restored (ADR-032). */
+  const editable = canWrite && !archived
   const [cover, setCover] = useState<EventCover | null>(initial.cover)
   // The cover's focus point — this event's own (heroImage.hotspot), never the
   // Media Library photo's (Tom, 2026-10-22). Saved when the dot is let go.
@@ -140,10 +177,10 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [busy, setBusy] = useState(false)
   const [picking, setPicking] = useState(false)
-  const [confirm, setConfirm] = useState(false)
+  const [confirm, setConfirm] = useState<Confirm>(null)
   const [confirmBusy, setConfirmBusy] = useState(false)
   const [confirmError, setConfirmError] = useState<string | null>(null)
-  const { toast, show } = useUndo()
+  const { toast, show, schedule } = useUndo()
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const chain = useRef<Promise<void>>(Promise.resolve())
   const latest = useRef(values)
@@ -191,14 +228,14 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
   }, [draftRev, projectSlug, id, site.locales])
 
   useEffect(() => {
-    if (!canWrite) return
+    if (!editable) return
     if (!Object.keys(diff(savedValues, values, site.locales)).length) return
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => void flush(), SAVE_DELAY_MS)
     return () => {
       if (timer.current) clearTimeout(timer.current)
     }
-  }, [values, savedValues, canWrite, flush, site.locales])
+  }, [values, savedValues, editable, flush, site.locales])
 
   /** Saves a moved focus point (after any pending text save, one save at a time). */
   const saveFocal = useCallback(() => {
@@ -269,37 +306,154 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
     }
   }
 
-  async function publish() {
-    if (busy) return
+  /** What the server said, as words (an `in_use` refusal names where the event is used). */
+  const errorText = (code: string, usedIn?: EventUsage[]) =>
+    code === 'in_use' && usedIn?.length ? te('in_use_where', { places: usedIn.map((u) => u.title).filter(Boolean).join(', ') }) : te.has(code) ? te(code) : te('failed')
+
+  /** Shows what the server now holds: publication state, draft or not, and the draft's revision (lifecycle changes touch both versions). */
+  const reload = useCallback(async (): Promise<boolean> => {
+    const r = await getEventAction({ projectSlug, id })
+    if (!r.ok) return false
+    revRef.current = r.event.rev
+    setHasDraft(r.event.hasDraft)
+    setIsPublished(r.event.isPublished)
+    setLife(r.event.lifecycle)
+    return true
+  }, [projectSlug, id])
+
+  const dirty = Object.keys(diff(savedValues, values, site.locales)).length > 0
+  const withContent = hasDraft || dirty
+  const title = values.texts.title[d]?.trim() || t('untitled')
+  const missingTitle = !values.texts.title[d]?.trim()
+  const missingStart = !values.start
+  /** Why "Publish" is off (it always says why; never a silent grey button). */
+  const publishReason = !editable
+    ? null
+    : missingTitle
+      ? t('reason.missingTitle', { language: languageName(d, ui) })
+      : missingStart
+        ? t('reason.missingStart')
+        : live && !withContent
+          ? t('reason.upToDate')
+          : null
+
+  /** Publish = online on the website: a draft's content goes live (now, or the dates chosen), or an unpublished / scheduled event goes online now. */
+  async function publish(update = false) {
+    if (busy || publishReason) return
     setBusy(true)
+    setNotice(null)
     try {
       await flush()
+      if (!withContent) {
+        // Nothing new to publish: only the dates move.
+        const r = unpublished ? await eventLifecycleAction({ projectSlug, id, op: 'publishAgain' }) : await setEventDatesAction({ projectSlug, id, publishAt: 'now' })
+        if (!r.ok) return setNotice(errorText(r.error, r.detail?.usedIn))
+        await reload()
+        show({ message: t('toast.online'), tone: 'status' })
+        router.refresh()
+        return
+      }
       if (!revRef.current) return
-      const r = await publishEventDraftAction({ projectSlug, id, rev: revRef.current })
-      if (!r.ok) return show({ message: te(PUBLISH_ERRORS.includes(r.error) ? r.error : 'failed'), tone: 'error' }, 8000)
+      const mode = update || live ? 'keep' : 'now'
+      const r = await publishEventDraftAction({
+        projectSlug,
+        id,
+        rev: revRef.current,
+        mode,
+        ...(!isPublished && unpublishOnNew ? { unpublishAt: unpublishOnNew } : {}),
+      })
+      if (!r.ok) return setNotice(errorText(r.error, r.detail?.usedIn))
       revRef.current = ''
       setHasDraft(false)
-      setIsPublished(true)
       setSaveState('idle')
-      show({ message: t('published'), tone: 'status' })
+      setUnpublishOnNew(null)
+      await reload()
+      show({ message: live || update ? t('published') : t('toast.online'), tone: 'status' })
       router.refresh()
     } catch {
-      show({ message: te('failed'), tone: 'error' }, 8000)
+      setNotice(te('failed'))
     } finally {
       setBusy(false)
     }
   }
 
-  async function discard() {
-    if (confirmBusy) return
+  /** "Publish on…" for an event that is not online yet: published with a future date, online by itself then. */
+  async function scheduleIt() {
+    if (busy || publishReason || !publishOn) return
+    setBusy(true)
+    setNotice(null)
+    try {
+      await flush()
+      if (!revRef.current) return
+      const r = await publishEventDraftAction({ projectSlug, id, rev: revRef.current, mode: 'schedule', publishAt: publishOn, ...(unpublishOnNew ? { unpublishAt: unpublishOnNew } : {}) })
+      if (!r.ok) return setNotice(errorText(r.error, r.detail?.usedIn))
+      revRef.current = ''
+      setHasDraft(false)
+      setSaveState('idle')
+      await reload()
+      show({ message: t('toast.scheduled', { date: when(publishOn) }), tone: 'status' })
+      setPublishOn(null)
+      setUnpublishOnNew(null)
+      router.refresh()
+    } catch {
+      setNotice(te('failed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Publish on / Unpublish on of an event that is already published. `from` null = online now. */
+  async function changeDates(next: { from?: string | null; until?: string | null }, message: string) {
+    if (busy) return
+    setBusy(true)
+    setNotice(null)
+    try {
+      await flush()
+      const r = await setEventDatesAction({
+        projectSlug,
+        id,
+        ...(next.from !== undefined ? { publishAt: next.from ?? 'now' } : {}),
+        ...(next.until !== undefined ? { unpublishAt: next.until } : {}),
+      })
+      if (!r.ok) return setNotice(errorText(r.error))
+      await reload()
+      setDateSheet(false)
+      show({ message, tone: 'status' })
+      router.refresh()
+    } catch {
+      setNotice(te('failed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Everything the dialogs confirm: discard changes, delete a draft, unpublish, delete permanently. */
+  async function runConfirm() {
+    if (!confirm || confirmBusy) return
     setConfirmBusy(true)
     setConfirmError(null)
     try {
       await chain.current
-      const r = await discardEventDraftAction({ projectSlug, id, rev: revRef.current })
-      if (!r.ok) return setConfirmError(te(r.error === 'forbidden' ? 'forbidden' : 'failed'))
-      if (r.deleted) router.push(base)
-      else window.location.reload()
+      if (confirm === 'discard' || confirm === 'delete') {
+        const r = await discardEventDraftAction({ projectSlug, id, rev: revRef.current })
+        if (!r.ok) return setConfirmError(errorText(r.error))
+        if (r.deleted) router.push(base)
+        else window.location.reload()
+        return
+      }
+      if (confirm === 'unpublish') {
+        await flush()
+        const r = await eventLifecycleAction({ projectSlug, id, op: 'unpublish' })
+        if (!r.ok) return setConfirmError(errorText(r.error, r.detail?.usedIn))
+        await reload()
+        setConfirm(null)
+        show({ message: t('toast.unpublished'), tone: 'status' })
+        router.refresh()
+        return
+      }
+      const r = await eventLifecycleAction({ projectSlug, id, op: 'deletePermanently' })
+      if (!r.ok) return setConfirmError(errorText(r.error, r.detail?.usedIn))
+      router.push(base)
     } catch {
       setConfirmError(te('failed'))
     } finally {
@@ -307,15 +461,68 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
     }
   }
 
-  const dirty = Object.keys(diff(savedValues, values, site.locales)).length > 0
-  const canPublish = canWrite && (hasDraft || dirty)
-  const title = values.texts.title[d]?.trim() || t('untitled')
+  /** Restore: archived → Unpublished. It is not published again by itself. */
+  async function restore() {
+    if (busy) return
+    setBusy(true)
+    setNotice(null)
+    try {
+      const r = await eventLifecycleAction({ projectSlug, id, op: 'restore' })
+      if (!r.ok) return setNotice(errorText(r.error, r.detail?.usedIn))
+      await reload()
+      show({ message: t('toast.restored'), tone: 'status' })
+      router.refresh()
+    } catch {
+      setNotice(te('failed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Archive from the editor: shown at once ("Archived · Undo"), carried out after the Undo window (or when the page is left). */
+  async function archiveWithUndo() {
+    if (busy || !canWrite) return
+    await flush()
+    const before = life
+    setNotice(null)
+    setLife({ ...before, status: 'archived' })
+    schedule({
+      id: `archive:${id}`,
+      message: t('toast.archived'),
+      undoLabel: t('undo'),
+      failMessage: te('failed'),
+      restore: () => setLife(before),
+      run: async () => {
+        const r = await eventLifecycleAction({ projectSlug, id, op: 'archive' })
+        if (!r.ok) {
+          setLife(before)
+          setNotice(errorText(r.error, r.detail?.usedIn))
+          return false
+        }
+        await reload()
+        router.refresh()
+        return true
+      },
+    })
+  }
+
   const others = site.locales.filter((l) => l !== d)
-  const disabled = !canWrite
-  const menu: CardMenuItem[] =
-    canWrite && hasDraft && (isPublished || canDelete)
-      ? [{ key: 'discard', label: isPublished ? t('discard') : t('delete'), onSelect: () => setConfirm(true), destructive: !isPublished }]
-      : []
+  const disabled = !editable
+  const menu: CardMenuItem[] = []
+  if (editable && hasDraft && isPublished) menu.push({ key: 'discard', label: t('discard'), onSelect: () => setConfirm('discard') })
+  menu.push({ key: 'activity', label: t('menu.activity'), onSelect: () => setActivity(true) })
+  if (canWrite) {
+    if (archived) menu.push({ key: 'restore', label: tl('actions.restore'), onSelect: () => void restore() })
+    else if (isPublished) {
+      if (live || scheduled) menu.push({ key: 'unpublish', label: tl('actions.unpublish'), onSelect: () => setConfirm('unpublish') })
+      menu.push({ key: 'archive', label: tl('actions.archive'), onSelect: () => void archiveWithUndo() })
+    }
+  }
+  if (canDelete) {
+    if (archived) menu.push({ key: 'deletePermanently', label: tl('actions.deletePermanently'), onSelect: () => setConfirm('deletePermanently'), destructive: true, separated: true })
+    else if (canWrite && !isPublished && hasDraft) menu.push({ key: 'delete', label: t('delete'), onSelect: () => setConfirm('delete'), destructive: true, separated: true })
+  }
+  const primaryLabel = scheduled ? t('publishNow') : unpublished && !withContent ? tl('actions.publishAgain') : live && withContent ? t('publishChanges') : t('publish')
 
   const saveLine =
     saveState === 'saving'
@@ -338,26 +545,110 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
           title={title}
           actions={
             <>
-              {canPublish ? (
-                <Button variant="primary" disabled={busy} onClick={() => void publish()}>
-                  {busy ? t('publishing') : isPublished ? t('publishChanges') : t('publish')}
+              {editable ? (
+                <Button variant="primary" disabled={busy || !!publishReason} aria-describedby={publishReason ? 'event-publish-reason' : undefined} onClick={() => void publish()}>
+                  {busy ? t('publishing') : primaryLabel}
                 </Button>
               ) : null}
-              {menu.length ? <CardMenu label={t('menu')} items={menu} /> : null}
+              <CardMenu label={t('menu.label')} items={menu} />
             </>
           }
         />
       </div>
 
-      <div className="-mt-3 flex flex-wrap items-center gap-2">
-        <EventStatePill state={eventState({ isPublished, hasDraft: hasDraft || dirty })} />
-        {saveLine ? (
-          <p role="status" className={`text-sm leading-5 ${saveState === 'error' || saveState === 'conflict' || saveState === 'invalid' ? 'text-destructive' : 'text-muted-foreground'}`}>
-            {saveLine}
+      <div className="-mt-3 flex flex-col items-start gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <EventLifecycleBadge lifecycle={life} changes={isPublished && withContent} zone={zone} />
+          {saveLine ? (
+            <p role="status" className={`text-sm leading-5 ${saveState === 'error' || saveState === 'conflict' || saveState === 'invalid' ? 'text-destructive' : 'text-muted-foreground'}`}>
+              {saveLine}
+            </p>
+          ) : null}
+        </div>
+        {publishReason ? (
+          <p id="event-publish-reason" className="text-sm leading-5 text-muted-foreground">
+            {publishReason}
           </p>
         ) : null}
       </div>
-      {!canWrite ? <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('readOnly')}</p> : null}
+      {archived ? (
+        <Notice tone="info" title={t('archived.title')} action={canWrite ? <Button disabled={busy} onClick={() => void restore()}>{tl('actions.restore')}</Button> : undefined}>
+          {t('archived.body')}
+        </Notice>
+      ) : !canWrite ? (
+        <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('readOnly')}</p>
+      ) : null}
+      {notice ? (
+        <Notice tone="error" onDismiss={() => setNotice(null)} dismissLabel={t('dismiss')}>
+          {notice}
+        </Notice>
+      ) : null}
+
+      {/* Publishing — ADR-032: Publish on / Unpublish on. Separate from the event's own status and visibility below. */}
+      {!archived ? (
+        <Panel as="section" aria-labelledby="event-publishing" className="space-y-4">
+          <h2 id="event-publishing" className="text-[1.0625rem] leading-7 font-semibold text-foreground">
+            {t('publishing.title')}
+          </h2>
+          {live ? (
+            <div className="space-y-3">
+              <p className="text-[0.9375rem] leading-6 text-foreground">{life.unpublishOn ? t('publishing.liveUntil', { date: when(life.unpublishOn) }) : t('publishing.live')}</p>
+              {editable ? (
+                <Button variant="secondary" disabled={busy} onClick={() => setDateSheet(true)}>
+                  {tl('actions.setUnpublishDate')}
+                </Button>
+              ) : null}
+            </div>
+          ) : scheduled && life.publishedAt ? (
+            <div className="space-y-3">
+              <PublicationDates
+                id="event-dates"
+                from={life.publishedAt}
+                until={life.unpublishOn}
+                zone={zone}
+                busy={busy || !editable}
+                onChange={(next) => void changeDates({ from: next.from, until: next.until }, next.from ? t('toast.datesSaved') : t('toast.online'))}
+                sentence={t('publishing.scheduledSentence', { date: when(life.publishedAt) })}
+              />
+              {withContent ? <p className="text-sm leading-5 text-muted-foreground">{t('publishing.changesNotScheduled')}</p> : null}
+              {editable && withContent ? (
+                <Button variant="secondary" disabled={busy || !!publishReason} onClick={() => void publish(true)}>
+                  {t('publishing.updateScheduled')}
+                </Button>
+              ) : null}
+            </div>
+          ) : unpublished ? (
+            <div className="space-y-3">
+              <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('publishing.unpublishedBody')}</p>
+              {editable ? (
+                <Button variant="secondary" disabled={busy || !!publishReason} onClick={() => void publish()}>
+                  {tl('actions.publishAgain')}
+                </Button>
+              ) : null}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('publishing.notOnline')}</p>
+              {editable ? (
+                <div className="space-y-3">
+                  <PublicationDateField id="event-publish-on" label={tl('dates.publishOn')} value={publishOn} onChange={setPublishOn} zone={zone} />
+                  <PublicationDateField id="event-unpublish-on" label={tl('dates.unpublishOn')} value={unpublishOnNew} onChange={setUnpublishOnNew} zone={zone} after={publishOn} />
+                  <p className="text-sm leading-5 text-muted-foreground">{t('publishing.datesHelp')}</p>
+                  <Button variant="secondary" disabled={busy || !publishOn || !!publishReason} aria-describedby={!publishOn ? 'event-schedule-reason' : undefined} onClick={() => void scheduleIt()}>
+                    {tp('schedule')}
+                  </Button>
+                  {!publishOn ? (
+                    <p id="event-schedule-reason" className="text-sm leading-5 text-muted-foreground">
+                      {t('publishing.scheduleNeedsDate')}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          )}
+          <p className="text-sm leading-5 text-muted-foreground">{t('publishing.separate')}</p>
+        </Panel>
+      ) : null}
 
       {/* Photo */}
       <section aria-labelledby="event-photo" className="space-y-3">
@@ -366,9 +657,9 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
         </h2>
         <div className="flex flex-wrap items-end gap-3">
           <MediaFrame src={cover?.thumbUrl ?? cover?.url ?? null} alt={cover?.alt[d] ?? ''} size={{ width: '12rem', height: '8rem' }} className="rounded-xl border border-border" />
-          {canWrite ? (
+          {editable ? (
             <div className="flex flex-wrap gap-2">
-              <Button disabled={busy} onClick={() => setPicking(true)}>
+              <Button disabled={busy} aria-expanded={picking} onClick={() => setPicking((p) => !p)}>
                 {EVENT_ICONS.photo}
                 {cover ? t('photo.change') : t('photo.choose')}
               </Button>
@@ -386,7 +677,21 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
           ) : null}
         </div>
         <p className="text-sm leading-5 text-muted-foreground">{t('photo.helper')}</p>
-        {canWrite && adjusting && cover?.url ? (
+        {/* Take a photo · upload · Media Library — the shared "add photos" block. */}
+        {editable && picking ? (
+          <Panel>
+            <PhotoSource
+              projectSlug={projectSlug}
+              scope="media"
+              defaultLocale={d}
+              exclude={cover ? [cover.assetId] : []}
+              room={1}
+              disabled={busy}
+              onAdd={(photos) => photos[0] && void chooseCover(photos[0].assetId)}
+            />
+          </Panel>
+        ) : null}
+        {editable && adjusting && cover?.url ? (
           <Panel className="space-y-2">
             <FocalPointPicker
               url={cover.url}
@@ -473,7 +778,7 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
       </section>
 
       {/* Category — ADR-033 Amendment J: chosen from Categories & Tags, new ones added on the spot */}
-      {initial.categoryOptions.length > 0 || initial.categories.length > 0 || (canAddCategory && canWrite) ? (
+      {initial.categoryOptions.length > 0 || initial.categories.length > 0 || (canAddCategory && editable) ? (
         <section aria-labelledby="event-categories" className="space-y-3">
           <h2 id="event-categories" className="text-[1.0625rem] leading-7 font-semibold text-foreground">
             {t('categories.title')}
@@ -487,7 +792,7 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
             value={values.categories}
             onChange={(categories) => setValues((v) => ({ ...v, categories }))}
             defaultLocale={d}
-            canAdd={canAddCategory && canWrite}
+            canAdd={canAddCategory && editable}
             disabled={disabled}
           />
           <p className="text-sm leading-5 text-muted-foreground">{t('categories.helper')}</p>
@@ -506,7 +811,7 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
                 projectSlug={projectSlug}
                 label={t('hosts.title')}
                 max={50}
-                canCreate={people.canCreate && canWrite}
+                canCreate={people.canCreate && editable}
                 disabled={disabled}
                 value={values.hostPeople.map((pid) => knownPeople.find((p) => p.id === pid) ?? { id: pid, name: t('hosts.unknownPerson') })}
                 onChange={(next) => {
@@ -648,33 +953,56 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
         </Notice>
       ) : null}
 
-      {picking ? (
-        <MediaLibraryPicker
-          projectSlug={projectSlug}
-          scope="media"
-          defaultLocale={d}
-          exclude={cover ? [cover.assetId] : []}
-          room={1}
-          onClose={() => setPicking(false)}
-          onAdd={(photos) => photos[0] && void chooseCover(photos[0].assetId)}
-        />
-      ) : null}
 
       <ConfirmDialog
-        open={confirm}
-        title={isPublished ? t('confirm.discardTitle') : t('confirm.deleteTitle')}
-        body={isPublished ? t('confirm.discardBody') : t('confirm.deleteBody', { title })}
-        confirmLabel={isPublished ? t('discard') : t('delete')}
+        open={confirm === 'discard' || confirm === 'delete'}
+        title={confirm === 'discard' ? t('confirm.discardTitle') : t('confirm.deleteTitle', { title })}
+        body={confirm === 'discard' ? t('confirm.discardBody') : t('confirm.deleteBody', { title })}
+        confirmLabel={confirm === 'discard' ? t('discard') : t('delete')}
         busy={confirmBusy}
         error={confirmError}
-        onConfirm={() => void discard()}
+        onConfirm={() => void runConfirm()}
         onCancel={() => {
-          setConfirm(false)
+          setConfirm(null)
           setConfirmError(null)
         }}
       />
+      <ConfirmDialog
+        open={confirm === 'unpublish'}
+        title={t('confirm.unpublishTitle', { title })}
+        body={t('confirm.unpublishBody')}
+        confirmLabel={tl('actions.unpublish')}
+        cancelLabel={t('confirm.unpublishKeep')}
+        busy={confirmBusy}
+        error={confirmError}
+        onConfirm={() => void runConfirm()}
+        onCancel={() => {
+          setConfirm(null)
+          setConfirmError(null)
+        }}
+      />
+      <DeletePermanentlyDialog
+        open={confirm === 'deletePermanently'}
+        titles={[title]}
+        busy={confirmBusy}
+        error={confirmError}
+        onConfirm={() => void runConfirm()}
+        onCancel={() => {
+          setConfirm(null)
+          setConfirmError(null)
+        }}
+      />
+      <UnpublishDateSheet
+        open={dateSheet}
+        busy={busy}
+        zone={zone}
+        onClose={() => setDateSheet(false)}
+        onSave={(iso) => void changeDates({ until: iso }, t('toast.unpublishDateSaved', { date: when(iso) }))}
+        onRemove={life.unpublishOn ? () => void changeDates({ until: null }, t('toast.unpublishDateRemoved')) : undefined}
+      />
+      <EventActivitySheet open={activity} onClose={() => setActivity(false)} projectSlug={projectSlug} eventId={id} />
 
-      <Toast message={toast?.message ?? null} tone={toast?.tone} />
+      <Toast message={toast?.message ?? null} tone={toast?.tone} action={toast?.undo ? t('undo') : undefined} onAction={toast?.undo} />
     </div>
   )
 }

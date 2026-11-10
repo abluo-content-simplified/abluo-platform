@@ -6,12 +6,14 @@
 // `testimonialsSection`, so a page route and a slug route behave the same.
 
 import type { TestimonialsSection } from '@/lib/sanity/types'
+import { getModuleConfig, type ProjectModuleConfig } from '@/lib/modules/config'
 import {
   DEFAULT_TESTIMONIAL_LIMIT,
   DEFAULT_TESTIMONIAL_SELECTION,
   MAX_TESTIMONIAL_LIMIT,
   TESTIMONIALS_MODULE_ID,
   TESTIMONIAL_SELECTIONS,
+  TESTIMONIAL_SHOW_PHOTOS_KEY,
   type TestimonialSelection,
 } from './model'
 import { normalizeTestimonial, type TestimonialPublic, type TestimonialRaw } from './projection'
@@ -59,6 +61,13 @@ export interface HydrateTestimonialsContext {
   locale: string
   defaultLocale: string
   fetchForTenant: Fetch
+  /** The website's module settings; `showPhotos` decides whether a photo is shown (default off). */
+  moduleConfig?: ProjectModuleConfig
+}
+
+/** The module setting `showPhotos` (off unless explicitly on). */
+export function testimonialsShowPhotos(moduleConfig: ProjectModuleConfig): boolean {
+  return getModuleConfig(moduleConfig, TESTIMONIALS_MODULE_ID)?.[TESTIMONIAL_SHOW_PHOTOS_KEY] === true
 }
 
 /**
@@ -88,9 +97,12 @@ export async function hydrateTestimonialsSection(section: TestimonialsSection, c
   } else {
     rows = await ctx.fetchForTenant<TestimonialRaw[]>(TESTIMONIALS_FEATURED_QUERY, { ...params, limit })
   }
+  const showPhotos = testimonialsShowPhotos(ctx.moduleConfig)
   const items = (rows ?? []).flatMap((r) => {
     const t = normalizeTestimonial(r, ctx.locale)
-    return t ? [t] : []
+    if (!t) return []
+    // One switch: photos are shown only when the module setting is on.
+    return [showPhotos ? t : { ...t, photo: null }]
   })
   section.testimonialItems = items
   return items

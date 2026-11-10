@@ -433,6 +433,7 @@ export async function hydrateSections(
             locale: ctx.locale,
             defaultLocale: ctx.defaultLocale,
             fetchForTenant: ctx.fetchForTenant,
+            moduleConfig: ctx.moduleConfig,
           })
         } catch (err) {
           console.error('[testimonials] section hydration failed; section omitted', err)
