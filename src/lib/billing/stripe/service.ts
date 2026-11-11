@@ -126,7 +126,7 @@ async function readProfile(tenantId: string, livemode: boolean): Promise<Profile
   return (data as ProfileRow | null) ?? null
 }
 
-const STRIPE_LOCALES = new Set(['en', 'it', 'de'])
+const STRIPE_LOCALES = new Set(['en', 'it', 'de', 'fr'])
 
 function customerFields(p: ProfileRow, locale: string | null) {
   return {
@@ -543,7 +543,7 @@ export async function createPortalSession(tenantId: string, returnUrl: string, l
     customer: data.stripe_customer_id as string,
     configuration,
     return_url: returnUrl,
-    ...(locale && STRIPE_LOCALES.has(locale) ? { locale: locale as 'en' | 'it' | 'de' } : {}),
+    ...(locale && STRIPE_LOCALES.has(locale) ? { locale: locale as 'en' | 'it' | 'de' | 'fr' } : {}),
   })
   return { url: session.url }
 }

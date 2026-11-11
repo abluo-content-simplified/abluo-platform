@@ -6,14 +6,16 @@
 import en from '../../../messages/en.json'
 import it from '../../../messages/it.json'
 import de from '../../../messages/de.json'
+import fr from '../../../messages/fr.json'
+import { withEnglishFallback } from '@/lib/i18n/with-fallback'
 import { permissionMessageKey } from '@/lib/authz/permissions'
 
 export type InvitationMessages = typeof en.invitation
 
-const BY_LOCALE: Record<string, InvitationMessages> = { en: en.invitation, it: it.invitation, de: de.invitation }
+const BY_LOCALE: Record<string, InvitationMessages> = { en: en.invitation, it: it.invitation, de: de.invitation, fr: withEnglishFallback(en.invitation, (fr as Record<string, unknown>).invitation) }
 
-export function invitationLocale(locale: string | null | undefined): 'en' | 'it' | 'de' {
-  return locale === 'it' || locale === 'de' ? locale : 'en'
+export function invitationLocale(locale: string | null | undefined): 'en' | 'it' | 'de' | 'fr' {
+  return locale === 'it' || locale === 'de' || locale === 'fr' ? locale : 'en'
 }
 
 export function getInvitationMessages(locale: string | null | undefined): InvitationMessages {

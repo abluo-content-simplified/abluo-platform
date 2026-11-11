@@ -243,7 +243,7 @@ describe('audit and email', () => {
     const base = { kind: 'newOwner' as const, byName: '<b>Tom</b>', ownerName: 'Anna', placeName: 'Studio A', steppedDown: false, url: 'https://abluo.app/x' }
     expect(renderOwnershipEmail({ ...base, locale: 'en' }).subject).toBe('You’re now an Owner of Studio A')
     expect(renderOwnershipEmail({ ...base, locale: 'it' }).subject).toBe('Ora sei Titolare di Studio A')
-    expect(renderOwnershipEmail({ ...base, locale: 'fr' }).subject).toBe('You’re now an Owner of Studio A')
+    expect(renderOwnershipEmail({ ...base, locale: 'es' }).subject).toBe('You’re now an Owner of Studio A')
     expect(renderOwnershipEmail({ ...base, locale: 'en' }).html).not.toContain('<b>Tom</b>')
   })
 })

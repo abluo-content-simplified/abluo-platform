@@ -59,6 +59,6 @@ describe('digest email', () => {
   it('language: profile, then the site, then English', () => {
     expect(digestLocale('de', 'it')).toBe('de')
     expect(digestLocale(null, 'it')).toBe('it')
-    expect(digestLocale(null, 'fr')).toBe('en')
+    expect(digestLocale(null, 'es')).toBe('en')
   })
 })

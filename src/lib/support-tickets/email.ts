@@ -10,12 +10,14 @@
 import en from '../../../messages/en.json'
 import it from '../../../messages/it.json'
 import de from '../../../messages/de.json'
+import fr from '../../../messages/fr.json'
+import { withEnglishFallback } from '@/lib/i18n/with-fallback'
 
 export type TicketEventType = 'ticket.created' | 'ticket.client_replied' | 'ticket.support_replied' | 'ticket.resolved' | 'ticket.waiting_for_user'
-export type EmailLocale = 'en' | 'it' | 'de'
+export type EmailLocale = 'en' | 'it' | 'de' | 'fr'
 export type TicketEmailMessages = typeof en.supportTicketEmail
 
-const BY_LOCALE: Record<EmailLocale, TicketEmailMessages> = { en: en.supportTicketEmail, it: it.supportTicketEmail, de: de.supportTicketEmail }
+const BY_LOCALE: Record<EmailLocale, TicketEmailMessages> = { en: en.supportTicketEmail, it: it.supportTicketEmail, de: de.supportTicketEmail, fr: withEnglishFallback(en.supportTicketEmail, (fr as Record<string, unknown>).supportTicketEmail) }
 
 export const ADMIN_ORIGIN = 'https://admin.abluo.app'
 export const CLIENT_ORIGIN = 'https://abluo.app'
@@ -28,13 +30,13 @@ export function recipientKindFor(eventType: TicketEventType): RecipientKind {
 }
 
 function asLocale(value: unknown): EmailLocale | null {
-  return value === 'en' || value === 'it' || value === 'de' ? value : null
+  return value === 'en' || value === 'it' || value === 'de' || value === 'fr' ? value : null
 }
 
 /**
  * Language: the platform stores no per-person interface language, so the best
  * signal is the interface language recorded on the ticket when it was opened
- * (the creator's own), then the project's default_locale if en/it/de, else English.
+ * (the creator's own), then the project's default_locale if en/it/de/fr, else English.
  */
 export function chooseEmailLocale(input: { interfaceLocale?: unknown; projectDefaultLocale?: unknown }): EmailLocale {
   const fromTicket = typeof input.interfaceLocale === 'string' ? asLocale(input.interfaceLocale.slice(0, 2).toLowerCase()) : null

@@ -7,9 +7,11 @@
 import en from '../../../messages/en.json'
 import it from '../../../messages/it.json'
 import de from '../../../messages/de.json'
+import fr from '../../../messages/fr.json'
+import { withEnglishFallback } from '@/lib/i18n/with-fallback'
 
-export type DigestLocale = 'en' | 'it' | 'de'
-const BY_LOCALE = { en: en.notificationEmail, it: it.notificationEmail, de: de.notificationEmail } as const
+export type DigestLocale = 'en' | 'it' | 'de' | 'fr'
+const BY_LOCALE = { en: en.notificationEmail, it: it.notificationEmail, de: de.notificationEmail, fr: withEnglishFallback(en.notificationEmail, (fr as Record<string, unknown>).notificationEmail) } as const
 
 export const ADMIN_ORIGIN = 'https://admin.abluo.app'
 export const CLIENT_ORIGIN = 'https://abluo.app'
@@ -17,7 +19,7 @@ export const CLIENT_ORIGIN = 'https://abluo.app'
 export function digestLocale(profileLocale: unknown, projectLocale?: unknown): DigestLocale {
   for (const v of [profileLocale, projectLocale]) {
     const two = typeof v === 'string' ? v.slice(0, 2).toLowerCase() : ''
-    if (two === 'en' || two === 'it' || two === 'de') return two
+    if (two === 'en' || two === 'it' || two === 'de' || two === 'fr') return two
   }
   return 'en'
 }

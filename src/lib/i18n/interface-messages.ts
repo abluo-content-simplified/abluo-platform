@@ -7,11 +7,12 @@
 import en from '../../../messages/en.json'
 import it from '../../../messages/it.json'
 import de from '../../../messages/de.json'
+import fr from '../../../messages/fr.json'
 import statusFile from './interface-translation-status.json'
 import { INTERFACE_LOCALES, type InterfaceLocale } from './locales'
 import type { TranslationStatusFile } from './translation-report'
 
-const BUNDLES: Record<InterfaceLocale, Record<string, unknown>> = { en, it, de }
+const BUNDLES: Record<InterfaceLocale, Record<string, unknown>> = { en, it, de, fr }
 
 /** Bundles in INTERFACE_LOCALES order (English first). */
 export function interfaceBundles(): Record<string, Record<string, unknown>> {

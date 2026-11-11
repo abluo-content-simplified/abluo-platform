@@ -58,7 +58,7 @@ export const LOCALE_ENGLISH_NAMES: Record<SupportedLocale, string> = Object.from
 // own text exists only in these. Adding one = add messages/<code>.json + the
 // code here (src/lib/i18n/__tests__/interface-locales.test.ts keeps the two
 // in lockstep). Shown in Preferences → Language.
-export const INTERFACE_LOCALES = ['en', 'it', 'de'] as const satisfies readonly SupportedLocale[]
+export const INTERFACE_LOCALES = ['en', 'it', 'de', 'fr'] as const satisfies readonly SupportedLocale[]
 export type InterfaceLocale = (typeof INTERFACE_LOCALES)[number]
 
 // RTL codes — for future use when Arabic/Hebrew are added

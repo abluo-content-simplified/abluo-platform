@@ -27,7 +27,7 @@ describe('pickLocalized', () => {
   const v = { en: 'Hello', it: 'Ciao', de: '  ' }
   it('uses the viewer language', () => expect(pickLocalized(v, 'it')).toEqual({ text: 'Ciao', locale: 'it' }))
   it('falls back to English when the viewer language is empty', () => expect(pickLocalized(v, 'de')).toEqual({ text: 'Hello', locale: 'en' }))
-  it('falls back to English for a language updates are not written in', () => expect(pickLocalized(v, 'fr')?.locale).toBe('en'))
+  it('falls back to English for a language updates are not written in', () => expect(pickLocalized(v, 'es')?.locale).toBe('en'))
   it('falls back to any filled language when English is empty', () => expect(pickLocalized({ de: 'Hallo' }, 'it')).toEqual({ text: 'Hallo', locale: 'de' }))
   it('is null when nothing is filled or the shape is wrong', () => {
     expect(pickLocalized({}, 'en')).toBeNull()
@@ -36,7 +36,7 @@ describe('pickLocalized', () => {
     expect(pickLocalized(['x'], 'en')).toBeNull()
   })
   it('cleanLocalized drops unknown languages and non-strings, trims', () => {
-    expect(cleanLocalized({ en: ' a ', fr: 'b', it: 3 })).toEqual({ en: 'a' })
+    expect(cleanLocalized({ en: ' a ', es: 'b', it: 3 })).toEqual({ en: 'a' })
   })
 })
 

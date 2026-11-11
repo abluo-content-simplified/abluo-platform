@@ -20,7 +20,7 @@ describe('invitation email', () => {
     expect(m.html).toContain('href="https://abluo.app/invite/accept?token=abc&amp;lang=it"')
   })
   it('falls back to English for a language without texts', () => {
-    expect(renderInvitationEmail({ ...base, locale: 'fr' }).subject).toBe('Anna invited you to Studio A')
+    expect(renderInvitationEmail({ ...base, locale: 'es' }).subject).toBe('Anna invited you to Studio A')
   })
   it('escapes names in HTML — a name is never markup', () => {
     const m = renderInvitationEmail({ ...base, inviterName: '<script>x</script>', placeName: 'A & "B"' })

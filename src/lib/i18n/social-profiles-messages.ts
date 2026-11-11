@@ -1,6 +1,6 @@
 /**
  * Settings → Social Profiles (client dashboard, ADR-049 Amendment A) — the
- * page's interface text in the dashboard languages (en, it, de; English
+ * page's interface text in the dashboard languages (en, it, de, fr; English
  * fallback). Same pattern as digital-cards-messages.ts; the completeness test
  * (`__tests__/social-profiles-messages.test.ts`) fails on a missing key or a
  * placeholder that differs between languages. Platform names are brand names
@@ -108,9 +108,42 @@ const de: SocialProfilesMessages = {
   unpublishedReadOnly: "Die Website-Einstellungen haben Änderungen im Studio, die noch nicht auf der Website sind. Hier siehst du die neueste Fassung.",
 }
 
-const MESSAGES: Record<string, SocialProfilesMessages> = { en, it, de }
+const fr: SocialProfilesMessages = {
+  title: 'Profils sociaux',
+  intro: 'Vos profils sur les réseaux sociaux. Ils apparaissent dans le pied de page du site et sur vos cartes numériques.',
+  save: 'Enregistrer',
+  saving: 'Enregistrement…',
+  reasonNoChanges: 'Rien de nouveau à enregistrer.',
+  reasonInvalid: 'Corrigez d’abord les adresses signalées ci-dessous.',
+  readOnly: 'Vous pouvez consulter ces profils mais pas les modifier.',
+  empty: 'Aucun profil social pour le moment.',
+  add: 'Ajouter un profil',
+  full: '{max} profils au maximum.',
+  platform: 'Réseau',
+  address: 'Adresse du profil',
+  addressHint: 'L’adresse complète de votre profil, par ex. https://www.instagram.com/votrenom',
+  problemEmpty: 'Saisissez l’adresse du profil.',
+  problemNotHttps: 'Saisissez une adresse web complète commençant par https://',
+  problemWrongPlatform: 'Cette adresse n’est pas sur {platform}.',
+  rowActions: 'Actions pour {name}',
+  moveUp: 'Monter',
+  moveDown: 'Descendre',
+  remove: 'Supprimer',
+  done: 'Terminé',
+  undo: 'Annuler',
+  saved: 'Enregistré. Le site affichera la modification dans quelques minutes.',
+  dismiss: 'Fermer',
+  errorConflict: 'Ces profils ont été modifiés ailleurs. Rechargez la page.',
+  errorInvalid: 'L’une des adresses n’a pas pu être enregistrée. Vérifiez-la et réessayez.',
+  errorFailed: 'Enregistrement impossible. Réessayez.',
+  reload: 'Recharger',
+  unpublished: "Les réglages du site contiennent des modifications dans Studio qui ne sont pas encore en ligne. Vous voyez ici la version la plus récente ; Enregistrer la met en ligne.",
+  unpublishedReadOnly: "Les réglages du site contiennent des modifications dans Studio qui ne sont pas encore en ligne. Vous voyez ici la version la plus récente.",
+}
 
-export const SOCIAL_PROFILES_MESSAGE_LOCALES = ['en', 'it', 'de'] as const
+const MESSAGES: Record<string, SocialProfilesMessages> = { en, it, de, fr }
+
+export const SOCIAL_PROFILES_MESSAGE_LOCALES = ['en', 'it', 'de', 'fr'] as const
 
 export function getSocialProfilesMessages(locale: string | null | undefined): SocialProfilesMessages {
   const base = typeof locale === 'string' ? locale.toLowerCase().split('-')[0] : ''

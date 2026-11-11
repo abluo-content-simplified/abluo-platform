@@ -31,7 +31,7 @@ describe('language', () => {
   it('prefers the ticket interface language, then project default, then English', () => {
     expect(chooseEmailLocale({ interfaceLocale: 'de', projectDefaultLocale: 'it' })).toBe('de')
     expect(chooseEmailLocale({ interfaceLocale: 'it-IT', projectDefaultLocale: 'de' })).toBe('it')
-    expect(chooseEmailLocale({ interfaceLocale: 'fr', projectDefaultLocale: 'it' })).toBe('it')
+    expect(chooseEmailLocale({ interfaceLocale: 'es', projectDefaultLocale: 'it' })).toBe('it')
     expect(chooseEmailLocale({ interfaceLocale: undefined, projectDefaultLocale: 'pt' })).toBe('en')
     expect(chooseEmailLocale({})).toBe('en')
   })

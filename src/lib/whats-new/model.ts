@@ -10,10 +10,10 @@
 
 /**
  * The languages an update is written in: the languages the dashboard interface
- * itself is translated into (messages/en|it|de.json). A client whose interface
+ * itself is translated into (messages/en|it|de|fr.json). A client whose interface
  * is in one of them reads the update in it.
  */
-export const WHATS_NEW_LOCALES = ['en', 'it', 'de'] as const
+export const WHATS_NEW_LOCALES = ['en', 'it', 'de', 'fr'] as const
 export type WhatsNewLocale = (typeof WHATS_NEW_LOCALES)[number]
 
 /** One value per language; any may be missing. */

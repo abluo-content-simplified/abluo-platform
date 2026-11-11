@@ -25,7 +25,7 @@ const call = (locale: string | undefined) =>
     requestLocale: Promise<string | undefined>
   }) => Promise<{ locale: string; messages: unknown }>)({ requestLocale: Promise.resolve(locale) })
 
-const MISSING = ['fr', 'es', 'pt', 'nl']
+const MISSING = ['es', 'pt', 'nl']
 
 describe('i18n request config — message bundle fallback', () => {
   let warn: ReturnType<typeof vi.spyOn>
@@ -114,11 +114,11 @@ describe('i18n request config — the warning itself', () => {
       const fresh = (await import('../request')).default as unknown as (p: {
         requestLocale: Promise<string | undefined>
       }) => Promise<{ locale: string; messages: unknown }>
-      const cfg = await fresh({ requestLocale: Promise.resolve('fr') })
+      const cfg = await fresh({ requestLocale: Promise.resolve('es') })
       expect(cfg.messages).toEqual(en)
       expect(warn).toHaveBeenCalledTimes(1)
-      expect(String(warn.mock.calls[0][0])).toContain('fr')
-      await fresh({ requestLocale: Promise.resolve('fr') })
+      expect(String(warn.mock.calls[0][0])).toContain('es')
+      await fresh({ requestLocale: Promise.resolve('es') })
       expect(warn).toHaveBeenCalledTimes(1)
     } finally {
       warn.mockRestore()

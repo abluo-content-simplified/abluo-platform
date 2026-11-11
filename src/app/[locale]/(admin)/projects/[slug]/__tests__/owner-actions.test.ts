@@ -106,7 +106,7 @@ describe('inviteOwnerAction — wiring', () => {
   })
 
   it('a language without invitation texts falls back to English', async () => {
-    await (await load())({ projectId: PROJECT_ID, email: 'owner@cyce.info', locale: 'fr' })
+    await (await load())({ projectId: PROJECT_ID, email: 'owner@cyce.info', locale: 'es' })
     expect((createInvitation.mock.calls[0] as [unknown, { locale: string }])[1].locale).toBe('en')
   })
 
