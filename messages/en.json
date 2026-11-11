@@ -7253,7 +7253,9 @@
           "previous": "Previous screenshot",
           "next": "Next screenshot",
           "counter": "{n} of {total}"
-        }
+        },
+        "showEarlier": "{count, plural, one {Show # earlier entry} other {Show # earlier entries}}",
+        "jumpToLatest": "Jump to Latest"
       },
       "events": {
         "statusChanged": "Status changed to {status}",
@@ -7339,7 +7341,9 @@
         "deleteTitle": "Delete this screenshot?",
         "deleteBody": "The file is deleted for good and can’t be recovered.",
         "openScreenshot": "Open screenshot {n}",
-        "lastUpdate": "Last update"
+        "lastUpdate": "Last update",
+        "showDetails": "Show details",
+        "hideDetails": "Hide details"
       },
       "picker": {
         "add": "Add images",
@@ -7397,6 +7401,31 @@
       "readReceipt": {
         "by": "Read by {name} · {when}",
         "read": "Read · {when}"
+      },
+      "quick": {
+        "label": "Which tickets",
+        "needsReply": "Needs Reply",
+        "waiting": "Waiting for Client",
+        "open": "All Open",
+        "closed": "Closed"
+      },
+      "next": {
+        "column": "Next step",
+        "filter": "Next step",
+        "yourTurn": "Your turn",
+        "waitingFor": "Waiting for {name}",
+        "waitingForClient": "Waiting for the client",
+        "filters": {
+          "any": "Any next step",
+          "yourTurn": "Your turn",
+          "waiting": "Waiting for client"
+        }
+      },
+      "lastBy": {
+        "support": "{name} · Abluo",
+        "client": "{name} · {project}",
+        "someone": "Someone",
+        "read": "Read"
       }
     },
     "users": {

@@ -131,7 +131,20 @@ export type TicketSummary = {
   createdBy: TicketPerson
   severity?: TicketSeverity
   project?: { id: string; slug: string; name: string }
+  /** Admin side (Tom, 2026-11-11): who wrote the latest visible message, and when (null: none yet). */
+  lastMessage?: { by: AuthorKind; name: string; at: string } | null
+  /** Admin side: the client side's latest read of the ticket. */
+  clientReadAt?: string | null
+  /** Admin side: whose turn it is, worked out from the latest message (never set by hand). */
+  next?: TicketNext
 }
+
+/**
+ * The list's "Next step" (Tom, 2026-11-11): Abluo's turn (the client wrote
+ * last, or it is new), waiting for the client (Abluo answered last), or
+ * nothing (resolved). `since`: when it became so — what "· 2 days" counts from.
+ */
+export type TicketNext = { kind: 'yourTurn'; since: string } | { kind: 'waiting'; since: string; on: string } | { kind: 'done'; since: string }
 
 export type TicketAttachmentView = {
   id: string

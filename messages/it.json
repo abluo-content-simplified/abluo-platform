@@ -7253,7 +7253,9 @@
           "previous": "Screenshot precedente",
           "next": "Screenshot successivo",
           "counter": "{n} di {total}"
-        }
+        },
+        "showEarlier": "{count, plural, one {Mostra # voce precedente} other {Mostra # voci precedenti}}",
+        "jumpToLatest": "Vai all’ultimo"
       },
       "events": {
         "statusChanged": "Stato cambiato in {status}",
@@ -7339,7 +7341,9 @@
         "deleteTitle": "Eliminare questo screenshot?",
         "deleteBody": "Il file viene eliminato definitivamente e non si può recuperare.",
         "openScreenshot": "Apri screenshot {n}",
-        "lastUpdate": "Ultimo aggiornamento"
+        "lastUpdate": "Ultimo aggiornamento",
+        "showDetails": "Mostra dettagli",
+        "hideDetails": "Nascondi dettagli"
       },
       "picker": {
         "add": "Aggiungi immagini",
@@ -7397,6 +7401,31 @@
       "readReceipt": {
         "by": "Letto da {name} · {when}",
         "read": "Letto · {when}"
+      },
+      "quick": {
+        "label": "Quali richieste",
+        "needsReply": "Da rispondere",
+        "waiting": "In attesa del cliente",
+        "open": "Tutte aperte",
+        "closed": "Chiuse"
+      },
+      "next": {
+        "column": "Prossimo passo",
+        "filter": "Prossimo passo",
+        "yourTurn": "Tocca a te",
+        "waitingFor": "In attesa di {name}",
+        "waitingForClient": "In attesa del cliente",
+        "filters": {
+          "any": "Qualsiasi passo",
+          "yourTurn": "Tocca a te",
+          "waiting": "In attesa del cliente"
+        }
+      },
+      "lastBy": {
+        "support": "{name} · Abluo",
+        "client": "{name} · {project}",
+        "someone": "Qualcuno",
+        "read": "Letto"
       }
     },
     "users": {

@@ -7253,7 +7253,9 @@
           "previous": "Vorheriger Screenshot",
           "next": "Nächster Screenshot",
           "counter": "{n} von {total}"
-        }
+        },
+        "showEarlier": "{count, plural, one {# früheren Eintrag anzeigen} other {# frühere Einträge anzeigen}}",
+        "jumpToLatest": "Zum Neuesten"
       },
       "events": {
         "statusChanged": "Status geändert auf {status}",
@@ -7339,7 +7341,9 @@
         "deleteTitle": "Diesen Screenshot löschen?",
         "deleteBody": "Die Datei wird endgültig gelöscht und lässt sich nicht wiederherstellen.",
         "openScreenshot": "Screenshot {n} öffnen",
-        "lastUpdate": "Letzte Aktualisierung"
+        "lastUpdate": "Letzte Aktualisierung",
+        "showDetails": "Details anzeigen",
+        "hideDetails": "Details ausblenden"
       },
       "picker": {
         "add": "Bilder hinzufügen",
@@ -7397,6 +7401,31 @@
       "readReceipt": {
         "by": "Gelesen von {name} · {when}",
         "read": "Gelesen · {when}"
+      },
+      "quick": {
+        "label": "Welche Anfragen",
+        "needsReply": "Antwort nötig",
+        "waiting": "Wartet auf Kunden",
+        "open": "Alle offenen",
+        "closed": "Geschlossen"
+      },
+      "next": {
+        "column": "Nächster Schritt",
+        "filter": "Nächster Schritt",
+        "yourTurn": "Du bist dran",
+        "waitingFor": "Wartet auf {name}",
+        "waitingForClient": "Wartet auf den Kunden",
+        "filters": {
+          "any": "Jeder Schritt",
+          "yourTurn": "Du bist dran",
+          "waiting": "Wartet auf Kunden"
+        }
+      },
+      "lastBy": {
+        "support": "{name} · Abluo",
+        "client": "{name} · {project}",
+        "someone": "Jemand",
+        "read": "Gelesen"
       }
     },
     "users": {

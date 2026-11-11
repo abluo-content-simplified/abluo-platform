@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/app/ui/EmptyState'
 import { AdminTicketsBrowser } from '@/components/admin/tickets/AdminTicketsBrowser'
 import { requireAbluoAdmin } from '@/lib/api/auth'
 import { getViewerAccount } from '@/lib/api/viewer-account'
-import { applyAdminView, parseAdminView, projectOptions } from '@/lib/support-tickets/admin-view'
+import { applyAdminView, parseAdminView, projectOptions, quickViewCounts } from '@/lib/support-tickets/admin-view'
 import { listAdminTickets } from '@/lib/support-tickets/service'
 
 /**
@@ -54,6 +54,7 @@ export default async function AdminSupportPage({ searchParams }: { searchParams:
         total={result.value.length}
         projects={projectOptions(result.value)}
         view={view}
+        counts={quickViewCounts(result.value, view.project)}
       />
     </PageShell>
   )

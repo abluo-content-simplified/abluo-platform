@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SUPPORT_CARD_LINKS, adminViewQuery, applyAdminView, DEFAULT_ADMIN_VIEW, eventLine, isDefaultAdminView, parseAdminView, projectOptions } from '../admin-view'
+import { SUPPORT_CARD_LINKS, activeQuickView, adminViewQuery, applyAdminView, DEFAULT_ADMIN_VIEW, effectiveSort, eventLine, isDefaultAdminView, nextSort, nextStepOf, parseAdminView, projectOptions, quickViewCounts, quickViewFilters } from '../admin-view'
 import type { TicketSummary } from '../model'
 
 const t = (id: string, o: Partial<TicketSummary>): TicketSummary => ({
@@ -13,13 +13,13 @@ describe('parseAdminView', () => {
     expect(isDefaultAdminView(parseAdminView(new URLSearchParams('')))).toBe(true)
   })
   it('reads known values and ignores unknown ones', () => {
-    expect(parseAdminView({ status: 'resolved', severity: 'high', project: 'goro' })).toEqual({ project: 'goro', status: 'resolved', severity: 'high', unread: false, seen: '' })
+    expect(parseAdminView({ status: 'resolved', severity: 'high', project: 'goro' })).toEqual({ ...DEFAULT_ADMIN_VIEW, project: 'goro', status: 'resolved', severity: 'high' })
     expect(parseAdminView({ status: 'bogus', severity: 'critical' })).toEqual(DEFAULT_ADMIN_VIEW)
     expect(parseAdminView({ status: ['all', 'open'] }).status).toBe('all')
   })
   it('round-trips through the query string, omitting defaults', () => {
     expect(adminViewQuery(DEFAULT_ADMIN_VIEW)).toBe('')
-    const v = { project: 'a', status: 'all' as const, severity: 'low' as const, unread: true, seen: '1' as const }
+    const v = { project: 'a', status: 'all' as const, severity: 'low' as const, unread: true, seen: '1' as const, next: 'waiting' as const, sort: { key: 'next' as const, dir: 'asc' as const } }
     expect(parseAdminView(new URLSearchParams(adminViewQuery(v)))).toEqual(v)
   })
 })
@@ -109,5 +109,55 @@ describe('event lines for round 3', () => {
     expect(eventLine('attachment_deleted', null)).toEqual({ key: 'attachmentDeleted' })
     expect(eventLine('message_redacted', 'partial:11')).toEqual({ key: 'messageRedactedPartial', values: { count: '11' } })
     expect(eventLine('message_redacted', null)).toEqual({ key: 'messageRedacted' })
+  })
+})
+
+describe('Next step, quick views and sorting (Tom, 2026-11-11)', () => {
+  const base = { createdAt: '2026-11-01T08:00:00Z', lastActivityAt: '2026-11-03T08:00:00Z', clientName: 'Claudia' }
+  it('Abluo answered last: waiting for the client, since that answer', () => {
+    expect(nextStepOf({ ...base, status: 'in_progress', lastMessage: { by: 'support', at: '2026-11-02T09:00:00Z' } })).toEqual({ kind: 'waiting', since: '2026-11-02T09:00:00Z', on: 'Claudia' })
+  })
+  it('the client wrote last, or nobody has: Abluo\'s turn', () => {
+    expect(nextStepOf({ ...base, status: 'waiting_for_user', lastMessage: { by: 'client', at: '2026-11-02T10:00:00Z' } })).toEqual({ kind: 'yourTurn', since: '2026-11-02T10:00:00Z' })
+    expect(nextStepOf({ ...base, status: 'open', lastMessage: null })).toEqual({ kind: 'yourTurn', since: base.createdAt })
+  })
+  it('resolved needs nothing', () => {
+    expect(nextStepOf({ ...base, status: 'resolved', lastMessage: { by: 'client', at: base.createdAt } }).kind).toBe('done')
+  })
+
+  const list = [
+    t('a', { number: 1, lastActivityAt: '2026-11-05T00:00:00Z', next: { kind: 'yourTurn', since: '2026-11-04T00:00:00Z' } }),
+    t('b', { number: 2, lastActivityAt: '2026-11-06T00:00:00Z', next: { kind: 'yourTurn', since: '2026-11-01T00:00:00Z' } }),
+    t('c', { number: 3, lastActivityAt: '2026-11-07T00:00:00Z', next: { kind: 'waiting', since: '2026-11-07T00:00:00Z', on: 'C' } }),
+    t('d', { number: 4, status: 'resolved', lastActivityAt: '2026-11-08T00:00:00Z', next: { kind: 'done', since: '2026-11-08T00:00:00Z' } }),
+  ]
+  it('Needs Reply: Abluo\'s turn, longest waiting first', () => {
+    const v = { ...DEFAULT_ADMIN_VIEW, ...quickViewFilters('needsReply') }
+    expect(activeQuickView(v)).toBe('needsReply')
+    expect(applyAdminView(list, v).map((x) => x.id)).toEqual(['b', 'a'])
+  })
+  it('Waiting for Client, All Open, Closed', () => {
+    expect(applyAdminView(list, { ...DEFAULT_ADMIN_VIEW, ...quickViewFilters('waiting') }).map((x) => x.id)).toEqual(['c'])
+    expect(applyAdminView(list, { ...DEFAULT_ADMIN_VIEW, ...quickViewFilters('open') }).map((x) => x.id)).toEqual(['c', 'b', 'a'])
+    expect(applyAdminView(list, { ...DEFAULT_ADMIN_VIEW, ...quickViewFilters('closed') }).map((x) => x.id)).toEqual(['d'])
+    expect(quickViewCounts(list)).toEqual({ needsReply: 2, waiting: 1, open: 3, closed: 1 })
+  })
+  it('a clicked column wins; clicking it again flips', () => {
+    const v = { ...DEFAULT_ADMIN_VIEW, sort: { key: 'reference' as const, dir: 'asc' as const } }
+    expect(applyAdminView(list, v).map((x) => x.id)).toEqual(['a', 'b', 'c'])
+    expect(nextSort(effectiveSort(v), 'reference')).toEqual({ key: 'reference', dir: 'desc' })
+    expect(nextSort(effectiveSort(DEFAULT_ADMIN_VIEW), 'next')).toEqual({ key: 'next', dir: 'asc' })
+    expect(applyAdminView(list, { ...DEFAULT_ADMIN_VIEW, sort: { key: 'next', dir: 'asc' } }).map((x) => x.id)).toEqual(['b', 'a', 'c'])
+  })
+})
+
+describe('browser summary (Tom, 2026-11-11)', () => {
+  it('one short line instead of the whole user agent', async () => {
+    const { browserSummary } = await import('../ua-summary')
+    expect(browserSummary('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36', '1440x900')).toBe('Chrome 142 · macOS · 1440×900')
+    expect(browserSummary('Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1')).toBe('Safari 18 · iPhone')
+    expect(browserSummary('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0')).toBe('Edge 142 · Windows')
+    expect(browserSummary('Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0')).toBe('Firefox 133 · Linux')
+    expect(browserSummary('', '')).toBe('')
   })
 })

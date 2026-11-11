@@ -43,6 +43,7 @@ import { scheduleTicketNotifications } from './notify'
 import { ringTicketBell } from './bell'
 import { markSourceRead } from '@/lib/notification-center/service'
 import { clientReplyOutcome, isUnread } from './state'
+import { nextStepOf } from './admin-view'
 import { maskRanges, type RedactionRange } from './redaction'
 
 type Db = SupabaseClient
@@ -413,16 +414,57 @@ export async function listAdminTickets(adminUserId: string, filters: AdminTicket
       projectIds.length ? db.from('projects').select('id, slug, name').in('id', projectIds) : Promise.resolve({ data: [] as unknown[] }),
     ])
     const byProject = new Map(((projects.data ?? []) as Array<{ id: string; slug: string; name: string }>).map((p) => [p.id, p]))
+    const { latest, latestClientAuthor, clientReads } = await listActivity(db, rows.map((r) => r.id))
+    const authors = await loadPeople(db, [...[...latest.values()].map((m) => m.author_id), ...latestClientAuthor.values()], false)
+    const first = (p: TicketPerson | undefined) => (p?.name ?? '').trim().split(/\s+/)[0] ?? ''
     return {
       ok: true,
-      value: rows.map((r) => ({
-        ...summary(r, r.last_activity_at, isUnread(r.last_activity_at, marks.get(r.id)), person(people, r.created_by)),
-        seen: marks.has(r.id),
-        severity: r.severity,
-        project: byProject.get(r.project_id) ?? { id: r.project_id, slug: '', name: '' },
-      })),
+      value: rows.map((r) => {
+        const requester = person(people, r.created_by)
+        const m = latest.get(r.id)
+        const lastMessage = m ? { by: m.author_kind, name: first(m.author_id ? authors.get(m.author_id) ?? people.get(m.author_id) : undefined), at: m.created_at } : null
+        const clientAuthor = latestClientAuthor.get(r.id)
+        const clientName = first(clientAuthor ? authors.get(clientAuthor) ?? people.get(clientAuthor) : undefined) || first(requester) || requester.email || ''
+        return {
+          ...summary(r, r.last_activity_at, isUnread(r.last_activity_at, marks.get(r.id)), requester),
+          seen: marks.has(r.id),
+          severity: r.severity,
+          project: byProject.get(r.project_id) ?? { id: r.project_id, slug: '', name: '' },
+          lastMessage,
+          clientReadAt: clientReads.get(r.id) ?? null,
+          next: nextStepOf({ status: r.status, createdAt: r.created_at, lastActivityAt: r.last_activity_at, lastMessage, clientName }),
+        }
+      }),
     }
   })
+}
+
+/**
+ * For the admin list (Tom, 2026-11-11): per ticket the latest visible message
+ * (who and when), the latest client-side author, and the client side's latest
+ * read. Internal notes are not messages and never count.
+ */
+async function listActivity(db: Db, ids: string[]): Promise<{ latest: Map<string, Pick<MessageRow, 'author_id' | 'author_kind' | 'created_at'>>; latestClientAuthor: Map<string, string>; clientReads: Map<string, string> }> {
+  const latest = new Map<string, Pick<MessageRow, 'author_id' | 'author_kind' | 'created_at'>>()
+  const latestClientAuthor = new Map<string, string>()
+  const clientReads = new Map<string, string>()
+  if (!ids.length) return { latest, latestClientAuthor, clientReads }
+  const [msgs, reads] = await Promise.all([
+    db.from('support_ticket_messages').select('ticket_id, author_id, author_kind, created_at').in('ticket_id', ids).order('created_at', { ascending: false }).limit(10000),
+    db.from('support_ticket_reads').select('ticket_id, last_read_at').in('ticket_id', ids).eq('side', 'client').limit(10000),
+  ])
+  for (const m of (msgs.data ?? []) as Array<Pick<MessageRow, 'ticket_id' | 'author_id' | 'author_kind' | 'created_at'>>) {
+    if (!latest.has(m.ticket_id)) latest.set(m.ticket_id, m)
+    if (m.author_kind === 'client' && m.author_id && !latestClientAuthor.has(m.ticket_id)) latestClientAuthor.set(m.ticket_id, m.author_id)
+  }
+  // Before migration 047 there are no per-side reads: the query fails and nothing is shown.
+  if (!reads.error) {
+    for (const r of (reads.data ?? []) as Array<{ ticket_id: string; last_read_at: string }>) {
+      const prev = clientReads.get(r.ticket_id)
+      if (!prev || r.last_read_at > prev) clientReads.set(r.ticket_id, r.last_read_at)
+    }
+  }
+  return { latest, latestClientAuthor, clientReads }
 }
 
 /** The admin sidebar number: tickets still active with something this admin hasn't seen (= New Requests + Client Replied on the card). */
@@ -467,6 +509,18 @@ export async function getAdminTicket(adminUserId: string, ticketId: string, opti
         context: t.context ?? {},
         thread: buildThread({ messages, notes: noteRows, events: eventRows, people, byMessage, firstMessageId: messages[0]?.id ?? null, hideSupportNames: false }),
         clientRead: lastRead ? { at: lastRead.last_read_at, name: reader?.name ?? '' } : null,
+        next: (() => {
+          const last = messages[messages.length - 1]
+          const lastClient = [...messages].reverse().find((m) => m.author_kind === 'client' && m.author_id)
+          const first = (id: string | null | undefined) => ((id ? people.get(id)?.name : '') ?? '').trim().split(/\s+/)[0] ?? ''
+          return nextStepOf({
+            status: t.status,
+            createdAt: t.created_at,
+            lastActivityAt: t.last_activity_at,
+            lastMessage: last ? { by: last.author_kind, at: last.created_at } : null,
+            clientName: first(lastClient?.author_id) || first(t.created_by),
+          })
+        })(),
       },
     }
   })
