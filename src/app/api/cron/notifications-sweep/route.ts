@@ -1,12 +1,12 @@
 /**
  * GET /api/cron/notifications-sweep — ADR-050: the message email digest (D11)
- * and message-file retention (D7). Vercel Cron sends
+ * message-file retention (D7) and the 30-day Recently deleted purge. Vercel Cron sends
  * `Authorization: Bearer ${CRON_SECRET}`; anything else is rejected.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { bearerMatches } from '@/lib/api/shared-secret'
 import { sweepNotificationDigest } from '@/lib/notification-center/digest'
-import { sweepMessageFiles } from '@/lib/messages/service'
+import { sweepDeletedConversations, sweepMessageFiles } from '@/lib/messages/service'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     result.digest = { error: 'failed' }
   }
   try {
-    result.retention = { deleted: await sweepMessageFiles() }
+    result.retention = { deleted: await sweepMessageFiles(), purged: await sweepDeletedConversations() }
   } catch (err) {
     console.error('[cron/notifications-sweep] retention error:', err)
     result.ok = false

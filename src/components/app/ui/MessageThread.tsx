@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react'
 import { AppIcon, APP_ICONS } from '@/components/app/shell/AppIcon'
 import { Avatar } from './Avatar'
 import { ButtonLink } from './Button'
+import { buttonClass } from './button-styles'
 import { ImageViewer, type ImageViewerLabels } from './ImageViewer'
 import { segmentBody } from '@/lib/support-tickets/redaction'
 import type { TicketAttachmentView, ThreadEntry } from '@/lib/support-tickets/model'
@@ -53,6 +54,10 @@ export type MessageThreadLabels = {
   fileDeleted?: string
   /** Messages: the label of an "Open in dashboard" card for a destination id. */
   link?: (id: string) => string
+  /** Messages: the label of a website-page card (opens in a new tab), from the page's title. */
+  linkPage?: (pageTitle: string) => string
+  /** Screen-reader note on a link that opens in a new tab, e.g. "(opens in a new tab)". */
+  newTab?: string
 }
 
 type EventEntry = Extract<ThreadEntry, { kind: 'event' }>
@@ -152,11 +157,20 @@ export function MessageThread({
                 )}
                 {entry.links && entry.links.length > 0 && labels.link ? (
                   <div className="mt-3 flex flex-wrap items-start gap-2">
-                    {entry.links.map((l) => (
-                      <ButtonLink key={l.id} variant="secondary" href={l.href}>
-                        {labels.link?.(l.id)}
-                      </ButtonLink>
-                    ))}
+                    {entry.links.map((l) =>
+                      l.page ? (
+                        // A page of the public website: its own address, in a new tab.
+                        <a key={l.id} href={l.href} target="_blank" rel="noopener noreferrer" className={buttonClass({ variant: 'secondary' })}>
+                          {labels.linkPage ? labels.linkPage(l.page.label) : l.page.label}
+                          <AppIcon d={APP_ICONS.external} size={16} />
+                          <span className="sr-only">{labels.newTab ?? ''}</span>
+                        </a>
+                      ) : (
+                        <ButtonLink key={l.id} variant="secondary" href={l.href}>
+                          {labels.link?.(l.id)}
+                        </ButtonLink>
+                      ),
+                    )}
                   </div>
                 ) : null}
                 {entry.attachments.length > 0 ? (

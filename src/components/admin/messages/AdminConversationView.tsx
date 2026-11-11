@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import {
@@ -11,7 +11,6 @@ import {
   setArchivedAction,
 } from '@/app/[locale]/(admin)/messages/message-actions'
 import { useMessageThreadLabels } from '@/components/app/messages/thread-labels'
-import { AttachmentPicker } from '@/components/app/ui/AttachmentPicker'
 import { BackLink } from '@/components/app/ui/BackLink'
 import { Button } from '@/components/app/ui/Button'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
@@ -27,8 +26,8 @@ import { RedactPartsDialog } from '@/components/admin/tickets/RedactPartsDialog'
 import { fitScreenshots } from '@/lib/client/ticket-upload'
 import { CLIENT_UPLOAD_BUDGET_BYTES } from '@/lib/support-tickets/client-form'
 import type { ThreadEntry } from '@/lib/support-tickets/model'
-import { DASHBOARD_LINK_TARGETS, MESSAGE_FILE_TYPES, MESSAGE_LIMITS, messageErrorKey, type ConversationDetail } from '@/lib/messages/model'
-import { LinkChooser } from './LinkChooser'
+import { DASHBOARD_LINK_TARGETS, MESSAGE_LIMITS, messageErrorKey, type ConversationDetail } from '@/lib/messages/model'
+import { EMPTY_EXTRAS, MessageExtras, type MessageExtrasValue } from './MessageExtras'
 
 type Msg = Extract<ThreadEntry, { kind: 'message' }>
 
@@ -45,8 +44,8 @@ export function AdminConversationView({ conversation }: { conversation: Conversa
   const tNav = useTranslations('clientDashboard.nav')
   const { labels, supportName, formatEvent } = useMessageThreadLabels((id) => (tNav.has(id) ? tNav(id) : id))
   const [text, setText] = useState('')
-  const [files, setFiles] = useState<File[]>([])
-  const [links, setLinks] = useState<string[]>([])
+  const [extras, setExtrasState] = useState<MessageExtrasValue>(EMPTY_EXTRAS)
+  const setExtras = useCallback((v: MessageExtrasValue) => setExtrasState(v), [])
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -54,7 +53,6 @@ export function AdminConversationView({ conversation }: { conversation: Conversa
   const [redactError, setRedactError] = useState<string | null>(null)
   const [removeFile, setRemoveFile] = useState<string | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
-  const mb = Math.round(MESSAGE_LIMITS.imageBytesMax / (1024 * 1024))
   const err = (r: { reason: string; field?: string }) => tc(`errors.${r.field ?? r.reason}`)
 
   const seen = useRef(conversation.lastActivityAt)
@@ -71,7 +69,7 @@ export function AdminConversationView({ conversation }: { conversation: Conversa
     setPending(true)
     setError(null)
     try {
-      const ready = await fitScreenshots(files, CLIENT_UPLOAD_BUDGET_BYTES)
+      const ready = await fitScreenshots(extras.files, CLIENT_UPLOAD_BUDGET_BYTES)
       if (!ready) {
         setError(tc('errors.uploadTooLarge'))
         setPending(false)
@@ -80,13 +78,13 @@ export function AdminConversationView({ conversation }: { conversation: Conversa
       const form = new FormData()
       form.set('conversationId', conversation.id)
       form.set('body', text)
-      form.set('links', JSON.stringify(links))
+      form.set('links', JSON.stringify(extras.links))
+      form.set('library', JSON.stringify(extras.library))
       for (const f of ready) form.append('files', f)
       const result = await replyAsAbluoAction(form)
       if (result.ok) {
         setText('')
-        setFiles([])
-        setLinks([])
+        setExtras(EMPTY_EXTRAS)
         router.refresh()
       } else setError(tc(`errors.${messageErrorKey(result.reason, result.field)}`))
     } catch {
@@ -135,13 +133,15 @@ export function AdminConversationView({ conversation }: { conversation: Conversa
         <PageHeader
           title={<span className="break-words">{conversation.subject}</span>}
           actions={
-            <Button variant="secondary" disabled={busy} onClick={() => void toggleArchive()}>
-              {conversation.archived ? t('restore') : t('archive')}
-            </Button>
+            conversation.deletedAt ? undefined : (
+              <Button variant="secondary" disabled={busy} onClick={() => void toggleArchive()}>
+                {conversation.archived ? t('restore') : t('archive')}
+              </Button>
+            )
           }
         />
       </div>
-      {conversation.archived ? <Notice>{t('archivedNotice')}</Notice> : null}
+      {conversation.archived && !conversation.deletedAt ? <Notice>{t('archivedNotice')}</Notice> : null}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,42rem)_20rem] lg:items-start lg:gap-10">
         <div className="min-w-0 space-y-5">
@@ -175,6 +175,9 @@ export function AdminConversationView({ conversation }: { conversation: Conversa
               ) : null
             }}
           />
+          {conversation.deletedAt ? (
+            <Notice>{t('deletedNotice')}</Notice>
+          ) : (
           <Panel>
             {conversation.mode === 'shared' ? <p className="mb-3 text-sm leading-5 text-muted-foreground">{t('replyShared', { names: names.join(', ') })}</p> : null}
             <MessageComposer
@@ -188,26 +191,19 @@ export function AdminConversationView({ conversation }: { conversation: Conversa
               error={error}
               attachments={
                 <div className="flex flex-col gap-4">
-                  <AttachmentPicker
-                    acceptPaste
-                    files={files}
-                    onChange={setFiles}
-                    max={MESSAGE_LIMITS.attachmentsMax}
-                    maxBytes={MESSAGE_LIMITS.imageBytesMax}
-                    accept={MESSAGE_FILE_TYPES}
+                  <MessageExtras
+                    projectId={conversation.project?.id ?? null}
+                    noSiteReason={t('extras.siteUnavailable')}
+                    linkTargets={DASHBOARD_LINK_TARGETS.map((l) => l.id)}
+                    value={extras}
+                    onChange={setExtras}
                     disabled={pending}
-                    labels={{
-                      add: tc('picker.add'),
-                      hint: tc('picker.hint', { max: MESSAGE_LIMITS.attachmentsMax, size: mb }),
-                      remove: (name) => tc('picker.remove', { name }),
-                      problem: (p) => tc(`picker.problem.${p.kind}`, { name: p.name, size: mb, max: MESSAGE_LIMITS.attachmentsMax }),
-                    }}
                   />
-                  <LinkChooser targets={DASHBOARD_LINK_TARGETS.map((l) => l.id)} value={links} onChange={setLinks} disabled={pending} />
                 </div>
               }
             />
           </Panel>
+          )}
         </div>
 
         <aside aria-label={t('details')} className="space-y-4">

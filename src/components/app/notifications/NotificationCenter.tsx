@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useId, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { APP_ICONS } from '@/components/app/shell/AppIcon'
 import { NotificationBell } from '@/components/app/ui/NotificationBell'
@@ -37,6 +37,7 @@ export function useNotificationCenter({
   pathname,
   enabled = true,
   showProject = true,
+  onIncrease,
 }: {
   actions: NotificationActions
   initialCount: number
@@ -45,6 +46,12 @@ export function useNotificationCenter({
   enabled?: boolean
   /** Name the site on each row (people on several sites; the Abluo team). */
   showProject?: boolean
+  /**
+   * Something new arrived (the number went up on a background check). The
+   * dashboard refreshes its server parts then — Home's "needs your attention",
+   * a Messages entry that did not exist yet — without a page reload.
+   */
+  onIncrease?: () => void
 }): { bell: { field: ReactNode; rail: ReactNode; icon: ReactNode } | undefined; panel: ReactNode } {
   const t = useTranslations('app.notifications')
   const dateLocale = useDateLocale()
@@ -56,10 +63,20 @@ export function useNotificationCenter({
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
 
   useEffect(() => setCount(initialCount), [initialCount])
+  const last = useRef(initialCount)
+  const increase = useRef(onIncrease)
+  useEffect(() => {
+    increase.current = onIncrease
+  }, [onIncrease])
   const refreshCount = useCallback(async () => {
     try {
       const n = await actions.count()
-      if (typeof n === 'number' && Number.isFinite(n)) setCount(Math.max(0, n))
+      if (typeof n === 'number' && Number.isFinite(n)) {
+        const next = Math.max(0, n)
+        if (next > last.current) increase.current?.()
+        last.current = next
+        setCount(next)
+      }
     } catch {
       /* keep the last number */
     }
@@ -75,7 +92,8 @@ export function useNotificationCenter({
       const list = await actions.list()
       if (!list) throw new Error('unavailable')
       setItems(list)
-      setCount(list.filter((i) => !i.read).length)
+      last.current = list.filter((i) => !i.read).length
+      setCount(last.current)
       setState('ready')
     } catch {
       setState('error')

@@ -22,6 +22,8 @@ export function useMessageThreadLabels(linkPlace: (id: string) => string): { lab
     openFile: (name) => t('downloadFile', { name }),
     removedPart: t('removedPart'),
     link: (id) => t('openLink', { place: linkPlace(id) }),
+    linkPage: (page) => t('openPage', { page }),
+    newTab: t('newTab'),
     viewer: {
       dialog: t('viewer.dialog'),
       close: t('viewer.close'),

@@ -15,6 +15,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import { safeAvatarUrl } from '@/lib/users/service'
+import { liveSiteUrl } from '@/lib/admin/projects-filter'
 import { abluoTeamIds, markSourceRead, notify } from '@/lib/notification-center/service'
 import type { NotificationInput } from '@/lib/notification-center/model'
 import { maskRanges, type RedactionRange } from '@/lib/support-tickets/redaction'
@@ -25,11 +26,15 @@ import {
   MESSAGE_BUCKET,
   MESSAGE_LIMITS,
   cleanLinks,
+  deliveryOf,
+  deletedPurgeCutoff,
   failureFromDbError,
+  isMissingSchemaError,
   firstName,
   isConversationMode,
   isUnreadSince,
-  linkHref,
+  isPageLink,
+  linkView,
   planConversations,
   retentionCutoff,
   validateBody,
@@ -37,6 +42,7 @@ import {
   type ConversationDetail,
   type ConversationMode,
   type ConversationSummary,
+  type SiteAddress,
   type MessagePerson,
   type MessageResult,
   type Recipient,
@@ -57,16 +63,38 @@ const isUuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{
 
 // ── Rows ─────────────────────────────────────────────────────────────────────
 
-type ConvRow = { id: string; project_id: string; subject: string; mode: ConversationMode; created_by: string | null; created_at: string; last_activity_at: string; archived_at: string | null }
+type ConvRow = { id: string; project_id: string; subject: string; mode: ConversationMode; created_by: string | null; created_at: string; last_activity_at: string; archived_at: string | null; deleted_at?: string | null }
 type PartRow = { conversation_id: string; user_id: string; side: 'client' | 'abluo'; added_at: string; last_read_at: string | null }
 type MsgRow = { id: string; conversation_id: string; author_id: string | null; author_kind: 'client' | 'abluo'; body: string; links: StoredLink[] | null; created_at: string; redacted_at: string | null }
 type AttRow = {
   id: string; conversation_id: string; message_id: string; storage_path: string; file_name: string; mime: string; bytes: number
   width: number | null; height: number | null; uploaded_by: string | null; deleted_reason: TicketAttachmentView['deleted']
 }
-type ProjectRow = { id: string; slug: string; name: string | null }
+type ProjectRow = { id: string; slug: string; name: string | null; custom_domain: string | null; status: string | null; default_locale: string | null }
 
 const CONV_COLUMNS = 'id, project_id, subject, mode, created_by, created_at, last_activity_at, archived_at'
+/** With "Recently deleted" (migration 070). */
+const CONV_COLUMNS_070 = `${CONV_COLUMNS}, deleted_at`
+
+/**
+ * Reads conversations with `deleted_at` when migration 070 is applied, and
+ * without it (nothing is deleted then) when it is not — the code ships before
+ * the migration (2026-08-14 rule) and Messages must keep working meanwhile.
+ */
+let hasDeletedColumn: boolean | null = null
+async function readConvs<R>(run: (columns: string) => PromiseLike<{ data: R | null; error: { code?: string | null; message?: string | null } | null }>): Promise<{ data: R | null; error: { code?: string | null; message?: string | null } | null }> {
+  if (hasDeletedColumn !== false) {
+    const r = await run(CONV_COLUMNS_070)
+    if (!r.error) {
+      hasDeletedColumn = true
+      return r
+    }
+    if (!isMissingSchemaError(r.error)) return r
+    hasDeletedColumn = false
+  }
+  return run(CONV_COLUMNS)
+}
+const isDeleted = (c: { deleted_at?: string | null }) => Boolean(c.deleted_at)
 const MSG_COLUMNS = 'id, conversation_id, author_id, author_kind, body, links, created_at, redacted_at'
 const ATT_COLUMNS = 'id, conversation_id, message_id, storage_path, file_name, mime, bytes, width, height, uploaded_by, deleted_reason'
 
@@ -96,8 +124,23 @@ const personOf = (map: Map<string, MessagePerson>, id: string | null): MessagePe
 async function loadProjects(db: Db, ids: string[]): Promise<Map<string, ProjectRow>> {
   const unique = [...new Set(ids)]
   if (!unique.length) return new Map()
-  const { data } = await db.from('projects').select('id, slug, name').in('id', unique)
+  const { data } = await db.from('projects').select('id, slug, name, custom_domain, status, default_locale').in('id', unique)
   return new Map(((data ?? []) as ProjectRow[]).map((p) => [p.id, p]))
+}
+/** Where the project's website is reached now (ADR-050 D4 page links): its own domain once live, else the preview address. */
+function siteAddress(p: ProjectRow | undefined, fallbackSlug: string): SiteAddress {
+  const slug = p?.slug ?? fallbackSlug
+  return { projectSlug: slug, liveOrigin: p?.status === 'active' ? liveSiteUrl(p.custom_domain) : null, defaultLocale: p?.default_locale || 'it' }
+}
+/** A site's address and default language for the admin's link and Media Library choosers (null: unknown project). */
+export async function projectSiteRef(projectId: string): Promise<{ slug: string; defaultLocale: string; address: SiteAddress } | null> {
+  if (!isUuid(projectId)) return null
+  return withDb('Abluo admin reads a site address for a message', async (db) => {
+    const p = (await loadProjects(db, [projectId])).get(projectId)
+    if (!p) return null
+    const address = siteAddress(p, p.slug)
+    return { slug: p.slug, defaultLocale: address.defaultLocale, address }
+  })
 }
 const projectName = (p: ProjectRow | undefined) => (p ? (p.name ?? '').trim() || p.slug : '')
 
@@ -141,7 +184,7 @@ async function fileViews(db: Db, rows: AttRow[], deletableBy: string | null): Pr
   return byMessage
 }
 
-function buildThread(messages: MsgRow[], people: Map<string, MessagePerson>, files: Map<string, TicketAttachmentView[]>, projectSlug: string): ThreadEntry[] {
+function buildThread(messages: MsgRow[], people: Map<string, MessagePerson>, files: Map<string, TicketAttachmentView[]>, site: SiteAddress): ThreadEntry[] {
   return messages.map((m) => {
     const author = personOf(people, m.author_id)
     return {
@@ -154,9 +197,9 @@ function buildThread(messages: MsgRow[], people: Map<string, MessagePerson>, fil
       redacted: Boolean(m.redacted_at) && !m.body.trim(),
       createdAt: m.created_at,
       attachments: files.get(m.id) ?? [],
-      links: (m.links ?? []).flatMap((l) => {
-        const href = linkHref(projectSlug, l?.id)
-        return href ? [{ id: l.id, href }] : []
+      links: cleanLinks(m.links).flatMap((l) => {
+        const view = linkView(site, l)
+        return view ? [view] : []
       }),
     }
   })
@@ -189,9 +232,10 @@ async function clientConversations(db: Db, access: MessageAccess): Promise<Messa
   if (error) return fail(error)
   const mine = new Map(((parts ?? []) as PartRow[]).map((p) => [p.conversation_id, p]))
   if (!mine.size) return { ok: true, value: { convs: [], mine } }
-  const { data, error: e2 } = await db.from('message_conversations').select(CONV_COLUMNS).in('id', [...mine.keys()]).eq('project_id', access.projectId).order('last_activity_at', { ascending: false }).limit(500)
+  const { data, error: e2 } = await readConvs((cols) => db.from('message_conversations').select(cols).in('id', [...mine.keys()]).eq('project_id', access.projectId).order('last_activity_at', { ascending: false }).limit(500))
   if (e2) return fail(e2)
-  return { ok: true, value: { convs: (data ?? []) as ConvRow[], mine } }
+  // A conversation Abluo deleted is gone for the client at once.
+  return { ok: true, value: { convs: ((data ?? []) as unknown as ConvRow[]).filter((c) => !isDeleted(c)), mine } }
 }
 
 /** The person's conversations on this project, newest activity first. Support mode sees none (D6). */
@@ -235,11 +279,11 @@ export async function clientMessagesNav(access: MessageAccess): Promise<{ unread
 async function clientConversationRow(db: Db, access: MessageAccess, id: string): Promise<{ conv: ConvRow; me: PartRow } | null> {
   if (!isUuid(id)) return null
   const [{ data: conv }, { data: me }] = await Promise.all([
-    db.from('message_conversations').select(CONV_COLUMNS).eq('id', id).maybeSingle(),
+    readConvs((cols) => db.from('message_conversations').select(cols).eq('id', id).maybeSingle()),
     db.from('message_participants').select('conversation_id, user_id, side, added_at, last_read_at').eq('conversation_id', id).eq('user_id', access.userId).eq('side', 'client').maybeSingle(),
   ])
-  const c = conv as ConvRow | null
-  if (!c || !me || c.project_id !== access.projectId) return null
+  const c = conv as unknown as ConvRow | null
+  if (!c || !me || c.project_id !== access.projectId || isDeleted(c)) return null
   return { conv: c, me: me as PartRow }
 }
 
@@ -260,10 +304,11 @@ export async function getClientConversation(access: MessageAccess, id: string, o
     const found = await clientConversationRow(db, access, id)
     if (!found) return { ok: false, reason: 'notFound' }
     const { conv, me } = found
-    const [msgs, atts, parts] = await Promise.all([
+    const [msgs, atts, parts, projects] = await Promise.all([
       db.from('messages').select(MSG_COLUMNS).eq('conversation_id', conv.id).order('created_at'),
       db.from('message_attachments').select(ATT_COLUMNS).eq('conversation_id', conv.id).order('created_at'),
       db.from('message_participants').select('conversation_id, user_id, side, added_at, last_read_at').eq('conversation_id', conv.id),
+      loadProjects(db, [access.projectId]),
     ])
     if (msgs.error) return fail(msgs.error)
     const messages = (msgs.data ?? []) as MsgRow[]
@@ -288,7 +333,7 @@ export async function getClientConversation(access: MessageAccess, id: string, o
         preview: previewOf(messages[messages.length - 1]),
         unread: isUnreadSince([...messages].reverse().find((m) => m.author_kind === 'abluo')?.created_at, me.last_read_at),
         participants: conv.mode === 'shared' ? partRows.filter((p) => p.side === 'client').map((p) => personOf(people, p.user_id)) : [],
-        thread: buildThread(messages, people, files, access.projectSlug),
+        thread: buildThread(messages, people, files, siteAddress(projects.get(access.projectId), access.projectSlug)),
         canReply: true,
         // "Seen": someone at Abluo read it after the person's latest message.
         receipts: [{ person: { id: null, name: '' }, readAt: lastClient && abluoRead && abluoRead >= lastClient ? abluoRead : null }],
@@ -371,16 +416,22 @@ async function removeFile(db: Db, row: { id: string; conversation_id: string; st
 
 // ══ Admin side — callers have passed requireAbluoAdmin() ════════════════════
 
-export type AdminConversationFilters = { archived?: boolean }
+/** Which admin list: active (default), archived, or Recently deleted (kept 30 days). */
+export type AdminConversationView = 'active' | 'archived' | 'deleted'
+export type AdminConversationFilters = { archived?: boolean; view?: AdminConversationView }
 
 /** Every conversation (team inbox, D1), newest activity first, with this admin's unread state. */
 export async function listAdminConversations(adminId: string, filters: AdminConversationFilters = {}): Promise<MessageResult<ConversationSummary[]>> {
   return withDb('Abluo admin lists every conversation (team inbox)', async (db) => {
-    let q = db.from('message_conversations').select(CONV_COLUMNS)
-    q = filters.archived ? q.not('archived_at', 'is', null) : q.is('archived_at', null)
-    const { data, error } = await q.order('last_activity_at', { ascending: false }).limit(1000)
+    const view: AdminConversationView = filters.view ?? (filters.archived ? 'archived' : 'active')
+    const { data, error } = await readConvs((cols) => {
+      let q = db.from('message_conversations').select(cols)
+      if (view === 'active') q = q.is('archived_at', null)
+      if (view === 'archived') q = q.not('archived_at', 'is', null)
+      return q.order('last_activity_at', { ascending: false }).limit(1000)
+    })
     if (error) return fail(error)
-    const convs = (data ?? []) as ConvRow[]
+    const convs = ((data ?? []) as unknown as ConvRow[]).filter((c) => (view === 'deleted' ? isDeleted(c) : !isDeleted(c)))
     const ids = convs.map((c) => c.id)
     const [{ latest, latestBy }, parts, projects] = await Promise.all([
       latestMessages(db, ids),
@@ -405,6 +456,12 @@ export async function listAdminConversations(adminId: string, filters: AdminConv
           unread: isUnreadSince(latestBy.get(c.id)?.client, mine?.last_read_at),
           participants: partRows.filter((x) => x.conversation_id === c.id && x.side === 'client').map((x) => personOf(people, x.user_id)),
           project: { id: c.project_id, slug: p?.slug ?? '', name: projectName(p) },
+          deletedAt: c.deleted_at ?? null,
+          delivery: deliveryOf(
+            latestBy.get(c.id)?.abluo,
+            latestBy.get(c.id)?.client,
+            partRows.filter((x) => x.conversation_id === c.id && x.side === 'client').map((x) => x.last_read_at),
+          ),
         }
       }),
     }
@@ -438,9 +495,9 @@ export async function adminConversationActivity(id: string): Promise<string | nu
 export async function getAdminConversation(adminId: string, id: string): Promise<MessageResult<ConversationDetail>> {
   if (!isUuid(id)) return { ok: false, reason: 'notFound' }
   return withDb('Abluo admin reads one conversation', async (db) => {
-    const { data, error } = await db.from('message_conversations').select(CONV_COLUMNS).eq('id', id).maybeSingle()
+    const { data, error } = await readConvs((cols) => db.from('message_conversations').select(cols).eq('id', id).maybeSingle())
     if (error) return fail(error)
-    const conv = data as ConvRow | null
+    const conv = data as unknown as ConvRow | null
     if (!conv) return { ok: false, reason: 'notFound' }
     const [msgs, atts, parts, projects] = await Promise.all([
       db.from('messages').select(MSG_COLUMNS).eq('conversation_id', conv.id).order('created_at'),
@@ -471,7 +528,8 @@ export async function getAdminConversation(adminId: string, id: string): Promise
         unread: isUnreadSince([...messages].reverse().find((m) => m.author_kind === 'client')?.created_at, mine?.last_read_at),
         participants: clients.map((p) => personOf(people, p.user_id)),
         project: { id: conv.project_id, slug: project?.slug ?? '', name: projectName(project) },
-        thread: buildThread(messages, people, files, project?.slug ?? ''),
+        deletedAt: conv.deleted_at ?? null,
+        thread: buildThread(messages, people, files, siteAddress(project, '')),
         canReply: true,
         receipts: clients.map((p) => ({ person: personOf(people, p.user_id), readAt: p.last_read_at })),
       },
@@ -504,7 +562,9 @@ export async function sendNewMessage(adminId: string, input: NewMessageInput, al
   for (const c of plan.conversations) for (const u of c.userIds) if (!allowed.has(`${c.projectId}:${u}`)) return { ok: false, reason: 'invalid', field: 'recipientNotMember' }
   const prepared = prepareMessageFiles(input.files)
   if (!prepared.ok) return prepared
-  const links = cleanLinks(input.links)
+  // A website page belongs to one site: page links only when every conversation is on the same site.
+  const oneSite = new Set(plan.conversations.map((c) => c.projectId)).size === 1
+  const links = cleanLinks(input.links).filter((l) => oneSite || !isPageLink(l))
 
   return withDb('Abluo admin sends a new message', async (db): Promise<MessageResult<{ ids: string[] }>> => {
     const projects = await loadProjects(db, plan.conversations.map((c) => c.projectId))
@@ -549,9 +609,10 @@ export async function replyAsAbluo(adminId: string, id: string, body: string, fi
   if (!prepared.ok) return prepared
   const links = cleanLinks(linksInput)
   return withDb('Abluo admin replies in a conversation', async (db): Promise<MessageResult> => {
-    const { data } = await db.from('message_conversations').select(CONV_COLUMNS).eq('id', id).maybeSingle()
-    const conv = data as ConvRow | null
-    if (!conv) return { ok: false, reason: 'notFound' }
+    const { data } = await readConvs((cols) => db.from('message_conversations').select(cols).eq('id', id).maybeSingle())
+    const conv = data as unknown as ConvRow | null
+    // A conversation in Recently deleted takes no replies until it is restored.
+    if (!conv || isDeleted(conv)) return { ok: false, reason: 'notFound' }
     const now = new Date().toISOString()
     const ins = await db.from('messages').insert({ conversation_id: conv.id, author_id: adminId, author_kind: 'abluo', body: body.trim(), links }).select('id').single()
     if (ins.error) return fail(ins.error)
@@ -567,12 +628,96 @@ export async function replyAsAbluo(adminId: string, id: string, body: string, fi
 
 export async function setConversationArchived(adminId: string, id: string, archived: boolean): Promise<MessageResult> {
   if (!isUuid(id)) return { ok: false, reason: 'notFound' }
-  return withDb('Abluo admin archives or restores a conversation', async (db): Promise<MessageResult> => {
-    const upd = await db.from('message_conversations').update({ archived_at: archived ? new Date().toISOString() : null }).eq('id', id).select('id')
+  const r = await setConversationsArchived(adminId, [id], archived)
+  if (!r.ok) return r
+  return r.value.changed ? { ok: true, value: undefined } : { ok: false, reason: 'notFound' }
+}
+
+/** Archive or restore several conversations (bulk). Archive only hides them for Abluo. */
+export async function setConversationsArchived(adminId: string, ids: readonly string[], archived: boolean): Promise<MessageResult<{ changed: number }>> {
+  const list = ids.filter(isUuid)
+  if (!list.length) return { ok: true, value: { changed: 0 } }
+  return withDb('Abluo admin archives or restores conversations', async (db): Promise<MessageResult<{ changed: number }>> => {
+    const upd = await db.from('message_conversations').update({ archived_at: archived ? new Date().toISOString() : null }).in('id', list).select('id')
     if (upd.error) return fail(upd.error)
-    if (!upd.data?.length) return { ok: false, reason: 'notFound' }
-    await db.from('message_events').insert({ conversation_id: id, actor_id: adminId, kind: archived ? 'archived' : 'unarchived', detail: {} })
-    return { ok: true, value: undefined }
+    const done = (upd.data ?? []).map((r) => (r as { id: string }).id)
+    if (done.length) await db.from('message_events').insert(done.map((id) => ({ conversation_id: id, actor_id: adminId, kind: archived ? 'archived' : 'unarchived', detail: {} })))
+    return { ok: true, value: { changed: done.length } }
+  })
+}
+
+/**
+ * Move conversations to Recently deleted: gone for the client at once (list,
+ * thread, bell), kept for Abluo for 30 days, then purged by the daily sweep.
+ * Needs migration 070 ('unavailable' before it).
+ */
+export async function deleteConversations(adminId: string, ids: readonly string[]): Promise<MessageResult<{ changed: number }>> {
+  const list = ids.filter(isUuid)
+  if (!list.length) return { ok: true, value: { changed: 0 } }
+  return withDb('Abluo admin moves conversations to Recently deleted', async (db): Promise<MessageResult<{ changed: number }>> => {
+    const upd = await db.from('message_conversations').update({ deleted_at: new Date().toISOString(), deleted_by: adminId }).in('id', list).is('deleted_at', null).select('id')
+    if (upd.error) return fail(upd.error)
+    const done = (upd.data ?? []).map((r) => (r as { id: string }).id)
+    if (done.length) {
+      // Their bell entries go too (on both sides): nothing may point at a deleted conversation.
+      await db.from('notifications').delete().eq('source_type', 'conversation').in('source_id', done)
+      await db.from('message_events').insert(done.map((id) => ({ conversation_id: id, actor_id: adminId, kind: 'deleted', detail: {} })))
+    }
+    return { ok: true, value: { changed: done.length } }
+  })
+}
+
+/** Bring conversations back from Recently deleted, as they were. */
+export async function restoreConversations(adminId: string, ids: readonly string[]): Promise<MessageResult<{ changed: number }>> {
+  const list = ids.filter(isUuid)
+  if (!list.length) return { ok: true, value: { changed: 0 } }
+  return withDb('Abluo admin restores conversations from Recently deleted', async (db): Promise<MessageResult<{ changed: number }>> => {
+    const upd = await db.from('message_conversations').update({ deleted_at: null, deleted_by: null }).in('id', list).not('deleted_at', 'is', null).select('id')
+    if (upd.error) return fail(upd.error)
+    const done = (upd.data ?? []).map((r) => (r as { id: string }).id)
+    if (done.length) await db.from('message_events').insert(done.map((id) => ({ conversation_id: id, actor_id: adminId, kind: 'restored', detail: {} })))
+    return { ok: true, value: { changed: done.length } }
+  })
+}
+
+/** Gone for good: the files in storage, then the rows (messages, files, events cascade). Only from Recently deleted. */
+async function purge(db: Db, ids: string[]): Promise<number> {
+  if (!ids.length) return 0
+  const { data: atts } = await db.from('message_attachments').select('storage_path').in('conversation_id', ids).is('deleted_at', null).limit(2000)
+  const paths = ((atts ?? []) as { storage_path: string }[]).map((a) => a.storage_path)
+  for (let i = 0; i < paths.length; i += 100) {
+    const rm = await db.storage.from(MESSAGE_BUCKET).remove(paths.slice(i, i + 100))
+    if (rm.error) {
+      console.error('[messages] purge: file removal failed', rm.error.message)
+      return 0
+    }
+  }
+  await db.from('notifications').delete().eq('source_type', 'conversation').in('source_id', ids)
+  const del = await db.from('message_conversations').delete().in('id', ids).not('deleted_at', 'is', null).select('id')
+  if (del.error) {
+    console.error('[messages] purge failed', del.error.message)
+    return 0
+  }
+  return (del.data ?? []).length
+}
+
+/** "Delete Now" in Recently deleted (after its confirmation). */
+export async function purgeConversations(ids: readonly string[]): Promise<MessageResult<{ changed: number }>> {
+  const list = ids.filter(isUuid)
+  if (!list.length) return { ok: true, value: { changed: 0 } }
+  return withDb('Abluo admin deletes conversations for good', async (db): Promise<MessageResult<{ changed: number }>> => {
+    const { data, error } = await db.from('message_conversations').select('id').in('id', list).not('deleted_at', 'is', null)
+    if (error) return fail(error)
+    return { ok: true, value: { changed: await purge(db, ((data ?? []) as { id: string }[]).map((r) => r.id)) } }
+  })
+}
+
+/** Daily: purge what has been in Recently deleted for 30 days. 0 before migration 070. */
+export async function sweepDeletedConversations(now = Date.now()): Promise<number> {
+  return withDb('daily retention: purge conversations 30 days after they were deleted', async (db) => {
+    const { data, error } = await db.from('message_conversations').select('id').lt('deleted_at', deletedPurgeCutoff(now)).limit(200)
+    if (error || !data?.length) return 0
+    return purge(db, (data as { id: string }[]).map((r) => r.id))
   })
 }
 

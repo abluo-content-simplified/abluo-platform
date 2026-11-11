@@ -11,16 +11,23 @@ import { requireAbluoAdmin } from '@/lib/api/auth'
 import { listAdminUsers } from '@/lib/api/admin-dashboard/users'
 import { allowedPairs, buildMessageDirectory } from '@/lib/messages/directory'
 import type { IncomingFile } from '@/lib/messages/files'
-import type { MessageFailure, MessageInputError, Recipient } from '@/lib/messages/model'
+import { cleanLibraryPicks, fetchLibraryImages } from '@/lib/messages/library'
+import { listSitePages, type SitePageOption } from '@/lib/messages/site-pages'
+import { cleanIds, type MessageFailure, type MessageInputError, type Recipient } from '@/lib/messages/model'
 import type { RedactionRange } from '@/lib/support-tickets/redaction'
 import {
   adminConversationActivity,
   countAdminUnreadMessages,
+  deleteConversations,
   deleteMessageFile,
+  projectSiteRef,
   redactMessageParts,
+  purgeConversations,
   replyAsAbluo,
+  restoreConversations,
   sendNewMessage,
   setConversationArchived,
+  setConversationsArchived,
 } from '@/lib/messages/service'
 
 export type AdminMessageResult<T = undefined> = { ok: true; value: T } | { ok: false; reason: MessageFailure; field?: MessageInputError }
@@ -41,12 +48,38 @@ async function filesOf(form: FormData): Promise<IncomingFile[]> {
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
 
+/** Uploads plus Media Library pictures (`library`: JSON [{url,name}]); null when a library picture cannot be fetched. */
+async function allFilesOf(form: FormData): Promise<IncomingFile[] | null> {
+  let picks: unknown = []
+  try {
+    picks = JSON.parse(str(form.get('library')) || '[]')
+  } catch {
+    picks = []
+  }
+  const library = await fetchLibraryImages(cleanLibraryPicks(picks))
+  if (!library) return null
+  return [...(await filesOf(form)), ...library]
+}
+
+/** The recipient site's language and published pages, for the link and Media Library choosers. */
+export async function recipientSiteAction(projectId: unknown): Promise<{ slug: string; defaultLocale: string; pages: SitePageOption[] } | null> {
+  try {
+    if (!(await actorId())) return null
+    const site = await projectSiteRef(str(projectId))
+    if (!site) return null
+    return { slug: site.slug, defaultLocale: site.defaultLocale, pages: await listSitePages(site.slug, site.defaultLocale) }
+  } catch (e) {
+    console.error('[messages] recipient site failed', e instanceof Error ? e.message : e)
+    return null
+  }
+}
+
 function refresh(id?: string) {
   revalidatePath('/[locale]/messages', 'page')
   if (id) revalidatePath('/[locale]/messages/[conversationId]', 'page')
 }
 
-/** New Message: `mode`, `recipients` (JSON [{projectId,userId}]), `subject`, `body`, `links` (JSON ids), `files`. */
+/** New Message: `mode`, `recipients` (JSON [{projectId,userId}]), `subject`, `body`, `links` (JSON: dashboard ids or {page,label}), `files`, `library` (JSON [{url,name}]). */
 export async function sendNewMessageAction(form: FormData): Promise<AdminMessageResult<{ ids: string[] }>> {
   try {
     const id = await actorId()
@@ -63,7 +96,9 @@ export async function sendNewMessageAction(form: FormData): Promise<AdminMessage
     const directory = await listAdminUsers()
     if (directory.error) return { ok: false, reason: 'error' }
     const allowed = allowedPairs(buildMessageDirectory(directory.people, directory.projects))
-    const result = await sendNewMessage(id, { mode: str(form.get('mode')), recipients, subject: str(form.get('subject')), body: str(form.get('body')), links, files: await filesOf(form) }, allowed)
+    const files = await allFilesOf(form)
+    if (!files) return { ok: false, reason: 'libraryUnavailable' }
+    const result = await sendNewMessage(id, { mode: str(form.get('mode')), recipients, subject: str(form.get('subject')), body: str(form.get('body')), links, files }, allowed)
     if (result.ok) refresh()
     return result
   } catch (e) {
@@ -83,7 +118,9 @@ export async function replyAsAbluoAction(form: FormData): Promise<AdminMessageRe
     } catch {
       links = []
     }
-    const result = await replyAsAbluo(id, conversationId, str(form.get('body')), await filesOf(form), links)
+    const files = await allFilesOf(form)
+    if (!files) return { ok: false, reason: 'libraryUnavailable' }
+    const result = await replyAsAbluo(id, conversationId, str(form.get('body')), files, links)
     if (result.ok) refresh(conversationId)
     return result
   } catch (e) {
@@ -130,5 +167,32 @@ export async function adminMessagesUnreadAction(): Promise<number> {
     return id ? await countAdminUnreadMessages(id) : 0
   } catch {
     return 0
+  }
+}
+
+/** Bulk on the Messages list (Tom 2026-11-11): what to do with the selected conversations. */
+export type BulkConversationOp = 'archive' | 'unarchive' | 'delete' | 'restore' | 'purge'
+
+export async function bulkConversationsAction(ids: unknown, op: unknown): Promise<AdminMessageResult<{ changed: number }>> {
+  try {
+    const id = await actorId()
+    if (!id) return { ok: false, reason: 'forbidden' }
+    const list = cleanIds(ids)
+    if (!list.length) return { ok: false, reason: 'invalid' }
+    const result =
+      op === 'archive' || op === 'unarchive'
+        ? await setConversationsArchived(id, list, op === 'archive')
+        : op === 'delete'
+          ? await deleteConversations(id, list)
+          : op === 'restore'
+            ? await restoreConversations(id, list)
+            : op === 'purge'
+              ? await purgeConversations(list)
+              : ({ ok: false, reason: 'invalid' } as const)
+    if (result.ok) refresh()
+    return result
+  } catch (e) {
+    console.error('[messages] bulk action failed', e instanceof Error ? e.message : e)
+    return { ok: false, reason: 'error' }
   }
 }

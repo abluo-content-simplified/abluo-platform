@@ -184,7 +184,9 @@ export function ClientSidebar({
     }),
     [activeSlug],
   )
-  const notifications = useNotificationCenter({ actions: notificationActions, initialCount: notificationsUnread, pathname, enabled: showBell, showProject: projects.length > 1 })
+  // Something new (a message from Abluo, a ticket reply): refresh the server parts — Home's attention
+  // list, a Messages entry that did not exist yet — without a reload (Tom 2026-11-11).
+  const notifications = useNotificationCenter({ actions: notificationActions, initialCount: notificationsUnread, pathname, enabled: showBell, showProject: projects.length > 1, onIncrease: () => router.refresh() })
 
   // ADR-042: Home stands alone at the top; then the headed groups (Content, Catalogue, Visitors, Library,
   // Insights, Project), each a collapsible disclosure (a flyout in the rail); then the unheaded bottom block

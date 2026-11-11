@@ -36,6 +36,8 @@ import { allowedAttentionRules, sortAttention, type AttentionItem } from '@/lib/
 import { gallerySegments, navHref, percentChange, postDraftSegments, segmentsToProgress, timeAgo } from '@/lib/client/home-cards'
 import { ticketAccess } from '@/lib/support-tickets/access'
 import { clientTicketAttention } from '@/lib/support-tickets/service'
+import { messageAccess } from '@/lib/messages/access'
+import { listClientConversations } from '@/lib/messages/service'
 import { getProjectAnalytics } from '@/lib/analytics/read'
 import { getDateLocale } from '@/lib/i18n/date-locale-server'
 import { DailySparkline } from '@/components/app/analytics/AnalyticsOverview'
@@ -109,11 +111,18 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
   // Support requests that need this person (waiting for their reply, or news). Fail-safe: [] on any error.
   const supportAccess = show('attention') ? ticketAccess(ctx, projectSlug) : null
   const supportHref = link('support')
+  // Messages from Abluo are personal (ADR-050): every signed-in person sees their own unread ones; never in support mode.
+  const msgAccess = show('attention') ? messageAccess(ctx, projectSlug) : null
 
   // Payment nudge for the person who pays — not when the enforcement banner already shows it (fails open: no card).
   const billingAttentionPromise = billingNoticeShown(grant.billing, ctx.support) ? Promise.resolve(null) : loadBillingAttention(ctx, grant).catch(() => null)
 
-  const [supportAttention, firstName, site, blog, forms, gallery, media, people, traffic, setupDismissal] = await Promise.all([
+  const [unreadMessages, supportAttention, firstName, site, blog, forms, gallery, media, people, traffic, setupDismissal] = await Promise.all([
+    msgAccess && !msgAccess.supportMode
+      ? listClientConversations(msgAccess)
+          .then((r) => (r.ok ? r.value.filter((c) => c.unread).slice(0, 3) : []))
+          .catch(() => [])
+      : [],
     supportAccess ? clientTicketAttention(supportAccess).catch(() => []) : [],
     getViewerFirstName(ctx).catch(() => null),
     show('siteStatus') ? getSiteStatus(ctx, grant.projectId) : null,
@@ -167,7 +176,17 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
       }))
     : []
   const supportWaitingItems = supportItems.filter((i) => i.id.startsWith('support-waiting-'))
+  const messageItems: AttentionItem[] = unreadMessages.map((c) => ({
+    id: `message-${c.id}`,
+    severity: 'info',
+    titleKey: 'attention.newMessage.title',
+    detailKey: 'attention.newMessage.detail',
+    actionKey: 'attention.newMessage.action',
+    params: { subject: c.subject },
+    href: `/${projectSlug}/messages/${c.id}`,
+  }))
   const attentionItems: AttentionItem[] = [
+    ...messageItems,
     ...supportWaitingItems,
     ...sortAttention([
       ...(forms?.attention ?? []),
@@ -194,7 +213,8 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
     (rules.has('staleGalleryDrafts') && gallery !== null) ||
     (rules.has('missingAltText') && media !== null) ||
     (rules.has('pendingInvites') && !!link('users')) ||
-    supportItems.length > 0
+    supportItems.length > 0 ||
+    messageItems.length > 0
 
   // ── Continue editing (unchanged behaviour: posts then galleries, ⋯ menu) ──
   const categoryLabel = new Map((blog?.list?.categories ?? []).map((c) => [c.value, c.label]))

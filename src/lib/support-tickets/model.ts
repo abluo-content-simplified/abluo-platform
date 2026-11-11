@@ -160,7 +160,7 @@ export type ThreadEntry =
       createdAt: string
       attachments: TicketAttachmentView[]
       /** Messages (ADR-050 D4): "Open in dashboard" cards — a destination id and its dashboard path. */
-      links?: { id: string; href: string }[]
+      links?: { id: string; href: string; page?: { label: string } }[]
     }
   | { kind: 'note'; id: string; author: TicketPerson; body: string; createdAt: string }
   | { kind: 'event'; id: string; event: TicketEventKind; from: string | null; to: string | null; createdAt: string; actor: TicketPerson | null }

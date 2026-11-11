@@ -739,6 +739,11 @@
           "title": "Nuova risposta dal supporto Abluo",
           "detail": "{reference} · {title}",
           "action": "Apri la richiesta"
+        },
+        "newMessage": {
+          "title": "Nuovo messaggio da Abluo",
+          "detail": "{subject}",
+          "action": "Apri messaggio"
         }
       },
       "glance": {
@@ -5938,7 +5943,8 @@
         "recipientsRequired": "Scegli almeno una persona.",
         "tooManyRecipients": "Scegli al massimo 50 persone.",
         "sharedNeedsOneSite": "Una conversazione condivisa è possibile solo con persone dello stesso sito.",
-        "recipientNotMember": "Una delle persone non ha più accesso a quel sito."
+        "recipientNotMember": "Una delle persone non ha più accesso a quel sito.",
+        "libraryUnavailable": "Non è stato possibile aggiungere un’immagine dalla Libreria media. Rimuovila e riprova."
       },
       "thread": {
         "abluo": "Abluo",
@@ -5957,7 +5963,9 @@
           "previous": "Immagine precedente",
           "next": "Immagine successiva",
           "counter": "{n} di {total}"
-        }
+        },
+        "openPage": "Apri “{page}” sul sito",
+        "newTab": "(si apre in una nuova scheda)"
       }
     }
   },
@@ -7773,8 +7781,6 @@
       "deleteFileBody": "Il file viene rimosso per tutti in questa conversazione e la rimozione viene registrata. L’operazione non si può annullare.",
       "list": {
         "newMessage": "Nuovo messaggio",
-        "showActive": "Mostra conversazioni attive",
-        "showArchived": "Mostra archiviate",
         "archivedEmptyTitle": "Niente in archivio",
         "archivedEmptyBody": "Qui compaiono le conversazioni archiviate.",
         "emptyTitle": "Ancora nessuna conversazione",
@@ -7798,14 +7804,48 @@
           "updated": "Ultimo messaggio"
         },
         "unread": "Nuova risposta",
-        "shared": "{count, plural, one {Condivisa · # persona} other {Condivisa · # persone}}"
+        "shared": "{count, plural, one {Condivisa · # persona} other {Condivisa · # persone}}",
+        "announcements": "Annunci",
+        "views": "Quali conversazioni",
+        "view": {
+          "active": "Attive",
+          "archived": "Archiviate",
+          "deleted": "Eliminati di recente"
+        },
+        "deletedNotice": "Le conversazioni eliminate restano qui per {days} giorni, poi vengono eliminate definitivamente con i loro file. I clienti non le vedono più.",
+        "deletedEmptyTitle": "Nessuna conversazione eliminata",
+        "deletedEmptyBody": "Le conversazioni che elimini restano qui per {days} giorni.",
+        "replied": "Ha risposto",
+        "seen": "Vista",
+        "notSeen": "Non ancora vista",
+        "seenBy": "Vista da {seen} su {total}",
+        "select": "Seleziona {subject}",
+        "selectAll": "Seleziona tutte quelle mostrate",
+        "bulk": {
+          "toolbar": "Conversazioni selezionate",
+          "count": "{count, plural, one {# selezionata} other {# selezionate}}",
+          "archive": "Archivia",
+          "unarchive": "Ripristina",
+          "delete": "Elimina",
+          "restore": "Ripristina",
+          "deleteNow": "Elimina ora",
+          "cancel": "Annulla",
+          "deleteTitle": "{count, plural, one {Eliminare questa conversazione?} other {Eliminare # conversazioni?}}",
+          "deleteBody": "{count, plural, one {Il cliente non la vede più, da subito. Resta} other {I clienti non le vedono più, da subito. Restano}} {days} giorni in Eliminati di recente, dove puoi {count, plural, one {ripristinarla} other {ripristinarle}}; poi tutto viene eliminato definitivamente, con i file.",
+          "deleteConfirm": "{count, plural, one {Elimina} other {Elimina #}}"
+        }
       },
       "links": {
-        "label": "Link a una pagina della dashboard",
-        "hint": "Fino a {max}. Il cliente vede un pulsante che apre quella pagina della sua dashboard.",
-        "choose": "Scegli una pagina…",
-        "add": "Aggiungi link",
-        "remove": "Rimuovi link a {place}"
+        "hint": "Fino a {max} link. Scegliendone uno viene aggiunto subito; il cliente vede un pulsante per ciascuno.",
+        "choose": "Scegli una pagina della dashboard…",
+        "remove": "Rimuovi link a {place}",
+        "dashboardLabel": "Pagina della dashboard",
+        "websiteLabel": "Pagina del sito",
+        "choosePage": "Scegli una pagina del sito…",
+        "full": "Hai già {max} link. Rimuovine uno per aggiungerne un altro.",
+        "noPages": "Questo sito non ha ancora pagine pubblicate, quindi non c’è una pagina da collegare.",
+        "pageChip": "Sito: {page}",
+        "homePage": "Pagina iniziale"
       },
       "new": {
         "title": "Nuovo messaggio",
@@ -7831,8 +7871,35 @@
         "bodyHint": "Testo semplice. I link sono cliccabili.",
         "send": "Invia",
         "sendSeparately": "{count, plural, other {Invia separatamente a # persone}}",
-        "sendToEveryone": "{count, plural, other {Invia a tutti (#)}}"
-      }
+        "sendToEveryone": "{count, plural, other {Invia a tutti (#)}}",
+        "severalSites": "solo se tutti sono sullo stesso sito.",
+        "noRecipientYet": "scegli prima a chi scrivere.",
+        "pickHint": "Seleziona le persone nell’elenco qui sotto.",
+        "filtersLabel": "Trova persone",
+        "siteFilter": "Sito",
+        "allSites": "Tutti i siti",
+        "peopleTable": "Persone con accesso",
+        "selectPerson": "Seleziona {name} ({site})",
+        "selectAllSite": "{count, plural, one {Seleziona l’unica persona di questo sito} other {Seleziona tutte le # persone di questo sito}}",
+        "selectAllShown": "{count, plural, one {Seleziona la persona mostrata} other {Seleziona tutte le # mostrate}}",
+        "columns": {
+          "name": "Nome",
+          "email": "Email",
+          "role": "Ruolo",
+          "site": "Sito"
+        },
+        "showing": "{shown} di {total} persone",
+        "cancel": "Annulla"
+      },
+      "extras": {
+        "fromLibrary": "Dalla Libreria media",
+        "loading": "caricamento del sito…",
+        "siteUnavailable": "la Libreria media e le pagine di questo sito non si possono caricare ora.",
+        "libraryWhy": "Libreria media e pagine del sito: {reason}",
+        "libraryPicture": "Immagine della Libreria media"
+      },
+      "deletedTitle": "Messaggi eliminati di recente",
+      "deletedNotice": "Questa conversazione è in Eliminati di recente: il cliente non la vede più. Ripristinala dall’elenco per scrivere di nuovo."
     }
   },
   "editor": {

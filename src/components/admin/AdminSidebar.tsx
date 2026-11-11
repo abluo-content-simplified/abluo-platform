@@ -67,7 +67,7 @@ export function AdminSidebar({
     () => ({ count: adminNotificationCountAction, list: adminNotificationListAction, markRead: adminNotificationMarkReadAction }),
     [],
   )
-  const notifications = useNotificationCenter({ actions: notificationActions, initialCount: notificationsUnread, pathname })
+  const notifications = useNotificationCenter({ actions: notificationActions, initialCount: notificationsUnread, pathname, onIncrease: () => router.refresh() })
   return (
     <>
     <AppSidebar

@@ -739,6 +739,11 @@
           "title": "Neue Antwort vom Abluo Support",
           "detail": "{reference} · {title}",
           "action": "Anfrage öffnen"
+        },
+        "newMessage": {
+          "title": "Neue Nachricht von Abluo",
+          "detail": "{subject}",
+          "action": "Nachricht öffnen"
         }
       },
       "glance": {
@@ -5938,7 +5943,8 @@
         "recipientsRequired": "Wähle mindestens eine Person.",
         "tooManyRecipients": "Wähle höchstens 50 Personen.",
         "sharedNeedsOneSite": "Eine gemeinsame Unterhaltung ist nur mit Personen derselben Website möglich.",
-        "recipientNotMember": "Eine der Personen hat keinen Zugang mehr zu dieser Website."
+        "recipientNotMember": "Eine der Personen hat keinen Zugang mehr zu dieser Website.",
+        "libraryUnavailable": "Ein Bild aus der Mediathek konnte nicht hinzugefügt werden. Entferne es und versuche es erneut."
       },
       "thread": {
         "abluo": "Abluo",
@@ -5957,7 +5963,9 @@
           "previous": "Vorheriges Bild",
           "next": "Nächstes Bild",
           "counter": "{n} von {total}"
-        }
+        },
+        "openPage": "„{page}“ auf der Website öffnen",
+        "newTab": "(öffnet in einem neuen Tab)"
       }
     }
   },
@@ -7773,8 +7781,6 @@
       "deleteFileBody": "Die Datei wird für alle in dieser Unterhaltung entfernt, und das Entfernen wird protokolliert. Das kann nicht rückgängig gemacht werden.",
       "list": {
         "newMessage": "Neue Nachricht",
-        "showActive": "Aktive Unterhaltungen zeigen",
-        "showArchived": "Archivierte zeigen",
         "archivedEmptyTitle": "Nichts archiviert",
         "archivedEmptyBody": "Archivierte Unterhaltungen erscheinen hier.",
         "emptyTitle": "Noch keine Unterhaltungen",
@@ -7798,14 +7804,48 @@
           "updated": "Letzte Nachricht"
         },
         "unread": "Neue Antwort",
-        "shared": "{count, plural, one {Gemeinsam · # Person} other {Gemeinsam · # Personen}}"
+        "shared": "{count, plural, one {Gemeinsam · # Person} other {Gemeinsam · # Personen}}",
+        "announcements": "Ankündigungen",
+        "views": "Welche Unterhaltungen",
+        "view": {
+          "active": "Aktiv",
+          "archived": "Archiviert",
+          "deleted": "Kürzlich gelöscht"
+        },
+        "deletedNotice": "Gelöschte Unterhaltungen bleiben hier {days} Tage und werden dann mit ihren Dateien endgültig gelöscht. Kunden sehen sie nicht mehr.",
+        "deletedEmptyTitle": "Nichts in „Kürzlich gelöscht“",
+        "deletedEmptyBody": "Unterhaltungen, die du löschst, bleiben hier {days} Tage.",
+        "replied": "Hat geantwortet",
+        "seen": "Gesehen",
+        "notSeen": "Noch nicht gesehen",
+        "seenBy": "Gesehen von {seen} von {total}",
+        "select": "{subject} auswählen",
+        "selectAll": "Alle angezeigten auswählen",
+        "bulk": {
+          "toolbar": "Ausgewählte Unterhaltungen",
+          "count": "{count, plural, other {# ausgewählt}}",
+          "archive": "Archivieren",
+          "unarchive": "Wiederherstellen",
+          "delete": "Löschen",
+          "restore": "Wiederherstellen",
+          "deleteNow": "Jetzt löschen",
+          "cancel": "Abbrechen",
+          "deleteTitle": "{count, plural, one {Diese Unterhaltung löschen?} other {# Unterhaltungen löschen?}}",
+          "deleteBody": "{count, plural, one {Der Kunde sieht diese Unterhaltung ab sofort nicht mehr; in „Kürzlich gelöscht“ bleibt sie} other {Die Kunden sehen diese Unterhaltungen ab sofort nicht mehr; in „Kürzlich gelöscht“ bleiben sie}} {days} Tage, und du kannst sie dort wiederherstellen. Danach wird alles mit den Dateien endgültig gelöscht.",
+          "deleteConfirm": "{count, plural, one {Löschen} other {# löschen}}"
+        }
       },
       "links": {
-        "label": "Link zu einer Dashboard-Seite",
-        "hint": "Bis zu {max}. Der Kunde sieht eine Schaltfläche, die diese Seite seines Dashboards öffnet.",
-        "choose": "Seite wählen…",
-        "add": "Link hinzufügen",
-        "remove": "Link zu {place} entfernen"
+        "hint": "Bis zu {max} Links. Eine Auswahl wird sofort hinzugefügt; der Kunde sieht für jeden einen Button.",
+        "choose": "Dashboard-Seite wählen…",
+        "remove": "Link zu {place} entfernen",
+        "dashboardLabel": "Dashboard-Seite",
+        "websiteLabel": "Website-Seite",
+        "choosePage": "Website-Seite wählen…",
+        "full": "Das sind {max} Links. Entferne einen, um einen anderen hinzuzufügen.",
+        "noPages": "Diese Website hat noch keine veröffentlichten Seiten, daher gibt es keine Seite zum Verlinken.",
+        "pageChip": "Website: {page}",
+        "homePage": "Startseite"
       },
       "new": {
         "title": "Neue Nachricht",
@@ -7831,8 +7871,35 @@
         "bodyHint": "Reiner Text. Links sind anklickbar.",
         "send": "Senden",
         "sendSeparately": "{count, plural, other {Einzeln an # Personen senden}}",
-        "sendToEveryone": "{count, plural, other {An alle senden (#)}}"
-      }
+        "sendToEveryone": "{count, plural, other {An alle senden (#)}}",
+        "severalSites": "nur, wenn alle auf derselben Website sind.",
+        "noRecipientYet": "wähle zuerst, an wen du schreibst.",
+        "pickHint": "Wähle Personen in der Liste unten aus.",
+        "filtersLabel": "Personen finden",
+        "siteFilter": "Website",
+        "allSites": "Alle Websites",
+        "peopleTable": "Personen mit Zugang",
+        "selectPerson": "{name} auswählen ({site})",
+        "selectAllSite": "{count, plural, one {Die eine Person dieser Website auswählen} other {Alle # auf dieser Website auswählen}}",
+        "selectAllShown": "{count, plural, one {Die angezeigte Person auswählen} other {Alle # angezeigten auswählen}}",
+        "columns": {
+          "name": "Name",
+          "email": "E-Mail",
+          "role": "Rolle",
+          "site": "Website"
+        },
+        "showing": "{shown} von {total} Personen",
+        "cancel": "Abbrechen"
+      },
+      "extras": {
+        "fromLibrary": "Aus der Mediathek",
+        "loading": "die Website wird geladen…",
+        "siteUnavailable": "Mediathek und Seiten dieser Website können gerade nicht geladen werden.",
+        "libraryWhy": "Mediathek und Website-Seiten: {reason}",
+        "libraryPicture": "Bild aus der Mediathek"
+      },
+      "deletedTitle": "Kürzlich gelöschte Nachrichten",
+      "deletedNotice": "Diese Unterhaltung ist in „Kürzlich gelöscht“: Der Kunde sieht sie nicht mehr. Stelle sie in der Liste wieder her, um erneut zu schreiben."
     }
   },
   "editor": {

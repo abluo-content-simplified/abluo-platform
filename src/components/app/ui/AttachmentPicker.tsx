@@ -44,6 +44,9 @@ export function AttachmentPicker({
   labels,
   disabled = false,
   acceptPaste = false,
+  extra = [],
+  onRemoveExtra,
+  secondaryAction,
 }: {
   files: File[]
   onChange: (files: File[]) => void
@@ -59,6 +62,14 @@ export function AttachmentPicker({
    * several pickers the one the person is in gets it.
    */
   acceptPaste?: boolean
+  /**
+   * Pictures that are not local files — e.g. chosen from the Media Library —
+   * shown as tiles beside the picked files and counted against `max`.
+   */
+  extra?: { key: string; src: string; name: string }[]
+  onRemoveExtra?: (key: string) => void
+  /** A second way to add, beside the add button (e.g. "From Media Library"). */
+  secondaryAction?: { label: string; onClick: () => void; disabled?: boolean }
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const hintId = useId()
@@ -70,7 +81,7 @@ export function AttachmentPicker({
     const picked = Array.from(list ?? [])
     if (inputRef.current) inputRef.current.value = ''
     if (!picked.length) return
-    const merged = mergePickedFiles(files, picked, { max, maxBytes, accept, totalBytesMax })
+    const merged = mergePickedFiles(files, picked, { max: Math.max(0, max - extra.length), maxBytes, accept, totalBytesMax })
     setProblems(merged.problems)
     if (merged.files.length !== files.length) onChange(merged.files)
   }
@@ -79,11 +90,25 @@ export function AttachmentPicker({
   const rootRef = useRef<HTMLDivElement>(null)
   usePasteFiles((list) => onPick(list), { enabled: acceptPaste && !disabled, accept, scope: rootRef })
 
-  const full = files.length >= max
+  const full = files.length + extra.length >= max
+  const removeIcon = (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+      <path d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  )
   return (
     <div ref={rootRef} className="flex flex-col items-start gap-3">
-      {files.length > 0 ? (
+      {files.length + extra.length > 0 ? (
         <ul className="flex flex-wrap items-start gap-3">
+          {extra.map((x) => (
+            <li key={x.key} className="relative size-24 overflow-hidden rounded-xl border border-border bg-muted">
+              {/* eslint-disable-next-line @next/next/no-img-element -- thumbnail of a chosen library picture */}
+              <img src={x.src} alt="" className="size-full object-cover" />
+              <IconButton appearance="chip" aria-label={labels.remove(x.name)} disabled={disabled} className="absolute top-1 right-1" onClick={() => onRemoveExtra?.(x.key)}>
+                {removeIcon}
+              </IconButton>
+            </li>
+          ))}
           {files.map((f, i) => (
             <li key={`${f.name}-${f.size}-${i}`} className="relative size-24 overflow-hidden rounded-xl border border-border bg-muted">
               {f.type.startsWith('image/') ? (
@@ -106,9 +131,7 @@ export function AttachmentPicker({
                   onChange(files.filter((_, n) => n !== i))
                 }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
-                  <path d="M6 6l12 12M18 6 6 18" />
-                </svg>
+                {removeIcon}
               </IconButton>
             </li>
           ))}
@@ -123,9 +146,16 @@ export function AttachmentPicker({
         tabIndex={-1}
         onChange={(e) => onPick(e.target.files)}
       />
-      <Button variant="secondary" disabled={disabled || full} onClick={() => inputRef.current?.click()} aria-describedby={labels.hint ? hintId : undefined}>
-        {labels.add}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="secondary" disabled={disabled || full} onClick={() => inputRef.current?.click()} aria-describedby={labels.hint ? hintId : undefined}>
+          {labels.add}
+        </Button>
+        {secondaryAction ? (
+          <Button variant="secondary" disabled={disabled || full || secondaryAction.disabled} onClick={secondaryAction.onClick} aria-describedby={labels.hint ? hintId : undefined}>
+            {secondaryAction.label}
+          </Button>
+        ) : null}
+      </div>
       {labels.hint ? (
         <p id={hintId} className="text-sm leading-5 text-muted-foreground">
           {labels.hint}

@@ -739,6 +739,11 @@
           "title": "New reply from Abluo Support",
           "detail": "{reference} · {title}",
           "action": "Open request"
+        },
+        "newMessage": {
+          "title": "New message from Abluo",
+          "detail": "{subject}",
+          "action": "Open message"
         }
       },
       "glance": {
@@ -5938,7 +5943,8 @@
         "recipientsRequired": "Choose at least one person.",
         "tooManyRecipients": "Choose 50 people at most.",
         "sharedNeedsOneSite": "A shared conversation is possible only with people of one site.",
-        "recipientNotMember": "One of the people no longer has access to that site."
+        "recipientNotMember": "One of the people no longer has access to that site.",
+        "libraryUnavailable": "A picture from the Media Library couldn’t be added. Remove it and try again."
       },
       "thread": {
         "abluo": "Abluo",
@@ -5957,7 +5963,9 @@
           "previous": "Previous image",
           "next": "Next image",
           "counter": "{n} of {total}"
-        }
+        },
+        "openPage": "Open “{page}” on the website",
+        "newTab": "(opens in a new tab)"
       }
     }
   },
@@ -7773,8 +7781,6 @@
       "deleteFileBody": "The file is removed for everyone in this conversation and the removal is logged. This can’t be undone.",
       "list": {
         "newMessage": "New Message",
-        "showActive": "Show Active Conversations",
-        "showArchived": "Show Archived",
         "archivedEmptyTitle": "Nothing archived",
         "archivedEmptyBody": "Archived conversations appear here.",
         "emptyTitle": "No conversations yet",
@@ -7798,14 +7804,48 @@
           "updated": "Last message"
         },
         "unread": "New reply",
-        "shared": "{count, plural, one {Shared · # person} other {Shared · # people}}"
+        "shared": "{count, plural, one {Shared · # person} other {Shared · # people}}",
+        "announcements": "Announcements",
+        "views": "Which conversations",
+        "view": {
+          "active": "Active",
+          "archived": "Archived",
+          "deleted": "Recently Deleted"
+        },
+        "deletedNotice": "Deleted conversations wait here for {days} days, then they are deleted for good with their files. Clients no longer see them.",
+        "deletedEmptyTitle": "Nothing in Recently Deleted",
+        "deletedEmptyBody": "Conversations you delete wait here for {days} days.",
+        "replied": "Replied",
+        "seen": "Seen",
+        "notSeen": "Not seen yet",
+        "seenBy": "Seen by {seen} of {total}",
+        "select": "Select {subject}",
+        "selectAll": "Select all shown",
+        "bulk": {
+          "toolbar": "Selected conversations",
+          "count": "{count, plural, other {# selected}}",
+          "archive": "Archive",
+          "unarchive": "Unarchive",
+          "delete": "Delete",
+          "restore": "Restore",
+          "deleteNow": "Delete Now",
+          "cancel": "Cancel",
+          "deleteTitle": "{count, plural, one {Delete this conversation?} other {Delete # conversations?}}",
+          "deleteBody": "{count, plural, one {The client no longer sees it, right away. It waits} other {The clients no longer see them, right away. They wait}} {days} days in Recently Deleted, where you can restore {count, plural, one {it} other {them}}; then everything is deleted for good, with the files.",
+          "deleteConfirm": "{count, plural, one {Delete} other {Delete #}}"
+        }
       },
       "links": {
-        "label": "Link to a dashboard page",
-        "hint": "Up to {max}. The client sees a button that opens that page of their dashboard.",
-        "choose": "Choose a page…",
-        "add": "Add Link",
-        "remove": "Remove link to {place}"
+        "hint": "Up to {max} links. Choosing one adds it right away; the client sees a button for each.",
+        "choose": "Choose a dashboard page…",
+        "remove": "Remove link to {place}",
+        "dashboardLabel": "Dashboard page",
+        "websiteLabel": "Website page",
+        "choosePage": "Choose a website page…",
+        "full": "That’s {max} links. Remove one to add another.",
+        "noPages": "This site has no published pages yet, so there is no website page to link.",
+        "pageChip": "Website: {page}",
+        "homePage": "Home page"
       },
       "new": {
         "title": "New Message",
@@ -7831,8 +7871,35 @@
         "bodyHint": "Plain text. Links are clickable.",
         "send": "Send",
         "sendSeparately": "{count, plural, other {Send to # People Separately}}",
-        "sendToEveryone": "{count, plural, other {Send to Everyone (#)}}"
-      }
+        "sendToEveryone": "{count, plural, other {Send to Everyone (#)}}",
+        "severalSites": "only when everyone is on the same site.",
+        "noRecipientYet": "choose who to write to first.",
+        "pickHint": "Tick people in the list below.",
+        "filtersLabel": "Find people",
+        "siteFilter": "Site",
+        "allSites": "All sites",
+        "peopleTable": "People with access",
+        "selectPerson": "Select {name} ({site})",
+        "selectAllSite": "{count, plural, other {Select all # on this site}}",
+        "selectAllShown": "{count, plural, other {Select all # shown}}",
+        "columns": {
+          "name": "Name",
+          "email": "Email",
+          "role": "Role",
+          "site": "Site"
+        },
+        "showing": "{shown} of {total} people",
+        "cancel": "Cancel"
+      },
+      "extras": {
+        "fromLibrary": "From Media Library",
+        "loading": "loading the site…",
+        "siteUnavailable": "this site’s Media Library and pages can’t be loaded right now.",
+        "libraryWhy": "Media Library and website pages: {reason}",
+        "libraryPicture": "Media Library picture"
+      },
+      "deletedTitle": "Recently Deleted Messages",
+      "deletedNotice": "This conversation is in Recently Deleted: the client no longer sees it. Restore it from the list to write again."
     }
   },
   "editor": {

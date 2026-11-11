@@ -21,6 +21,8 @@ export const APP_ICONS = {
   messages: 'M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H8l-4 4V5a1 1 0 0 1 1-1zM8 9h8M8 13h5',
   /** A file (PDF attachment). */
   file: 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5',
+  /** Opens elsewhere (a new tab) — the same arrow as LinkCard's external link. */
+  external: 'M7 17 17 7M8 7h9v9',
   home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   media: 'M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   menu: 'M4 6h16M4 12h16M4 18h16',

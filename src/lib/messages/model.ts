@@ -48,8 +48,18 @@ export const DASHBOARD_LINK_TARGETS: readonly { id: string; segment: string }[] 
   ...TENANT_SURFACES.flatMap((s) => (s.kind === 'nav' ? [{ id: s.id, segment: s.segment }] : [])),
 ]
 
-/** What is stored per link: only the destination id. */
-export type StoredLink = { id: string }
+/**
+ * What is stored per link. A dashboard destination stores only its id; a page
+ * of the recipient's website stores its slug in the site's default language
+ * ('' = the home page) and the page title as it was when sent — never a URL:
+ * the address is built when the thread is shown, from the site's own domain
+ * (or its preview address while it is not live).
+ */
+export type StoredLink = { id: string } | { page: string; label: string }
+
+export const isPageLink = (l: StoredLink): l is { page: string; label: string } => 'page' in l
+/** One key per link, for de-duplication and React keys. */
+export const linkKey = (l: StoredLink): string => (isPageLink(l) ? `page:${l.page}` : l.id)
 
 export function linkTarget(id: unknown): { id: string; segment: string } | null {
   return typeof id === 'string' ? DASHBOARD_LINK_TARGETS.find((t) => t.id === id) ?? null : null
@@ -61,15 +71,52 @@ export function linkHref(projectSlug: string, id: unknown): string | null {
   return target ? `/${projectSlug}/${target.segment}` : null
 }
 
-/** Unknown ids are dropped, duplicates removed, at most `linksMax`. */
+const PAGE_SLUG = /^[a-z0-9\u00c0-\u024f][a-z0-9\u00c0-\u024f._~-]*(\/[a-z0-9\u00c0-\u024f._~-]+)*$/i
+const PAGE_LABEL_MAX = 120
+
+function cleanLink(raw: unknown): StoredLink | null {
+  if (typeof raw === 'string') return linkTarget(raw) ? { id: raw } : null
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as { id?: unknown; page?: unknown; label?: unknown }
+  if (typeof r.page === 'string') {
+    const page = r.page.trim().replace(/^\/+|\/+$/g, '')
+    if (page.length > 200 || (page !== '' && !PAGE_SLUG.test(page))) return null
+    const label = typeof r.label === 'string' ? r.label.replace(/\s+/g, ' ').trim().slice(0, PAGE_LABEL_MAX) : ''
+    return { page, label }
+  }
+  return linkTarget(r.id) ? { id: r.id as string } : null
+}
+
+/** Unknown destinations dropped, duplicates removed, at most `linksMax`. */
 export function cleanLinks(input: unknown): StoredLink[] {
   if (!Array.isArray(input)) return []
-  const ids: string[] = []
+  const out: StoredLink[] = []
   for (const raw of input) {
-    const id = typeof raw === 'string' ? raw : raw && typeof raw === 'object' ? (raw as { id?: unknown }).id : null
-    if (linkTarget(id) && !ids.includes(id as string)) ids.push(id as string)
+    const link = cleanLink(raw)
+    if (link && !out.some((l) => linkKey(l) === linkKey(link))) out.push(link)
   }
-  return ids.slice(0, MESSAGE_LIMITS.linksMax).map((id) => ({ id }))
+  return out.slice(0, MESSAGE_LIMITS.linksMax)
+}
+
+/** Where a project's public pages are reached right now. */
+export type SiteAddress = { projectSlug: string; liveOrigin: string | null; defaultLocale: string }
+
+/**
+ * The public address of a website page: the site's own domain when it is
+ * live (`https://domain/<locale>/<slug>`), otherwise the shared preview
+ * address (`https://preview.abluo.app/<project>/<slug>`, default language).
+ */
+export function pageHref(site: SiteAddress, page: string): string {
+  const tail = page ? `/${page.split('/').map(encodeURIComponent).join('/')}` : ''
+  if (site.liveOrigin) return `${site.liveOrigin}/${site.defaultLocale}${tail}`
+  return `https://preview.abluo.app/${encodeURIComponent(site.projectSlug)}${tail}`
+}
+
+/** A stored link as the thread shows it, or null when it no longer resolves. */
+export function linkView(site: SiteAddress, l: StoredLink): LinkView | null {
+  if (isPageLink(l)) return { id: linkKey(l), href: pageHref(site, l.page), page: { label: l.label } }
+  const href = linkHref(site.projectSlug, l.id)
+  return href ? { id: l.id, href } : null
 }
 
 // ── Input checks ─────────────────────────────────────────────────────────────
@@ -139,6 +186,22 @@ export function isUnreadSince(latest: string | null | undefined, readAt: string 
 }
 
 /** Files are deleted after this date (D7): last activity + 90 days. */
+/** Days a deleted conversation stays in Recently deleted before it is gone for good. */
+export const DELETED_KEEP_DAYS = 30
+
+/** Pure: the moment before which Recently deleted entries are purged. */
+export function deletedPurgeCutoff(now = Date.now()): string {
+  return new Date(now - DELETED_KEEP_DAYS * 24 * 60 * 60 * 1000).toISOString()
+}
+
+/** Pure: at most 200 distinct conversation ids from a request (bulk actions). */
+export function cleanIds(input: unknown): string[] {
+  if (!Array.isArray(input)) return []
+  const out: string[] = []
+  for (const v of input) if (typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) && !out.includes(v)) out.push(v)
+  return out.slice(0, 200)
+}
+
 export function retentionCutoff(now: number): string {
   return new Date(now - MESSAGE_LIMITS.retentionDays * 86_400_000).toISOString()
 }
@@ -155,6 +218,7 @@ export type MessageFailure =
   | 'attachmentType'
   | 'attachmentTooLarge'
   | 'tooManyAttachments'
+  | 'libraryUnavailable' // a Media Library picture could not be fetched
   | 'error'
 
 export type MessageResult<T = undefined> = { ok: true; value: T } | { ok: false; reason: MessageFailure; field?: MessageInputError }
@@ -195,9 +259,31 @@ export type ConversationSummary = {
   participants: MessagePerson[]
   /** Admin side only. */
   project?: { id: string; slug: string; name: string }
+  /** Admin side only: when it was moved to Recently deleted (null: it is not). */
+  deletedAt?: string | null
+  /** Admin side only: where the conversation stands for the client(s) (list status column). */
+  delivery?: Delivery
 }
 
-export type LinkView = { id: string; href: string }
+/**
+ * Where a conversation stands on the client side, for Abluo's list:
+ * - `lastFrom` 'client': the client wrote last ("Replied" / "New reply");
+ * - `lastFrom` 'abluo': how many of the `total` client recipients have opened
+ *   it since Abluo's latest message (`seen`), and when the last of them did
+ *   (`seenAt`, only once everyone has).
+ */
+export type Delivery = { lastFrom: 'abluo' | 'client'; seen: number; total: number; seenAt: string | null }
+
+/** Pure. `lastAbluoAt` / `lastClientAt`: newest message from each side; `clientReads`: each client recipient's last read. */
+export function deliveryOf(lastAbluoAt: string | null | undefined, lastClientAt: string | null | undefined, clientReads: readonly (string | null)[]): Delivery {
+  const total = clientReads.length
+  if (lastClientAt && (!lastAbluoAt || lastClientAt >= lastAbluoAt)) return { lastFrom: 'client', seen: total, total, seenAt: null }
+  const after = clientReads.filter((r): r is string => Boolean(r && lastAbluoAt && r >= lastAbluoAt))
+  return { lastFrom: 'abluo', seen: after.length, total, seenAt: total > 0 && after.length === total ? [...after].sort().pop() ?? null : null }
+}
+
+/** `page`: a page of the website (opens in a new tab); otherwise a dashboard destination by id. */
+export type LinkView = { id: string; href: string; page?: { label: string } }
 
 /** A thread entry with what messages add to the ticket thread: link cards and the Abluo author's first name. */
 export type MessageEntry = ThreadEntry
