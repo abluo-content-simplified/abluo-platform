@@ -1,5 +1,6 @@
 'use client'
 
+import { useNavLabel } from '@/components/client/nav-context'
 import { CreateAction } from '@/components/app/ui/CreateAction'
 import { useMemo, useRef, useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
@@ -104,6 +105,7 @@ export function PostsBrowser({
   timeZone?: string | null
 }) {
   const t = useTranslations('clientDashboard.posts')
+  const sectionTitle = useNavLabel('blog', title)
   const tc = useTranslations('clientDashboard.posts.card')
   const tl = useTranslations('app.lifecycle')
   const router = useRouter()
@@ -410,7 +412,7 @@ export function PostsBrowser({
     <DisplayTimeZoneContext.Provider value={zone}>
     <div className="space-y-4">
       <PageHeader
-        title={title}
+        title={sectionTitle}
         actions={
           <>
             <ViewSwitch

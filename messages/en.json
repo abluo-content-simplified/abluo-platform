@@ -97,7 +97,8 @@
       "catalogueCollections": "Collections",
       "catalogueOptions": "Options",
       "catalogueSetup": "Setup",
-      "messages": "Messages"
+      "messages": "Messages",
+      "navLabels": "Labels"
     },
     "navGroups": {
       "publish": "Publish",
@@ -5085,6 +5086,31 @@
         "clear": "Clear Search",
         "noMatch": "No conversation matches your search.",
         "open": "Open {subject}"
+      }
+    },
+    "settingsTabs": {
+      "title": "Settings",
+      "label": "Settings sections",
+      "settings": "General",
+      "users": "Users",
+      "socialProfiles": "Social Profiles",
+      "connections": "Connected Apps",
+      "billing": "Billing",
+      "navLabels": "Labels"
+    },
+    "navLabels": {
+      "title": "Labels",
+      "intro": "Call a section the way your organisation does — for example “Teachers” instead of “People”. The name changes in the menu and as the page title, only for this website. Leave a field empty to keep the standard name.",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Saved. The menu shows the new names.",
+      "nothingChanged": "Nothing to save yet: change a name first.",
+      "readOnly": "You can look at the names but not change them during this visit.",
+      "nothing": "This website has none of the sections that can be renamed (Posts, Events, Courses, Documents, Testimonials, People).",
+      "errors": {
+        "invalid": "A name can be at most {max} characters.",
+        "unavailable": "Labels aren’t available yet. Please try again later.",
+        "error": "The names couldn’t be saved. Please try again."
       }
     }
   },

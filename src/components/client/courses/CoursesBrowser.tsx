@@ -1,5 +1,6 @@
 'use client'
 
+import { useNavLabel } from '@/components/client/nav-context'
 import { CreateAction } from '@/components/app/ui/CreateAction'
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
@@ -115,6 +116,7 @@ export function CoursesBrowser({
   initialQuery?: string
 }) {
   const t = useTranslations('clientDashboard.courses.list')
+  const sectionTitle = useNavLabel('courses', t('title'))
   const te = useTranslations('clientDashboard.courses.errors')
   const tl = useTranslations('app.lifecycle')
   const ui = useLocale()
@@ -656,7 +658,7 @@ export function CoursesBrowser({
 
   const header = (
     <PageHeader
-      title={t('title')}
+      title={sectionTitle}
       actions={
         <>
           {courses.length > 0 ? (

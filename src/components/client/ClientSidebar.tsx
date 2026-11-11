@@ -24,6 +24,7 @@ import { effectiveGroupOpen } from '@/lib/app-nav-preferences'
 import type { ClientProductUpdate } from '@/lib/whats-new/model'
 import { useWhatsNew } from './whats-new/WhatsNew'
 import { useClientSearch } from './search/ClientSearch'
+import { useClientNav } from './nav-context'
 import type { CreateMenu } from '@/lib/modules/add-content-sheet'
 import { ProfilePanel, type ProfileData } from './account/ProfilePanel'
 
@@ -101,6 +102,7 @@ const ICONS = {
   connections: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8',
   billing: 'M2 6h20v12H2zM2 10h20M6 15h4',
   settings: 'M4 7h10M18 7h2M4 17h2M10 17h10M16 4v6M8 14v6',
+  navLabels: 'M4 7V4h16v3M9 20h6M12 4v16',
   socialProfiles: 'M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4',
   catalogue: 'M4 6h16M4 12h16M4 18h10M18 16v4M16 18h4',
   catalogueItems: 'M4 6h16M4 12h16M4 18h10M18 16v4M16 18h4',
@@ -167,7 +169,9 @@ export function ClientSidebar({
   const contentOpen = contentOpenOn === pathname
   const activeProjectName = projects.find((p) => p.projectSlug === activeSlug)?.name?.trim() || activeSlug
   const { content, requests, media, overflow } = phoneNavLayout(navItems)
-  const labelOf = (i: ClientNavItem) => t(`nav.${i.moduleId}`)
+  // A project's own names for some sections (Settings → Labels), else the default (Tom, 2026-11-11).
+  const { labels: customLabels } = useClientNav()
+  const labelOf = (i: ClientNavItem) => customLabels[i.moduleId]?.trim() || t(`nav.${i.moduleId}`)
   const requestsBadge = newRequestsCount > 0 ? { count: newRequestsCount, label: t('shell.requestsUnanswered', { count: newRequestsCount }) } : undefined
   const news = useWhatsNew(whatsNew, { popup: whatsNewPopup })
   const billingNav = billingNavBadge(billingAttention)
@@ -216,7 +220,12 @@ export function ClientSidebar({
             ? billingBadge
             : undefined,
   })
-  const { groups, bottom } = sidebarGroups(navItems)
+  const { groups, bottom, settings } = sidebarGroups(navItems)
+  // Settings (Tom, 2026-11-11): one row for the whole area, current on any of its pages; it carries Billing's badge.
+  const settingsActive = settings.some((i) => i.moduleId === activeId)
+  const settingsEntry: AppNavItem | null = settings.length
+    ? { key: 'settings', href: settings[0].href, label: t('nav.settings'), icon: iconFor('settings'), badge: settings.some((i) => i.moduleId === 'billing') ? billingBadge : undefined }
+    : null
   const items: AppNavEntry[] = [
     { key: 'home', href: homeHref, label: t('nav.home'), icon: ICONS.home },
     ...groups.map((g) => ({
@@ -230,34 +239,41 @@ export function ClientSidebar({
         if (!open && g.group === activeGroup) setClosedAt(activeId)
       },
     })),
-    // Messages (ADR-050): only when Abluo has written to this person here; first in the bottom block, above Support.
-    ...(messages
-      ? [
-          {
-            key: 'messages',
-            href: messagesHref,
-            label: t('nav.messages'),
-            icon: ICONS.messages,
-            groupStart: true,
-            badge: liveMessagesUnread > 0 ? { count: liveMessagesUnread, label: t('messages.unreadCount', { count: liveMessagesUnread }) } : undefined,
-          },
-        ]
-      : []),
-    ...bottom.map((i, n) => ({ ...toEntry(i), groupStart: n === 0 && !messages })),
-    ...(news.sidebarRow ? [{ key: 'whatsNew', node: news.sidebarRow, railNode: news.railRow }] : []),
-    { key: 'discover', href: `/${activeSlug}/discover`, label: t('nav.discover'), icon: ICONS.discover, groupStart: bottom.length === 0 },
+    // The bottom block (Tom, 2026-11-11), set apart by a thin line: Support · Messages · What's New · Settings · More You Can Add.
+    // Messages (ADR-050) only when Abluo has written to this person here.
+    ...([
+      ...bottom.map(toEntry),
+      ...(messages
+        ? [
+            {
+              key: 'messages',
+              href: messagesHref,
+              label: t('nav.messages'),
+              icon: ICONS.messages,
+              badge: liveMessagesUnread > 0 ? { count: liveMessagesUnread, label: t('messages.unreadCount', { count: liveMessagesUnread }) } : undefined,
+            },
+          ]
+        : []),
+      ...(news.sidebarRow ? [{ key: 'whatsNew', node: news.sidebarRow, railNode: news.railRow }] : []),
+      ...(settingsEntry ? [settingsEntry] : []),
+      { key: 'discover', href: `/${activeSlug}/discover`, label: t('nav.discover'), icon: ICONS.discover },
+    ] as AppNavEntry[]).map((e, n) => (n === 0 ? { ...e, groupStart: true } : e)),
   ]
 
   // Search (ADR-047): every destination the sidebar offers, in sidebar order, plus the phone-only ones are the same list.
-  const destinations = items.flatMap((e): { key: string; label: string; href: string; icon: string }[] =>
-    'node' in e ? [] : 'items' in e ? e.items.map(({ key, label, href, icon }) => ({ key, label, href, icon })) : [{ key: e.key, label: e.label, href: e.href, icon: e.icon }],
-  )
+  const destinations = [
+    ...items.flatMap((e): { key: string; label: string; href: string; icon: string }[] =>
+      'node' in e ? [] : 'items' in e ? e.items.map(({ key, label, href, icon }) => ({ key, label, href, icon })) : e.key === 'settings' ? [] : [{ key: e.key, label: e.label, href: e.href, icon: e.icon }],
+    ),
+    // Each Settings tab stays findable on its own ("users" finds Users).
+    ...settings.map((i) => ({ key: i.moduleId, label: labelOf(i), href: i.href, icon: iconFor(i.moduleId) })),
+  ]
   const search = useClientSearch({
     projectSlug: activeSlug,
     destinations,
     createMenu,
     iconFor,
-    moduleLabel: (id) => t(`nav.${id}`),
+    moduleLabel: (id) => customLabels[id]?.trim() || t(`nav.${id}`),
     permissions,
     newRequestsCount,
   })
@@ -294,7 +310,7 @@ export function ClientSidebar({
         ],
         ...(profile ? { onProfile: () => setProfileOpen(true) } : {}),
       }}
-      activeKey={activeId}
+      activeKey={settingsActive ? 'settings' : activeId}
       collapsible={{ collapseLabel: tShell('collapseSidebar'), expandLabel: tShell('expandSidebar') }}
       drawerSide="right"
       showMenuButton={false}

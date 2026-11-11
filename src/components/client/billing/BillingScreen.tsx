@@ -1,5 +1,6 @@
 'use client'
 
+import { SettingsHeader } from '@/components/client/settings/SettingsTabs'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { Button, ButtonLink } from '@/components/app/ui/Button'
@@ -11,7 +12,6 @@ import { useRouter } from '@/i18n/navigation'
 import { BillingStatusPill } from '@/components/app/ui/BillingStatusPill'
 import { FactRow } from '@/components/app/ui/FactRow'
 import { Notice } from '@/components/app/ui/Notice'
-import { PageHeader } from '@/components/app/ui/PageHeader'
 import { Panel } from '@/components/app/ui/Panel'
 import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { countryName } from '@/components/app/ui/country-model'
@@ -72,7 +72,7 @@ export function BillingScreen({ projectSlug, view, checkout }: { projectSlug: st
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={t('title')} />
+      <SettingsHeader ownTitle={t('title')} />
 
       {checkout === 'success' ? <Notice tone="info">{t(confirmed ? 'checkout.confirmed' : 'checkout.success')}</Notice> : null}
       {checkout === 'cancel' ? <Notice tone="neutral">{t('checkout.cancel')}</Notice> : null}

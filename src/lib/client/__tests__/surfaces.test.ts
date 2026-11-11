@@ -172,8 +172,8 @@ describe('buildTenantSurfaces', () => {
   it('an owner with every module sees every nav item and the module widgets', () => {
     const s = buildTenantSurfaces(grantFor('owner', ['blog', 'forms', 'gallery']))
     // ADR-042 §3: Content · Catalogue · Visitors · Library · Insights · Project, then the bottom block.
-    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'forms', 'media', 'taxonomy', 'analytics', 'users', 'connections', 'settings', 'socialProfiles', 'support'])
-    expect(s.nav.map((n) => n.group)).toEqual(['content', 'content', 'visitors', 'library', 'library', 'insights', 'project', 'project', 'project', 'project', 'bottom'])
+    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'forms', 'media', 'taxonomy', 'analytics', 'settings', 'users', 'socialProfiles', 'connections', 'navLabels', 'support'])
+    expect(s.nav.map((n) => n.group)).toEqual(['content', 'content', 'visitors', 'library', 'library', 'insights', 'project', 'project', 'project', 'project', 'project', 'bottom'])
     expect(ids(s.widgets)).toEqual(expect.arrayContaining(['siteStatus', 'attention', 'glance.posts', 'glance.requests', 'glance.galleries', 'traffic', 'latest.posts']))
   })
 
@@ -324,7 +324,8 @@ describe('navigation groups (ADR-042 N1, section 3)', () => {
     expect(by('visitors')).toEqual(['forms', 'members', 'reservations'])
     expect(by('library')).toEqual(['people', 'media', 'taxonomy'])
     expect(by('insights')).toEqual(['analytics'])
-    expect(by('project')).toEqual(['users', 'connections', 'settings', 'socialProfiles', 'billing'])
+    // Settings tabs, in tab order (Tom, 2026-11-11): General · Users · Social Profiles · Connected Apps · Billing · Labels.
+    expect(by('project')).toEqual(['settings', 'users', 'socialProfiles', 'connections', 'billing', 'navLabels'])
     expect(by('bottom')).toEqual(['support'])
   })
 

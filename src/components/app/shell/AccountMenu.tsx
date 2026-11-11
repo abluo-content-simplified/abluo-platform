@@ -257,6 +257,12 @@ export function AccountMenu(props: AccountMenuProps) {
             {name && email ? <span className="block truncate text-xs text-muted-foreground">{email}</span> : null}
           </span>
         ) : null}
+        {/* A small arrow says the row opens something (Tom, 2026-11-11). */}
+        {desktop && !compact ? (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-2.5 shrink-0 text-muted-foreground">
+            <path d="m9 6 6 6-6 6" />
+          </svg>
+        ) : null}
       </button>
 
       {desktop && open && target

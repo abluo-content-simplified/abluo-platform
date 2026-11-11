@@ -1,9 +1,9 @@
 'use client'
 
+import { SettingsHeader } from '@/components/client/settings/SettingsTabs'
 import { useCallback, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Notice } from '@/components/app/ui/Notice'
-import { PageHeader } from '@/components/app/ui/PageHeader'
 import { SavePill } from '@/components/app/ui/SavePill'
 import type { SaveState } from '@/lib/client/autosave/engine'
 import type { FormNotificationsView } from '@/lib/notifications/form-recipients-service'
@@ -44,7 +44,7 @@ export function SettingsForm({
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title={t('title')} actions={editable ? <SavePill state={saveState} onReload={reload} /> : null} />
+      <SettingsHeader ownTitle={t('title')} actions={editable ? <SavePill state={saveState} onReload={reload} /> : null} />
 
       {!editable ? <Notice tone="info">{supportVisit && readOnly ? tn('readOnlySupport') : tn('readOnly')}</Notice> : null}
 

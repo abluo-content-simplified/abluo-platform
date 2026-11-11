@@ -37,12 +37,23 @@ export function resolveActiveNavId(pathname: string, items: readonly ClientNavIt
   return best?.id ?? null
 }
 
-/** The sidebar as ADR-042 lays it out: headed groups (with their destinations), then the unheaded bottom block. Empty groups are left out. */
+/**
+ * The Settings destinations (Tom, 2026-11-11): the rarely used `project` group
+ * — General, Users, Social Profiles, Connected Apps, Billing, Labels — is no
+ * longer listed in the sidebar. One "Settings" row in the bottom block opens
+ * the first of them, and each of their pages shows the others as top tabs.
+ */
+export const SETTINGS_GROUP: NavGroup = 'project'
+
+/** The sidebar as ADR-042 lays it out: headed groups (with their destinations), then the unheaded bottom block; Settings apart. Empty groups are left out. */
 export type SidebarGroup = { group: HeadedNavGroup; items: ClientNavItem[] }
-export function sidebarGroups(items: readonly ClientNavItem[]): { groups: SidebarGroup[]; bottom: ClientNavItem[] } {
+export function sidebarGroups(items: readonly ClientNavItem[]): { groups: SidebarGroup[]; bottom: ClientNavItem[]; settings: ClientNavItem[] } {
   return {
-    groups: HEADED_NAV_GROUPS.map((group) => ({ group, items: items.filter((i) => i.group === group) })).filter((g) => g.items.length > 0),
+    groups: HEADED_NAV_GROUPS.filter((g) => g !== SETTINGS_GROUP)
+      .map((group) => ({ group, items: items.filter((i) => i.group === group) }))
+      .filter((g) => g.items.length > 0),
     bottom: items.filter((i) => i.group === 'bottom'),
+    settings: items.filter((i) => i.group === SETTINGS_GROUP),
   }
 }
 

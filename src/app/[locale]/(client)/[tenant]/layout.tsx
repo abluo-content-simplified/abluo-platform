@@ -1,3 +1,7 @@
+import { ClientNavProvider } from '@/components/client/nav-context'
+import { SETTINGS_GROUP } from '@/lib/modules/client-nav-layout'
+import { loadNavLabels } from '@/lib/nav-labels/service'
+import { labelsFor } from '@/lib/nav-labels/model'
 import { cookies } from 'next/headers'
 import { navSegmentsFor } from '@/lib/client/surfaces'
 import { stopwatch, traced } from '@/lib/perf/timing'
@@ -174,6 +178,8 @@ async function ClientProjectLayoutInner({
   const billingAttention =
     billingTenantId && navItems.some((i) => i.moduleId === 'billing') ? await loadBillingAttention(ctx, activeGrant, billingTenantId) : null
   lap('billingAttention')
+  // Navigation labels (Tom, 2026-11-11): this project's own names for some sections, in this interface language.
+  const navLabels = labelsFor(await loadNavLabels(activeGrant.projectId), uiLocale)
 
   return (
     <AddContentRoot
@@ -185,6 +191,7 @@ async function ClientProjectLayoutInner({
     >
       {/* ADR-035: one upload store — photos keep uploading while the person moves between screens. */}
       <UploadsProvider>
+      <ClientNavProvider value={{ labels: navLabels, settings: navItems.filter((i) => i.group === SETTINGS_GROUP).map((i) => ({ id: i.moduleId, href: i.href })) }}>
       <SidebarStateProvider initial={navPrefs} className="min-h-screen md:flex">
         <ClientSidebar
           navItems={navItems}
@@ -256,6 +263,7 @@ async function ClientProjectLayoutInner({
           </main>
         </div>
       </SidebarStateProvider>
+      </ClientNavProvider>
       </UploadsProvider>
     </AddContentRoot>
   )

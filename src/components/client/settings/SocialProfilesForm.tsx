@@ -1,5 +1,6 @@
 'use client'
 
+import { SettingsHeader } from '@/components/client/settings/SettingsTabs'
 import { useState } from 'react'
 import { useLocale } from 'next-intl'
 import { saveSocialProfilesAction } from '@/app/[locale]/(client)/[tenant]/settings/social-profiles/actions'
@@ -16,7 +17,6 @@ import { Button } from '@/components/app/ui/Button'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { Field } from '@/components/app/ui/Field'
 import { Notice } from '@/components/app/ui/Notice'
-import { PageHeader } from '@/components/app/ui/PageHeader'
 import { Panel } from '@/components/app/ui/Panel'
 import { Select } from '@/components/app/ui/Select'
 import { TextInput } from '@/components/app/ui/TextInput'
@@ -150,8 +150,8 @@ export function SocialProfilesForm({
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title={t.title}
+      <SettingsHeader
+        ownTitle={t.title}
         actions={
           canWrite ? (
             <Button variant="primary" disabled={busy || Boolean(reason)} aria-describedby="social-save-reason" onClick={() => void save()}>

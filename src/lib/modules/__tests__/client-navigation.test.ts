@@ -274,10 +274,12 @@ describe('resolveActiveNavId (ADR-042 N2a, N7)', () => {
 
 describe('sidebarGroups (ADR-042 N1)', () => {
   const mk = (moduleId: string, group: NavGroup) => ({ moduleId, labelKey: '', href: `/p/${moduleId}`, group })
-  it('orders the groups Content · Catalogue · Visitors · Library · Insights · Project, bottom block apart, empty groups left out', () => {
-    const r = sidebarGroups([mk('support', 'bottom'), mk('analytics', 'insights'), mk('forms', 'visitors'), mk('blog', 'content'), mk('settings', 'project')])
-    expect(r.groups.map((g) => g.group)).toEqual(['content', 'visitors', 'insights', 'project'])
+  it('orders the groups Content · Catalogue · Visitors · Library · Insights, bottom block and Settings apart, empty groups left out', () => {
+    const r = sidebarGroups([mk('support', 'bottom'), mk('analytics', 'insights'), mk('forms', 'visitors'), mk('blog', 'content'), mk('settings', 'project'), mk('users', 'project')])
+    expect(r.groups.map((g) => g.group)).toEqual(['content', 'visitors', 'insights'])
     expect(r.bottom.map((i) => i.moduleId)).toEqual(['support'])
+    // Settings (Tom, 2026-11-11): one sidebar row; its destinations are the Settings tabs.
+    expect(r.settings.map((i) => i.moduleId)).toEqual(['settings', 'users'])
   })
 })
 

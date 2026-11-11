@@ -32,6 +32,9 @@ import { currentNavLayout, useSidebarState } from './SidebarState'
  * "Abluo" is the product name and is never translated.
  */
 
+/** The line above a new group without a heading (the client's bottom block: Support, Messages, What's New, Settings, More You Can Add). */
+const SEPARATED = 'mt-3 border-t border-border-subtle pt-3'
+
 export type AppNavItem = {
   /** Stable key (module id, route name). */
   key: string
@@ -41,7 +44,7 @@ export type AppNavItem = {
   label: string
   /** An `AppIcon` path. */
   icon: string
-  /** Starts a new group: rendered with extra space above (no heading). */
+  /** Starts a new group: a thin separator line above it (no heading) — the client's bottom block (Tom, 2026-11-11). */
   groupStart?: boolean
   /**
    * Starts a new group WITH a small heading above it (already translated). The
@@ -327,22 +330,16 @@ export function AppSidebar({
                 return (
                   <Fragment key={item.key}>
                     {groupHead}
-                    <div className={spaced ? 'mt-4' : undefined}>{item.node}</div>
+                    <div className={spaced ? SEPARATED : undefined}>{item.node}</div>
                   </Fragment>
                 )
               }
               return (
                 <Fragment key={item.key}>
                   {groupHead}
-                  <SidebarLink
-                    href={item.href}
-                    label={item.label}
-                    icon={item.icon}
-                    active={itemActive(item)}
-                    badge={item.badge}
-                    onNavigate={closeDrawer}
-                    className={spaced ? 'mt-4' : ''}
-                  />
+                  <div className={spaced ? SEPARATED : undefined}>
+                    <SidebarLink href={item.href} label={item.label} icon={item.icon} active={itemActive(item)} badge={item.badge} onNavigate={closeDrawer} />
+                  </div>
                 </Fragment>
               )
             })}
@@ -350,7 +347,8 @@ export function AppSidebar({
           </nav>
 
           {/* Desktop only: on phones the account menu lives in the top bar. */}
-          <div className="hidden border-t border-border-subtle px-3 py-3 md:block">
+          {/* Sticky (Tom, 2026-11-11): the signed-in person stays at the bottom while the nav scrolls. */}
+          <div className="hidden border-t border-border-subtle bg-card px-3 py-3 md:sticky md:bottom-0 md:z-10 md:block">
             {footer ? <div className="mb-1">{footer}</div> : null}
             <AccountMenu variant="sidebar" {...account} />
           </div>

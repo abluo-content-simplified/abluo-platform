@@ -1,5 +1,6 @@
 'use client'
 
+import { SettingsHeader } from '@/components/client/settings/SettingsTabs'
 import { useId, useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
@@ -7,7 +8,6 @@ import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { FactRow } from '@/components/app/ui/FactRow'
-import { PageHeader } from '@/components/app/ui/PageHeader'
 import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { Panel } from '@/components/app/ui/Panel'
 import { Toast } from '@/components/app/ui/Toast'
@@ -113,7 +113,7 @@ export function ConnectedAppsBrowser({
 
   return (
     <div className="space-y-4">
-      <PageHeader title={title} />
+      <SettingsHeader ownTitle={title} />
       {children ? <p className="max-w-2xl text-[0.9375rem] leading-6 text-muted-foreground">{t('pageIntro')}</p> : null}
       {children ? <div className="pt-2 pb-6">{children}</div> : null}
 

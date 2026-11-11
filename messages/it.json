@@ -97,7 +97,8 @@
       "catalogueCollections": "Raccolte",
       "catalogueOptions": "Opzioni",
       "catalogueSetup": "Configurazione",
-      "messages": "Messaggi"
+      "messages": "Messaggi",
+      "navLabels": "Etichette"
     },
     "navGroups": {
       "publish": "Pubblica",
@@ -5085,6 +5086,31 @@
         "clear": "Cancella ricerca",
         "noMatch": "Nessuna conversazione corrisponde alla ricerca.",
         "open": "Apri {subject}"
+      }
+    },
+    "settingsTabs": {
+      "title": "Impostazioni",
+      "label": "Sezioni delle impostazioni",
+      "settings": "Generali",
+      "users": "Utenti",
+      "socialProfiles": "Profili social",
+      "connections": "App collegate",
+      "billing": "Fatturazione",
+      "navLabels": "Etichette"
+    },
+    "navLabels": {
+      "title": "Etichette",
+      "intro": "Chiama una sezione come la chiama la tua organizzazione — per esempio “Insegnanti” invece di “Persone”. Il nome cambia nel menu e come titolo della pagina, solo per questo sito. Lascia vuoto un campo per tenere il nome standard.",
+      "save": "Salva",
+      "saving": "Salvataggio…",
+      "saved": "Salvato. Il menu mostra i nuovi nomi.",
+      "nothingChanged": "Niente da salvare: cambia prima un nome.",
+      "readOnly": "Puoi vedere i nomi ma non modificarli durante questa visita.",
+      "nothing": "Questo sito non ha nessuna delle sezioni rinominabili (Articoli, Eventi, Corsi, Documenti, Testimonianze, Persone).",
+      "errors": {
+        "invalid": "Un nome può avere al massimo {max} caratteri.",
+        "unavailable": "Le etichette non sono ancora disponibili. Riprova più tardi.",
+        "error": "Non è stato possibile salvare i nomi. Riprova."
       }
     }
   },

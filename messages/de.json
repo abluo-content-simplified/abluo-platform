@@ -97,7 +97,8 @@
       "catalogueCollections": "Sammlungen",
       "catalogueOptions": "Optionen",
       "catalogueSetup": "Einrichtung",
-      "messages": "Nachrichten"
+      "messages": "Nachrichten",
+      "navLabels": "Bezeichnungen"
     },
     "navGroups": {
       "publish": "Veröffentlichen",
@@ -5085,6 +5086,31 @@
         "clear": "Suche löschen",
         "noMatch": "Keine Unterhaltung passt zu deiner Suche.",
         "open": "{subject} öffnen"
+      }
+    },
+    "settingsTabs": {
+      "title": "Einstellungen",
+      "label": "Bereiche der Einstellungen",
+      "settings": "Allgemein",
+      "users": "Benutzer",
+      "socialProfiles": "Soziale Profile",
+      "connections": "Verbundene Apps",
+      "billing": "Abrechnung",
+      "navLabels": "Bezeichnungen"
+    },
+    "navLabels": {
+      "title": "Bezeichnungen",
+      "intro": "Nenne einen Bereich so, wie deine Organisation ihn nennt — zum Beispiel „Lehrer“ statt „Personen“. Der Name ändert sich im Menü und als Seitentitel, nur für diese Website. Lass ein Feld leer, um den Standardnamen zu behalten.",
+      "save": "Speichern",
+      "saving": "Wird gespeichert…",
+      "saved": "Gespeichert. Das Menü zeigt die neuen Namen.",
+      "nothingChanged": "Noch nichts zu speichern: Ändere zuerst einen Namen.",
+      "readOnly": "Du kannst die Namen während dieses Besuchs ansehen, aber nicht ändern.",
+      "nothing": "Diese Website hat keinen der Bereiche, die umbenannt werden können (Beiträge, Veranstaltungen, Kurse, Dokumente, Kundenstimmen, Personen).",
+      "errors": {
+        "invalid": "Ein Name darf höchstens {max} Zeichen haben.",
+        "unavailable": "Bezeichnungen sind noch nicht verfügbar. Bitte versuche es später erneut.",
+        "error": "Die Namen konnten nicht gespeichert werden. Bitte versuche es erneut."
       }
     }
   },

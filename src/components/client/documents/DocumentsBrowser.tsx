@@ -1,5 +1,6 @@
 'use client'
 
+import { useNavLabel } from '@/components/client/nav-context'
 import { useCallback, useId, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
@@ -71,6 +72,7 @@ export function DocumentsBrowser({
   initialTab: 'documents' | 'pages'
 }) {
   const t = useTranslations('clientDashboard.documents')
+  const sectionTitle = useNavLabel('documents', t('title'))
   const router = useRouter()
   const idBase = useId()
   const { toast, show, schedule } = useUndo()
@@ -84,7 +86,7 @@ export function DocumentsBrowser({
   if (data.notReady) {
     return (
       <div className="space-y-4">
-        <PageHeader title={t('title')} />
+        <PageHeader title={sectionTitle} />
         <p className="max-w-2xl text-[0.9375rem] leading-6 text-muted-foreground">{t('intro')}</p>
         <Notice tone="info" title={t('notReady.title')}>{t('notReady.body')}</Notice>
       </div>
@@ -104,7 +106,7 @@ export function DocumentsBrowser({
 
   return (
     <div className="space-y-4">
-      <PageHeader title={t('title')} actions={addAction} />
+      <PageHeader title={sectionTitle} actions={addAction} />
       <p className="max-w-2xl text-[0.9375rem] leading-6 text-muted-foreground">{t('intro')}</p>
       {!canManage ? <Notice tone="info">{supportVisit ? t('supportReadOnly') : t('readOnly')}</Notice> : null}
       {data.pages.length === 0 ? <Notice tone="info" title={t('noPages.title')}>{t('noPages.body')}</Notice> : null}

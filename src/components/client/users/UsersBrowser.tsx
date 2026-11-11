@@ -1,5 +1,6 @@
 'use client'
 
+import { SettingsHeader } from '@/components/client/settings/SettingsTabs'
 import { useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
@@ -10,7 +11,6 @@ import { EmptyState } from '@/components/app/ui/EmptyState'
 import type { CardMenuItem } from '@/components/app/ui/CardMenu'
 import type { FilterChip } from '@/components/app/ui/FilterSheet'
 import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
-import { PageHeader } from '@/components/app/ui/PageHeader'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
 import { permissionMessageKey } from '@/lib/authz/permissions'
@@ -232,8 +232,8 @@ export function UsersBrowser({ title, projectSlug, locale, view }: { title: stri
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title={title}
+      <SettingsHeader
+        ownTitle={title}
         actions={
           view.invitableRoles.length > 0 ? (
             <Button id="invite" variant="primary" onClick={() => setInviting(true)}>

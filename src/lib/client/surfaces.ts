@@ -226,21 +226,26 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   // 4. Support & configuration ("What's new" opens this group in the sidebar).
   // Support (Tom, 2026-10-22): a "coming soon" page for everyone on the project until ticketing exists.
   { kind: 'nav', id: 'support', segment: 'support', group: 'bottom', requires: {} },
-  // Users (was "People"; Tom, 2026-11-03): who can log in to the site. ADR-043 gives `/people` to the People module.
-  { kind: 'nav', id: 'users', segment: 'users', group: 'project', requires: { anyPermission: ['users.invite', 'users.manage'] } },
-  // ADR-031: partner apps reading this site. Owners and Site admins only; always listed (calm empty state).
-  { kind: 'nav', id: 'connections', segment: 'apps', group: 'project', requires: { permission: 'connections.manage' } },
-  // Settings (Tom, 2026-10-18; 2026-10-28): the client's own settings — today Form notifications (who receives form emails).
+  // Settings (Tom, 2026-11-11): the `project` group is the Settings area — not listed in the sidebar, one
+  // "Settings" row in the bottom block, and these destinations as the top tabs of each of their pages, in this order:
+  // General · Users · Social Profiles · Connected Apps · Billing · Labels. The routes stay where they were.
+  // General (Tom, 2026-10-18; 2026-10-28): the client's own settings — today Form notifications (who receives form emails).
   // The affiliate programs live only in Connected Apps (`connections`) since 2026-10-26.
   // Never technical configuration: gated on its own content-style permission, NOT `settings.manage`.
   { kind: 'nav', id: 'settings', segment: 'settings', group: 'project', requires: { permission: 'site.details.read' } },
+  // Users (was "People"; Tom, 2026-11-03): who can log in to the site. ADR-043 gives `/people` to the People module.
+  { kind: 'nav', id: 'users', segment: 'users', group: 'project', requires: { anyPermission: ['users.invite', 'users.manage'] } },
   // Social Profiles (ADR-049 Amendment A, Tom 2026-11-09): the website's social profiles — the same
   // siteConfig.socialLinks Website Settings edits — so the client adds them without asking us.
   { kind: 'nav', id: 'socialProfiles', segment: 'settings/social-profiles', group: 'project', requires: { permission: 'site.details.read' } },
+  // ADR-031: partner apps reading this site. Owners and Site admins only; always listed (calm empty state).
+  { kind: 'nav', id: 'connections', segment: 'apps', group: 'project', requires: { permission: 'connections.manage' } },
   // Billing (ADR-041 Phase 5; Tom, 2026-11-02): the Owner pays here; a member granted invoice access can look.
   // Both are TENANT permissions: the layout adds them to the grant it builds the sidebar from
   // (`billingNavPermissions`). Allowlisted in FEATURE_CONTROL_ALLOWLIST.
   { kind: 'nav', id: 'billing', segment: 'billing', group: 'project', requires: { anyPermission: ['billing.manage', 'billing.invoice.read'] } },
+  // Labels (Tom, 2026-11-11): this project's own names for a few sections (People → "Teachers"). Tenant administrators.
+  { kind: 'nav', id: 'navLabels', segment: 'settings/labels', group: 'project', requires: { permission: 'site.details.write' } },
 
   // ── Home widgets (ADR-029 §5) ───────────────────────────────────────────
   { kind: 'widget', id: 'siteStatus', slot: 'header', requires: {} },

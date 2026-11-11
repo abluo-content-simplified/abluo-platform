@@ -1,5 +1,6 @@
 'use client'
 
+import { useNavLabel } from '@/components/client/nav-context'
 import { CreateAction } from '@/components/app/ui/CreateAction'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
@@ -108,6 +109,7 @@ export function PeopleBrowser({
   initialQuery?: string
 }) {
   const t = useTranslations('clientDashboard.persons.list')
+  const sectionTitle = useNavLabel('people', t('title'))
   const te = useTranslations('clientDashboard.persons.errors')
   const tl = useTranslations('app.lifecycle')
   const ta = useTranslations('clientDashboard.persons.anonymise')
@@ -463,7 +465,7 @@ export function PeopleBrowser({
 
   const header = (
     <PageHeader
-      title={t('title')}
+      title={sectionTitle}
       actions={
         <>
           {persons.length > 0 ? (

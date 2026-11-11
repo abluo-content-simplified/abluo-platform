@@ -1,5 +1,6 @@
 'use client'
 
+import { useNavLabel } from '@/components/client/nav-context'
 import { CreateAction } from '@/components/app/ui/CreateAction'
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -70,6 +71,7 @@ export function EventList({
   initialQuery?: string
 }) {
   const t = useTranslations('clientDashboard.events.list')
+  const sectionTitle = useNavLabel('events', t('title'))
   const tl = useTranslations('app.lifecycle')
   const dates = useEventDates()
   const zone = editingZone(timeZone)
@@ -202,7 +204,7 @@ export function EventList({
 
   return (
     <div className="space-y-4">
-      <PageHeader title={t('title')} actions={headerActions} />
+      <PageHeader title={sectionTitle} actions={headerActions} />
       <p className="-mt-1 text-[0.9375rem] leading-6 text-muted-foreground">{t('helper')}</p>
 
       {events.length === 0 ? (

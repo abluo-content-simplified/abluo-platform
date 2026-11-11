@@ -1,5 +1,6 @@
 'use client'
 
+import { useNavLabel } from '@/components/client/nav-context'
 import { CreateAction } from '@/components/app/ui/CreateAction'
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
@@ -88,6 +89,7 @@ export function TestimonialsBrowser({
   belowHeader?: ReactNode
 }) {
   const t = useTranslations('clientDashboard.testimonials.list')
+  const sectionTitle = useNavLabel('testimonials', t('title'))
   const te = useTranslations('clientDashboard.testimonials.errors')
   const tl = useTranslations('app.lifecycle')
   const ui = useLocale()
@@ -265,7 +267,7 @@ export function TestimonialsBrowser({
 
   const header = (
     <PageHeader
-      title={t('title')}
+      title={sectionTitle}
       actions={
         <>
           {testimonials.length > 0 ? (
