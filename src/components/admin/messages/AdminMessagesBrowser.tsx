@@ -9,6 +9,7 @@ import { BarButton } from '@/components/app/ui/BarButton'
 import { ButtonLink } from '@/components/app/ui/Button'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { SelectionBar } from '@/components/app/ui/SelectionBar'
+import { Tabs } from '@/components/app/ui/Tabs'
 import { ICONS as BAR_ICONS } from '@/components/client/posts/post-bits'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import type { FilterChip } from '@/components/app/ui/FilterSheet'
@@ -116,7 +117,7 @@ export function AdminMessagesBrowser({ conversations, view }: { conversations: C
 
   const columns: DataTableColumn<ConversationSummary>[] = [
     { key: 'subject', header: t('list.columns.subject'), width: 'min-w-64', render: (c) => <CellText primary={c.subject} secondary={c.preview || undefined} href={hrefOf(c)} clamp={2} /> },
-    { key: 'people', header: t('list.columns.people'), width: 'min-w-48', render: (c) => <CellText primary={who(c)} secondary={c.project?.name} clamp={2} /> },
+    { key: 'people', header: t('list.columns.people'), width: 'min-w-48', render: (c) => <CellText primary={who(c)} secondary={c.project?.name} clamp={1} secondaryLines={1} /> },
     {
       key: 'state',
       header: t('list.columns.state'),
@@ -141,19 +142,8 @@ export function AdminMessagesBrowser({ conversations, view }: { conversations: C
           </div>
         }
       />
-      <nav aria-label={t('list.views')} className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        {(['active', 'archived', 'deleted'] as const).map((v) =>
-          v === view ? (
-            <span key={v} aria-current="page" className="text-sm leading-6 font-semibold text-foreground">
-              {t(`list.view.${v}`)}
-            </span>
-          ) : (
-            <ButtonLink key={v} variant="link" href={viewHref(v)}>
-              {t(`list.view.${v}`)}
-            </ButtonLink>
-          ),
-        )}
-      </nav>
+      {/* The one Tabs component, as on Support Tickets (Tom, 2026-11-11): never a hand-made view switch. */}
+      <Tabs label={t('list.views')} value={view} onChange={(v) => router.replace(viewHref(v as MessagesView))} items={(['active', 'archived', 'deleted'] as const).map((v) => ({ id: v, label: t(`list.view.${v}`) }))} />
       {deleted ? <Notice>{t('list.deletedNotice', { days: DELETED_KEEP_DAYS })}</Notice> : null}
       {conversations.length === 0 ? (
         <EmptyState

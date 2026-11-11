@@ -6734,6 +6734,15 @@
           "not_ready": "Das Datenbank-Update 056 ist noch nicht angewendet. Es wurde nichts geändert.",
           "failed": "Das hat nicht geklappt. Versuch es noch einmal."
         }
+      },
+      "name": {
+        "label": "Name",
+        "rename": "Umbenennen",
+        "hint": "So wird das Projekt in beiden Dashboards gelistet (Anfragen, Nachrichten, Projektwechsel). Am besten kurz, bis zu {max} Zeichen. Der Titel der Website ändert sich nicht.",
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "invalid": "Verwende 2 bis {max} Zeichen.",
+        "error": "Der Name konnte nicht gespeichert werden. Bitte versuche es erneut."
       }
     },
     "media": {
@@ -7426,6 +7435,19 @@
         "client": "{name} · {project}",
         "someone": "Jemand",
         "read": "Gelesen"
+      },
+      "bulk": {
+        "select": "{reference} auswählen",
+        "selectAll": "Alle angezeigten auswählen",
+        "toolbar": "Ausgewählte Anfragen",
+        "count": "{count, plural, other {# ausgewählt}}",
+        "status": "Status",
+        "severity": "Schweregrad",
+        "cancel": "Abbrechen",
+        "statusTitle": "{count, plural, one {Status von # Anfrage setzen} other {Status von # Anfragen setzen}}",
+        "severityTitle": "{count, plural, one {Schweregrad von # Anfrage setzen} other {Schweregrad von # Anfragen setzen}}",
+        "done": "{count, plural, one {# Anfrage aktualisiert} other {# Anfragen aktualisiert}}",
+        "partly": "Nur {changed} von {total} Anfragen konnten aktualisiert werden. Versuche es mit den anderen erneut."
       }
     },
     "users": {

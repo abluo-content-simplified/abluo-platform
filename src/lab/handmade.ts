@@ -31,7 +31,9 @@ export const HANDMADE_RULES = {
   input: { re: /<input\b(?![^>]*\btype=["'](?:hidden|file)["'])/g, use: 'TextInput, DateInput, Checkbox, Field' },
   textarea: { re: /<textarea\b/g, use: 'TextArea' },
   select: { re: /<select\b/g, use: 'Select, FilterSelect' },
-  switchOrTabs: { re: /role=["'](?:switch|radiogroup|tablist)["']/g, use: 'Switch, SegmentedControl, ViewSwitch' },
+  switchOrTabs: { re: /role=["'](?:switch|radiogroup|tablist)["']/g, use: 'Switch, SegmentedControl, ViewSwitch, Tabs' },
+  // A row of links marking the current one (a hand-made view switch) — Tom, 2026-11-11: views are always the one Tabs.
+  viewNav: { re: /aria-current=(?:["']page["']|\{[^}]*["']page["'])/g, use: 'Tabs (switching views), SidebarLink / RailItem (navigation)' },
   dialog: { re: /<dialog\b/g, use: 'BottomSheet, SidePanel, ConfirmDialog' },
   box: { re: /\brounded-2xl border\b/g, use: 'Panel, Notice, EmptyState' },
   pill: { re: /\brounded-full\b[^"'`]*\btext-xs\b/g, use: 'Pill, LifecycleBadge' },
@@ -66,6 +68,8 @@ export function scanHandmade(root: string): HandmadeCounts {
       .join('\n')
     const counts: Partial<Record<HandmadeRule, number>> = {}
     for (const [rule, { re }] of Object.entries(HANDMADE_RULES) as [HandmadeRule, { re: RegExp }][]) {
+      // The dashboards' own navigation (sidebar, phone tab bar) marks the current page by design.
+      if (rule === 'viewNav' && /Sidebar\.tsx$/.test(file)) continue
       const n = src.match(re)?.length ?? 0
       if (n) counts[rule] = n
     }

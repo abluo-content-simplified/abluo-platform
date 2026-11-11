@@ -416,7 +416,8 @@ export async function listAdminTickets(adminUserId: string, filters: AdminTicket
     const byProject = new Map(((projects.data ?? []) as Array<{ id: string; slug: string; name: string }>).map((p) => [p.id, p]))
     const { latest, latestClientAuthor, clientReads } = await listActivity(db, rows.map((r) => r.id))
     const authors = await loadPeople(db, [...[...latest.values()].map((m) => m.author_id), ...latestClientAuthor.values()], false)
-    const first = (p: TicketPerson | undefined) => (p?.name ?? '').trim().split(/\s+/)[0] ?? ''
+    // Full names (Tom, 2026-11-11): a first name alone misleads for shared accounts ("Yoga" for "Yoga Club").
+    const first = (p: TicketPerson | undefined) => (p?.name ?? '').trim()
     return {
       ok: true,
       value: rows.map((r) => {
@@ -512,7 +513,7 @@ export async function getAdminTicket(adminUserId: string, ticketId: string, opti
         next: (() => {
           const last = messages[messages.length - 1]
           const lastClient = [...messages].reverse().find((m) => m.author_kind === 'client' && m.author_id)
-          const first = (id: string | null | undefined) => ((id ? people.get(id)?.name : '') ?? '').trim().split(/\s+/)[0] ?? ''
+          const first = (id: string | null | undefined) => ((id ? people.get(id)?.name : '') ?? '').trim()
           return nextStepOf({
             status: t.status,
             createdAt: t.created_at,

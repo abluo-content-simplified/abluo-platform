@@ -145,3 +145,25 @@ export async function adminUnreadCountAction(): Promise<number> {
   if (!id) return 0
   return countAdminUnread(id).catch(() => 0)
 }
+
+/**
+ * Bulk on the Support Tickets list (Tom, 2026-11-11): set the status or the
+ * severity of several tickets at once. Each ticket goes through the same rule
+ * as a single change (events, emails, bell); at most 100 per call. Returns
+ * how many changed; any failure is reported as the first failure reason.
+ */
+export async function bulkTicketsAction(ticketIds: unknown, field: unknown, value: unknown): Promise<{ ok: true; changed: number } | { ok: false; reason: TicketFailure; changed: number }> {
+  const id = await actorId()
+  if (!id) return { ok: false, reason: 'forbidden', changed: 0 }
+  const ids = Array.isArray(ticketIds) ? [...new Set(ticketIds.filter((x): x is string => typeof x === 'string'))].slice(0, 100) : []
+  if (!ids.length || (field !== 'status' && field !== 'severity')) return { ok: false, reason: 'invalid', changed: 0 }
+  let changed = 0
+  let failure: TicketFailure | null = null
+  for (const ticketId of ids) {
+    const r = field === 'status' ? await setTicketStatus(id, ticketId, str(value) as TicketStatus) : await setTicketSeverity(id, ticketId, str(value) as TicketSeverity)
+    if (r.ok) changed++
+    else failure ??= r.reason
+  }
+  revalidatePath('/[locale]/support', 'page')
+  return failure ? { ok: false, reason: failure, changed } : { ok: true, changed }
+}

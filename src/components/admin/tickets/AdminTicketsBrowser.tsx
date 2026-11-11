@@ -3,8 +3,16 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
+import { bulkTicketsAction } from '@/app/[locale]/(admin)/support/ticket-actions'
+import { BarButton, SheetItem } from '@/components/app/ui/BarButton'
+import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { Button } from '@/components/app/ui/Button'
+import { Notice } from '@/components/app/ui/Notice'
+import { SelectionBar } from '@/components/app/ui/SelectionBar'
 import { Tabs } from '@/components/app/ui/Tabs'
+import { Toast } from '@/components/app/ui/Toast'
+import { useUndo } from '@/components/app/ui/use-undo'
+import { ICONS as BAR_ICONS } from '@/components/client/posts/post-bits'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import type { FilterChip } from '@/components/app/ui/FilterSheet'
 import { PageHeader } from '@/components/app/ui/PageHeader'
@@ -14,7 +22,7 @@ import { ListRow } from '@/components/app/ui/list/ListRow'
 import { CellPill, CellText, Pill } from '@/components/app/ui/list/cells'
 import { timeAgo } from '@/lib/client/home-cards'
 import { useDateLocale } from '@/lib/i18n/date-locale-context'
-import { TICKET_SEVERITIES, type TicketSummary } from '@/lib/support-tickets/model'
+import { TICKET_SEVERITIES, TICKET_STATUSES, type TicketSeverity, type TicketStatus, type TicketSummary } from '@/lib/support-tickets/model'
 import {
   activeQuickView,
   adminViewQuery,
@@ -73,6 +81,12 @@ export function AdminTicketsBrowser({
   const quick = activeQuickView(view)
   const ago = (iso: string) => timeAgo(iso, dateLocale)
   const [q, setQ] = useState('')
+  const { toast, show } = useUndo()
+  // Bulk (Tom, 2026-11-11): tick tickets, then set their status or severity in one go.
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [sheet, setSheet] = useState<'status' | 'severity' | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [bulkError, setBulkError] = useState<string | null>(null)
 
   const go = (patch: Partial<AdminTicketView>) => router.replace(`/support${adminViewQuery({ ...view, ...patch })}`)
   const terms = fold(q).split(/\s+/).filter(Boolean)
@@ -83,6 +97,35 @@ export function AdminTicketsBrowser({
       })
     : tickets
   const isDefault = isDefaultAdminView(view) && !q.trim()
+  const selectedRows = shown.filter((x) => selected.has(x.id))
+  const allState: 'none' | 'some' | 'all' = selectedRows.length === 0 ? 'none' : selectedRows.length === shown.length ? 'all' : 'some'
+  const toggle = (id: string, on: boolean) =>
+    setSelected((prev) => {
+      const n = new Set(prev)
+      if (on) n.add(id)
+      else n.delete(id)
+      return n
+    })
+  async function bulk(field: 'status' | 'severity', value: TicketStatus | TicketSeverity) {
+    // Only the tickets that actually change.
+    const ids = selectedRows.filter((x) => (field === 'status' ? x.status !== value : (x.severity ?? 'normal') !== value)).map((x) => x.id)
+    setSheet(null)
+    if (!ids.length) return
+    setBusy(true)
+    setBulkError(null)
+    try {
+      const r = await bulkTicketsAction(ids, field, value)
+      if (r.ok) {
+        show({ message: t('bulk.done', { count: r.changed }), tone: 'status' })
+        setSelected(new Set())
+      } else setBulkError(t('bulk.partly', { changed: r.changed, total: ids.length }))
+      router.refresh()
+    } catch {
+      setBulkError(t('errors.error'))
+    } finally {
+      setBusy(false)
+    }
+  }
   const reset = () => {
     setQ('')
     if (!isDefaultAdminView(view)) router.replace('/support')
@@ -134,7 +177,16 @@ export function AdminTicketsBrowser({
     if (!n || n.kind === 'done') return <span className="text-sm leading-6 text-muted-foreground">—</span>
     return (
       <span className="flex flex-col items-start gap-1">
-        {n.kind === 'yourTurn' ? <Pill tone="highlight">{t('next.yourTurn')}</Pill> : <Pill>{n.on ? t('next.waitingFor', { name: n.on }) : t('next.waitingForClient')}</Pill>}
+        {n.kind === 'yourTurn' ? (
+          <Pill tone="highlight">{t('next.yourTurn')}</Pill>
+        ) : (
+          <Pill>
+            {/* A long full name stays on one line; the whole name is in the tooltip. */}
+            <span className="block max-w-[11rem] truncate" title={n.on || undefined}>
+              {n.on ? t('next.waitingFor', { name: n.on }) : t('next.waitingForClient')}
+            </span>
+          </Pill>
+        )}
         <span className="text-sm leading-5 text-muted-foreground" suppressHydrationWarning>
           {ago(n.since)}
         </span>
@@ -154,7 +206,9 @@ export function AdminTicketsBrowser({
     const read = m?.by === 'support' && x.clientReadAt && x.clientReadAt >= m.at
     return (
       <span className={`flex min-w-0 ${compact ? 'flex-wrap items-center gap-x-2' : 'flex-col'} text-sm leading-5`}>
-        <span className="line-clamp-1 text-foreground">{who}</span>
+        <span className="line-clamp-1 text-foreground" title={who}>
+          {who}
+        </span>
         <span className="text-muted-foreground">
           <AdminLastUpdate iso={x.lastActivityAt} />
           {read ? ` · ${t('lastBy.read')}` : null}
@@ -181,7 +235,7 @@ export function AdminTicketsBrowser({
       key: 'title',
       header: t('columns.title'),
       width: 'min-w-64',
-      render: (x) => <CellText clamp={2} primary={x.title} secondary={[x.project?.name, x.createdBy.name || x.createdBy.email].filter(Boolean).join(' · ') || undefined} href={`/support/${x.id}`} />,
+      render: (x) => <CellText clamp={2} primary={x.title} secondary={[x.project?.name, x.createdBy.name || x.createdBy.email].filter(Boolean).join(' · ') || undefined} secondaryLines={1} href={`/support/${x.id}`} />,
     },
     { key: 'next', header: t('next.column'), width: 'w-48', sortable: true, render: nextCell },
     { key: 'activity', header: t('columns.activity'), width: 'w-52', sortable: true, render: (x) => lastCell(x) },
@@ -227,6 +281,14 @@ export function AdminTicketsBrowser({
               rowHref={(x) => `/support/${x.id}`}
               minWidth="min-w-[62rem]"
               sort={{ column: sort.key, dir: sort.dir, onSort }}
+              selection={{
+                selected,
+                onToggle: (id, on) => toggle(id, on),
+                allState,
+                onToggleAll: (on) => setSelected(on ? new Set(shown.map((x) => x.id)) : new Set()),
+                rowLabel: (x) => t('bulk.select', { reference: x.reference }),
+                allLabel: t('bulk.selectAll'),
+              }}
             />
           </div>
           <ul aria-label={title} className="flex flex-col gap-3 md:hidden">
@@ -255,6 +317,39 @@ export function AdminTicketsBrowser({
           </ul>
         </>
       )}
+      {bulkError ? <Notice tone="error">{bulkError}</Notice> : null}
+      {selectedRows.length > 0 ? (
+        <SelectionBar label={t('bulk.toolbar')} count={t('bulk.count', { count: selectedRows.length })}>
+          <BarButton disabled={busy} onPress={() => setSheet('status')} icon={BAR_ICONS.tick}>
+            {t('bulk.status')}
+          </BarButton>
+          <BarButton disabled={busy} onPress={() => setSheet('severity')} icon={BAR_ICONS.warn}>
+            {t('bulk.severity')}
+          </BarButton>
+          <BarButton onPress={() => setSelected(new Set())} icon={BAR_ICONS.x}>
+            {t('bulk.cancel')}
+          </BarButton>
+        </SelectionBar>
+      ) : null}
+      <BottomSheet open={sheet === 'status'} title={t('bulk.statusTitle', { count: selectedRows.length })} onClose={() => setSheet(null)}>
+        <div className="mt-2 flex flex-col">
+          {TICKET_STATUSES.map((st) => (
+            <SheetItem key={st} onPress={() => void bulk('status', st)}>
+              <StatusPill status={st} />
+            </SheetItem>
+          ))}
+        </div>
+      </BottomSheet>
+      <BottomSheet open={sheet === 'severity'} title={t('bulk.severityTitle', { count: selectedRows.length })} onClose={() => setSheet(null)}>
+        <div className="mt-2 flex flex-col">
+          {TICKET_SEVERITIES.map((sv) => (
+            <SheetItem key={sv} onPress={() => void bulk('severity', sv)}>
+              <SeverityPill severity={sv} />
+            </SheetItem>
+          ))}
+        </div>
+      </BottomSheet>
+      <Toast message={toast?.message ?? null} tone={toast?.tone} />
     </div>
   )
 }

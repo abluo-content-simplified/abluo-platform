@@ -6734,6 +6734,15 @@
           "not_ready": "Database update 056 is not applied yet. Nothing was changed.",
           "failed": "That didn’t work. Try again."
         }
+      },
+      "name": {
+        "label": "Name",
+        "rename": "Rename",
+        "hint": "How the project is listed in both dashboards (tickets, messages, the project switcher). Short is best, up to {max} characters. The website’s own title is not changed.",
+        "save": "Save",
+        "cancel": "Cancel",
+        "invalid": "Use 2 to {max} characters.",
+        "error": "The name couldn’t be saved. Please try again."
       }
     },
     "media": {
@@ -7426,6 +7435,19 @@
         "client": "{name} · {project}",
         "someone": "Someone",
         "read": "Read"
+      },
+      "bulk": {
+        "select": "Select {reference}",
+        "selectAll": "Select all shown",
+        "toolbar": "Selected tickets",
+        "count": "{count, plural, other {# selected}}",
+        "status": "Status",
+        "severity": "Severity",
+        "cancel": "Cancel",
+        "statusTitle": "{count, plural, one {Set the status of # ticket} other {Set the status of # tickets}}",
+        "severityTitle": "{count, plural, one {Set the severity of # ticket} other {Set the severity of # tickets}}",
+        "done": "{count, plural, one {# ticket updated} other {# tickets updated}}",
+        "partly": "Only {changed} of {total} tickets could be updated. Please try the others again."
       }
     },
     "users": {

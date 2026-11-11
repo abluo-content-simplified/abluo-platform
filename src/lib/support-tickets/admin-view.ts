@@ -46,7 +46,7 @@ export function nextStepOf(input: {
   createdAt: string
   lastActivityAt: string
   lastMessage: { by: AuthorKind; at: string } | null | undefined
-  /** First name of the client side's latest author, or the requester's. */
+  /** Full name of the client side's latest author, or the requester's. */
   clientName: string
 }): TicketNext {
   if (input.status === 'resolved') return { kind: 'done', since: input.lastActivityAt }

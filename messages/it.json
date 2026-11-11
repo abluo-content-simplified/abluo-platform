@@ -6734,6 +6734,15 @@
           "not_ready": "L’aggiornamento del database 056 non è ancora applicato. Non è stato modificato nulla.",
           "failed": "Non ha funzionato. Riprova."
         }
+      },
+      "name": {
+        "label": "Nome",
+        "rename": "Rinomina",
+        "hint": "Come il progetto appare nelle due dashboard (richieste, messaggi, cambio progetto). Meglio breve, fino a {max} caratteri. Il titolo del sito non cambia.",
+        "save": "Salva",
+        "cancel": "Annulla",
+        "invalid": "Usa da 2 a {max} caratteri.",
+        "error": "Non è stato possibile salvare il nome. Riprova."
       }
     },
     "media": {
@@ -7426,6 +7435,19 @@
         "client": "{name} · {project}",
         "someone": "Qualcuno",
         "read": "Letto"
+      },
+      "bulk": {
+        "select": "Seleziona {reference}",
+        "selectAll": "Seleziona tutte quelle mostrate",
+        "toolbar": "Richieste selezionate",
+        "count": "{count, plural, one {# selezionata} other {# selezionate}}",
+        "status": "Stato",
+        "severity": "Gravità",
+        "cancel": "Annulla",
+        "statusTitle": "{count, plural, one {Imposta lo stato di # richiesta} other {Imposta lo stato di # richieste}}",
+        "severityTitle": "{count, plural, one {Imposta la gravità di # richiesta} other {Imposta la gravità di # richieste}}",
+        "done": "{count, plural, one {# richiesta aggiornata} other {# richieste aggiornate}}",
+        "partly": "Solo {changed} di {total} richieste sono state aggiornate. Riprova con le altre."
       }
     },
     "users": {

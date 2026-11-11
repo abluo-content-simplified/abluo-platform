@@ -27,6 +27,7 @@ import { ViewAsClient } from '@/components/admin/projects/ViewAsClient'
 import { GoogleCard } from '@/components/admin/projects/GoogleCard'
 import { InviteOwnerCard } from '@/components/admin/projects/InviteOwnerCard'
 import { BillingCard } from '@/components/admin/projects/BillingCard'
+import { ProjectNameField } from '@/components/admin/projects/ProjectNameField'
 import { listOwnershipCandidates, tenantOfProject } from '@/lib/users/ownership'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 
@@ -250,6 +251,9 @@ export default async function AdminProjectPage({
       <section aria-labelledby="admin-facts" className="flex flex-col gap-3">
         <SectionHeading id="admin-facts" title={t('adminHeading')} />
         <dl className="rounded-xl border border-border bg-card px-4">
+          <FactRow label={t('name.label')}>
+            <ProjectNameField projectId={project.id} name={project.name} />
+          </FactRow>
           <FactRow label={t('facts.status')}>
             <ProjectStatusPill status={project.status} />
           </FactRow>
