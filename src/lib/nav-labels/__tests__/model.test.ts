@@ -26,11 +26,9 @@ describe('navigation labels (Tom, 2026-11-11)', () => {
 })
 
 describe('which languages the Labels page asks for', () => {
-  it('the website languages the dashboard offers, plus the one in use', () => {
-    expect(labelLocales(['en', 'fr'], 'en')).toEqual(['en', 'fr']) // CYCE
-    expect(labelLocales(['it', 'de'], 'it')).toEqual(['it', 'de']) // Hoffmann
-    expect(labelLocales(['en', 'fr'], 'it')).toEqual(['en', 'it', 'fr'])
-    expect(labelLocales(['fr'], 'fr')).toEqual(['fr'])
-    expect(labelLocales(['es'], 'es')).toEqual(['en'])
+  it('every dashboard language, never fewer (Tom, 2026-11-11)', () => {
+    expect(labelLocales()).toEqual(['en', 'it', 'de', 'fr']) // CYCE
+    expect(labelLocales()).toEqual(['en', 'it', 'de', 'fr'])
+    expect(labelLocales()).toEqual(['en', 'it', 'de', 'fr'])
   })
 })

@@ -50,14 +50,11 @@ export function labelsFor(map: NavLabelMap, locale: string): Partial<Record<Cust
 }
 
 /**
- * Which languages the Labels page asks for (Tom, 2026-11-11): a label only
- * shows in the dashboard, so only dashboard languages count — and of those,
- * the website's own languages plus the one the person is using now. CYCE
- * (website English + French) → English and French. Never
- * empty: falls back to English. In the dashboard's language order.
+ * Which languages the Labels page asks for (Tom, 2026-11-11): every dashboard
+ * language — English, Italian, German, French — whatever the website's own
+ * languages are. A label shows in the dashboard, and anyone may use it in any
+ * of them.
  */
-export function labelLocales(siteLocales: readonly string[], currentLocale: string): InterfaceLocale[] {
-  const wanted = new Set([...siteLocales, currentLocale])
-  const out = INTERFACE_LOCALES.filter((l) => wanted.has(l))
-  return out.length ? out : ['en']
+export function labelLocales(): InterfaceLocale[] {
+  return [...INTERFACE_LOCALES]
 }
