@@ -102,7 +102,7 @@ export function NavLabelsForm({
               <h2 id={`label-${id}`} className="text-[0.9375rem] leading-6 font-semibold">
                 {defaults[current]?.[id] ?? id}
               </h2>
-              <div className="mt-3 grid grid-cols-1 items-start gap-3 sm:grid-cols-3">
+              <div className="mt-3 grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {ordered.map((l) => (
                   <Field key={l} label={langName(l)}>
                     {(p) => (
