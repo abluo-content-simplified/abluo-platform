@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CUSTOM_LABEL_IDS, cleanNavLabel, labelsFor, planNavLabels } from '../model'
+import { CUSTOM_LABEL_IDS, cleanNavLabel, labelLocales, labelsFor, planNavLabels } from '../model'
 
 describe('navigation labels (Tom, 2026-11-11)', () => {
   it('only the sections an organisation really names differently', () => {
@@ -22,5 +22,14 @@ describe('navigation labels (Tom, 2026-11-11)', () => {
   it('a language without labels falls back to the defaults', () => {
     expect(labelsFor({ en: { people: 'Teachers' } }, 'en')).toEqual({ people: 'Teachers' })
     expect(labelsFor({ en: { people: 'Teachers' } }, 'it')).toEqual({})
+  })
+})
+
+describe('which languages the Labels page asks for', () => {
+  it('the website languages the dashboard offers, plus the one in use', () => {
+    expect(labelLocales(['en', 'fr'], 'en')).toEqual(['en']) // CYCE
+    expect(labelLocales(['it', 'de'], 'it')).toEqual(['it', 'de']) // Hoffmann
+    expect(labelLocales(['en', 'fr'], 'it')).toEqual(['en', 'it'])
+    expect(labelLocales(['fr'], 'fr')).toEqual(['en'])
   })
 })
